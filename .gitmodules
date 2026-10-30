@@ -8,3 +8,6 @@
 [submodule "third_party/swosgfx"]
 	path = third_party/swosgfx
 	url = https://github.com/benbaker76/swosgfx.git
+[submodule "third_party/swos-api"]
+	path = third_party/swos-api
+	url = git@github.com:SWOS-United/SWOS-API.git
