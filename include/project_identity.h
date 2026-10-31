@@ -41,4 +41,8 @@
 #define PROJECT_USER_DIR        "SWOSUnited"
 #define PROJECT_USER_DOT_DIR    ".swosunited"
 
+/* Accounts (include/online_account.h): a SWOS United player logs in to sensiblesoccer.de --
+ * src/online_account_united.c; OpenSWOS's src/online_account.c compiles to nothing. */
+#define PROJECT_ACCOUNTS        1
+
 #endif /* PROJECT_IDENTITY_H */

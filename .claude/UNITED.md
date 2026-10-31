@@ -16,6 +16,17 @@ rebase), `git cherry-pick <commit>` one fix, or nothing at all. `upstream` is fe
 
 ## What only SWOS United has
 
+- **Accounts** (`PROJECT_ACCOUNTS 1`): `src/online_account_united.c` -- the log-in screen asks
+  for a sensiblesoccer.de USERNAME / PASSWORD and checks them at LOGIN (a POST to the site's
+  `com_swosapi` `view=user`, `section=login`: "<user id>;<stream key>", "0;" refused);
+  REGISTER / MY PASSWORD? / MY USERNAME? open the site's pages.
+- **HTTPS** (`src/https_client.c`, `include/https_client.h`): mbedTLS 3.6.2 vendored in
+  `third_party/mbedtls` (Apache-2.0 OR GPL-2.0-or-later), built by `fork.mk` (native netplay
+  builds; `SWOS_HTTPS`), certificates checked against `bin/cacert.pem` (Mozilla's, from
+  curl.se -- refresh it now and then) and the host name. SWOS 2020 ran curl `--insecure`.
+  `SWOS_HTTPS_TEST=<url> [SWOS_HTTPS_TEST_FORM=a=1&b=2]` fetches one and exits (run from bin/).
+- `src/united_api.c` / `include/united_api.h`: the API's addresses, who is logged in.
+
 - `third_party/swos-api` -- private submodule, github.com/SWOS-United/SWOS-API: the website's
   API (SWOS 2020's php_manager) and the game's C++ client for it. Its secrets are never in git
   (its README): `swos_api_config.php` on the server, build defines for the client.
