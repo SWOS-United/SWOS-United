@@ -26,6 +26,9 @@ rebase), `git cherry-pick <commit>` one fix, or nothing at all. `upstream` is fe
   curl.se -- refresh it now and then) and the host name. SWOS 2020 ran curl `--insecure`.
   `SWOS_HTTPS_TEST=<url> [SWOS_HTTPS_TEST_FORM=a=1&b=2]` fetches one and exits (run from bin/).
 - `src/united_api.c` / `include/united_api.h`: the API's addresses, who is logged in.
+- **Test accounts** (TESTER1, TESTER2 on sensiblesoccer.de; the site's ticker leaves them out):
+  their passwords are in `.test-accounts` at the checkout's root, `user:password` a line,
+  gitignored -- never in git, a log or a commit message.
 
 - `third_party/swos-api` -- private submodule, github.com/SWOS-United/SWOS-API: the website's
   API (SWOS 2020's php_manager) and the game's C++ client for it. Its secrets are never in git
