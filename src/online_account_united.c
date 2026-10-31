@@ -32,6 +32,16 @@ static char    s_user[40];
 static int32_t s_userId;
 static int32_t s_checking;
 
+void Account_Init(void)
+{
+    UnitedRankings_Register();
+}
+
+int32_t Account_Has(AccountFeature feature)
+{
+    return feature == ACCOUNT_HAS_RANKINGS;     /* (LEAGUES, MATCH LOGS, RANKED: still to come) */
+}
+
 int32_t     Account_Enabled(void)         { return 1; }
 const char *Account_Prompt(void)          { return "LOGIN TO YOUR SENSIBLESOCCER.DE ACCOUNT"; }
 const char *Account_Url(AccountLink link) { return (uint32_t)link < ACCOUNT_LINKS ? kUrls[link] : 0; }
