@@ -44,6 +44,7 @@
 #include "match_prediction.h" /* both players' PRED and SEEN cross after the match */
 #include "uniform.h"          /* the UNIFORM screen, from the lobby's team screen */
 #include "custom_team.h"      /* MY CUSTOM TEAM */
+#include "online_account.h"   /* accounts: none here; a fork's (SWOS United's) */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -173,6 +174,14 @@ static char s_server[64];
 static int32_t s_rememberLogin = 1;   /* the .mnu's initial ON/OFF texts */
 static int32_t s_liveCast = 1;
 
+/* A project with accounts (include/online_account.h: SWOS United's) asks for a PASSWORD in
+ * that row instead, and checks the two at LOGIN; the server is then its own. */
+static char    s_password[33];
+static char    s_passwordShown[33];         /* what the row draws: '*'s, or the capitals */
+static int32_t s_showPassword;
+static int32_t s_checking;                  /* LOGIN: the account is being checked */
+static char    s_loginLine[64];             /* under the title: the prompt, or how the check went */
+
 /* What the SERVER row shows: what the player typed, else what SWOS.ini holds, else
  * the server LOGIN will actually use -- the public default, or a test's SWOS_MM_HOST.
  * Upper-cased for the menu font (a host name is case-blind), in a buffer of its own
@@ -217,20 +226,43 @@ static void server_save(void)
  * USERNAME / PASSWORD / SHOW PASSWORD come back and the buttons lose their text,
  * and there is no onReturn to redo it in. Every assignment here is a pointer
  * store, so doing it each frame costs nothing. */
+static const char *password_text(void)
+{
+    uint32_t i;
+    for (i = 0; s_password[i] && i < sizeof s_passwordShown - 1; i++) {
+        char c = s_password[i];
+        s_passwordShown[i] = !s_showPassword ? '*' : (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') :
+                             (c >= ' ' && c <= 'Z') ? c : '?';
+    }
+    s_passwordShown[i] = 0;
+    return s_passwordShown;
+}
+
 static void logInMenu_layout(void)
 {
-    set_text(LogInMenu_header, "PLAY ONLINE");
-    set_text(LogInMenu_subTitle, "CHOOSE A NAME AND THE SERVER TO MEET ON");
-    set_text(LogInMenu_username, "NAME");
-    set_text(LogInMenu_password, "SERVER");
+    const int32_t accounts = Account_Enabled();
+    int32_t i;
+
+    set_text(LogInMenu_header, accounts ? "MULTIPLAYER LOGIN" : "PLAY ONLINE");
+    set_text(LogInMenu_subTitle, s_loginLine[0] ? s_loginLine : Account_Prompt());
+    set_text(LogInMenu_username, accounts ? "USERNAME" : "NAME");
+    set_text(LogInMenu_password, accounts ? "PASSWORD" : "SERVER");
     set_text(LogInMenu_usernameInput, s_username);
-    set_text(LogInMenu_passwordInput, server_text());
+    set_text(LogInMenu_passwordInput, accounts ? password_text() : server_text());
     set_text(LogInMenu_logInContinue, "LOGIN");
-    set_text(LogInMenu_OfflinelogOut, "PLAY OFFLINE");
+    set_text(LogInMenu_OfflinelogOut, "ABOUT");
     set_text(LogInMenu_news, "NEWS");
-    /* Nothing to show or hide about an address, and nothing reads a password. */
-    entry_at(LogInMenu_showPasswordLabel)->isInvisible = 1;
-    entry_at(LogInMenu_showPassword)->isInvisible = 1;
+    /* SHOW PASSWORD only where there is one; no live cast here. */
+    entry_at(LogInMenu_showPasswordLabel)->isInvisible = accounts ? 0 : 1;
+    entry_at(LogInMenu_showPassword)->isInvisible = accounts ? 0 : 1;
+    entry_at(LogInMenu_liveCastLabel)->isInvisible = 1;
+    entry_at(LogInMenu_liveCast)->isInvisible = 1;
+    /* REGISTER, MY PASSWORD?, MY USERNAME?: the account's web pages, where it has them. */
+    for (i = 0; i < 3; i++) {
+        static const char *const label[3] = { "REGISTER", "MY PASSWORD?", "MY USERNAME?" };
+        set_text(LogInMenu_registerUser + i, label[i]);
+        entry_at(LogInMenu_registerUser + i)->isInvisible = Account_Url((AccountLink)i) ? 0 : 1;
+    }
 }
 
 /* REMEMBER LOGIN INFO: the name is kept in SWOS.ini beside the server ([netplay] name,
@@ -273,12 +305,27 @@ static void logInMenu_OnInit(void)
 }
 
 /* Runs every frame (the menu is flagged dos_redraw), so the toggles just follow state. */
+static void login_connect(void);
+
 static void logInMenu_OnDraw(void)
 {
+    if (s_checking) {                   /* LOGIN with an account: how the check is going */
+        const int32_t r = Account_Poll();
+        if (r > 0) {
+            s_checking = 0;
+            s_loginLine[0] = 0;
+            login_connect();
+            return;
+        }
+        if (r < 0) {
+            s_checking = 0;
+            snprintf(s_loginLine, sizeof s_loginLine, "%s", Account_Error());
+        }
+    }
     logInMenu_layout();
     set_text(LogInMenu_rememberLogInInfo, s_rememberLogin ? "ON" : "OFF");
+    set_text(LogInMenu_showPassword, s_showPassword ? "ON" : "OFF");
     set_text(LogInMenu_liveCast, s_liveCast ? "ON" : "OFF");
-    set_text(LogInMenu_passwordInput, server_text());
 }
 
 static void usernameInput_OnSelect(void)
@@ -304,6 +351,23 @@ static void serverInput_OnSelect(void)
     server_save();
 }
 
+/* PASSWORD (a project with accounts): typed as it is -- small letters, symbols -- and drawn
+ * masked unless SHOW PASSWORD. */
+static void passwordInput_OnSelect(void)
+{
+    MenuEntry *e = entry_at(LogInMenu_passwordInput);
+    if (!Account_Enabled()) {
+        serverInput_OnSelect();
+        return;
+    }
+    e->fg = (uintptr_t)s_password;
+    InputText_SetRaw(1, s_showPassword);
+    InputText(sizeof s_password, (uint8_t *)e);
+    InputText_SetRaw(0, 0);
+    e->fg = (uintptr_t)password_text();
+}
+
+static void showPassword_OnSelect(void)      { s_showPassword = !s_showPassword; }
 static void rememberLogInInfo_OnSelect(void) { s_rememberLogin = !s_rememberLogin; login_save(); }
 static void liveCast_OnSelect(void)          { s_liveCast = !s_liveCast; }
 
@@ -321,14 +385,50 @@ static uint16_t    mm_port(void) { return MmClient_DefaultPort(); }
  * for here -- matchMakingMenu's OnDraw polls it and shows CONNECTING / ONLINE /
  * the failure, so a server that is not there leaves a usable menu saying so
  * rather than a frozen one. */
-static void logInMenuLogInContinue_OnSelect(void)
+static void login_connect(void)
 {
-    if (!s_username[0])
-        snprintf(s_username, sizeof s_username, "PLAYER");
-    login_save();
     MmClient_Connect(mm_host(), mm_port(), s_username, NULL);
     OnlineMenus_Show(SWOS2020_MENU(matchMakingMenu));
 }
+
+static void logInMenuLogInContinue_OnSelect(void)
+{
+    if (s_checking)
+        return;
+    if (Account_Enabled()) {
+        /* The account first: checked off this thread, LOGIN's progress under the title. */
+        if (!s_username[0] || !s_password[0]) {
+            snprintf(s_loginLine, sizeof s_loginLine, "TYPE YOUR USERNAME AND PASSWORD");
+            return;
+        }
+        login_save();
+        snprintf(s_loginLine, sizeof s_loginLine, "CHECKING USERNAME AND PASSWORD...");
+        Account_Begin(s_username, s_password);
+        s_checking = 1;
+        return;
+    }
+    if (!s_username[0])
+        snprintf(s_username, sizeof s_username, "PLAYER");
+    login_save();
+    login_connect();
+}
+
+/* ABOUT: the game's credits. */
+static void logInMenuAbout_OnSelect(void)
+{
+    CreditsMenu_Show();
+}
+
+/* REGISTER, MY PASSWORD?, MY USERNAME?: the account's web pages, in the browser. */
+static void open_account_page(AccountLink link)
+{
+    const char *url = Account_Url(link);
+    if (url && SDL_OpenURL(url) != 0)
+        fprintf(stderr, "[online] could not open %s: %s\n", url, SDL_GetError());
+}
+static void registerUserMenuNews_OnSelect(void)  { open_account_page(ACCOUNT_LINK_REGISTER); }
+static void registerUserMenuNews2_OnSelect(void) { open_account_page(ACCOUNT_LINK_PASSWORD); }
+static void registerUserMenuNews3_OnSelect(void) { open_account_page(ACCOUNT_LINK_USERNAME); }
 
 static void logInMenuNews_OnSelect(void)
 {
@@ -873,7 +973,13 @@ static void lobby_test_knobs(void)
     const char *team = getenv("SWOS_LOBBY_TEAM");
     const char *cup = getenv("SWOS_LOBBY_CUP");     /* host: <legs>:<1 ET+PEN | 2 PEN ONLY> */
     const char *sw = getenv("SWOS_LOBBY_SWITCHES"); /* host: NETPLAY_SW_* in hex */
+    const char *say = getenv("SWOS_LOBBY_SAY");     /* a chat line, said as the lobby opens */
     unsigned file, ordinal, legs, tie, mask;
+
+    if (say && say[0])
+        (void)NetplayLobby_Say(say);
+    if (getenv("SWOS_LOBBY_EXTRA_DELAY"))           /* FRAME DELAY +: this player's extra frames */
+        NetplayLobby_SetExtraDelay(atoi(getenv("SWOS_LOBBY_EXTRA_DELAY")));
 
     if (sw && NetplayLobby_IsHost() && sscanf(sw, "%x", &mask) == 1) {
         LobbyRules r = *NetplayLobby_Rules();
@@ -1042,6 +1148,17 @@ static const struct { int32_t entry; uint16_t sw; } s_switchRows[LOBBY_SWITCH_RO
     { MpGameSetupMenu_switchCardsInjuries, NETPLAY_SW_CARDS_INJURIES },
 };
 
+/* The left half under the players is the CHAT (SWOS 2020's lobby chat), or -- SWITCHES,
+ * where SWOS 2020 has LIVE CAST URL (no live cast here) -- the host's switches; the same
+ * button says CHAT then and brings the chat back. */
+enum { LOBBY_PANE_CHAT, LOBBY_PANE_SWITCHES };
+enum { CHAT_ROWS = 10 };                /* chatMsg00..09: a line is two rows, its name and its text */
+static int32_t  s_lobbyPane;
+static int32_t  s_chatScroll;           /* lines back from the newest */
+static uint32_t s_chatSeen;             /* NetplayLobby_ChatSerial when last drawn */
+static char     s_chatRow[CHAT_ROWS][LOBBY_CHAT_TEXT + 1];
+static char     s_chatInput[LOBBY_CHAT_TEXT + 1];
+
 static void lobby_nav(int32_t ordinal, int32_t left, int32_t right, int32_t up, int32_t down)
 {
     MenuEntry *e = entry_at(ordinal);
@@ -1071,33 +1188,75 @@ static void lobby_layout(void)
     lobby_nav(MpGameSetupMenu_gameLength1, -1, -1, MpGameSetupMenu_etPen1, MpGameSetupMenu_pitchType1);
     lobby_nav(MpGameSetupMenu_pitchType1,  -1, -1, MpGameSetupMenu_gameLength1, MpGameSetupMenu_minSubs1);
     lobby_nav(MpGameSetupMenu_minSubs1, -1, MpGameSetupMenu_maxSubs1,
-              MpGameSetupMenu_pitchType1, MpGameSetupMenu_cancel);
+              MpGameSetupMenu_pitchType1, MpGameSetupMenu_ggpoFrameDelayDec);
     lobby_nav(MpGameSetupMenu_maxSubs1, MpGameSetupMenu_minSubs1, -1,
-              MpGameSetupMenu_pitchType1, MpGameSetupMenu_start);
-    lobby_nav(MpGameSetupMenu_cancel, -1, MpGameSetupMenu_start, MpGameSetupMenu_minSubs1, -1);
-    lobby_nav(MpGameSetupMenu_start, MpGameSetupMenu_cancel, -1, MpGameSetupMenu_maxSubs1, -1);
+              MpGameSetupMenu_pitchType1, MpGameSetupMenu_ggpoFrameDelayInc);
+    /* FRAME DELAY: each player's own - and + (the value between puts it back to AUTO). */
+    lobby_nav(MpGameSetupMenu_ggpoFrameDelayDec, -1, MpGameSetupMenu_ggpoFrameDelay_,
+              MpGameSetupMenu_minSubs1, MpGameSetupMenu_cancel);
+    lobby_nav(MpGameSetupMenu_ggpoFrameDelay_, MpGameSetupMenu_ggpoFrameDelayDec,
+              MpGameSetupMenu_ggpoFrameDelayInc, MpGameSetupMenu_minSubs1, MpGameSetupMenu_start);
+    lobby_nav(MpGameSetupMenu_ggpoFrameDelayInc, MpGameSetupMenu_ggpoFrameDelay_, -1,
+              MpGameSetupMenu_maxSubs1, MpGameSetupMenu_start);
+    lobby_nav(MpGameSetupMenu_cancel, -1, MpGameSetupMenu_start, MpGameSetupMenu_ggpoFrameDelayDec, -1);
+    lobby_nav(MpGameSetupMenu_start, MpGameSetupMenu_cancel, -1, MpGameSetupMenu_ggpoFrameDelayInc, -1);
 
-    /* The host's switches, a column on the left: RIGHT goes to the rules beside them,
-     * and the rules' LEFT comes back. The joiner's are disabled, so the cursor passes
-     * through them as it does through the joiner's rules. */
-    {
+    /* The pane's button, under our row; then the chat or the switches below it, and the
+     * rules' LEFT comes back to them. */
+    lobby_nav(MpGameSetupMenu_liveCastUrlBtn, -1, MpGameSetupMenu_legOpt1, teams,
+              s_lobbyPane == LOBBY_PANE_CHAT ? MpGameSetupMenu_scrollUp : s_switchRows[0].entry);
+    if (s_lobbyPane == LOBBY_PANE_SWITCHES) {
+        /* The host's switches, a column: RIGHT goes to the rules beside them. The joiner's
+         * are disabled, so the cursor passes through them as it does the joiner's rules. */
         static const int32_t right[LOBBY_SWITCH_ROWS] = {
             MpGameSetupMenu_legOpt1, MpGameSetupMenu_gameLength1, MpGameSetupMenu_pitchType1,
         };
         for (i = 0; i < LOBBY_SWITCH_ROWS; i++)
             lobby_nav(s_switchRows[i].entry, -1, right[i],
-                      i ? s_switchRows[i - 1].entry : teams,
+                      i ? s_switchRows[i - 1].entry : MpGameSetupMenu_liveCastUrlBtn,
                       i + 1 < LOBBY_SWITCH_ROWS ? s_switchRows[i + 1].entry : MpGameSetupMenu_cancel);
-        entry_at(MpGameSetupMenu_legOpt1)->leftEntry = (int8_t)MpGameSetupMenu_switchShortPresses;
-        entry_at(MpGameSetupMenu_gameLength1)->leftEntry = (int8_t)MpGameSetupMenu_switchKickoffSync;
-        entry_at(MpGameSetupMenu_pitchType1)->leftEntry = (int8_t)MpGameSetupMenu_switchCardsInjuries;
+        entry_at(MpGameSetupMenu_legOpt1)->leftEntry = (int8_t)MpGameSetupMenu_liveCastUrlBtn;
+        entry_at(MpGameSetupMenu_gameLength1)->leftEntry = (int8_t)MpGameSetupMenu_switchShortPresses;
+        entry_at(MpGameSetupMenu_pitchType1)->leftEntry = (int8_t)MpGameSetupMenu_switchKickoffSync;
         entry_at(MpGameSetupMenu_minSubs1)->leftEntry = (int8_t)MpGameSetupMenu_switchCardsInjuries;
         entry_at(MpGameSetupMenu_cancel)->upEntry = (int8_t)MpGameSetupMenu_switchCardsInjuries;
+        entry_at(MpGameSetupMenu_cancel)->leftEntry = (int8_t)MpGameSetupMenu_switchCardsInjuries;
+        for (i = 0; i < LOBBY_SWITCH_ROWS; i++) {               /* (hiding stays: show both panes' own) */
+            set_visible(s_switchRows[i].entry, 1);
+            set_visible(s_switchRows[i].entry - 1, 1);
+        }
+        for (i = MpGameSetupMenu_chatMsg00; i <= MpGameSetupMenu_chatMsg09; i++)
+            lobby_hide(i);
+        lobby_hide(MpGameSetupMenu_scrollUp);
+        lobby_hide(MpGameSetupMenu_scrollDown);
+        lobby_hide(MpGameSetupMenu_inputChatMsg);
 #ifndef SWOS_TEST_RULES
         /* A release has the old rule compiled out: nothing to switch. */
         lobby_hide(MpGameSetupMenu_switchCardsInjuriesLabel);
         lobby_hide(MpGameSetupMenu_switchCardsInjuries);
 #endif
+    } else {
+        /* The chat: the two arrows down its right edge, then the line to type in. */
+        lobby_nav(MpGameSetupMenu_scrollUp, -1, MpGameSetupMenu_gameLength1,
+                  MpGameSetupMenu_liveCastUrlBtn, MpGameSetupMenu_scrollDown);
+        lobby_nav(MpGameSetupMenu_scrollDown, -1, MpGameSetupMenu_minSubs1,
+                  MpGameSetupMenu_scrollUp, MpGameSetupMenu_inputChatMsg);
+        lobby_nav(MpGameSetupMenu_inputChatMsg, -1, MpGameSetupMenu_cancel,
+                  MpGameSetupMenu_scrollDown, -1);
+        entry_at(MpGameSetupMenu_legOpt1)->leftEntry = (int8_t)MpGameSetupMenu_liveCastUrlBtn;
+        entry_at(MpGameSetupMenu_gameLength1)->leftEntry = (int8_t)MpGameSetupMenu_scrollUp;
+        entry_at(MpGameSetupMenu_pitchType1)->leftEntry = (int8_t)MpGameSetupMenu_scrollUp;
+        entry_at(MpGameSetupMenu_minSubs1)->leftEntry = (int8_t)MpGameSetupMenu_scrollDown;
+        entry_at(MpGameSetupMenu_cancel)->leftEntry = (int8_t)MpGameSetupMenu_inputChatMsg;
+        for (i = 0; i < LOBBY_SWITCH_ROWS; i++) {
+            lobby_hide(s_switchRows[i].entry);
+            lobby_hide(s_switchRows[i].entry - 1);      /* (its label, just before it) */
+        }
+        for (i = MpGameSetupMenu_chatMsg00; i <= MpGameSetupMenu_chatMsg09; i++)
+            set_visible(i, 1);
+        set_visible(MpGameSetupMenu_scrollUp, 1);
+        set_visible(MpGameSetupMenu_scrollDown, 1);
+        set_visible(MpGameSetupMenu_inputChatMsg, 1);
     }
 
     lobby_hide(MpGameSetupMenu_teamDB);
@@ -1109,16 +1268,17 @@ static void lobby_layout(void)
     lobby_hide(MpGameSetupMenu_rankedModeOption1);
     lobby_hide(MpGameSetupMenu_teamDB1Label);
     lobby_hide(MpGameSetupMenu_teamDB1);
-    lobby_hide(MpGameSetupMenu_ggpoFrameDelayDec);
-    lobby_hide(MpGameSetupMenu_ggpoFrameDelayInc);
     lobby_hide(MpGameSetupMenu_matchInfo);
-    lobby_hide(MpGameSetupMenu_chatLabel);
-    lobby_hide(MpGameSetupMenu_liveCastUrlBtn);
-    for (i = MpGameSetupMenu_chatMsg00; i <= MpGameSetupMenu_chatMsg09; i++)
-        lobby_hide(i);
-    lobby_hide(MpGameSetupMenu_scrollUp);
-    lobby_hide(MpGameSetupMenu_scrollDown);
-    lobby_hide(MpGameSetupMenu_inputChatMsg);
+    set_entry(MpGameSetupMenu_chatLabel, s_lobbyPane == LOBBY_PANE_CHAT ? "CHAT" : "SWITCHES", 0, kGreen);
+    entry_at(MpGameSetupMenu_chatLabel)->dwWidth = 69;      /* (the .mnu's runs under the button) */
+    /* The arrows: SWOS 2020 draws its own; here, small boxes with the direction in them. */
+    entry_at(MpGameSetupMenu_scrollUp)->background = ENTRY_FRAME_AND_BACK_COLOR;
+    entry_at(MpGameSetupMenu_scrollDown)->background = ENTRY_FRAME_AND_BACK_COLOR;
+    set_entry(MpGameSetupMenu_scrollUp, "+", 1, kRed);
+    set_entry(MpGameSetupMenu_scrollDown, "-", 1, kRed);
+    set_entry(MpGameSetupMenu_liveCastUrlBtn, s_lobbyPane == LOBBY_PANE_CHAT ? "SWITCHES" : "CHAT", 1,
+              kLightBlue);
+    set_text(MpGameSetupMenu_inputChatMsg, s_chatInput);
 
     set_entry(MpGameSetupMenu_cPlayers_00, "PLAYERS", 0, kGray);
     set_entry(MpGameSetupMenu_teams_00,    "TEAMS",   0, kGray);
@@ -1126,12 +1286,103 @@ static void lobby_layout(void)
     set_entry(MpGameSetupMenu_go_00,       "GO",      0, kGray);
     set_text(MpGameSetupMenu_latencyLabel, "LATENCY:");
     set_entry(MpGameSetupMenu_gameStyle1, "", 0, kGray);        /* the link already made both agree */
-    set_entry(MpGameSetupMenu_ggpoFrameDelay_, "", 0, kGray);   /* agreed by the link, not chosen here */
+}
+
+/* ---- the chat ---- */
+
+enum { kWhiteText2 = 2, kGreenText = 14, kYellowText = 15, kLeftAligned = 1 << 15 };
+
+static void chat_row(int32_t row, const char *text, uint16_t color)
+{
+    MenuEntry *e = entry_at(MpGameSetupMenu_chatMsg00 + row);
+    snprintf(s_chatRow[row], sizeof s_chatRow[row], "%s", text);
+    e->fg = (uintptr_t)s_chatRow[row];
+    e->stringFlags = (uint16_t)(kLeftAligned | color);
+}
+
+/* The newest lines that fit, or further back after UP: each one its sayer, then what they
+ * said -- the bot's in yellow when someone arrives, green otherwise (SWOS 2020's colours). */
+static void chat_draw(void)
+{
+    const int32_t n = NetplayLobby_ChatCount(), shown = CHAT_ROWS / 2;
+    int32_t first, k;
+    if (s_lobbyPane != LOBBY_PANE_CHAT)
+        return;
+    if (NetplayLobby_ChatSerial() != s_chatSeen) {      /* a new line: back to the newest */
+        s_chatSeen = NetplayLobby_ChatSerial();
+        s_chatScroll = 0;
+    }
+    if (s_chatScroll > n - shown)
+        s_chatScroll = n - shown > 0 ? n - shown : 0;
+    first = n - shown - s_chatScroll;
+    if (first < 0)
+        first = 0;
+    for (k = 0; k < shown; k++) {
+        const LobbyChatLine *l = NetplayLobby_ChatLine(first + k);
+        char name[LOBBY_NAME_MAX + 2];
+        if (!l) {
+            chat_row(2 * k, "", kWhiteText2);
+            chat_row(2 * k + 1, "", kWhiteText2);
+            continue;
+        }
+        if (l->who == LOBBY_CHAT_BOT)
+            snprintf(name, sizeof name, "JON HARE (BOT):");
+        else
+            snprintf(name, sizeof name, "%s:",
+                     NetplayLobby_Player(l->who == LOBBY_CHAT_ME ? NetplayLobby_LocalPlayer()
+                                                                 : 3 - NetplayLobby_LocalPlayer())->name);
+        chat_row(2 * k, name, kWhiteText2);
+        chat_row(2 * k + 1, l->text, l->who != LOBBY_CHAT_BOT ? kWhiteText2 :
+                 strstr(l->text, "CONNECTED") ? kYellowText : kGreenText);
+    }
+}
+
+/* FRAME DELAY: this player's extra frames, never below AUTO (netplay_lobby.h). */
+static void selectGgpoFrameDelayDec(void)
+{
+    NetplayLobby_SetExtraDelay(NetplayLobby_Player(NetplayLobby_LocalPlayer())->extraDelay - 1);
+}
+
+static void selectGgpoFrameDelayInc(void)
+{
+    NetplayLobby_SetExtraDelay(NetplayLobby_Player(NetplayLobby_LocalPlayer())->extraDelay + 1);
+}
+
+static void selectGGPOFrameDelay(void)
+{
+    NetplayLobby_SetExtraDelay(0);
+}
+
+/* SWITCHES / CHAT (SWOS 2020's LIVE CAST URL button). */
+static void selectLiveCastUrl(void)
+{
+    s_lobbyPane = s_lobbyPane == LOBBY_PANE_CHAT ? LOBBY_PANE_SWITCHES : LOBBY_PANE_CHAT;
+}
+
+static void matchMaking_chat_scrollUp_onSelect(void)
+{
+    s_chatScroll++;                     /* (chat_draw keeps it in range) */
+}
+
+static void matchMaking_chat_scrollDown_onSelect(void)
+{
+    if (s_chatScroll > 0)
+        s_chatScroll--;
+}
+
+/* The line to type in: Enter says it, Esc leaves it as it was. */
+static void selectInputChatMsg(void)
+{
+    if (InputText(sizeof s_chatInput, (uint8_t *)entry_at(MpGameSetupMenu_inputChatMsg)) == 0 &&
+        NetplayLobby_Say(s_chatInput) == 0)
+        s_chatInput[0] = 0;
 }
 
 static void mpGameSetupMenu_OnInit(void)
 {
     Platform_SetFrameHook(lobby_frame_hook);
+    s_lobbyPane  = LOBBY_PANE_CHAT;
+    s_chatScroll = 0;
     lobby_layout();
 
     /* Start on this player's TEAMS button: the first thing to do. */
@@ -1164,6 +1415,7 @@ static void mpGameSetupMenu_OnDraw(void)
     }
 
     lobby_layout();
+    chat_draw();
     me    = NetplayLobby_LocalPlayer();
     host  = NetplayLobby_IsHost();
     open  = st == LOBBY_OPEN;
@@ -1227,8 +1479,18 @@ static void mpGameSetupMenu_OnDraw(void)
     {
         int32_t delay;
         NetplayLobby_Peer(NULL, 0, NULL, NULL, &delay, NULL);
-        snprintf(s_ruleDelay, sizeof s_ruleDelay, "%d", delay);
-        set_text(MpGameSetupMenu_ggpoFrameDelay_, s_ruleDelay);
+        if (delay > NetplayLobby_AutoDelay())
+            snprintf(s_ruleDelay, sizeof s_ruleDelay, "%d+%d", NetplayLobby_AutoDelay(),
+                     delay - NetplayLobby_AutoDelay());
+        else
+            snprintf(s_ruleDelay, sizeof s_ruleDelay, "AUTO (%d)", delay);
+        set_entry(MpGameSetupMenu_ggpoFrameDelay_, s_ruleDelay, open && players[me - 1]->extraDelay > 0,
+                  kLightBlue);
+        set_entry(MpGameSetupMenu_ggpoFrameDelayDec, "-", open && players[me - 1]->extraDelay > 0,
+                  open && players[me - 1]->extraDelay > 0 ? kLightBlue : kGray);
+        set_entry(MpGameSetupMenu_ggpoFrameDelayInc, "+",
+                  open && players[me - 1]->extraDelay < LOBBY_EXTRA_DELAY_MAX,
+                  open && players[me - 1]->extraDelay < LOBBY_EXTRA_DELAY_MAX ? kLightBlue : kGray);
     }
 
     /* The host's switches: the host's to change, the joiner's to see -- both play by
@@ -2018,7 +2280,11 @@ static const MenuSymbol k_handlers[] = {
     HANDLER(logInMenu_OnDraw),
     HANDLER(usernameInput_OnSelect),
     /* The .mnu calls it the password input; it is the SERVER address here. */
-    HANDLER_AS("passwordInput_OnSelect", serverInput_OnSelect),
+    HANDLER(passwordInput_OnSelect),
+    HANDLER(showPassword_OnSelect),
+    HANDLER(registerUserMenuNews_OnSelect),
+    HANDLER(registerUserMenuNews2_OnSelect),
+    HANDLER(registerUserMenuNews3_OnSelect),
     HANDLER(rememberLogInInfo_OnSelect),
     /* SHOW PASSWORD has nothing left to show -- the row is hidden in OnInit. */
     HANDLER_AS("showPassword_OnSelect", SetExitMenuFlag),
@@ -2061,6 +2327,13 @@ static const MenuSymbol k_handlers[] = {
     HANDLER(selectPitchType1),
     HANDLER(selectMinSubs1),
     HANDLER(selectMaxSubs1),
+    HANDLER(selectLiveCastUrl),
+    HANDLER(selectGgpoFrameDelayDec),
+    HANDLER(selectGgpoFrameDelayInc),
+    HANDLER(selectGGPOFrameDelay),
+    HANDLER(matchMaking_chat_scrollUp_onSelect),
+    HANDLER(matchMaking_chat_scrollDown_onSelect),
+    HANDLER(selectInputChatMsg),
     HANDLER(selectSwitchShortPresses),
     HANDLER(selectSwitchKickoffSync),
     HANDLER(selectSwitchCardsInjuries),
@@ -2078,7 +2351,7 @@ static const MenuSymbol k_handlers[] = {
     HANDLER_AS("leagueInfoMain_exit_onSelect",       SetExitMenuFlag),
     HANDLER_AS("leagueInfoView_exit_onSelect",       SetExitMenuFlag),
     HANDLER_AS("logInMenuCancel_OnSelect",           SetExitMenuFlag),
-    HANDLER_AS("logInMenuOfflinelogOut_OnSelect",    SetExitMenuFlag),
+    HANDLER_AS("logInMenuOfflinelogOut_OnSelect",    logInMenuAbout_OnSelect),
     HANDLER_AS("mLogReaderMenu_exit_onSelect",       SetExitMenuFlag),
     HANDLER_AS("mLogStatsMenu_exit_onSelect",        SetExitMenuFlag),
     HANDLER_AS("mLogTickerMenu_exit_onSelect",       SetExitMenuFlag),
@@ -2123,9 +2396,26 @@ void OnlineMenus_SetAutoLogin(const char *name)
     OnlineMenus_SetStartMenu("swos2020/matchMakingMenu");
 }
 
+static int32_t s_quitAfterStart;
+
 void OnlineMenus_SetStartMenu(const char *name)
 {
     snprintf(s_startMenu, sizeof s_startMenu, "%s", name);
+    s_quitAfterStart = 0;               /* (another start menu: the main menu after it) */
+}
+
+/* --online, and the online client (make ONLINE_CLIENT=1): the multiplayer log-in first --
+ * with quitAfter, leaving it quits the game. */
+
+void OnlineMenus_StartOnline(int32_t quitAfter)
+{
+    OnlineMenus_SetStartMenu("swos2020/logInMenu");
+    s_quitAfterStart = quitAfter;
+}
+
+int32_t OnlineMenus_QuitAfterStartMenu(void)
+{
+    return s_quitAfterStart;
 }
 
 /* --netplay-lobby=host|join: two instances on one machine meet over loopback and open
