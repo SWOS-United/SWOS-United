@@ -33,7 +33,7 @@
 #define PROJECT_GGPO_GAME       "swos_united"
 #define PROJECT_TEAM_FORMAT     "swosunited-team"
 /* The public matchmaking server (and recorder, reports, team check): its host. */
-#define PROJECT_MM_HOST         "us.swos.eu"
+#define PROJECT_MM_HOST         "online.swos.eu"
 
 /* The player's folder: saves, SWOS.ini, SWOS.log, the assets the setup makes (swos_io.c,
  * tools/swosdata SwosData_DefaultAssetsDir) -- Documents/<it> on Windows, the app-data
