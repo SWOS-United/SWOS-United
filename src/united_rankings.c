@@ -34,7 +34,7 @@ typedef struct {
 static int32_t  s_rankId;               /* 5 the Amiga's, 13 the PC's */
 static RankRow *s_rows;
 static int32_t  s_count, s_page, s_loading;
-static char     s_status[48], s_pageText[16], s_date[12];
+static char     s_status[48], s_pageText[32], s_date[24];
 static char     s_cell[ROWS + 1][9][20];
 
 static MenuEntry *entry_at(int32_t ordinal) { return CalcMenuEntryAddress((uint16_t)ordinal); }

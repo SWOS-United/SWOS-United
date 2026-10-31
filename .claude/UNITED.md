@@ -26,6 +26,38 @@ rebase), `git cherry-pick <commit>` one fix, or nothing at all. `upstream` is fe
   curl.se -- refresh it now and then) and the host name. SWOS 2020 ran curl `--insecure`.
   `SWOS_HTTPS_TEST=<url> [SWOS_HTTPS_TEST_FORM=a=1&b=2]` fetches one and exits (run from bin/).
 - `src/united_api.c` / `include/united_api.h`: the API's addresses, who is logged in.
+- **RANKINGS** (`src/united_rankings.c`): SWOS 2020's rankings / ranking screens, AMIGA
+  (`view=ranking&id=5`) and PC DOS (13); no XBOX.
+- **Ranked and league / cup matches** (`src/united_matches.c`, OpenSWOS's lobby hooks in
+  `include/online_account.h`). OPEN asks FRIENDLY / RANKED MATCH / LEAGUE / CUP (SWOS 2020's
+  openLobbyMenu); LEAGUE / CUP with no open match turns the screen into "not signed", whose
+  buttons open ONLINE LEAGUES and the Discord. In the lobby both players' SRN for the game's
+  style are bot lines (`view=userdetail`, ranking 5 or 13); a ranked match the ratings do not
+  allow (`login_check.php`'s `[SRN_DIFF_LIMIT]`, 750 / 1200, plus SWOS 2020's Amiga rule at
+  2100) is turned into a friendly by the host, as is one whose ratings could not be fetched.
+  START waits for that check, and for SELECT MATCH in league / cup (the first open leg between
+  the two players in a tournament of the game's style, `view=matches`). Results: **each player
+  sends their own** with their own account (`view=matchleginsert`, POSTed: lid, pg/og the
+  ninety minutes, pe/oe extra time, pp/op penalties). A ranked match is made on the site by the
+  host after it is played (`view=matchcreate`, createOOO, then createOOOleg for a rematch,
+  keyed by `include/united_secrets.h`), and its ids reach the joiner in the lobby's rules -- so
+  a joiner who leaves before they arrive has not sent their score. SWOS 2020 sent the joiner's
+  password to the host instead: never do that.
+- **Secrets**: `include/united_secrets.h` (gitignored; `include/united_secrets.sample.h` is the
+  template, the file itself is in SWOS-API-secrets.zip). Without it a build cannot host a
+  ranked match.
+- **Tests**: `SWOS_UNITED_LOGIN=TESTER1 SWOS_UNITED_ACCOUNTS=$PWD/.test-accounts` logs in at
+  start; `SWOS_UNITED_DRY_RUN=1` sends no result and creates no match (logs what would go,
+  without the password or key); `SWOS_UNITED_TEST_SELECT=1` presses SELECT MATCH. Through
+  OpenSWOS's relay test, with game data from an OpenSWOS checkout:
+
+      A="SWOS_UNITED_ACCOUNTS=$PWD/.test-accounts SWOS_UNITED_DRY_RUN=1"
+      SWOS_ASSETS=../OpenSWOS/bin HOST_NAME=TESTER1 JOIN_NAME=TESTER2 RELAY=0 RECORD=1 \
+        HOST_ENV="$A SWOS_UNITED_LOGIN=TESTER1 SWOS_LOBBY_MODE=ranked" \
+        JOIN_ENV="$A SWOS_UNITED_LOGIN=TESTER2" scripts/relay_test.sh
+
+  (`SWOS_LOBBY_MODE=league SWOS_UNITED_TEST_SELECT=1` for league / cup.) A run without the dry
+  run changes the testers' real records: ranked matches move their SRN.
 - **Test accounts** (TESTER1, TESTER2 on sensiblesoccer.de; the site's ticker leaves them out):
   their passwords are in `.test-accounts` at the checkout's root, `user:password` a line,
   gitignored -- never in git, a log or a commit message.

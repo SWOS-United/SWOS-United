@@ -16,6 +16,7 @@
 #include <string.h>
 
 #if defined(SWOS_SDL_BUILD) && defined(SWOS_HTTPS)
+#include <SDL.h>
 #include "https_client.h"
 #endif
 
@@ -29,17 +30,22 @@ static const char *const kUrls[ACCOUNT_LINKS] = {
 
 static char    s_error[64];
 static char    s_user[40];
+static char    s_password[64];          /* kept for submitting results (this player's own only) */
 static int32_t s_userId;
 static int32_t s_checking;
+
+static void test_login(void);
 
 void Account_Init(void)
 {
     UnitedRankings_Register();
+    UnitedMatches_Register();
+    test_login();
 }
 
 int32_t Account_Has(AccountFeature feature)
 {
-    return feature == ACCOUNT_HAS_RANKINGS;     /* (LEAGUES, MATCH LOGS, RANKED: still to come) */
+    return feature == ACCOUNT_HAS_RANKINGS || feature == ACCOUNT_HAS_RANKED;   /* (LEAGUES, MATCH LOGS: to come) */
 }
 
 int32_t     Account_Enabled(void)         { return 1; }
@@ -49,12 +55,14 @@ const char *Account_Error(void)           { return s_error; }
 
 int32_t     United_UserId(void)           { return s_userId; }
 const char *United_UserName(void)         { return s_user; }
+const char *United_Password(void)         { return s_password; }
 
 void Account_Begin(const char *user, const char *password)
 {
     s_userId = 0;
     s_error[0] = 0;
     snprintf(s_user, sizeof s_user, "%s", user);
+    snprintf(s_password, sizeof s_password, "%s", password);
 #if defined(SWOS_SDL_BUILD) && defined(SWOS_HTTPS)
     {
         /* The site matches names in capitals (SWOS 2020 sent _strupr'd ones); the password
@@ -115,5 +123,40 @@ int32_t Account_Poll(void)
     return -1;
 #endif
 }
+
+/* A test drives the matchmaking menu with no hands (SWOS_MM_AUTO), so nothing types a
+ * password: SWOS_UNITED_LOGIN=<user> logs in as that user with the password in
+ * SWOS_UNITED_ACCOUNTS (lines of USER:PASSWORD -- the repo's gitignored .test-accounts),
+ * before the menus open. Neither the password nor the file's contents are logged. */
+#if defined(SWOS_SDL_BUILD) && defined(SWOS_HTTPS)
+static void test_login(void)
+{
+    const char *user = getenv("SWOS_UNITED_LOGIN"), *file = getenv("SWOS_UNITED_ACCOUNTS");
+    char line[128];
+    FILE *f;
+    int32_t r;
+    if (!user || !file || !(f = fopen(file, "r")))
+        return;
+    while (fgets(line, sizeof line, f)) {
+        char *colon = strchr(line, ':'), *nl;
+        if (!colon)
+            continue;
+        *colon = 0;
+        if ((nl = strpbrk(colon + 1, "\r\n")) != NULL)
+            *nl = 0;
+        if (strcmp(line, user) != 0)
+            continue;
+        Account_Begin(line, colon + 1);
+        memset(line, 0, sizeof line);
+        while ((r = Account_Poll()) == 0)
+            SDL_Delay(10);
+        fprintf(stderr, "[account] test login as %s: %s\n", s_user, r > 0 ? "good" : s_error);
+        break;
+    }
+    fclose(f);
+}
+#else
+static void test_login(void) {}
+#endif
 
 #endif /* PROJECT_ACCOUNTS */

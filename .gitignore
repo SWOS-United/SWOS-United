@@ -204,3 +204,4 @@ data/SWOS2.REL
 
 # sensiblesoccer.de test accounts for the online tests (user:password a line): never in git
 .test-accounts
+include/united_secrets.h
