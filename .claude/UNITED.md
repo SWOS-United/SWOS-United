@@ -10,7 +10,8 @@ GGPO-X, World 2026-27, the data setup, the tests -- comes from OpenSWOS by merge
   `git fetch upstream && git merge upstream/main` (never rebase). `upstream` is fetch-only
   here; `rerere` is on.
 - This fork's differences stay in files OpenSWOS does not edit: `include/project_identity.h`
-  (name, online identifiers, servers, player folder), this file, and what only SWOS United has.
+  (name, online identifiers, servers, player folder), this file, `CONTRIBUTING.md` (its own
+  issues; on a merge conflict keep ours), and what only SWOS United has.
 - `.claude/CLAUDE.md` stays upstream's; notes for this fork go here.
 
 ## What only SWOS United has

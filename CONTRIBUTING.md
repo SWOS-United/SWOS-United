@@ -1,11 +1,18 @@
-# Contributing to OpenSWOS
+# Contributing to SWOS United
 
-Thank you for wanting to help. OpenSWOS is a small project with one maintainer, so the
-rules below exist to make sure what you send can actually be reviewed and merged.
+Thank you for wanting to help. SWOS United is a small project, so the rules below exist to
+make sure what you send can actually be reviewed and merged.
+
+SWOS United is built on [OpenSWOS](https://github.com/benbaker76/OpenSWOS) and takes every
+change OpenSWOS makes. **A fix or feature for the game itself** -- the engine, the matches,
+careers, netplay, the data setup -- **is best sent to OpenSWOS**
+([its CONTRIBUTING.md](https://github.com/benbaker76/OpenSWOS/blob/main/CONTRIBUTING.md)): it
+reaches SWOS United with the next merge. Send here what only SWOS United has -- its accounts,
+log-in and online services.
 
 ## Reporting bugs
 
-Open an issue at [github.com/benbaker76/OpenSWOS/issues](https://github.com/benbaker76/OpenSWOS/issues).
+Open an issue at [github.com/SWOS-United/SWOS-United/issues](https://github.com/SWOS-United/SWOS-United/issues).
 Say which version you have (the bottom line of the main menu), what you did and what
 happened, and attach your `SWOS.log` ([where it is](INSTALL.md#if-something-goes-wrong)). A
 screenshot, your save or a match recording (`LATEST.SRP`) helps too.
@@ -46,7 +53,7 @@ you open a pull request:
 - **Keep it small.** An AI can write a thousand lines in a minute; nobody can review them in
   one. Large generated pull requests will be closed without a detailed review -- split the
   work, and discuss it in an issue first.
-- **Check it against the original.** OpenSWOS follows the original game closely, and code
+- **Check it against the original.** The game follows the original closely, and code
   that "looks wrong" is often deliberate. Do not "fix" behaviour, remove a panic or add a
   guard without finding the real cause ([docs/DEVELOPERS.md](docs/DEVELOPERS.md)).
 - **Test it yourself**, on a real build, and say how.
@@ -55,7 +62,7 @@ you open a pull request:
 ## What never goes in
 
 - **No data from the original game** -- graphics, sound, music, team files, the game's code
-  or disk images. Players build their own copy with OpenSWOS Setup; nothing of the game is in
+  or disk images. Players build their own copy with the data setup; nothing of the game is in
   this repository.
 - **No data you do not have the right to share**, such as another project's squads or
   databases.
@@ -63,5 +70,6 @@ you open a pull request:
 
 ## License
 
-OpenSWOS is GPL-3.0-or-later ([LICENSE](LICENSE)). By sending a pull request you agree that
-your contribution is licensed the same way, and that you have the right to contribute it.
+SWOS United, like OpenSWOS, is GPL-3.0-or-later ([LICENSE](LICENSE)). By sending a pull
+request you agree that your contribution is licensed the same way, and that you have the
+right to contribute it.
