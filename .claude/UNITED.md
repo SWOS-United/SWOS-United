@@ -1,17 +1,17 @@
 # SWOS United — what this fork adds to OpenSWOS
 
-SWOS United is OpenSWOS (github.com/benbaker76/OpenSWOS) with SWOS 2020's online play brought
-in: an account and a log-in for multiplayer. Everything else -- the engine, netplay and
-GGPO-X, World 2026-27, the data setup, the tests -- comes from OpenSWOS by merge.
+SWOS United is its own project, built on OpenSWOS (github.com/benbaker76/OpenSWOS) with SWOS
+2020's online play brought in: its own servers, an account and a log-in for multiplayer. Its
+online play is its own -- it does not meet OpenSWOS players.
 
-**Read `docs/FORKING.md` first.** In short:
+**Taking OpenSWOS's changes is this team's choice**, not an obligation (`docs/FORKING.md`):
+`git fetch upstream && git merge upstream/main` takes everything since the last merge (never
+rebase), `git cherry-pick <commit>` one fix, or nothing at all. `upstream` is fetch-only here;
+`rerere` is on. While merges are wanted, they stay cheap if:
 
-- Work both projects need is done in OpenSWOS and merged here:
-  `git fetch upstream && git merge upstream/main` (never rebase). `upstream` is fetch-only
-  here; `rerere` is on.
-- This fork's differences stay in files OpenSWOS does not edit: `include/project_identity.h`
-  (name, online identifiers, servers, player folder), this file, `CONTRIBUTING.md` (its own
-  issues; on a merge conflict keep ours), and what only SWOS United has.
+- this fork's differences stay in files OpenSWOS does not edit where it can:
+  `include/project_identity.h` (name, online identifiers, servers, player folder), this file,
+  `CONTRIBUTING.md` (on a merge conflict keep ours), and what only SWOS United has;
 - `.claude/CLAUDE.md` stays upstream's; notes for this fork go here.
 
 ## What only SWOS United has
@@ -22,7 +22,8 @@ GGPO-X, World 2026-27, the data setup, the tests -- comes from OpenSWOS by merge
 - `.gitmodules` lists it beside OpenSWOS's submodules: a merge that brings a new upstream
   submodule keeps both entries.
 
-## Not decided yet
+## To do
 
-- Whether SWOS United keeps OpenSWOS's online identifiers (plays OpenSWOS players) or has its
-  own (`PROJECT_NETPLAY_TAG`, `PROJECT_MM_HOST` in `include/project_identity.h`).
+- Its own online identifiers in `include/project_identity.h` (`PROJECT_NETPLAY_TAG`,
+  `PROJECT_GGPO_GAME`, `PROJECT_MM_HOST`): decided 2026-10-31 that its online play diverges
+  (its servers and log-in), not yet set -- until then it still carries OpenSWOS's.

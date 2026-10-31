@@ -3,13 +3,6 @@
 Thank you for wanting to help. SWOS United is a small project, so the rules below exist to
 make sure what you send can actually be reviewed and merged.
 
-SWOS United is built on [OpenSWOS](https://github.com/benbaker76/OpenSWOS) and takes every
-change OpenSWOS makes. **A fix or feature for the game itself** -- the engine, the matches,
-careers, netplay, the data setup -- **is best sent to OpenSWOS**
-([its CONTRIBUTING.md](https://github.com/benbaker76/OpenSWOS/blob/main/CONTRIBUTING.md)): it
-reaches SWOS United with the next merge. Send here what only SWOS United has -- its accounts,
-log-in and online services.
-
 ## Reporting bugs
 
 Open an issue at [github.com/SWOS-United/SWOS-United/issues](https://github.com/SWOS-United/SWOS-United/issues).
