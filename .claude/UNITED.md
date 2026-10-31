@@ -32,3 +32,5 @@ new machine, 2026-10-31; its checkout pulls this repo with a READ-ONLY deploy ke
 alias). us.swos.eu, his older machine, ran OpenSWOS's matchmaker until online.openswos.net
 replaced it. OpenSWOS's admin login (SWOS_ADMIN_*) is online.openswos.net's ONLY -- never send
 it to any swos.eu host.
+Setting the server up from scratch: `docs/SERVER_SETUP.md` (this fork's own; its nginx site is
+`packaging/server/nginx/online.swos.eu.conf`).
