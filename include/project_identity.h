@@ -16,27 +16,29 @@
 #define PROJECT_IDENTITY_H
 
 /* The name, as the player reads it (window title, build line, messages). */
-#define PROJECT_NAME            "OpenSWOS"
-#define PROJECT_NAME_UPPER      "OPENSWOS"          /* (the game's menus: capitals) */
+#define PROJECT_NAME            "SWOS United"
+#define PROJECT_NAME_UPPER      "SWOS UNITED"         /* (the game's menus: capitals) */
 /* Where it lives (the setup's About window). */
-#define PROJECT_URL             "github.com/benbaker76/OpenSWOS"
+#define PROJECT_URL             "github.com/SWOS-United/SWOS-United"
 /* Its data setup (tools/swosdata): the window, and what messages tell the player to run. */
 #define PROJECT_SETUP_NAME      PROJECT_NAME " Setup"
-#define PROJECT_SETUP_PROGRAM   "openswos-setup"    /* (its executable, its temp folder) */
+#define PROJECT_SETUP_PROGRAM   "swosunited-setup"    /* (its executable, its temp folder) */
 
 /* Online. The matchmaking server lists a game only to players with the same tag
  * (VERSION:<tag>/<NETPLAY_COMPAT>, mm_client.c; the server's Connections.cpp), the web
  * build's with -WEB after it; GGPO-X's session name; a custom team file's format. */
-#define PROJECT_NETPLAY_TAG     "OPENSWOS"
-#define PROJECT_GGPO_GAME       "openswos"
-#define PROJECT_TEAM_FORMAT     "openswos-team"
+/* (not "SWOSUNITED": OpenSWOS's own tag before its rename, 2026-10-18 -- old tester builds
+ * still send it) */
+#define PROJECT_NETPLAY_TAG     "SWOS_UNITED"
+#define PROJECT_GGPO_GAME       "swos_united"
+#define PROJECT_TEAM_FORMAT     "swosunited-team"
 /* The public matchmaking server (and recorder, reports, team check): its host. */
-#define PROJECT_MM_HOST         "online.openswos.net"
+#define PROJECT_MM_HOST         "us.swos.eu"
 
 /* The player's folder: saves, SWOS.ini, SWOS.log, the assets the setup makes (swos_io.c,
  * tools/swosdata SwosData_DefaultAssetsDir) -- Documents/<it> on Windows, the app-data
  * folder <it> on macOS and the Switch, ~/<dot dir> elsewhere. */
-#define PROJECT_USER_DIR        "SWOS"
-#define PROJECT_USER_DOT_DIR    ".swos"
+#define PROJECT_USER_DIR        "SWOSUnited"
+#define PROJECT_USER_DOT_DIR    ".swosunited"
 
 #endif /* PROJECT_IDENTITY_H */

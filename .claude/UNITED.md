@@ -22,8 +22,11 @@ rebase), `git cherry-pick <commit>` one fix, or nothing at all. `upstream` is fe
 - `.gitmodules` lists it beside OpenSWOS's submodules: a merge that brings a new upstream
   submodule keeps both entries.
 
-## To do
+## Its identity (2026-10-31)
 
-- Its own online identifiers in `include/project_identity.h` (`PROJECT_NETPLAY_TAG`,
-  `PROJECT_GGPO_GAME`, `PROJECT_MM_HOST`): decided 2026-10-31 that its online play diverges
-  (its servers and log-in), not yet set -- until then it still carries OpenSWOS's.
+`include/project_identity.h`: SWOS United, tag `SWOS_UNITED` / GGPO session `swos_united` (not
+`SWOSUNITED`, which OpenSWOS sent before its 2026-10-18 rename -- old tester builds still do),
+player folder `SWOSUnited` / `~/.swosunited`, matchmaking server **us.swos.eu** (Redhair's
+machine, which ran OpenSWOS's matchmaker until online.openswos.net replaced it; its checkout
+pulls this repo). OpenSWOS's admin login (SWOS_ADMIN_*) is online.openswos.net's ONLY -- never
+send it to us.swos.eu.
