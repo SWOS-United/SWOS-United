@@ -28,6 +28,15 @@ rebase), `git cherry-pick <commit>` one fix, or nothing at all. `upstream` is fe
 - `src/united_api.c` / `include/united_api.h`: the API's addresses, who is logged in.
 - **RANKINGS** (`src/united_rankings.c`): SWOS 2020's rankings / ranking screens, AMIGA
   (`view=ranking&id=5`) and PC DOS (13); no XBOX.
+- **LEAGUES** (`src/united_leagues.c`): SWOS 2020's ONLINE LEAGUES screens -- the 13
+  associations, a tournament's tables (a round, a group: NEXT ROUND / NEXT GROUP, < > its other
+  tournaments, APPLY its page), a group's MATCHES and a cup round's ties. The season's
+  tournaments come from `view=season`, which has nothing until the site's season is set up
+  (Playa, 2026-11-01: an SQL error until then, "SEASON DATA NOT AVAILABLE FOR NOW" in the
+  game); a tournament from `view=tournament&id=` (past seasons' work: 6300-6319 are 10/23's).
+  `SWOS_UNITED_SEASON_FILE=<xml>` stands in for the season, `SWOS_UNITED_TEST_LEAGUE=3:1:0:m`
+  (with `--menu=swos2020/leagueInfoViewMenu`) opens a league, round, group and MATCHES. MY
+  FRIENDLY / RANKED STATS are hidden: SWOS 2020's own server's, to come with MATCH LOGS.
 - **Ranked and league / cup matches** (`src/united_matches.c`, OpenSWOS's lobby hooks in
   `include/online_account.h`). OPEN asks FRIENDLY / RANKED MATCH / LEAGUE / CUP (SWOS 2020's
   openLobbyMenu); LEAGUE / CUP with no open match turns the screen into "not signed", whose

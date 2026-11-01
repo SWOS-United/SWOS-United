@@ -39,13 +39,15 @@ static void test_login(void);
 void Account_Init(void)
 {
     UnitedRankings_Register();
+    UnitedLeagues_Register();
     UnitedMatches_Register();
     test_login();
 }
 
 int32_t Account_Has(AccountFeature feature)
 {
-    return feature == ACCOUNT_HAS_RANKINGS || feature == ACCOUNT_HAS_RANKED;   /* (LEAGUES, MATCH LOGS: to come) */
+    return feature == ACCOUNT_HAS_RANKINGS || feature == ACCOUNT_HAS_RANKED ||
+           feature == ACCOUNT_HAS_LEAGUES;      /* (MATCH LOGS: to come) */
 }
 
 int32_t     Account_Enabled(void)         { return 1; }
