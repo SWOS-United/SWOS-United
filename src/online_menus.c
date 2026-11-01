@@ -252,6 +252,8 @@ static void logInMenu_layout(void)
     set_text(LogInMenu_logInContinue, "LOGIN");
     set_text(LogInMenu_OfflinelogOut, "ABOUT");
     set_text(LogInMenu_news, Account_Has(ACCOUNT_HAS_RANKINGS) ? "RANKINGS" : "NEWS");
+    /* Under ABOUT: SWOS 2020 has it 8 to the left (34, the buttons above 42). */
+    entry_at(LogInMenu_news)->x = entry_at(LogInMenu_OfflinelogOut)->x;
     /* SHOW PASSWORD only where there is one; no live cast here. */
     entry_at(LogInMenu_showPasswordLabel)->isInvisible = accounts ? 0 : 1;
     entry_at(LogInMenu_showPassword)->isInvisible = accounts ? 0 : 1;
