@@ -20,6 +20,7 @@ const char *United_XmlBlock(const char *p, const char *end, const char *tag, con
 
 /* SWOS United's screens (registered by Account_Init). */
 void        UnitedRankings_Register(void);
+void        UnitedLeagues_Register(void);
 void        UnitedMatches_Register(void);
 
 /* The logged-in player (0 / "": nobody). */
