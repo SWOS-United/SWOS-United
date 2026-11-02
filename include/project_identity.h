@@ -48,7 +48,7 @@
 /* The phone apps (packaging/android, packaging/mobile/CMakeLists.txt; docs/MOBILE.md): the Android
  * application id and the iOS bundle id -- an app's identity in its store and on the phone, so a
  * fork's own apps install beside OpenSWOS's. Read from here by the mobile build. */
-#define PROJECT_APP_ID          "eu.swos.united"     /* (SWOS United's own: beside OpenSWOS's on a phone) */
+#define PROJECT_APP_ID          "com.swosunited.game"   /* (SWOS United's own, from swosunited.com: beside OpenSWOS's on a phone) */
 
 /* SWOS 2020's online-menu entries for features this project will not have -- the log-in's NEWS,
  * MULTIPLAYER SETTINGS' commentary and chat rows, JOIN AMIGA SUPER LEAGUE, JOIN DISCORD, HELP
