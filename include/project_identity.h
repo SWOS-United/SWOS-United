@@ -45,6 +45,12 @@
  * src/online_account_united.c; OpenSWOS's src/online_account.c compiles to nothing. */
 #define PROJECT_ACCOUNTS        1
 
+/* SWOS United's own site, taking over from sensiblesoccer.de: its JSON API (the SWOS-API repo's
+ * issues 1-3). [netplay] account_site = swosunited (or SWOS_UNITED_SITE=swosunited) uses it for
+ * the log-in, the rankings and the leagues; sensiblesoccer, the default, keeps the old site.
+ * Ranked and league results still go to sensiblesoccer.de (the account ids are the same). */
+#define PROJECT_ACCOUNT_API     "https://swos.swosunited.com/api/"
+
 /* SWOS 2020's online-menu entries for features this project will not have -- the log-in's NEWS,
  * MULTIPLAYER SETTINGS' commentary and chat rows, JOIN AMIGA SUPER LEAGUE, JOIN DISCORD, HELP
  * DESK (src/online_menus.c): 1 hides them, 0 keeps them for a fork that builds them. */

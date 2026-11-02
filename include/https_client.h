@@ -29,7 +29,8 @@ enum {
     HTTPS_ENOCA   = -5,         /* no CA list (cacert.pem) to check certificates with */
 };
 
-/* GET (form 0) or POST (form: "a=1&b=2", sent as application/x-www-form-urlencoded) `url`
+/* GET (form 0) or POST (form: "a=1&b=2", sent as application/x-www-form-urlencoded; one that
+ * starts with '{' as application/json) `url`
  * ("https://host/path?query"); follows up to three redirects. Fills *reply; 0 if a reply came
  * (reply->status says what it was), else the HTTPS_E* in reply->status too. */
 int32_t Https_Request(const char *url, const char *form, HttpsReply *reply);

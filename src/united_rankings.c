@@ -2,7 +2,9 @@
  * united_rankings.c -- RANKINGS (SWOS United): SWOS 2020's two screens, its rankings and
  * ranking menus (imported, data_json/menus/swos2020/), with their handlers here -- the log-in's
  * RANKINGS and the matchmaking screen's open the first, AMIGA or PC DOS the second, the online
- * ranking from sensiblesoccer.de (view=ranking&id=5 the Amiga's, 13 the PC's; XBOX left out).
+ * ranking from sensiblesoccer.de (view=ranking&id=5 the Amiga's, 13 the PC's; XBOX left out) or,
+ * with [netplay] account_site = swosunited, from swos.swosunited.com (api/rankings/users, the same
+ * ids; its active players, as the old site lists them -- and no SRN change, which it does not keep).
  *
  * SWOS 2020's showRankingsMenu / getRanking / rankingMenu_OnDraw (src/mpgame.cpp): 18 players a
  * page under a header row -- place, name, nation, played, won, drawn, lost, SRN and its last
@@ -104,6 +106,68 @@ static void parse(const char *xml, uint32_t len)
         United_XmlText(b, blockEnd, "srnc", r->change, sizeof r->change);
         s_count++;
         p = blockEnd;
+    }
+}
+
+/* The new site's flag codes (ISO 3166, England & co. as GB-ENG) as the old site's nation column
+ * read: the first three letters of the country's English name. A code not here shows as itself. */
+static const char *nation3(const char *code)
+{
+    static const char *const k[][2] = {
+        { "AD", "AND" }, { "AE", "UNI" }, { "AL", "ALB" }, { "AM", "ARM" }, { "AR", "ARG" }, { "AT", "AUS" },
+        { "AU", "AUS" }, { "AZ", "AZE" }, { "BA", "BOS" }, { "BD", "BAN" }, { "BE", "BEL" }, { "BG", "BUL" },
+        { "BR", "BRA" }, { "BY", "BEL" }, { "CA", "CAN" }, { "CH", "SWI" }, { "CL", "CHI" }, { "CN", "CHI" },
+        { "CO", "COL" }, { "CY", "CYP" }, { "CZ", "CZE" }, { "DE", "GER" }, { "DK", "DEN" }, { "DZ", "ALG" },
+        { "EE", "EST" }, { "EG", "EGY" }, { "ES", "SPA" }, { "FI", "FIN" }, { "FO", "FAR" }, { "FR", "FRA" },
+        { "GB", "UNI" }, { "GB-ENG", "ENG" }, { "GB-NIR", "NIR" }, { "GB-SCT", "SCO" }, { "GB-WLS", "WAL" },
+        { "GE", "GEO" }, { "GR", "GRE" }, { "HR", "CRO" }, { "HU", "HUN" }, { "ID", "IND" }, { "IE", "IRE" },
+        { "IL", "ISR" }, { "IN", "IND" }, { "IQ", "IRA" }, { "IR", "IRA" }, { "IS", "ICE" }, { "IT", "ITA" },
+        { "JO", "JOR" }, { "JP", "JAP" }, { "KR", "KOR" }, { "LB", "LEB" }, { "LT", "LIT" }, { "LU", "LUX" },
+        { "LV", "LAT" }, { "MA", "MOR" }, { "MD", "MOL" }, { "ME", "MON" }, { "MK", "MAC" }, { "MT", "MAL" },
+        { "MX", "MEX" }, { "NL", "NET" }, { "NO", "NOR" }, { "NZ", "NEW" }, { "PE", "PER" }, { "PL", "POL" },
+        { "PT", "POR" }, { "PY", "PAR" }, { "RO", "ROM" }, { "RS", "SER" }, { "RU", "RUS" }, { "SE", "SWE" },
+        { "SG", "SIN" }, { "SI", "SLO" }, { "SK", "SLO" }, { "SM", "SAN" }, { "TN", "TUN" }, { "TR", "TUR" },
+        { "UA", "UKR" }, { "US", "USA" }, { "UY", "URU" }, { "VA", "VAT" }, { "VE", "VEN" }, { "ZA", "SOU" },
+        { "ZM", "ZAM" },
+    };
+    uint32_t i;
+    for (i = 0; i < sizeof k / sizeof k[0]; i++)
+        if (SDL_strcasecmp(code, k[i][0]) == 0)
+            return k[i][1];
+    return code;
+}
+
+/* {"status":"ok","ranking":{...},"users":[{"rank","name","flag_code","rating","matches_played",
+ * "wins","draws","losses",...}]} */
+static void parse_json(const char *body, uint32_t len)
+{
+    UnitedJson all = { body, (int32_t)len }, users, u;
+    int32_t pos = 0;
+    s_count = 0;
+    if (!s_rows)
+        s_rows = (RankRow *)malloc(MAX_PLAYERS * sizeof *s_rows);
+    if (!s_rows || !United_JsonFind(all, "$.users", &users))
+        return;
+    while (s_count < MAX_PLAYERS && United_JsonNext(users, &pos, NULL, &u)) {
+        RankRow *r = &s_rows[s_count];
+        char v[64];
+        uint32_t i;
+        memset(r, 0, sizeof *r);
+        snprintf(r->pos, sizeof r->pos, "%d", (int)(s_count + 1));   /* ("rank" counts the inactive too) */
+        United_JsonText(u, "$.name", v, sizeof v);
+        for (i = 0; v[i] && i < sizeof r->name - 1; i++)    /* (the menu font: capitals) */
+            r->name[i] = (char)(v[i] >= 'a' && v[i] <= 'z' ? v[i] - 'a' + 'A' : v[i]);
+        r->name[i] = 0;
+        memcpy(r->shown, r->name, sizeof r->shown);
+        shorten_name(r->shown);
+        United_JsonText(u, "$.flag_code", v, sizeof v);
+        snprintf(r->nation, sizeof r->nation, "%s", v[0] ? nation3(v) : "");
+        United_JsonText(u, "$.matches_played", r->played, sizeof r->played);
+        United_JsonText(u, "$.wins", r->won, sizeof r->won);
+        United_JsonText(u, "$.draws", r->drawn, sizeof r->drawn);
+        United_JsonText(u, "$.losses", r->lost, sizeof r->lost);
+        United_JsonText(u, "$.rating", r->srn, sizeof r->srn);
+        s_count++;
     }
 }
 
@@ -255,8 +319,13 @@ static void rankingMenu_OnInit(void)
         snprintf(s_date, sizeof s_date, "%02d/%02d/%04d", t->tm_mday, t->tm_mon + 1, t->tm_year + 1900);
     {
         char query[64];
-        snprintf(query, sizeof query, "id=%d&format=xml", (int)s_rankId);
-        s_loading = Https_RequestAsync(United_ApiUrl("ranking", query), NULL) == 0;
+        if (United_NewSite()) {
+            snprintf(query, sizeof query, "ranking_id=%d&status=active", (int)s_rankId);
+            s_loading = Https_RequestAsync(United_NewApiUrl("rankings/users", query), NULL) == 0;
+        } else {
+            snprintf(query, sizeof query, "id=%d&format=xml", (int)s_rankId);
+            s_loading = Https_RequestAsync(United_ApiUrl("ranking", query), NULL) == 0;
+        }
     }
     if (!s_loading)
         snprintf(s_status, sizeof s_status, "BUSY - TRY AGAIN");
@@ -280,12 +349,16 @@ static void rankingMenu_OnDraw(void)
         if (Https_PollAsync(&reply)) {
             s_loading = 0;
             if (reply.status == 200 && reply.body) {
-                parse(reply.body, reply.length);
+                if (United_NewSite())
+                    parse_json(reply.body, reply.length);
+                else
+                    parse(reply.body, reply.length);
                 s_status[0] = 0;
                 if (!s_count)
                     snprintf(s_status, sizeof s_status, "NO PLAYERS IN THIS RANKING");
             } else {
-                snprintf(s_status, sizeof s_status, "CANNOT REACH SENSIBLESOCCER.DE");
+                snprintf(s_status, sizeof s_status, "CANNOT REACH %s",
+                         United_NewSite() ? "SWOS.SWOSUNITED.COM" : "SENSIBLESOCCER.DE");
             }
             Https_Free(&reply);
         }

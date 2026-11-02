@@ -1063,6 +1063,7 @@ static void lobby_test_draw(LobbyState st)
                s_lobbyMatches == 1 ? "" : "es", st == LOBBY_FAILED ? NetplayLobby_Notice() : "host");
         fflush(stdout);
         MatchReport_Flush(20000);
+        Account_LobbyClosed();          /* (as leaving does: a service's last requests) */
         P2PLink_Close();
         exit(0);
     }
@@ -1093,6 +1094,7 @@ void OnlineMenus_EnterLobby(int32_t player, const char *name)
     MatchReport_Poll();
     MatchPrediction_Poll();
     MatchReport_Finish();       /* the other player's half, if it came, before the link goes */
+    Account_LobbyClosed();      /* (a service's last word on this lobby's matches) */
     NetplayLobby_End();
     P2PLink_Close();
     Platform_SetFrameHook(NULL);

@@ -52,6 +52,23 @@ rebase), `git cherry-pick <commit>` one fix, or nothing at all. `upstream` is fe
   keyed by `include/united_secrets.h`), and its ids reach the joiner in the lobby's rules -- so
   a joiner who leaves before they arrive has not sent their score. SWOS 2020 sent the joiner's
   password to the host instead: never do that.
+- **swos.swosunited.com**, the site taking over from sensiblesoccer.de (JSON API, SWOS-API
+  issues 1-4; `PROJECT_ACCOUNT_API`): `[netplay] account_site = swosunited` in SWOS.ini (or
+  `SWOS_UNITED_SITE=swosunited`) moves the log-in (`api/auth/key`, its `api_key` kept for the
+  session), RANKINGS (`api/rankings/users`, active players), LEAGUES (`api/seasons/current`,
+  `api/tournament`) and RANKED matches there; `sensiblesoccer`, the default, keeps the old site.
+  A ranked match there: the SRNs from both rankings, `swos-matches/create` by the host after the
+  first match and `add-leg` after each later one, each player's own `report` (scores from their
+  side: `waiting`, then `applied`), and `close` on leaving the lobby by the player whose report
+  applied the last leg -- Elo counts a session only when it is closed, and closing deletes legs
+  not yet applied. LEAGUE / CUP there (issue 5): the open legs from `api/open-matches`
+  (`league_matches`, each with its `duel_ranking_id` for SELECT MATCH's style check), reported
+  with the same `swos-matches/report`; no create or close (the tournament system's). The relay
+  test below with `SWOS_UNITED_SITE=swosunited` in both `HOST_ENV` and `JOIN_ENV` plays either
+  (dry run: create, add-leg, both reports, the close; or SELECT MATCH and both reports -- TESTER1
+  and TESTER2 have open legs of "testtourna1" there). A joiner that leaves before the host's
+  next leg id arrives closes the session without that leg (it never reported it). `src/united_api.c` reads its JSON (decodes `\/` and
+  `\u00XX`, which mjson gives up on).
 - **Secrets**: `include/united_secrets.h` (gitignored; `include/united_secrets.sample.h` is the
   template, the file itself is in SWOS-API-secrets.zip). Without it a build cannot host a
   ranked match.

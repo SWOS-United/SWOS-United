@@ -17,6 +17,18 @@
  *              createOOO, or createOOOleg for the next match between the same two), whose ids go
  *              to the joiner in the lobby's rules. (SWOS 2020 sent the joiner's password to the
  *              host so the host could submit both. Not here.)
+ *
+ * With [netplay] account_site = swosunited a RANKED match is swos.swosunited.com's (SWOS-API
+ * issue 4, JSON with the log-in's api_key): the SRNs from api/rankings/users (both rankings,
+ * every player: the lobby knows the other player by name, not id); the host makes the session
+ * after the first match (swos-matches/create, ranking + opponent's name) and a leg after each
+ * later one (add-leg), and the ids go to the joiner in the rules as before; each player reports
+ * their own score (swos-matches/report: waiting until both have, then applied; conflict when the
+ * two differ). Elo counts a session only once it is CLOSED, and closing deletes every leg not
+ * yet applied -- so a player closes it on leaving the lobby only when their last report was the
+ * one that applied it (both scores in). LEAGUE / CUP there (issue 5): the open legs from
+ * api/open-matches ("league_matches", each with its duel_ranking_id), reported the same way;
+ * the tournament system makes and closes those, and books their Elo.
  */
 #include "united_api.h"
 #include "online_account.h"
@@ -51,12 +63,14 @@ enum { UNRANKED = -5000, MAX_LEGS = 96, MAX_JOBS = 8 };
 
 /* ---- the requests: one at a time, in order ---- */
 
-typedef enum { JOB_LIMITS, JOB_MY_DETAIL, JOB_PEER_DETAIL, JOB_MY_MATCHES, JOB_CREATE, JOB_SUBMIT } JobKind;
+typedef enum { JOB_LIMITS, JOB_MY_DETAIL, JOB_PEER_DETAIL, JOB_MY_MATCHES, JOB_CREATE, JOB_SUBMIT,
+               /* the new site's (swos.swosunited.com) */
+               JOB_RANKING, JOB_N_CREATE, JOB_N_ADDLEG, JOB_N_REPORT, JOB_N_CLOSE, JOB_N_OPEN } JobKind;
 typedef struct {
     JobKind  kind;
     char     url[384];
     char     form[384];
-    uint32_t legId;
+    uint32_t legId;                     /* (JOB_RANKING: the ranking's id) */
 } Job;
 
 static Job     s_jobs[MAX_JOBS];
@@ -105,6 +119,10 @@ static int32_t  s_guestWaiting;
 static uint32_t s_guestLegBefore;
 static AccountResult s_hostResult;      /* host: its own ranked result, waiting for the leg */
 static int32_t  s_hostPending;
+/* the new site: the session this lobby's ranked matches are in, and whether this player's last
+ * report was the one that applied its leg (then this player closes the session on leaving) */
+static uint32_t s_sessionId;
+static int32_t  s_lastApplied, s_rankingsAsked;
 
 static int32_t srn_for_style(const Player *p, int32_t dos)
 {
@@ -166,8 +184,75 @@ static void parse_legs(const char *xml, uint32_t len)
     s_legsLoaded = 1;
 }
 
+static int32_t s_rankingsPending;
+
+/* api/rankings/users: this player's and the other's SRN in that ranking (5 Amiga, 13 PC). */
+static void parse_ranking(const char *body, uint32_t len, int32_t rid)
+{
+    UnitedJson all = { body, (int32_t)len }, users, u;
+    int32_t pos = 0;
+    if (!United_JsonFind(all, "$.users", &users))
+        return;
+    while (United_JsonNext(users, &pos, NULL, &u)) {
+        char name[40];
+        Player *p = NULL;
+        United_JsonText(u, "$.name", name, sizeof name);
+        if (SDL_strcasecmp(name, United_UserName()) == 0)
+            p = &s_me;
+        else if (s_peer.name[0] && SDL_strcasecmp(name, s_peer.name) == 0)
+            p = &s_peer;
+        if (!p)
+            continue;
+        if (rid == 13)
+            p->srnPC = United_JsonInt(u, "$.rating");
+        else
+            p->srnAmiga = United_JsonInt(u, "$.rating");
+    }
+}
+
+/* api/open-matches: {"league_matches":[{"match_id","leg_id","duel_ranking_id","context_name",
+ * "home_username","away_username",...}]} -- this player's open league and cup legs. */
+static void parse_legs_json(const char *body, uint32_t len)
+{
+    UnitedJson all = { body, (int32_t)len }, list, m;
+    int32_t pos = 0;
+    s_legCount = 0;
+    if (United_JsonFind(all, "$.league_matches", &list))
+        while (s_legCount < MAX_LEGS && United_JsonNext(list, &pos, NULL, &m)) {
+            OpenLeg *l = &s_legs[s_legCount++];
+            char name[48], *hash;
+            uint32_t i;
+            l->matchId = (uint32_t)United_JsonInt(m, "$.match_id");
+            l->legId = (uint32_t)United_JsonInt(m, "$.leg_id");
+            l->rankingId = United_JsonInt(m, "$.duel_ranking_id");
+            United_JsonText(m, "$.context_name", name, sizeof name);
+            if ((hash = strstr(name, " (#")) != NULL)
+                *hash = 0;
+            for (i = 0; name[i] && i < sizeof l->tournament - 1; i++)
+                l->tournament[i] = (char)(name[i] >= 'a' && name[i] <= 'z' ? name[i] - 'a' + 'A' : name[i]);
+            l->tournament[i] = 0;
+            United_JsonText(m, "$.home_username", l->home, sizeof l->home);
+            United_JsonText(m, "$.away_username", l->away, sizeof l->away);
+        }
+    s_legsLoaded = 1;
+}
+
 static void srn_lines(void);
 static void submit(uint32_t legId, const AccountResult *r);
+
+/* A JSON string's contents: quotes and backslashes escaped, control characters dropped. */
+static void json_escape(const char *in, char *out, uint32_t cap)
+{
+    uint32_t n = 0;
+    for (; *in && n + 2 < cap; in++) {
+        if ((uint8_t)*in < 0x20)
+            continue;
+        if (*in == '"' || *in == '\\')
+            out[n++] = '\\';
+        out[n++] = *in;
+    }
+    out[n] = 0;
+}
 
 static void job_done(const Job *j, const HttpsReply *r)
 {
@@ -219,6 +304,80 @@ static void job_done(const Job *j, const HttpsReply *r)
         }
         break;
     }
+    case JOB_RANKING:
+        if (ok)
+            parse_ranking(r->body, r->length, (int32_t)j->legId);
+        else
+            s_me.failed = s_peer.failed = 1;
+        if (--s_rankingsPending <= 0 && !s_me.failed) {
+            s_me.have = United_UserId() > 0;
+            s_peer.have = 1;            /* (not in the ranking: unranked, 1000) */
+        }
+        srn_lines();
+        break;
+    case JOB_N_CREATE:
+    case JOB_N_ADDLEG: {
+        UnitedJson all = { r->body, (int32_t)r->length }, legs, first;
+        int32_t pos = 0;
+        uint32_t mid = 0, lid = 0;
+        if (ok) {
+            mid = (uint32_t)United_JsonInt(all, "$.match_id");
+            if (j->kind == JOB_N_ADDLEG)
+                lid = (uint32_t)United_JsonInt(all, "$.leg_id");
+            else if (United_JsonFind(all, "$.open_leg_ids", &legs) && United_JsonNext(legs, &pos, NULL, &first))
+                lid = (uint32_t)atol(first.p);
+        }
+        if (mid && lid) {
+            s_rankedMatchId = s_sessionId = mid;
+            s_rulesMatch = mid;
+            s_rulesLeg = lid;
+            s_haveRules = 1;            /* (into the rules when the lobby is open again: the joiner's) */
+            fprintf(stderr, "[united] ranked leg made on swos.swosunited.com: match %u leg %u\n", (unsigned)mid,
+                    (unsigned)lid);
+            if (s_hostPending) {
+                s_hostPending = 0;
+                submit(lid, &s_hostResult);
+            }
+        } else {
+            char status[40];
+            United_JsonText(all, "$.status", status, sizeof status);
+            s_hostPending = 0;
+            NetplayLobby_ChatNotice("THE SITE DID NOT CREATE THE RANKED MATCH");
+            fprintf(stderr, "[united] ranked match not created (%d %s)\n", (int)r->status, status);
+        }
+        break;
+    }
+    case JOB_N_REPORT: {
+        UnitedJson all = { r->body, (int32_t)r->length };
+        char status[40];
+        United_JsonText(all, "$.status", status, sizeof status);
+        if (strcmp(status, "applied") == 0 || strcmp(status, "waiting") == 0 || strcmp(status, "not_found") == 0) {
+            s_lastApplied = status[0] == 'a';
+            NetplayLobby_ChatNotice(status[0] == 'w' ? "MATCH SCORE SENT, WAITING FOR THE OTHER PLAYER"
+                                                     : "MATCH SCORE CONFIRMED");
+            if (s_doneCount < (int32_t)(sizeof s_done / sizeof s_done[0]))
+                s_done[s_doneCount++] = j->legId;
+        } else {
+            NetplayLobby_ChatNotice(strcmp(status, "conflict") == 0 ? "THE TWO SCORES DIFFER: NOT CONFIRMED"
+                                                                    : "MATCH SCORE NOT CONFIRMED");
+            fprintf(stderr, "[united] result for leg %u not taken (%d %s)\n", (unsigned)j->legId, (int)r->status,
+                    status);
+        }
+        break;
+    }
+    case JOB_N_OPEN:
+        if (ok && United_JsonOk(r->body, r->length))
+            parse_legs_json(r->body, r->length);
+        else
+            s_legsLoaded = -1;
+        break;
+    case JOB_N_CLOSE: {
+        UnitedJson all = { r->body, (int32_t)r->length };
+        char status[40];
+        United_JsonText(all, "$.status", status, sizeof status);
+        fprintf(stderr, "[united] ranked session closed: %s\n", status);
+        break;
+    }
     case JOB_SUBMIT: {
         char msg[64];
         if (ok && United_XmlText(r->body, r->body + r->length, "message", msg, sizeof msg) &&
@@ -250,6 +409,34 @@ static void jobs_pump(void)
     if (!s_jobCount)
         return;
     s_current = s_jobs[0];
+    if (getenv("SWOS_UNITED_DRY_RUN") && (s_current.kind == JOB_N_CREATE || s_current.kind == JOB_N_ADDLEG ||
+                                          s_current.kind == JOB_N_REPORT || s_current.kind == JOB_N_CLOSE)) {
+        /* The same for the new site: the body without its api_key, and a made-up answer. */
+        static uint32_t dryNewLeg = 800000;
+        const char *body = strchr(s_current.form, ',');
+        char reply[160];
+        fprintf(stderr, "[united] dry run: %s {%s\n", strrchr(s_current.url, '/') + 1, body ? body + 1 : "}");
+        if (s_current.kind == JOB_N_CREATE)
+            snprintf(reply, sizeof reply, "{\"status\":\"ok\",\"match_id\":700001,\"leg_ids\":[%u],"
+                     "\"open_leg_ids\":[%u],\"created\":true,\"legs_added\":1}", (unsigned)(dryNewLeg + 1),
+                     (unsigned)(dryNewLeg + 1));
+        else if (s_current.kind == JOB_N_ADDLEG)
+            snprintf(reply, sizeof reply, "{\"status\":\"ok\",\"match_id\":700001,\"leg_id\":%u}",
+                     (unsigned)(dryNewLeg + 1));
+        else if (s_current.kind == JOB_N_REPORT)
+            snprintf(reply, sizeof reply, "{\"status\":\"%s\"}", s_host ? "waiting" : "applied");
+        else
+            snprintf(reply, sizeof reply, "{\"status\":\"closed\",\"match_id\":700001}");
+        if (s_current.kind == JOB_N_CREATE || s_current.kind == JOB_N_ADDLEG)
+            dryNewLeg++;
+        r.status = 200;
+        r.body = reply;
+        r.length = (uint32_t)strlen(reply);
+        memmove(&s_jobs[0], &s_jobs[1], (size_t)(s_jobCount - 1) * sizeof s_jobs[0]);
+        s_jobCount--;
+        job_done(&s_current, &r);
+        return;
+    }
     if (getenv("SWOS_UNITED_DRY_RUN") && (s_current.kind == JOB_CREATE || s_current.kind == JOB_SUBMIT)) {
         /* A test that must not change the site's rankings: what would have gone, without the
          * password or the site's key, and the answer the site gives when it takes it. */
@@ -301,9 +488,31 @@ static void ask_user(JobKind kind, const char *name)
 static void ask_legs(void)
 {
     char query[64];
+    if (United_NewSite()) {
+        char key[96], form[160];
+        json_escape(United_ApiKey(), key, sizeof key);
+        snprintf(form, sizeof form, "{\"api_key\":\"%s\"}", key);
+        s_legsLoaded = 0;
+        job_add(JOB_N_OPEN, United_NewApiUrl("open-matches", NULL), form, 0);
+        return;
+    }
     snprintf(query, sizeof query, "uid=%d&format=xml", (int)United_UserId());
     s_legsLoaded = 0;
     job_add(JOB_MY_MATCHES, United_ApiUrl("matches", query), NULL, 0);
+}
+
+/* The new site: both rankings in full, for this player's SRN and the other's. */
+static void ask_rankings(void)
+{
+    static const int32_t ids[2] = { 5, 13 };
+    int32_t i;
+    s_rankingsPending = 0;
+    for (i = 0; i < 2; i++) {
+        char query[48];
+        snprintf(query, sizeof query, "ranking_id=%d", (int)ids[i]);
+        job_add(JOB_RANKING, United_NewApiUrl("rankings/users", query), NULL, (uint32_t)ids[i]);
+        s_rankingsPending++;
+    }
 }
 
 /* ---- the SRN, and whether a ranked match may be played ---- */
@@ -354,7 +563,7 @@ static void srn_lines(void)
 
 /* ---- OPEN: openLobbyMenu ---- */
 
-static int32_t s_choice, s_notSigned, s_waitLegs;
+static int32_t s_choice, s_notSigned, s_waitLegs, s_noKeys;
 static char    s_desc[4][56];
 
 static MenuEntry *entry_at(int32_t ordinal) { return CalcMenuEntryAddress((uint16_t)ordinal); }
@@ -400,6 +609,11 @@ static void openLobbyMenu_layout(void)
             snprintf(s_desc[0], sizeof s_desc[0], "%s", "");
             snprintf(s_desc[1], sizeof s_desc[1], "LOOKING FOR YOUR LEAGUE AND CUP MATCHES...");
             s_desc[2][0] = s_desc[3][0] = 0;
+        } else if (s_noKeys) {                  /* (RANKED MATCH pressed in a build without the keys) */
+            snprintf(s_desc[0], sizeof s_desc[0], "THIS BUILD CANNOT HOST RANKED MATCHES:");
+            snprintf(s_desc[1], sizeof s_desc[1], "IT WAS MADE WITHOUT SENSIBLESOCCER.DE'S KEYS.");
+            snprintf(s_desc[2], sizeof s_desc[2], "YOU CAN STILL JOIN A RANKED MATCH");
+            snprintf(s_desc[3], sizeof s_desc[3], "THAT ANOTHER PLAYER HOSTS.");
         } else {
             snprintf(s_desc[0], sizeof s_desc[0], "IN CASE OF RANKED MATCHES,");
             snprintf(s_desc[1], sizeof s_desc[1], "SRN DIFFERENCE CANNOT EXCEED %d.", (int)s_limit);
@@ -444,8 +658,8 @@ static void selectRanked(void)
         open_url(Account_Url(ACCOUNT_LINK_LEAGUES));
         return;
     }
-    if (!UNITED_RANKED_CREATE_KEY[0]) {         /* (a build without the site's keys) */
-        snprintf(s_desc[1], sizeof s_desc[1], "THIS BUILD CANNOT CREATE RANKED MATCHES");
+    if (!United_NewSite() && !UNITED_RANKED_CREATE_KEY[0]) {     /* (a build without the old site's keys) */
+        s_noKeys = 1;                           /* (said by openLobbyMenu_layout, which redraws the lines) */
         return;
     }
     s_choice = LOBBY_MODE_RANKED;
@@ -473,7 +687,7 @@ static void selectExitOpenLobby(void)
 int32_t Account_ChooseMode(void)
 {
     s_choice = -1;
-    s_notSigned = s_waitLegs = 0;
+    s_notSigned = s_waitLegs = s_noKeys = 0;
     OnlineMenus_Show("swos2020/openLobbyMenu");
     return s_choice;
 }
@@ -489,17 +703,48 @@ void Account_LobbyOpened(int32_t host)
     s_guestWaiting = 0;
     s_hostPending = 0;
     s_rankedMatchId = 0;
+    s_sessionId = 0;
+    s_lastApplied = s_rankingsAsked = 0;
     memset(&s_peer, 0, sizeof s_peer);
     memset(&s_me, 0, sizeof s_me);
+    s_me.srnAmiga = s_me.srnPC = s_peer.srnAmiga = s_peer.srnPC = UNRANKED;
     ask_limits();
-    ask_user(JOB_MY_DETAIL, United_UserName());
+    if (!United_NewSite())
+        ask_user(JOB_MY_DETAIL, United_UserName());
     ask_legs();
 }
 
 void Account_LobbyPeer(const char *name)
 {
     snprintf(s_peer.name, sizeof s_peer.name, "%s", name);
-    ask_user(JOB_PEER_DETAIL, name);
+    if (!United_NewSite()) {
+        ask_user(JOB_PEER_DETAIL, name);
+    } else if (!s_rankingsAsked) {
+        s_rankingsAsked = 1;
+        ask_rankings();
+    }
+}
+
+/* Leaving the lobby: the new site's ranked session closed (its Elo is counted only then) by the
+ * player whose report applied the last leg, and whatever is still queued sent first -- up to a
+ * few seconds, the lobby's link already finished with. */
+void Account_LobbyClosed(void)
+{
+    const uint32_t session = s_sessionId ? s_sessionId : NetplayLobby_Rules()->matchId;
+    uint32_t waited = 0;
+    if (United_NewSite() && session && s_lastApplied && NetplayLobby_Rules()->mode == LOBBY_MODE_RANKED) {
+        char key[96], form[200];
+        json_escape(United_ApiKey(), key, sizeof key);
+        snprintf(form, sizeof form, "{\"api_key\":\"%s\",\"match_id\":%u}", key, (unsigned)session);
+        job_add(JOB_N_CLOSE, United_NewApiUrl("swos-matches/close", NULL), form, 0);
+    }
+    while ((s_jobCount || s_running) && waited < 8000) {
+        jobs_pump();
+        SDL_Delay(10);
+        waited += 10;
+    }
+    s_sessionId = 0;
+    s_lastApplied = 0;
 }
 
 void Account_LobbyPoll(void)
@@ -524,6 +769,8 @@ void Account_LobbyPoll(void)
     if (!s_host && s_guestWaiting && rules->mode == LOBBY_MODE_RANKED && rules->legId &&
         rules->legId != s_guestLegBefore) {
         s_guestWaiting = 0;
+        if (rules->matchId)
+            s_sessionId = rules->matchId;
         submit(rules->legId, &s_guestResult);
     }
 }
@@ -564,13 +811,18 @@ const char *Account_MatchText(void)
     return "(NO MATCH INFO)";
 }
 
+/* This leg's result has been taken -- or is on its way: queued or being sent (a rematch can end
+ * before the last report has gone). */
 static int32_t done(uint32_t legId)
 {
     int32_t i;
     for (i = 0; i < s_doneCount; i++)
         if (s_done[i] == legId)
             return 1;
-    return 0;
+    for (i = 0; i < s_jobCount; i++)
+        if ((s_jobs[i].kind == JOB_SUBMIT || s_jobs[i].kind == JOB_N_REPORT) && s_jobs[i].legId == legId)
+            return 1;
+    return s_running && (s_current.kind == JOB_SUBMIT || s_current.kind == JOB_N_REPORT) && s_current.legId == legId;
 }
 
 /* SELECT MATCH: the first open leg between the two of us in a tournament of this game's style. */
@@ -607,12 +859,35 @@ void Account_SelectMatch(void)
 
 /* ---- results ---- */
 
+/* The new site's report: this player's goals and the other's; extra time and penalties only when
+ * there were any, by the same rule on both machines (an omitted field and a 0 differ there). */
+static void submit_new(uint32_t legId, const AccountResult *r)
+{
+    char key[96], form[384];
+    int32_t n;
+    json_escape(United_ApiKey(), key, sizeof key);
+    n = snprintf(form, sizeof form, "{\"api_key\":\"%s\",\"leg_id\":%u,\"score_own\":%d,\"score_opponent\":%d",
+                 key, (unsigned)legId, (int)r->mine[0], (int)r->theirs[0]);
+    if (r->mine[1] || r->theirs[1] || r->mine[2] || r->theirs[2])
+        n += snprintf(form + n, sizeof form - (uint32_t)n, ",\"extra_time_own\":%d,\"extra_time_opponent\":%d",
+                      (int)r->mine[1], (int)r->theirs[1]);
+    if (r->mine[2] || r->theirs[2])
+        n += snprintf(form + n, sizeof form - (uint32_t)n, ",\"penalties_own\":%d,\"penalties_opponent\":%d",
+                      (int)r->mine[2], (int)r->theirs[2]);
+    snprintf(form + n, sizeof form - (uint32_t)n, "}");
+    job_add(JOB_N_REPORT, United_NewApiUrl("swos-matches/report", NULL), form, legId);
+}
+
 static void submit(uint32_t legId, const AccountResult *r)
 {
     char user[96], pass[160], form[384];
     char up[40];
     uint32_t i;
     const char *name = United_UserName();
+    if (United_NewSite() && (r->mode == LOBBY_MODE_RANKED || r->mode == LOBBY_MODE_LEAGUE)) {
+        submit_new(legId, r);
+        return;
+    }
     for (i = 0; name[i] && i < sizeof up - 1; i++)
         up[i] = (char)(name[i] >= 'a' && name[i] <= 'z' ? name[i] - 'a' + 'A' : name[i]);
     up[i] = 0;
@@ -642,6 +917,24 @@ void Account_MatchPlayed(const AccountResult *r)
     }
     if (r->mode != LOBBY_MODE_RANKED)
         return;
+    if (r->host && United_NewSite()) {
+        char key[96], opp[64], form[384];
+        if (!s_peer.name[0])
+            return;
+        json_escape(United_ApiKey(), key, sizeof key);
+        json_escape(s_peer.name, opp, sizeof opp);
+        if (!s_rankedMatchId) {
+            snprintf(form, sizeof form, "{\"api_key\":\"%s\",\"ranking_id\":%d,\"opponent_username\":\"%s\",\"leg_count\":1}",
+                     key, r->dosStyle ? 13 : 5, opp);
+            job_add(JOB_N_CREATE, United_NewApiUrl("swos-matches/create", NULL), form, 0);
+        } else {
+            snprintf(form, sizeof form, "{\"api_key\":\"%s\",\"match_id\":%u}", key, (unsigned)s_rankedMatchId);
+            job_add(JOB_N_ADDLEG, United_NewApiUrl("swos-matches/add-leg", NULL), form, 0);
+        }
+        s_hostResult = *r;              /* (sent once the site has made the leg) */
+        s_hostPending = 1;
+        return;
+    }
     if (r->host) {
         char query[256];
         if (!s_peer.uid || !s_me.uid)
@@ -684,6 +977,7 @@ int32_t     Account_ChooseMode(void)            { return 0; }
 void        Account_LobbyOpened(int32_t host)   { (void)host; }
 void        Account_LobbyPeer(const char *name) { (void)name; }
 void        Account_LobbyPoll(void)             {}
+void        Account_LobbyClosed(void)           {}
 int32_t     Account_LobbyCanStart(void)         { return 1; }
 const char *Account_MatchText(void)             { return 0; }
 void        Account_SelectMatch(void)           {}
