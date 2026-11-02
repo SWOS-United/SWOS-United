@@ -53,7 +53,7 @@ re-signs every 7 days). `build_ios.sh sim` and the Mac's development identity ar
 
 - **Folders** (`src/swos_io.c`, `src/mobile.c`). The player's folder -- `SWOS.ini`, `SWOS.log`,
   `save/`, and the `assets/` folder -- is where the player can reach it: Android's
-  `Android/data/net.openswos.game/files` (over USB from a PC), iOS's Documents (the Files app, On My
+  `Android/data/com.swosunited.game/files` (over USB from a PC), iOS's Documents (the Files app, On My
   iPhone > OpenSWOS; Finder from a Mac). The project's own data (the tracked files of `bin/` every drop
   ships: `scripts/stage_runtime.sh`) is the working folder: on iOS the app bundle; on Android it is in
   the APK's assets with a manifest (a stamp, then "size path" per file), copied out to internal

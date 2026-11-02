@@ -118,7 +118,7 @@ over:
    and allow installing it when Android asks: it isn't from the Play Store.
 3. Start **OpenSWOS** once: it says it needs the game's data, and where it goes.
 4. Connect the phone to the computer by USB (choose **File transfer** on the phone) and copy
-   the **`assets`** folder into **`Android/data/net.openswos.game/files`** on the phone.
+   the **`assets`** folder into **`Android/data/com.swosunited.game/files`** on the phone.
 5. Start OpenSWOS again.
 
 ### iPhone and iPad
