@@ -45,4 +45,9 @@
  * src/online_account_united.c; OpenSWOS's src/online_account.c compiles to nothing. */
 #define PROJECT_ACCOUNTS        1
 
+/* SWOS 2020's online-menu entries for features this project will not have -- the log-in's NEWS,
+ * MULTIPLAYER SETTINGS' commentary and chat rows, JOIN AMIGA SUPER LEAGUE, JOIN DISCORD, HELP
+ * DESK (src/online_menus.c): 1 hides them, 0 keeps them for a fork that builds them. */
+#define PROJECT_HIDE_SWOS2020_EXTRAS 0       /* (SWOS United builds them: kept, the owner 2026-11-02) */
+
 #endif /* PROJECT_IDENTITY_H */
