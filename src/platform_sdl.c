@@ -2519,3 +2519,12 @@ int Platform_OpenUrl(const char *url)
     return 0;
 #endif
 }
+
+/* One colour of the palette the screen is drawn in (the lobby maps SWOS 2020's RGB flags to it). */
+void Platform_PaletteRgb(int index, uint8_t *r, uint8_t *g, uint8_t *b)
+{
+    const SDL_Color c = s_palette[index & 255];
+    *r = c.r;
+    *g = c.g;
+    *b = c.b;
+}

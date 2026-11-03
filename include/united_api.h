@@ -46,6 +46,8 @@ int32_t     United_JsonOk(const char *body, uint32_t len);
 /* SWOS 2020's gameplay-style icons, 16x16 at (x, y) on the menu's screen: 0 the Amiga's tick,
  * 1 PC DOS, 2 XBOX (RANKINGS' buttons, CHOOSE GAMEPLAY's). SDL builds. */
 void        United_DrawStyleIcon(int32_t icon, int32_t x, int32_t y);
+/* SWOS 2020's red page arrow (drawScrollButtons), 12x12 at (x, y): up, or down. SDL builds. */
+void        United_DrawPageArrow(int32_t down, int32_t x, int32_t y);
 
 /* SWOS United's screens (registered by Account_Init). */
 void        UnitedRankings_Register(void);

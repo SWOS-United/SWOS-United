@@ -56,6 +56,37 @@ static const char *const k_styleIcons[16] = {
     "....00000.......00000.0000.0000.................",
 };
 
+/* SWOS 2020's drawScrollButtons arrows, red: up (cols 0-11) and down (12-23). */
+static const char *const k_pageArrows[12] = {
+    "..A...........A.........",
+    "..A3..........A3........",
+    ".AAA..........A3........",
+    ".AAA3.........A3........",
+    "AAAAA.........A3........",
+    "A.A3A3......A.A3A.......",
+    "..A3.3......AAAAA3......",
+    "..A3.........AAA33......",
+    "..A3.........AAA3.......",
+    "..A3..........A33.......",
+    "..A3..........A3........",
+    "...3...........3........",
+};
+
+void United_DrawPageArrow(int32_t down, int32_t ox, int32_t oy)
+{
+    extern volatile uintptr_t _frontbufferBasePtr;
+    extern int _menu_draw_x_offset;
+    uint8_t *fb = (uint8_t *)_frontbufferBasePtr + _menu_draw_x_offset;
+    int32_t x, y;
+    for (y = 0; y < 12; y++)
+        for (x = 0; x < 12; x++) {
+            const char c = k_pageArrows[y][(down ? 12 : 0) + x];
+            if (c != '.')
+                fb[(uint32_t)(oy + y) * FRONTBUFFER_ROW_STRIDE_BYTES + ox + x] =
+                    (uint8_t)(c <= '9' ? c - '0' : c - 'A' + 10);
+        }
+}
+
 void United_DrawStyleIcon(int32_t icon, int32_t ox, int32_t oy)
 {
     extern volatile uintptr_t _frontbufferBasePtr;
