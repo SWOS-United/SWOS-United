@@ -890,3 +890,44 @@ All in the loader and `UnpackMenu`. None occurs in the 47 compiled menus, and
 - **Literal text is not translated** — `tr()` is keyed by symbol name.
 - **Blinking text** (`kBlinkText`) in a `dos_redraw` menu would add a vsync per blink
   frame (`UpdateBlinkingMenuText` redraws on its own). None of the imported menus blink.
+
+## 11. Overlaps (`SWOS_MENU_OVERLAP=1`)
+
+The menus were laid out for 96/97's data. A world's data can outgrow them: World 2026-27's
+Europe has 55 countries, and its packs' short competition names are often wider than
+96/97's. A menu draws whatever it is given, on top of whatever is already there.
+
+`SWOS_MENU_OVERLAP=1` (SDL, `src/menu_system.c`) checks every full redraw and writes each
+finding once to `SWOS.log` as an `[overlap]` line, naming the menu by its init function:
+
+- **boxes**: two visible filled entries that cross, neither holding the other (a row inside
+  a backdrop is normal layering);
+- **text and text**: two drawn strings that cross (leading and trailing spaces trimmed);
+- **text and box**: a string that crosses the edge of another entry's box.
+
+`SWOS_MENU_OVERLAP_WIDTHS=<file>` also measures each line of the file in the small and the
+big font, once (`[widths] <small> <big> <text>`): for names no test run puts on screen.
+
+To sweep a world: a one-season career for a club of every country (`--career-golden=new:...
+--golden-seasons=1`), and `SWOS_GOLDEN_VIEW_WORLD=<continent>` (`src/career_autopilot.c`)
+for VIEW WORLD's continent screen, its competitions above its countries. 96/97 gives none.
+
+Fixed so far:
+
+- **A continent's list taller than its room** (`SetTeamsCoordinates`, `src/teams.c`): rows
+  8 px apart and 7 tall instead of 9 and 8, with no extra gap, only when the list would not
+  fit between the header and EXIT. 96/97's lists keep the original spacing.
+
+- **Short competition names in the career's fixture list** (`CareerGameListCommon`): the
+  name column has 70 px of the small font before a home-and-away row's "(H)"/"(A)"; 133 of
+  World 2026-27's 322 short names were wider and ran into it. The SWOS 96/97 Mod's DOS game
+  has the same column and fits every short name when it builds (its `tools/complist.py`,
+  `fit_short`: a hand-picked label, else standard abbreviations last word first, else the
+  widest words cut). `src/cal_label.c` is that function in C (MIT, its notice kept), applied
+  where the column is drawn, to a name that does not fit only: the labels read as in the
+  Mod (all 560 of the world's strings checked against its Python), and 96/97's names, which
+  all fit, never change. `SWOS_MENU_OVERLAP_WIDTHS` prints each line's label (`[calfit]`);
+  `SWOS_GOLDEN_SHOT_HUB=<n>` screenshots the hub, its fixture list, the n-th time it is up.
+
+After both, a season in each of the world's 91 career countries and VIEW WORLD on every
+continent report nothing (2026-11-02).
