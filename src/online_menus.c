@@ -548,6 +548,370 @@ static void matchMaking_layout(void)
     entry_at(MatchMakingMenu_numOfUsers)->dwWidth = 120 - 8;
 }
 
+/* ======================================================================
+ * MATCH MAKING as SWOS 2020 draws it (PROJECT_SWOS2020_MATCHMAKING: SWOS United)
+ * ======================================================================
+ * swos-2020's matchMakingMenu_OnDraw_New / setMatchMakingMenu_New / matchMaking_*_New
+ * (src/mpgame.cpp, NEW_ACCEPT_MENU): row 0 of the table is its header (OPEN GAMES (n),
+ * MODE, ACTION), the seven rows under it are always drawn ("-" when empty), a page of
+ * games or of players turns with the red arrows beside each list, and a host with
+ * players asking to join sees them in the table, each with ACCEPT -- no prompt. The
+ * menu's five states are SWOS 2020's menuMode: not connected, the lobby, hosting
+ * (waiting), asked to join someone's game, hosting with players asking.
+ *
+ * MODE: the matchmaker keeps no data with a game (Server/User.cpp: the blob is accepted
+ * and dropped), so only this player's own game says what it is; another's shows "-". */
+#ifndef PROJECT_SWOS2020_MATCHMAKING
+#define PROJECT_SWOS2020_MATCHMAKING 0
+#endif
+#if PROJECT_SWOS2020_MATCHMAKING
+#include "text_render.h"        /* GetTextWidth: a name too wide for its column */
+
+static int32_t s_openMode;          /* (defined with the lobby below: what OPEN's game is for) */
+
+enum { MM_ROWS = MatchMakingMenu_kGS_MaxRows - 1, MM_USERS = MatchMakingMenu_kGS_MaxRows2,
+       kMmWhiteText = 2, kMmYellowText = 15, kTextLeft = 1 << 15 };
+typedef enum { MMM_X, MMM_0_DEFAULT, MMM_1_WAIT, MMM_2_REQUESTED, MMM_3_ACCEPT } MmMenuMode;
+
+static int32_t s_gamesPage, s_usersPage, s_joinersPage;
+static char    s_mm2Host[MM_ROWS][MM_NAME_MAX + 8], s_mm2Mode[MM_ROWS][24], s_mm2Action[MM_ROWS][12];
+static char    s_mm2User[MM_USERS][MM_NAME_MAX + 4];
+static char    s_mm2Head[40], s_mm2Page[24], s_mm2Name[MM_NAME_MAX + 8], s_mm2Players[24];
+
+static int32_t is_me(const char *name)
+{
+    return name && SDL_strcasecmp(name, MmClient_UserName()[0] ? MmClient_UserName() : s_username) == 0;
+}
+
+static MmMenuMode mm2_mode(void)
+{
+    const MmGameInfo *gi;
+    if (MmClient_State() != MM_CONNECTED)
+        return MMM_X;
+    gi = MmClient_GameInfo();
+    if (!gi)
+        return MMM_0_DEFAULT;
+    if (is_me(gi->owner))
+        return gi->numRequested > 0 ? MMM_3_ACCEPT : MMM_1_WAIT;
+    return MMM_2_REQUESTED;
+}
+
+static int32_t mm2_pages(int32_t n, int32_t per) { return n > 0 ? (n + per - 1) / per : 1; }
+
+/* The text colour and alignment of an entry (SWOS 2020's e->textColor = colour | flags). */
+static void text_style(int32_t ordinal, uint16_t color, uint16_t align)
+{
+    MenuEntry *e = entry_at(ordinal);
+    e->stringFlags = (uint16_t)((e->stringFlags & ~(STR_COLOR_MASK | (1u << 15) | (1u << 14))) | color | align);
+}
+
+/* SWOS 2020's shortenName / shortenNameScen: the small font's glyphs added up, and the one
+ * that goes past the limit becomes a '.' and ends the name. */
+static void shorten_dot(char *s, int32_t limit)
+{
+    extern uint8_t _smallCharsTable[];
+    const int32_t spacing = ((CharsTableHeader *)_smallCharsTable)->charSpacing;
+    int32_t i, w = 0;
+    for (i = 0; s[i]; i++) {
+        uint8_t one[2] = { (uint8_t)s[i], 0 };
+        w += GetTextWidth(one, _smallCharsTable) - spacing;
+        if (w > limit) {
+            s[i] = '.';
+            s[i + 1] = 0;
+            break;
+        }
+    }
+}
+
+static void upper_in_place(char *s)
+{
+    for (; *s; s++)
+        if (*s >= 'a' && *s <= 'z')
+            *s = (char)(*s - 'a' + 'A');
+}
+
+/* This player's own game: what OPEN made it for, in which style (getMatchMakingModeStr). */
+static const char *own_mode(void)
+{
+    extern int _gDosGameplay;
+    static char text[24];
+    snprintf(text, sizeof text, "%s (%s)",
+             s_openMode == LOBBY_MODE_RANKED ? "RANKED" : s_openMode == LOBBY_MODE_LEAGUE ? "TOURNEY" : "FRIENDLY",
+             _gDosGameplay ? "DOS" : "AMIGA");
+    return text;
+}
+
+/* SWOS 2020's drawScrollButtons: the red up and down arrows beside each list, each drawn by
+ * its own entry after it is drawn (a redraw of one leaves it there). */
+static const char *const k_mm2Arrows[12] = {
+    "..A...........A.........",
+    "..A3..........A3........",
+    ".AAA..........A3........",
+    ".AAA3.........A3........",
+    "AAAAA.........A3........",
+    "A.A3A3......A.A3A.......",
+    "..A3.3......AAAAA3......",
+    "..A3.........AAA33......",
+    "..A3.........AAA3.......",
+    "..A3..........A33.......",
+    "..A3..........A3........",
+    "...3...........3........",
+};
+
+static void mm2_arrow_AfterDraw(MenuEntry *e)
+{
+    extern volatile uintptr_t _frontbufferBasePtr;
+    extern int _menu_draw_x_offset;
+    uint8_t *fb = (uint8_t *)_frontbufferBasePtr + _menu_draw_x_offset;
+    const int32_t down = e == entry_at(MatchMakingMenu_scrollDown) || e == entry_at(MatchMakingMenu_scrollDown2);
+    const int32_t users = e == entry_at(MatchMakingMenu_scrollUp2) || e == entry_at(MatchMakingMenu_scrollDown2);
+    const int32_t ox = e->x + (users ? 2 : 1), oy = e->y + 1;
+    int32_t x, y;
+    for (y = 0; y < 12; y++)
+        for (x = 0; x < 12; x++) {
+            const char c = k_mm2Arrows[y][down * 12 + x];
+            if (c != '.')
+                fb[(uint32_t)(oy + y) * FRONTBUFFER_ROW_STRIDE_BYTES + ox + x] =
+                    (uint8_t)(c <= '9' ? c - '0' : c - 'A' + 10);
+        }
+}
+
+static void link(int32_t ordinal, int32_t left, int32_t right, int32_t up, int32_t down)
+{
+    MenuEntry *e = entry_at(ordinal);
+    if (left != -2)  e->leftEntry  = (int8_t)left;
+    if (right != -2) e->rightEntry = (int8_t)right;
+    if (up != -2)    e->upEntry    = (int8_t)up;
+    if (down != -2)  e->downEntry  = (int8_t)down;
+    e->directionLeft = e->directionRight = e->directionUp = e->directionDown = -1;
+}
+
+/* SWOS 2020's menu navigation (matchMakingMenu_OnDraw_New): ACTION is the column the cursor
+ * walks, the arrows beside it, the player list right of them. -2: the template's link kept. */
+static void mm2_links(void)
+{
+    int32_t r;
+    for (r = 1; r <= MM_ROWS; r++)
+        link(MatchMakingMenu_action_00 + r, -2, r <= 3 ? MatchMakingMenu_scrollUp : MatchMakingMenu_scrollDown,
+             r > 1 ? MatchMakingMenu_action_00 + r - 1 : -2,
+             r < MM_ROWS ? MatchMakingMenu_action_00 + r + 1 : MatchMakingMenu_openGame);
+    link(MatchMakingMenu_scrollUp, MatchMakingMenu_action_00 + 1, MatchMakingMenu_users_00, -2, MatchMakingMenu_scrollDown);
+    link(MatchMakingMenu_scrollDown, MatchMakingMenu_action_00 + MM_ROWS, MatchMakingMenu_users_00 + MM_USERS - 1,
+         MatchMakingMenu_scrollUp, -2);
+    link(MatchMakingMenu_scrollUp2, MatchMakingMenu_users_00, -2, -2, MatchMakingMenu_scrollDown2);
+    link(MatchMakingMenu_scrollDown2, MatchMakingMenu_users_00 + MM_USERS - 1, -2, MatchMakingMenu_scrollUp2, -2);
+    for (r = 0; r < MM_USERS; r++)
+        link(MatchMakingMenu_users_00 + r, r < 5 ? MatchMakingMenu_scrollUp : MatchMakingMenu_scrollDown,
+             r < 5 ? MatchMakingMenu_scrollUp2 : MatchMakingMenu_scrollDown2,
+             r > 0 ? MatchMakingMenu_users_00 + r - 1 : -1, r < MM_USERS - 1 ? MatchMakingMenu_users_00 + r + 1 : -1);
+    link(MatchMakingMenu_openGame, -2, -2, MatchMakingMenu_action_00 + MM_ROWS, -2);
+    link(MatchMakingMenu_cancelGame, -2, -2, MatchMakingMenu_action_00 + MM_ROWS, -2);
+    for (r = 0; r <= MM_ROWS; r++) {            /* (the name and mode cells are not stops) */
+        entry_at(MatchMakingMenu_host_00 + r)->isDisabled = 1;
+        entry_at(MatchMakingMenu_mode_00 + r)->isDisabled = 1;
+    }
+    entry_at(MatchMakingMenu_action_00)->isDisabled = 1;
+}
+
+/* setMatchMakingMenu_New: the line of help and the nine buttons, by the menu's state. */
+static void mm2_buttons(MmMenuMode mode)
+{
+    static const char *const kDesc[5] = {
+        "SERVER NOT CONNECTED", "HOST OR JOIN A MATCH", "WAITING FOR OTHERS TO JOIN",
+        "WAITING FOR HOST TO RESPOND", "ACCEPT A JOINER OR LEAVE",
+    };
+    const int32_t busy = mode == MMM_1_WAIT || mode == MMM_2_REQUESTED || mode == MMM_3_ACCEPT;
+    set_entry(MatchMakingMenu_desc, mode == MMM_X && MmClient_State() == MM_CONNECTING ? "CONNECTING TO SERVER"
+                                                                                       : kDesc[mode], 0, 0);
+    set_entry(MatchMakingMenu_openGame, "HOST MATCH", 1, mode == MMM_0_DEFAULT ? kGreen : kGray);
+    set_entry(MatchMakingMenu_cancelGame, "CANCEL", 1, busy ? kGreen : kGray);
+    set_entry(MatchMakingMenu_menuSettings, "SETTINGS", 1, busy ? kGray : kGreen);
+    set_entry(MatchMakingMenu_menuCustomTeam, "MY CUSTOM TEAM", 1, busy ? kGray : kGreen);
+    set_entry(MatchMakingMenu_rankings, "RANKINGS", 1, busy ? kGray : kPurple);
+    set_entry(MatchMakingMenu_leagues, "LEAGUES", 1, busy ? kGray : kPurple);
+    set_entry(MatchMakingMenu_matchLogs, "MATCH LOGS", 1, busy ? kGray : kPurple);
+    set_entry(MatchMakingMenu_menuExit, "EXIT", 1, kRed);
+    /* RANKINGS, LEAGUES, MATCH LOGS: only a service with them (online_account.h). */
+    entry_at(MatchMakingMenu_rankings)->isInvisible  = Account_Has(ACCOUNT_HAS_RANKINGS) ? 0 : 1;
+    entry_at(MatchMakingMenu_leagues)->isInvisible   = Account_Has(ACCOUNT_HAS_LEAGUES) ? 0 : 1;
+    entry_at(MatchMakingMenu_matchLogs)->isInvisible = Account_Has(ACCOUNT_HAS_MATCH_LOGS) ? 0 : 1;
+}
+
+static void mm2_draw(void)
+{
+    const MmMenuMode mode = mm2_mode();
+    const MmGameInfo *gi = MmClient_GameInfo();
+    int32_t numUsers = 0, numGames = 0, r;
+    const MmUser *users = MmClient_Users(&numUsers);
+    const MmGame *games = MmClient_OpenGames(&numGames);
+    const int32_t accept = mode == MMM_3_ACCEPT;
+    const int32_t numRows = accept ? gi->numRequested : numGames;
+    int32_t *page = accept ? &s_joinersPage : &s_gamesPage;
+
+    if (mode != MMM_X) {
+        numUsers = numUsers < 0 ? 0 : numUsers;
+    } else {
+        numUsers = numGames = 0;
+    }
+    if (*page >= mm2_pages(numRows, MM_ROWS))
+        *page = 0;
+    if (s_usersPage >= mm2_pages(numUsers, MM_USERS))
+        s_usersPage = 0;
+
+    /* the lines above the table */
+    set_text(MatchMakingMenu_connectionStatus, mode == MMM_X ? "SERVER : DISCONNECTED" : "SERVER : CONNECTED");
+    text_style(MatchMakingMenu_connectionStatus, mode == MMM_X ? kMmWhiteText : kMmYellowText, kTextLeft);
+    snprintf(s_mm2Players, sizeof s_mm2Players, "%d PLAYER%s", (int)numUsers, numUsers == 1 ? "" : "S");
+    set_text(MatchMakingMenu_numOfUsers, s_mm2Players);
+    entry_at(MatchMakingMenu_numOfUsers)->dwWidth = 120 - 8;    /* (its last letter off a 336-wide screen) */
+    snprintf(s_mm2Name, sizeof s_mm2Name, "- %s -", s_username);
+    upper_in_place(s_mm2Name);
+    set_text(MatchMakingMenu_userName, s_mm2Name);
+
+    /* the header row */
+    if (accept)
+        snprintf(s_mm2Head, sizeof s_mm2Head, "JOINING PLAYER(S) (%d)", (int)gi->numRequested);
+    else
+        snprintf(s_mm2Head, sizeof s_mm2Head, "OPEN GAMES (%d)", (int)numGames);
+    set_entry(MatchMakingMenu_host_00, s_mm2Head, 0, kGray);
+    set_entry(MatchMakingMenu_mode_00, accept ? "-" : "MODE", 0, kGray);
+    set_entry(MatchMakingMenu_action_00, "ACTION", 0, kGray);
+
+    /* the seven rows */
+    for (r = 0; r < MM_ROWS; r++) {
+        const int32_t idx = r + *page * MM_ROWS;
+        const char *name = NULL;
+        uint16_t actionColor = kLightBlue;
+        snprintf(s_mm2Host[r], sizeof s_mm2Host[r], "-");
+        snprintf(s_mm2Mode[r], sizeof s_mm2Mode[r], "-");
+        snprintf(s_mm2Action[r], sizeof s_mm2Action[r], "-");
+        if (accept && idx < gi->numRequested) {
+            name = gi->requested[idx].name;
+            snprintf(s_mm2Host[r], sizeof s_mm2Host[r], "%s", name);
+            snprintf(s_mm2Action[r], sizeof s_mm2Action[r], "ACCEPT");
+            actionColor = kGreen;
+        } else if (!accept && idx < numGames) {
+            const int32_t mine = is_me(games[idx].owner);
+            name = games[idx].owner;
+            snprintf(s_mm2Host[r], sizeof s_mm2Host[r], mine ? "%s (YOU)" : "%s", name);
+            if (mine)
+                snprintf(s_mm2Mode[r], sizeof s_mm2Mode[r], "%s", own_mode());
+            if (mode == MMM_0_DEFAULT && !mine) {
+                snprintf(s_mm2Action[r], sizeof s_mm2Action[r], "JOIN");
+                actionColor = kGreen;
+            } else if (mode == MMM_2_REQUESTED && gi && SDL_strcasecmp(gi->owner, name) == 0) {
+                snprintf(s_mm2Action[r], sizeof s_mm2Action[r], "REQUESTED");
+            }
+        }
+        upper_in_place(s_mm2Host[r]);
+        shorten_dot(s_mm2Host[r], 96 - 2);
+        set_text(MatchMakingMenu_host_00 + 1 + r, s_mm2Host[r]);
+        set_text(MatchMakingMenu_mode_00 + 1 + r, s_mm2Mode[r]);
+        set_entry(MatchMakingMenu_action_00 + 1 + r, s_mm2Action[r], 1, actionColor);
+        set_visible(MatchMakingMenu_host_00 + 1 + r, 1);
+        set_visible(MatchMakingMenu_mode_00 + 1 + r, 1);
+        set_visible(MatchMakingMenu_action_00 + 1 + r, 1);
+    }
+    set_visible(MatchMakingMenu_host_00, 1);
+    set_visible(MatchMakingMenu_mode_00, 1);
+    set_visible(MatchMakingMenu_action_00, 1);
+
+    /* who is on */
+    for (r = 0; r < MM_USERS; r++) {
+        const int32_t idx = r + s_usersPage * MM_USERS;
+        snprintf(s_mm2User[r], sizeof s_mm2User[r], "%s", idx < numUsers ? users[idx].name : "-");
+        upper_in_place(s_mm2User[r]);
+        shorten_dot(s_mm2User[r], 60);
+        set_text(MatchMakingMenu_users_00 + r, s_mm2User[r]);
+        text_style(MatchMakingMenu_users_00 + r, kMmWhiteText, kTextLeft);
+        set_visible(MatchMakingMenu_users_00 + r, 1);
+    }
+
+    /* the page, when there is more than one */
+    if (numRows > MM_ROWS)
+        snprintf(s_mm2Page, sizeof s_mm2Page, "(%d OF %d)", (int)*page + 1, (int)mm2_pages(numRows, MM_ROWS));
+    else
+        s_mm2Page[0] = 0;
+    set_text(MatchMakingMenu_page, s_mm2Page);
+
+    entry_at(MatchMakingMenu_scrollUp)->afterDrawCb = entry_at(MatchMakingMenu_scrollDown)->afterDrawCb =
+        entry_at(MatchMakingMenu_scrollUp2)->afterDrawCb = entry_at(MatchMakingMenu_scrollDown2)->afterDrawCb =
+            mm2_arrow_AfterDraw;
+    mm2_links();
+    mm2_buttons(mode);
+}
+
+/* ACTION: JOIN a game, or (a host with players asking) ACCEPT one of them. */
+static void matchMaking_action_onSelect(void)
+{
+    extern uint8_t _currentMenu[];
+    const MmMenuMode mode = mm2_mode();
+    const MmGameInfo *gi = MmClient_GameInfo();
+    const MenuEntry *sel = ((Menu *)_currentMenu)->selectedEntry;
+    int32_t r, numGames = 0;
+    const MmGame *games = MmClient_OpenGames(&numGames);
+    for (r = 1; r <= MM_ROWS; r++)
+        if (sel == entry_at(MatchMakingMenu_action_00 + r))
+            break;
+    if (r > MM_ROWS)
+        return;
+    r--;
+    if (mode == MMM_3_ACCEPT) {
+        const int32_t idx = r + s_joinersPage * MM_ROWS;
+        if (gi && idx < gi->numRequested)
+            MmClient_Approve(gi->requested[idx].name);
+    } else if (mode == MMM_0_DEFAULT) {
+        const int32_t idx = r + s_gamesPage * MM_ROWS;
+        if (idx < numGames && !is_me(games[idx].owner))
+            MmClient_JoinGame(games[idx].owner);
+    }
+}
+
+static void mm2_turn(int32_t *page, int32_t n, int32_t per, int32_t dir)
+{
+    const int32_t total = mm2_pages(n, per);
+    if (n <= 0)
+        return;
+    *page = (*page + dir + total) % total;
+}
+
+static void matchMaking_scrollUp_onSelect(void)
+{
+    const MmGameInfo *gi = MmClient_GameInfo();
+    int32_t n = 0;
+    MmClient_OpenGames(&n);
+    if (mm2_mode() == MMM_3_ACCEPT)
+        mm2_turn(&s_joinersPage, gi->numRequested, MM_ROWS, -1);
+    else
+        mm2_turn(&s_gamesPage, n, MM_ROWS, -1);
+}
+
+static void matchMaking_scrollDown_onSelect(void)
+{
+    const MmGameInfo *gi = MmClient_GameInfo();
+    int32_t n = 0;
+    MmClient_OpenGames(&n);
+    if (mm2_mode() == MMM_3_ACCEPT)
+        mm2_turn(&s_joinersPage, gi->numRequested, MM_ROWS, +1);
+    else
+        mm2_turn(&s_gamesPage, n, MM_ROWS, +1);
+}
+
+static void matchMaking_scrollUp2_onSelect(void)
+{
+    int32_t n = 0;
+    MmClient_Users(&n);
+    mm2_turn(&s_usersPage, n, MM_USERS, -1);
+}
+
+static void matchMaking_scrollDown2_onSelect(void)
+{
+    int32_t n = 0;
+    MmClient_Users(&n);
+    mm2_turn(&s_usersPage, n, MM_USERS, +1);
+}
+#endif /* PROJECT_SWOS2020_MATCHMAKING */
+
 static void matchMakingMenu_OnDraw(void)
 {
     const MmUser *users;
@@ -557,15 +921,19 @@ static void matchMakingMenu_OnDraw(void)
     MmState state;
     char who[MM_NAME_MAX];
 
+    /* (SWOS United too: SWOS 2020's buttons stood right of centre; centred, EXIT is under the
+     * header -- the owner, 2026-11-02) */
     matchMaking_layout();
 
     /* Every row's text and visibility is rebuilt below each frame, but these two
      * were set only in onInit -- so coming back from SETTINGS, which restores this
      * menu from its template, left the player's name and the EXIT button blank.
      * Re-applied here, first, so the early return below cannot skip them. */
+#if !PROJECT_SWOS2020_MATCHMAKING
     set_text(MatchMakingMenu_userName, s_username);
     set_entry(MatchMakingMenu_menuExit, "EXIT", 1, kLightBrownWithRedFrame);
     matchMaking_link_list();
+#endif
 
     MmClient_Poll();
     state = MmClient_State();
@@ -584,8 +952,12 @@ static void matchMakingMenu_OnDraw(void)
                         s_joinAsker, getenv("SWOS_MM_AUTO_PEER"));
             s_joinAsker[0] = '\0';
         } else {
+#if PROJECT_SWOS2020_MATCHMAKING
+            s_joinAsker[0] = '\0';     /* (SWOS 2020: the asker is in the table, with ACCEPT) */
+#else
             OnlineMenus_Show(SWOS2020_MENU(hostGameMessageMenu));
             return;
+#endif
         }
     }
 
@@ -608,6 +980,19 @@ static void matchMakingMenu_OnDraw(void)
         }
     }
 
+#if PROJECT_SWOS2020_MATCHMAKING
+    {
+        static uint32_t removedUntil;
+        if (MmClient_TakeRemoved())
+            removedUntil = SDL_GetTicks() + 4000;
+        mm2_draw();
+        if (removedUntil && SDL_GetTicks() < removedUntil)
+            set_entry(MatchMakingMenu_desc, "THE HOST LEFT THE GAME", 0, 0);
+        if (MmClient_StartInfo())
+            OnlineMenus_StartMatchFromMatchmaking();
+        return;
+    }
+#endif
     if (MmClient_TakeRemoved())
         set_entry(MatchMakingMenu_desc, "THE HOST LEFT THE GAME", 0, 0);
 
@@ -699,15 +1084,59 @@ static char s_joinPrompt[64];
  * about to OPEN plays (matchMaking_openGame_onSelect). */
 static int32_t s_askStyle;
 
+#if PROJECT_SWOS2020_MATCHMAKING
+/* CHOOSE GAMEPLAY's buttons draw the style's icon after themselves, as RANKINGS' do. */
+extern void United_DrawStyleIcon(int32_t icon, int32_t x, int32_t y);
+static void style_button_AfterDraw(MenuEntry *e)
+{
+    United_DrawStyleIcon(e == entry_at(HostGameMessageMenu_button1) ? 0 : 1, e->x + 32, e->y + 2);
+}
+#endif
+
 static void hostGameMessageMenu_OnInit(void)
 {
     if (s_askStyle) {
+#if PROJECT_SWOS2020_MATCHMAKING
+        set_text(HostGameMessageMenu_header,   "HOST MATCH");    /* (MATCH MAKING's button) */
+#else
         set_text(HostGameMessageMenu_header,   "HOST A GAME");
+#endif
+#if PROJECT_SWOS2020_MATCHMAKING
+        set_text(HostGameMessageMenu_message1, "CHOOSE GAMEPLAY");   /* (SWOS United's words) */
+        set_text(HostGameMessageMenu_message2, "");
+#else
         set_text(HostGameMessageMenu_message1, "WHICH GAMEPLAY?");
         set_text(HostGameMessageMenu_message2, "WHOEVER JOINS PLAYS IT TOO");
+#endif
         set_text(HostGameMessageMenu_message3, "");
+#if PROJECT_SWOS2020_MATCHMAKING
+        /* the two buttons as ONLINE RANKINGS' (rankingsMenu: 125 x 20, green, 36 apart, the
+         * style's icon 32 in -- united_api.h), centred on the menu as those are */
+        {
+            MenuEntry *b1 = entry_at(HostGameMessageMenu_button1), *b2 = entry_at(HostGameMessageMenu_button2);
+            const int32_t centre = b1->x + b1->dwWidth / 2;
+            /* the panel half as tall (one line, CHOOSE GAMEPLAY, centred in it), and the two
+             * buttons centred between it and EXIT -- from the loaded menu's y, never absolute */
+            MenuEntry *panel = entry_at(HostGameMessageMenu_panel), *line = entry_at(HostGameMessageMenu_message1);
+            const int32_t exitTop = entry_at(HostGameMessageMenu_exit)->y;
+            int32_t below, top;
+            panel->dwHeight = (uint16_t)(panel->dwHeight / 2);
+            line->y = (uint16_t)(panel->y + ((int32_t)panel->dwHeight - (int32_t)line->dwHeight) / 2);
+            below = panel->y + panel->dwHeight;
+            top = below + (exitTop - below - (20 + 16 + 20)) / 2;
+            set_entry(HostGameMessageMenu_button1, "     AMIGA", 1, kGreen);     /* (rankingsMenu's, */
+            set_entry(HostGameMessageMenu_button2, "     PC DOS", 1, kGreen);    /*  clear of the icon) */
+            b1->dwWidth = b2->dwWidth = 125;
+            b1->dwHeight = b2->dwHeight = 20;
+            b1->x = b2->x = (uint16_t)(centre - 125 / 2);
+            b1->y = (uint16_t)top;
+            b2->y = (uint16_t)(top + 36);
+            b1->afterDrawCb = b2->afterDrawCb = style_button_AfterDraw;
+        }
+#else
         set_entry(HostGameMessageMenu_button1, "AMIGA (50FPS)", 1, kLightBrownWithRedFrame);
         set_entry(HostGameMessageMenu_button2, "PC (70FPS)", 1, kLightBrownWithRedFrame);
+#endif
         set_text(HostGameMessageMenu_exit,     "EXIT");
         return;
     }
@@ -2204,6 +2633,10 @@ static void run_live_match(void)
  * played in the HOST's style: whoever joins takes it for that game (p2p_link.c). */
 static void matchMaking_openGame_onSelect(void)
 {
+#if PROJECT_SWOS2020_MATCHMAKING
+    if (entry_at(MatchMakingMenu_openGame)->bgColor == kGray)
+        return;                         /* (SWOS 2020: grey is not now) */
+#endif
     /* A service with ranked and league / cup matches asks what this one is for first. */
     s_openMode = Account_Has(ACCOUNT_HAS_RANKED) ? Account_ChooseMode() : LOBBY_MODE_FRIENDLY;
     if (s_openMode < 0) {
@@ -2218,6 +2651,10 @@ static void matchMaking_openGame_onSelect(void)
 /* LEAVE: stop advertising, or withdraw a join request. */
 static void matchMaking_cancelGame_onSelect(void)
 {
+#if PROJECT_SWOS2020_MATCHMAKING
+    if (entry_at(MatchMakingMenu_cancelGame)->bgColor == kGray)
+        return;
+#endif
     MmClient_LeaveGame();
 }
 
@@ -2456,6 +2893,13 @@ static const MenuSymbol k_handlers[] = {
     HANDLER(matchMaking_host_onSelect),
     HANDLER(matchMaking_users_onSelect),
     HANDLER(matchMaking_exit_onSelect),
+#if PROJECT_SWOS2020_MATCHMAKING
+    HANDLER(matchMaking_action_onSelect),
+    HANDLER(matchMaking_scrollUp_onSelect),
+    HANDLER(matchMaking_scrollDown_onSelect),
+    HANDLER(matchMaking_scrollUp2_onSelect),
+    HANDLER(matchMaking_scrollDown2_onSelect),
+#endif
 
     HANDLER(hostGameMessageMenu_OnInit),
     HANDLER(hostGameMessageMenu_OnDraw),

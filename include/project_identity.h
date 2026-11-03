@@ -56,4 +56,9 @@
  * DESK (src/online_menus.c): 1 hides them, 0 keeps them for a fork that builds them. */
 #define PROJECT_HIDE_SWOS2020_EXTRAS 0       /* (SWOS United builds them: kept, the owner 2026-11-02) */
 
+/* MATCH MAKING as SWOS 2020 draws it (src/online_menus.c, its matchMakingMenu_OnDraw_New): the
+ * seven-row table always drawn, MODE and JOIN / REQUESTED / ACCEPT, the red page arrows, HOST
+ * MATCH / CANCEL, the host accepting joiners from the table. 0: OpenSWOS's own screen. */
+#define PROJECT_SWOS2020_MATCHMAKING 1
+
 #endif /* PROJECT_IDENTITY_H */

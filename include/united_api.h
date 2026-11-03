@@ -43,6 +43,10 @@ int32_t     United_JsonInt(UnitedJson in, const char *path);
 /* "status":"ok" -- what every good reply says. */
 int32_t     United_JsonOk(const char *body, uint32_t len);
 
+/* SWOS 2020's gameplay-style icons, 16x16 at (x, y) on the menu's screen: 0 the Amiga's tick,
+ * 1 PC DOS, 2 XBOX (RANKINGS' buttons, CHOOSE GAMEPLAY's). SDL builds. */
+void        United_DrawStyleIcon(int32_t icon, int32_t x, int32_t y);
+
 /* SWOS United's screens (registered by Account_Init). */
 void        UnitedRankings_Register(void);
 void        UnitedLeagues_Register(void);
