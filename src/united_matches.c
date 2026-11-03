@@ -47,6 +47,7 @@
 #include "menu_system.h"
 #include "netplay_lobby.h"
 #include "online_menus.h"
+#include "platform_sdl.h"         /* Platform_OpenUrl */
 #include "swos2020_menus.h"
 
 #if defined(__has_include)
@@ -570,8 +571,8 @@ static MenuEntry *entry_at(int32_t ordinal) { return CalcMenuEntryAddress((uint1
 
 static void open_url(const char *url)
 {
-    if (url && SDL_OpenURL(url) != 0)
-        fprintf(stderr, "[united] could not open %s: %s\n", url, SDL_GetError());
+    if (url)
+        Platform_OpenUrl(url);          /* (says so in the log when it cannot) */
 }
 
 static void openLobbyMenu_layout(void)

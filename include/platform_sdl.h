@@ -180,6 +180,10 @@ typedef struct {
 
 int  Platform_Init(const PlatformInitOptions *opts);
 void Platform_Shutdown(void);
+/* Opens url in the player's browser; 0 done. SDL_OpenURL, except in the Windows (Cygwin) build:
+ * Cygwin's SDL runs xdg-open, which a Windows machine does not have, so every link button did
+ * nothing there -- it calls Windows' ShellExecute instead. */
+int  Platform_OpenUrl(const char *url);
 
 /* Toggle / set fullscreen at runtime. Alt+Enter calls this internally;
  * exposed here in case a future settings menu needs a programmatic hook.

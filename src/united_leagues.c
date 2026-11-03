@@ -37,11 +37,15 @@
 #include <string.h>
 
 #include <SDL.h>
+#include "display.h"            /* FRONTBUFFER_ROW_STRIDE_BYTES: the arrows */
 #include "https_client.h"
 #include "menu_load_json.h"
 #include "menu_system.h"
 #include "online_menus.h"
+#include "platform_sdl.h"       /* Platform_OpenUrl: APPLY */
 #include "swos2020_menus.h"
+
+uint16_t GetTextWidth(uint8_t *text, uint8_t *charsTable);     /* (text_render.h: its Round is not ours) */
 
 enum { NUM_LEAGUES = 13, MAX_TOURNA = 32, MAX_ROUNDS = 16, MAX_TABLES = 16,
        MAX_POS = 1024, MAX_MATCHES = 4096, MAX_LINES = 8192,
@@ -511,6 +515,7 @@ static void request_tournament(void)
     if (s_inflight || s_season != SEASON_READY || s_numTourna[s_league] == 0)
         return;
     snprintf(s_tid, sizeof s_tid, "%s", s_tourna[s_league][s_curTourna[s_league]].id);
+    s_name[0] = 0;                              /* (the last one's, until this one answers) */
     snprintf(query, sizeof query, United_NewSite() ? "id=%s&include=details,rounds,matches,standings" : "id=%s&format=xml",
              s_tid);                            /* (the new site: only the sections these screens show) */
     if (Https_RequestAsync(United_NewSite() ? United_NewApiUrl("tournament", query) :
@@ -645,6 +650,60 @@ static void leagueInfoView_onInit(void)
     request_tournament();
 }
 
+/* SWOS 2020's arrows either side of the tournament's name (drawLeagueInfoViewArrows: frames 6 and
+ * 2 of arrows_12x12_13x1_Map, the tactics editor's yellow ones), '.' clear, else a palette
+ * index in hex. Drawn after the name and after each arrow's own entry (afterDrawCb), so a redraw
+ * of any of the three leaves them there. */
+static const char *const k_headerArrows[7] = {
+    "..F6.............6F.....",
+    ".F688.............6F....",
+    "2F6655544...4455566F2...",
+    "FFF6655548..455566FFF8..",
+    ".F68888888...888886F88..",
+    "..F6.............6F88...",
+    "...88.............88....",
+};
+
+static void header_arrows_AfterDraw(MenuEntry *unused)
+{
+    extern volatile uintptr_t _frontbufferBasePtr;
+    extern int _menu_draw_x_offset;
+    uint8_t *fb = (uint8_t *)_frontbufferBasePtr + _menu_draw_x_offset;
+    const MenuEntry *h = entry_at(LeagueInfoViewMenu_header2);
+    const int32_t oy = h->y + (h->dwHeight > 7 ? (h->dwHeight - 7) / 2 : 0);
+    const int32_t ox[2] = { h->x - 13, h->x + h->dwWidth + 3 };     /* (3 clear of the name) */
+    int32_t side, x, y;
+    (void)unused;
+    for (side = 0; side < 2; side++)
+        for (y = 0; y < 7; y++)
+            for (x = 0; x < 12; x++) {
+                const char c = k_headerArrows[y][side * 12 + x];
+                if (c != '.')
+                    fb[(uint32_t)(oy + y) * FRONTBUFFER_ROW_STRIDE_BYTES + ox[side] + x] =
+                        (uint8_t)(c <= '9' ? c - '0' : c - 'A' + 10);
+            }
+}
+
+/* Too wide for its box: cut and ended with "...", as SWOS 2020's shortenNameEx2 does the name
+ * line ("TR SUPER LIG 11/26 - ROUND TR SUPER ...") -- measured in the entry's own font, against
+ * its width less a margin (the association's line above: only when it overflows its box). */
+static void fit_text(char *s, const MenuEntry *e, int32_t margin)
+{
+    extern void *_charTables[];
+    uint8_t *font = (uint8_t *)_charTables[((e->stringFlags & STR_FLAGS_MASK) >> 2) / 4];
+    const int32_t limit = (int32_t)e->dwWidth - margin;
+    char buf[128];
+    int32_t n = (int32_t)strlen(s);
+    if (!font || (int32_t)GetTextWidth((uint8_t *)s, font) <= limit)
+        return;
+    while (n > 0) {
+        snprintf(buf, sizeof buf, "%.*s...", (int)--n, s);
+        if ((int32_t)GetTextWidth((uint8_t *)buf, font) <= limit)
+            break;
+    }
+    strcpy(s, buf);
+}
+
 static void leagueInfoView_header2_dec_onSelect(void) { open_tournament(-1); }
 static void leagueInfoView_header2_onSelect(void)     { open_tournament(0); }
 static void leagueInfoView_header2_inc_onSelect(void) { open_tournament(+1); }
@@ -671,14 +730,23 @@ static void leagueInfoView_onDraw(void)
             leagueInfoView_matches_onSelect();
     }
 
-    /* < > around the tournament's name */
+    /* SWOS 2020's yellow arrows around the tournament's name (the arrows' entries stay, clear, to
+     * be clicked), and left / right on the name itself go through the association's tournaments
+     * as the arrows do (SWOS 2020's finalControlsStatus 6 / 2) -- FIRE on it reloads this one. */
     {
+        extern uint8_t  _currentMenu[];
+        extern uint16_t _menuControlsDirection;
         MenuEntry *dec = entry_at(LeagueInfoViewMenu_header2_dec), *inc = entry_at(LeagueInfoViewMenu_header2_inc);
-        const int32_t more = s_numTourna[s_league] > 1;
-        dec->background = inc->background = ENTRY_FRAME_AND_BACK_COLOR;
-        dec->bgColor = inc->bgColor = more ? kRed : kGray;
-        dec->fg = (uintptr_t)"<";
-        inc->fg = (uintptr_t)">";
+        MenuEntry *name = entry_at(LeagueInfoViewMenu_header2);
+        dec->background = inc->background = 0;
+        dec->fg = inc->fg = (uintptr_t)" ";
+        dec->afterDrawCb = inc->afterDrawCb = name->afterDrawCb = header_arrows_AfterDraw;
+        if (((Menu *)_currentMenu)->selectedEntry == name) {
+            if (_menuControlsDirection == 6)
+                open_tournament(-1);
+            else if (_menuControlsDirection == 2)
+                open_tournament(+1);
+        }
     }
 
     /* what to say while there is no table */
@@ -717,11 +785,16 @@ static void leagueInfoView_onDraw(void)
             snprintf(s_header2, sizeof s_header2, "%s", s_name);
     } else {
         snprintf(s_header, sizeof s_header, "%s", kLeagues[s_league].association);
-        snprintf(s_header2, sizeof s_header2, "%s", s_tournaState == TOURNA_LOADING ? "" : s_name);
+        /* the tournament's name only when it is this association's: another one's (the last
+         * loaded, before this association had any) must not stand under this one's name */
+        const int32_t ours = s_numTourna[s_league] > 0 &&
+                             strcmp(s_tid, s_tourna[s_league][s_curTourna[s_league]].id) == 0;
+        snprintf(s_header2, sizeof s_header2, "%s", s_tournaState == TOURNA_LOADING || !ours ? "" : s_name);
     }
     upper(s_header);
     upper(s_header2);
-    s_header2[34] = 0;                          /* (the entry's width) */
+    fit_text(s_header, entry_at(LeagueInfoViewMenu_header), 0);      /* (only when it overflows) */
+    fit_text(s_header2, entry_at(LeagueInfoViewMenu_header2), 6);
     entry_at(LeagueInfoViewMenu_header)->fg = (uintptr_t)s_header;
     entry_at(LeagueInfoViewMenu_header2)->fg = (uintptr_t)s_header2;
 
@@ -777,8 +850,7 @@ static void leagueInfoView_apply_onSelect(void)
     const char *url = kLeagues[s_league].page;
     if (s_league == 3 && strcmp(s_tid, CHAMPIONS_LEAGUE_ID) == 0)
         url = CHAMPIONS_LEAGUE_PAGE;
-    if (SDL_OpenURL(url) != 0)
-        fprintf(stderr, "[leagues] could not open %s: %s\n", url, SDL_GetError());
+    Platform_OpenUrl(url);              /* (says so in the log when it cannot) */
 }
 
 /* A cup round's results, as SWOS 2020's makeResultInfo writes them: each tie's legs, then who
