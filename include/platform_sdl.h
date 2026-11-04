@@ -117,7 +117,7 @@ typedef struct {
     int                    menu_recording;   /* with music_style 1: 1 = play sound_dos/menu.mp3, 0 = menu.xmi on the emulated chip */
     int                    music_style;      /* the menus' music: 0 = the Amiga's, 1 = the PC game's menu.xmi (dos_music.h) */
     int                    commentary;       /* the PC game's commentary: 0 off, 1 on (over the Amiga's sounds too), 2 auto = with sound_style 1 */
-    int                    dos_gameplay;     /* 1 = DOS gameplay tweaks (framerate etc.). PC-only; reserved */
+    int                    dos_gameplay;     /* the gameplay style, GAMEPLAY_* (dos_mode.h): 0 AMIGA, 1 DOS, 2 XBOX */
     int                    contest_own_ratings; /* 1 = a contested ball's dice rates each side by the man at the
                                               * ball; 0 (default) = the original's squad-slot lookup
                                               * (ball_possession.c, _gContestOwnRatings). Offline only. */
@@ -135,6 +135,8 @@ typedef struct {
                                               * Empty = none (input_sdl.c) */
     int                    latch_presses;    /* [input] latch_presses: a fire press that came and went
                                               * between two reads still counts (default on) */
+    int                    touch_controls;   /* [input] touch_controls: TOUCH_CONTROLS_* -- the phones'
+                                              * on-screen controls, auto (0) | always | never */
     char                   netplay_name[33]; /* [netplay] name: the name typed on the MULTIPLAYER login
                                               * screen, kept while REMEMBER LOGIN INFO is on */
     int                    netplay_remember; /* [netplay] remember_login: that switch (default on) */
@@ -229,6 +231,8 @@ void Platform_SetFrameHook(void (*hook)(void));
 /* Just pump SDL events, render bitplanes, and present. No pacing.
  * Safe to call from the SDL_AddTimer thread. */
 void Platform_RenderFrame(void);
+/* A progress bar alone on the screen (the phones' Wi-Fi copy, before the game's data). */
+void Platform_ShowProgress(int permille);
 
 /* Run the Amiga Level-3 VBlank ISR body, throttled to ~50 Hz max and
  * mutex-guarded so concurrent calls from the timer thread and the main

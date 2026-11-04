@@ -38,6 +38,7 @@
 #include "swos_io.h"            /* swos_save_dir_init() — macOS-writable save dir */
 #include "save_format_json.h"   /* DataJson_SelfTest */
 #include "dos_mode.h"   /* gDosGraphics/gDosGameplay — defined in dos_graphics.c */
+#include "touch_controls.h"   /* TouchControls_SetMode: [input] touch_controls */
 #include "display.h"    /* _screen_width, WIDESCREEN_WIDTH, SCREEN_WIDTH */
 #include "replay_test.h"        /* --replay-test: recorded-game regression rig */
 #include "replay_v2.h"          /* --record-replay, --view-replay: whole-match .SRP replays */
@@ -61,6 +62,7 @@
 #include "netplay_match.h"      /* --netplay-match */
 #include "rollback_rig.h"       /* --rollback */
 #include "world.h"              /* [general] world */
+#include "phone_fetch.h"        /* --phone-fetch */
 
 #define WIN_SCALE 3
 
@@ -85,11 +87,20 @@ static void chdir_to_binary(const char *argv0)
         got_path = 1;
     }
 #else
-    /* Linux: /proc/self/exe is a symlink to the running binary. */
+    /* Linux: /proc/self/exe is a symlink to the running binary -- unless a dynamic loader
+     * was started with the game as its argument (the PortMaster launcher does that with the
+     * glibc it brings, on a firmware whose own is too old: stock ArkOS on an R36S). Then it is
+     * the LOADER, in libs.aarch64/glibc, and every file of the game's own beside the binary
+     * (the JSON menus: CREDITS, MULTIPLAYER) was looked for there and not found, while what
+     * SWOS_ASSETS points at still loaded (2026-11-03). The loader passes the game's path on
+     * as argv[0], so that is the one to use. */
     ssize_t n = readlink("/proc/self/exe", path, sizeof(path) - 1);
     if (n > 0) {
+        const char *base;
         path[n] = 0;
-        got_path = 1;
+        base = strrchr(path, '/');
+        base = base ? base + 1 : path;
+        got_path = strncmp(base, "ld-linux", 8) != 0 && strncmp(base, "ld.so", 5) != 0;
     }
 #endif
 
@@ -192,6 +203,10 @@ static void print_usage(const char *argv0)
         "  --dos-graphics=<on|off>   Render the DOS-version graphics (bin/grafs_dos)\n"
         "                            instead of the Amiga graphics. Default: off.\n"
         "                            PC-only extra; the Amiga look is the default.\n"
+        "  --gameplay=<amiga|dos|xbox>  The gameplay style ([gameplay] style): the\n"
+        "                            Amiga's (50 Hz), the DOS version's (70 Hz), or\n"
+        "                            SWOS 2020's XBOX (60 Hz, the Amiga's ball physics,\n"
+        "                            the DOS goalkeepers).\n"
         "  --dos-gameplay=<on|off>   Use the DOS version's gameplay tuning: a 70 Hz\n"
         "                            game tick (movement scaled 41/64 so it doesn't\n"
         "                            play faster), plus the DOS goalkeeper reach and\n"
@@ -697,9 +712,17 @@ int main(int argc, char **argv)
                 fprintf(stderr, "Invalid --jag-graphics value '%s' (expected on|off)\n", v);
                 return 1;
             }
+        } else if ((v = match_kv(a, "gameplay")) != NULL) {
+            if      (strcmp(v, "amiga") == 0) opts.dos_gameplay = GAMEPLAY_AMIGA;
+            else if (strcmp(v, "dos") == 0)   opts.dos_gameplay = GAMEPLAY_DOS;
+            else if (strcmp(v, "xbox") == 0)  opts.dos_gameplay = GAMEPLAY_XBOX;
+            else {
+                fprintf(stderr, "Invalid --gameplay value '%s' (expected amiga|dos|xbox)\n", v);
+                return 1;
+            }
         } else if ((v = match_kv(a, "dos-gameplay")) != NULL) {
-            if (strcmp(v, "on") == 0 || strcmp(v, "1") == 0)       opts.dos_gameplay = 1;
-            else if (strcmp(v, "off") == 0 || strcmp(v, "0") == 0) opts.dos_gameplay = 0;
+            if (strcmp(v, "on") == 0 || strcmp(v, "1") == 0)       opts.dos_gameplay = GAMEPLAY_DOS;
+            else if (strcmp(v, "off") == 0 || strcmp(v, "0") == 0) opts.dos_gameplay = GAMEPLAY_AMIGA;
             else {
                 fprintf(stderr, "Invalid --dos-gameplay value '%s' (expected on|off)\n", v);
                 return 1;
@@ -791,6 +814,11 @@ int main(int argc, char **argv)
             /* Same reason as --matchmaker-menu: this flag exists to reach a menu,
              * and the loader intro plays in front of it in real time. */
             { extern volatile uint8_t _skipLoaderIntro; _skipLoaderIntro = 1; }
+        } else if ((v = match_kv(a, "phone-fetch")) != NULL) {
+            /* The phones' Wi-Fi copy, from a desktop (src/phone_fetch.c): a link, or "find". */
+            return PhoneFetch_Cli(v, ini_path);
+        } else if (strcmp(a, "--game-options-selftest") == 0) {
+            return Settings_GameOptionsSelfTest();
         } else if (strcmp(a, "--menu-selftest") == 0) {
             return OnlineMenus_SelfTest();
         } else if ((v = match_kv(a, "convert-teams")) != NULL) {
@@ -1023,7 +1051,7 @@ int main(int argc, char **argv)
         if (Rollback_Enabled() || NetplayMatch_Enabled())
             SDL_setenv("SWOS_AUDIO_OFF", "1", 1);
         if (!Rollback_Enabled())
-        opts.dos_gameplay = 1;   /* the corpus is DOS gameplay (docs/TESTS.md 5c) */
+        opts.dos_gameplay = GAMEPLAY_DOS;   /* the corpus is DOS gameplay (docs/TESTS.md 5c) */
         /* The recordings were made against a reference implementation of the
          * ORIGINAL, so a replay has to PLAY the original — including its
          * fire-hold lockout bug. Without this the rig diverges on quick_fire /
@@ -1165,6 +1193,7 @@ int main(int argc, char **argv)
         extern int InputSDL_SetKeyBinding(int which, const char *name);
         int i;
         InputSDL_SetPressLatch(opts.latch_presses);
+        TouchControls_SetMode(opts.touch_controls);     /* the phones' on-screen controls */
         for (i = 0; i < 5; i++)
             InputSDL_SetKeyBinding(i, opts.key_bind[i]);
     }
@@ -1204,22 +1233,17 @@ int main(int argc, char **argv)
     DosMusic_SetMenuRecording(opts.menu_recording);
     DosSound_SetCommentary(opts.commentary);
     { extern int _gArcadeMode; _gArcadeMode = opts.arcade; }
-    _gDosGameplay = opts.dos_gameplay;
+    Gameplay_SetStyle(opts.dos_gameplay);      /* the style, its flags and the OPTIONS row */
     { extern int _gOriginalFireHoldLockout;
       _gOriginalFireHoldLockout = opts.fire_hold_lockout; }
     { extern int _gContestOwnRatings;
       _gContestOwnRatings = opts.contest_own_ratings; }
-    /* The OPTIONS menu draws its GAMEPLAY row from a uint16_t mirror (the
-     * string-table header reads its index as one). Seed it here so the row
-     * shows what SWOS.ini / --dos-gameplay actually selected; the toggle
-     * itself keeps the two in step (ChangeGameplayStyle in menus.c). */
-    { extern uint16_t _gameplayStyleOption;
-      _gameplayStyleOption = (uint16_t)(opts.dos_gameplay != 0); }
-
     /* And say which style is actually in force, so "it ran in Amiga mode" is
      * something a tester can read off rather than infer from feel. */
-    fprintf(stderr, "[gameplay] %s\n", _gDosGameplay
+    fprintf(stderr, "[gameplay] %s\n", _gGameplayStyle == GAMEPLAY_DOS
             ? "DOS (70fps physics and timers, DOS formations)"
+            : _gGameplayStyle == GAMEPLAY_XBOX
+            ? "XBOX (SWOS 2020's: 60fps, Amiga ball physics, DOS goalkeepers)"
             : "AMIGA (the shipped default)");
     /* Say it out loud — this one is a deliberate departure from the original,
      * so a tester comparing against real SWOS can see which half he is on. */
@@ -1374,7 +1398,7 @@ int main(int argc, char **argv)
     int dosView;
     {
         dosView = (opts.view_style == VIEW_STYLE_DOS) ||
-                      (opts.view_style == VIEW_STYLE_AUTO && opts.dos_gameplay);
+                      (opts.view_style == VIEW_STYLE_AUTO && opts.dos_gameplay == GAMEPLAY_DOS);
         /* Remembered, not applied: the MENUS are 272 lines tall (Amiga artwork),
          * so switching the whole game to 200 cuts their bottom rows off -- which
          * is exactly what it did when this was set at startup. The view changes
@@ -1382,10 +1406,10 @@ int main(int argc, char **argv)
         { extern int _gDosView; _gDosView = dosView; }
         if (dosView)
             ;   /* reported below, once the display shape is known */
-        if (opts.view_style == VIEW_STYLE_AMIGA && opts.dos_gameplay)
+        if (opts.view_style == VIEW_STYLE_AMIGA && opts.dos_gameplay == GAMEPLAY_DOS)
             fprintf(stderr, "[video] DOS gameplay with the Amiga view (--view): a mix that "
                             "matches neither original -- without --view the style sets both\n");
-        if (opts.view_style == VIEW_STYLE_DOS && !opts.dos_gameplay)
+        if (opts.view_style == VIEW_STYLE_DOS && opts.dos_gameplay != GAMEPLAY_DOS)
             fprintf(stderr, "[video] the DOS view with Amiga gameplay (--view): a mix that "
                             "matches neither original -- without --view the style sets both\n");
     }
@@ -1507,9 +1531,9 @@ int main(int argc, char **argv)
     }
 
 #ifdef SWOS_MOBILE_BUILD
-    /* A phone has no setup: the player copies the game's data over from a PC (src/mobile.c). */
-    { extern int Mobile_CheckGameData(void);
-      if (!Mobile_CheckGameData()) { SDL_Quit(); return 1; } }
+    /* A phone has no setup: the game's data comes from a PC's, over Wi-Fi or by hand (src/mobile.c). */
+    { extern int Mobile_CheckGameData(PlatformInitOptions *opts, const char *iniPath);
+      if (!Mobile_CheckGameData(&opts, ini_path)) { SDL_Quit(); return 1; } }
 #endif
     /* Game data an older OpenSWOS Setup made (ASSETS.ini): say so, once. */
     { extern void AssetsCheck_Run(PlatformInitOptions *opts, const char *iniPath);

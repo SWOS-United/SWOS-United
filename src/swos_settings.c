@@ -37,6 +37,8 @@
 #include "project_identity.h"
 #include "swos_io.h"   /* swos_save_commit — Switch save durability */
 #include "ini.h"
+#include "dos_mode.h"   /* GAMEPLAY_*: [gameplay] style */
+#include "touch_controls.h" /* TOUCH_CONTROLS_*: [input] touch_controls */
 
 #include <ctype.h>
 #include <errno.h>
@@ -158,8 +160,9 @@ static int handler(void *user, const char *section,
         else if (eqi(name, "contest_own_ratings") && parse_bool(value, &b))
             opts->contest_own_ratings = b;
         else if (eqi(name, "style")) {
-            if      (eqi(value, "amiga")) opts->dos_gameplay = 0;
-            else if (eqi(value, "dos"))   opts->dos_gameplay = 1;
+            if      (eqi(value, "amiga")) opts->dos_gameplay = GAMEPLAY_AMIGA;
+            else if (eqi(value, "dos"))   opts->dos_gameplay = GAMEPLAY_DOS;
+            else if (eqi(value, "xbox"))  opts->dos_gameplay = GAMEPLAY_XBOX;
         }
         /* `view` is gone (2026-09-29): the view is part of the style, one setting.
          * An old line is ignored rather than honoured -- a view that differs from the
@@ -173,6 +176,10 @@ static int handler(void *user, const char *section,
         } else if (eqi(name, "latch_presses")) {
             int b;
             if (parse_bool(value, &b)) opts->latch_presses = b;
+        } else if (eqi(name, "touch_controls")) {
+            if      (eqi(value, "auto"))   opts->touch_controls = TOUCH_CONTROLS_AUTO;
+            else if (eqi(value, "always")) opts->touch_controls = TOUCH_CONTROLS_ALWAYS;
+            else if (eqi(value, "never"))  opts->touch_controls = TOUCH_CONTROLS_NEVER;
         } else {
             static const char *const keys[5] = { "key_up", "key_down", "key_left", "key_right", "key_fire" };
             int i;
@@ -456,6 +463,13 @@ static int settings_build(const PlatformInitOptions *opts, IniEntry *items, char
         "; still counts as pressed for one frame, so a very short tap is never lost.\n"
         "; false: only what is held at the moment of the read counts, as before.",
         opts->latch_presses ? "true" : "false" };
+    SETTING(n) = (IniEntry){ "input", "touch_controls",
+        "; touch_controls: auto | always | never -- a phone's on-screen stick and buttons.\n"
+        "; auto (the default): hidden while a game controller is played, back on a touch;\n"
+        "; always: always on screen; never: never (a handheld with controls of its own).\n"
+        "; OPTIONS -> CONTROLS sets it. The desktops have none.",
+        opts->touch_controls == TOUCH_CONTROLS_NEVER ? "never"
+        : opts->touch_controls == TOUCH_CONTROLS_ALWAYS ? "always" : "auto" };
     SETTING(n) = (IniEntry){ "input", "key_up",
         "; key_up, key_down, key_left, key_right, key_fire: your own keys, BESIDE the\n"
         "; built-in ones (the cursor keys; either CTRL or ENTER to fire), which keep\n"
@@ -488,12 +502,13 @@ static int settings_build(const PlatformInitOptions *opts, IniEntry *items, char
 
 
     SETTING(n) = (IniEntry){ "gameplay", "style",
-        "; style: amiga | dos. The Amiga release is the definitive one and what this\n"
-        "; port is reverse engineered from; dos is the PC release's 70 FPS physics,\n"
+        "; style: amiga | dos | xbox. The Amiga release is the definitive one and what\n"
+        "; this port is reverse engineered from; dos is the PC release's 70 FPS physics,\n"
         "; timers and formations, and its 320x200 view -- the view is part of how it\n"
         "; plays (what is on screen decides which players the game picks), so the\n"
-        "; style sets both. Online, the game plays the HOST's style.\n",
-        opts->dos_gameplay ? "dos" : "amiga" };
+        "; style sets both; xbox is SWOS 2020's XBOX style: 60 FPS, the Amiga's ball\n"
+        "; physics and view, the DOS goalkeepers. Online, the game plays the HOST's style.\n",
+        opts->dos_gameplay == GAMEPLAY_DOS ? "dos" : opts->dos_gameplay == GAMEPLAY_XBOX ? "xbox" : "amiga" };
     SETTING(n) = (IniEntry){ "replays", "auto_save",
         "; auto_save: true | false — every match is recorded to LATEST.SRP in the save\n"
         "; folder and can be watched from HIGHLIGHTS -> LOAD. true also keeps a dated\n"
@@ -860,4 +875,61 @@ void Settings_Save(const PlatformInitOptions *opts, const char *path)
 void Settings_AppendMissing(const PlatformInitOptions *opts, const char *path)
 {
     Settings_Save(opts, path);
+}
+
+/* --game-options-selftest: every value OpenSWOS Setup may write (include/game_options.h) read
+ * by this file's reader and written back by its writer, unchanged. Fails when the game renames
+ * a key or a value the setup still writes. 0 when every one comes back. */
+#include "game_options.h"
+int Settings_GameOptionsSelfTest(void)
+{
+    char in[512], out[512], line[512];
+    const char *tmp = getenv("TMPDIR");
+    int32_t i, k, bad = 0, checked = 0;
+
+    snprintf(in, sizeof in, "%s/swos-game-options-in.ini", tmp && *tmp ? tmp : "/tmp");
+    snprintf(out, sizeof out, "%s/swos-game-options-out.ini", tmp && *tmp ? tmp : "/tmp");
+    for (i = 0; i < GAME_OPTION_COUNT(kGameOptions); i++) {
+        const GameOption *o = &kGameOptions[i];
+        for (k = 0; k < o->count; k++) {
+            PlatformInitOptions opts;
+            FILE *f = fopen(in, "w");
+            char got[64] = "";
+            int32_t inSection = 0;
+            if (!f) { fprintf(stderr, "game-options: cannot write %s\n", in); return 1; }
+            fprintf(f, "[%s]\n%s=%s\n", o->section, o->key, o->values[k].value);
+            fclose(f);
+            memset(&opts, 0, sizeof opts);
+            Settings_Load(&opts, in);
+            if (!strcmp(o->section, "video") && !strcmp(o->key, "fullscreen")) {
+                /* (written from the window's own state, not the setting: read it as loaded) */
+                snprintf(got, sizeof got, "%s", opts.fullscreen == PLATFORM_FULLSCREEN_DESKTOP ? "desktop"
+                                                : opts.fullscreen == PLATFORM_FULLSCREEN_EXCLUSIVE ? "exclusive" : "off");
+            } else {
+                Settings_Save(&opts, out);
+                if (!(f = fopen(out, "r"))) { fprintf(stderr, "game-options: cannot read %s\n", out); return 1; }
+                while (fgets(line, sizeof line, f)) {
+                    size_t n = strlen(o->key);
+                    if (line[0] == '[')
+                        inSection = !strncmp(line + 1, o->section, strlen(o->section)) && line[1 + strlen(o->section)] == ']';
+                    else if (inSection && !strncmp(line, o->key, n) && line[n] == '=') {
+                        sscanf(line + n + 1, "%63[^ \t\r\n;]", got);
+                        break;
+                    }
+                }
+                fclose(f);
+            }
+            checked++;
+            if (strcmp(got, o->values[k].value)) {
+                fprintf(stderr, "game-options: [%s] %s=%s came back as '%s'\n", o->section, o->key,
+                        o->values[k].value, got);
+                bad++;
+            }
+        }
+    }
+    remove(in);
+    remove(out);
+    printf("game-options self-test: %d of %d values come back%s\n", (int)(checked - bad), (int)checked,
+           bad ? " -- FAILED" : "");
+    return bad ? 1 : 0;
 }

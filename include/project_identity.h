@@ -50,6 +50,17 @@
  * fork's own apps install beside OpenSWOS's. Read from here by the mobile build. */
 #define PROJECT_APP_ID          "com.swosunited.game"   /* (SWOS United's own, from swosunited.com: beside OpenSWOS's on a phone) */
 
+/* The phone apps' link scheme: OpenSWOS Setup's Wi-Fi copy opens the app with
+ * <scheme>://get?h=<address>&k=<key> (include/phone_copy.h). A fork's own, so a link opens its app.
+ * Lower case, letters only. */
+#define PROJECT_URL_SCHEME      "openswos"
+
+/* The project's public site (packaging/web/site): the Wi-Fi copy's QR code is
+ * https://<site>/get/#h=<address>&k=<key> -- a page any phone's camera opens without reaching the
+ * local network (Android 17 lets a browser reach it only with a permission), whose button opens
+ * the app; on Android it opens the app directly (an App Link: <site>/.well-known/assetlinks.json). */
+#define PROJECT_SITE            "openswos.net"
+
 /* SWOS 2020's online-menu entries for features this project will not have -- the log-in's NEWS,
  * MULTIPLAYER SETTINGS' commentary and chat rows, JOIN AMIGA SUPER LEAGUE, JOIN DISCORD, HELP
  * DESK (src/online_menus.c): 1 hides them, 0 keeps them for a fork that builds them. */

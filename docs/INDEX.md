@@ -210,7 +210,7 @@ referenced but do not exist on the owner's PC; they are on another machine, or g
 | `SWOS.svg` | the master icon (`scripts/generate_icons.py`) |
 | `docs/images/openswos-logo.png` | the OpenSWOS logo (README, the itch.io cover) |
 | `docs/images/screenshots/` | the README's screenshots (the same as the itch.io page's) |
-| `docs/images/setup/` | OpenSWOS Setup on Windows (start, found, done) for INSTALL.md: retaken with the setup's `--snapshot` from neutral copies of the sources (never the disk images' own names) and its default assets folder |
+| `docs/images/setup/` | OpenSWOS Setup's wizard on Windows, a screen each (`wizard-*.png`), for INSTALL.md and openswos.net/install (copied beside it): taken with `--wizard=... --wizard-step=N --snapshot`, `--language=en`, from neutral copies of the sources (`--scan`, `--no-gog`, Public Documents/Downloads: never the disk images' own names or a user's folders) |
 
 ## On the owner's PC
 
@@ -252,6 +252,7 @@ referenced but do not exist on the owner's PC; they are on another machine, or g
 | `https://online.openswos.net/playback/`, `/recordings/`, `/reports/`, `/cc/` | the recordings player, the recordings and reports, the admin page -- ALL behind the admin login (internal); `scripts/fetch_recordings.py` / `fetch_reports.py` send it and delete what they fetch |
 | `online.openswos.net:19602` (UDP, and TCP for the recorder and the `wss://` gate) | the matchmaker the game logs in to |
 | `https://openswos.net` | the public landing page (`packaging/web/site`): the logo, the itch.io link, and `/install/`, the web version of INSTALL.md (change both together) |
+| `https://openswos.net/get/` | the page the setup's Wi-Fi-copy QR code opens (`packaging/web/site/get`), with `/.well-known/assetlinks.json` making it an Android App Link -- copied to `/var/www/openswos.net/` by hand (docs/MOBILE.md, "Copying over Wi-Fi") |
 | `us.swos.eu` (Redhair's server, the default until 2026-10-20) | repo at `/home/redhair/git/OpenSWOS`; deployed to `/srv/swos-matchmaker/` (`bin/`, `recordings/`, `reports/`, `playback/`, `tls/`, `matches.jsonl`, `admin/`); systemd unit `swos-matchmaker`. Builds before the switch still log in here |
 | `https://baker76.itch.io/openswos` | where releases go (`scripts/upload_itch.sh`, butler; [TRIAGE.md](TRIAGE.md) §6), and the one link to give testers. Until 2026-10-20 drops went to baker76.com over FTP; nothing is published there any more |
 | GitHub `benbaker76/OpenSWOS`, `benbaker76/SWOS-RE`, `benbaker76/AmigaScope`, `benbaker76/ggpo-x`, `benbaker76/vscode-amiga-debug` | this repo, the RE project, the submodules, the required toolchain fork |

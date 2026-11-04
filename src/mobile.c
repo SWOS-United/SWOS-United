@@ -9,9 +9,9 @@
  * the app's internal storage on the first start, and again whenever the stamp changes (a new
  * version).
  *
- * The original game's data the player copies over themselves, from a PC: the assets folder
- * OpenSWOS Setup made, into the player's folder (swos_io.c: Android/data/<app id>/files, iOS's
- * Documents). Without it the game cannot start, and says where it goes.
+ * The original game's data comes from a PC or Mac: the assets folder OpenSWOS Setup made, in
+ * the player's folder (swos_io.c: Android/data/<app id>/files, iOS's Documents) -- copied over
+ * Wi-Fi from the setup (src/phone_fetch.c), or by hand. Without it the game cannot start.
  */
 #include <SDL.h>
 #include <stdio.h>
@@ -20,6 +20,12 @@
 #include <sys/stat.h>
 #include "project_identity.h"
 #include "swos_io.h"
+#include "platform_sdl.h"   /* Platform_ShowProgress */
+#include "swos_settings.h"
+#include "phone_fetch.h"
+#ifdef SWOS_ANDROID_BUILD
+#include <jni.h>
+#endif
 
 #ifdef SWOS_MOBILE_BUILD
 
@@ -177,9 +183,116 @@ const char *Mobile_DataDir(void)
 #endif
 }
 
-/* The original game's data: copied from a PC into the assets folder. Without it, where it goes,
- * and 0 (the game cannot start). */
-int Mobile_CheckGameData(void)
+#ifndef SWOS_ANDROID_BUILD
+static char s_dropped[512];     /* a setup link iOS handed over (platform_sdl.c's pump) */
+static int  s_playing;          /* the data check is done: the game has its data loaded */
+
+static int is_setup_link(const char *f)
+{
+    return f && (strncmp(f, PROJECT_URL_SCHEME "://", strlen(PROJECT_URL_SCHEME) + 3) == 0 ||
+                 strncmp(f, "https://" PROJECT_SITE "/get", strlen(PROJECT_SITE) + 12) == 0);
+}
+
+/* A file or URL iOS handed over: a setup link is kept for the start-up's check. While the game
+ * plays it cannot be taken (the data is loaded, and iOS gives an app no way to start itself
+ * again, as Android's RestartActivity does): it says how instead. */
+/* The app delegate's (packaging/ios/app_delegate.m): keeps a setup link while the game has not
+ * started, says nothing -- it is called inside the launch or the run loop, and the pump's
+ * SDL_DROPFILE comes to Mobile_LinkDropped after it for the rest. */
+void Mobile_LinkKept(const char *link)
+{
+    if (is_setup_link(link) && !s_playing)
+        snprintf(s_dropped, sizeof s_dropped, "%s", link);
+}
+
+void Mobile_LinkDropped(const char *link)
+{
+    if (!is_setup_link(link))
+        return;
+    if (!s_playing) {
+        snprintf(s_dropped, sizeof s_dropped, "%s", link);
+        return;
+    }
+    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, PROJECT_NAME,
+                             "To copy the game's data from " PROJECT_SETUP_NAME ", close " PROJECT_NAME
+                             " (swipe it away), then open the link again.", NULL);
+}
+#endif
+
+/* A link from OpenSWOS Setup's Wi-Fi copy (include/phone_copy.h) that opened the app, into
+ * `out`: Android keeps the intent's (OpenSWOSActivity.takeLink, at the start and on a new one),
+ * iOS hands it over as a dropped "file" (SDL's openURL). 1 when there was one. */
+static int pending_link(char *out, size_t cap)
+{
+    out[0] = 0;
+#ifdef SWOS_ANDROID_BUILD
+    JNIEnv *env = (JNIEnv *)SDL_AndroidGetJNIEnv();
+    jobject act = (jobject)SDL_AndroidGetActivity();
+    if (env && act) {
+        jclass cls = (*env)->GetObjectClass(env, act);
+        jmethodID m = (*env)->GetStaticMethodID(env, cls, "takeLink", "()Ljava/lang/String;");
+        if (m) {
+            jstring js = (jstring)(*env)->CallStaticObjectMethod(env, cls, m);
+            if (js) {
+                const char *c = (*env)->GetStringUTFChars(env, js, NULL);
+                if (c) {
+                    snprintf(out, cap, "%s", c);
+                    (*env)->ReleaseStringUTFChars(env, js, c);
+                }
+                (*env)->DeleteLocalRef(env, js);
+            }
+        }
+        if ((*env)->ExceptionCheck(env))
+            (*env)->ExceptionClear(env);
+        (*env)->DeleteLocalRef(env, cls);
+        (*env)->DeleteLocalRef(env, act);
+    }
+#else
+    if (s_dropped[0]) {                             /* (one the platform's pump kept) */
+        snprintf(out, cap, "%s", s_dropped);
+        s_dropped[0] = 0;
+        return 1;
+    }
+    SDL_Event e;
+    for (int i = 0; i < 20 && !out[0]; i++) {       /* (the run loop delivers openURL) */
+        SDL_PumpEvents();
+        while (SDL_PeepEvents(&e, 1, SDL_GETEVENT, SDL_DROPFILE, SDL_DROPFILE) > 0) {
+            if (e.drop.file && !out[0] && (strncmp(e.drop.file, PROJECT_URL_SCHEME "://", strlen(PROJECT_URL_SCHEME) + 3) == 0 ||
+                                           strncmp(e.drop.file, "https://" PROJECT_SITE "/get", strlen(PROJECT_SITE) + 12) == 0))
+                snprintf(out, cap, "%s", e.drop.file);
+            SDL_free(e.drop.file);
+        }
+        if (!out[0])
+            SDL_Delay(15);
+    }
+#endif
+    return out[0] != 0;
+}
+
+/* The game has its data and plays: a link from now on restarts the app (OpenSWOSActivity). */
+static void playing(void)
+{
+#ifndef SWOS_ANDROID_BUILD
+    s_playing = 1;
+#endif
+#ifdef SWOS_ANDROID_BUILD
+    JNIEnv *env = (JNIEnv *)SDL_AndroidGetJNIEnv();
+    jobject act = (jobject)SDL_AndroidGetActivity();
+    if (!env || !act)
+        return;
+    jclass cls = (*env)->GetObjectClass(env, act);
+    jmethodID m = (*env)->GetStaticMethodID(env, cls, "gamePlaying", "()V");
+    if (m)
+        (*env)->CallStaticVoidMethod(env, cls, m);
+    if ((*env)->ExceptionCheck(env))
+        (*env)->ExceptionClear(env);
+    (*env)->DeleteLocalRef(env, cls);
+    (*env)->DeleteLocalRef(env, act);
+#endif
+}
+
+
+static int have_game_data(void)
 {
     const char *assets = swos_assets_dir();
     char probe[1280];
@@ -188,24 +301,85 @@ int Mobile_CheckGameData(void)
     if (stat(probe, &st) == 0)
         return 1;
     snprintf(probe, sizeof probe, "%s/data", assets);   /* (an older setup's: no ASSETS.ini) */
-    if (stat(probe, &st) == 0 && S_ISDIR(st.st_mode))
-        return 1;
-    fprintf(stderr, "[mobile] no game data in %s\n", assets);
-    char msg[1600];
-    snprintf(msg, sizeof msg,
-             PROJECT_NAME " needs the original game's data, made from your own copy of the game "
-             "by " PROJECT_SETUP_NAME " on a PC or Mac.\n\n"
+    return stat(probe, &st) == 0 && S_ISDIR(st.st_mode);
+}
+
+static int ask(const char *title, const char *msg, const char *yes, const char *no)
+{
+    const SDL_MessageBoxButtonData buttons[] = {
+        { SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT, 0, no },
+        { SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 1, yes },
+    };
+    const SDL_MessageBoxData box = { SDL_MESSAGEBOX_INFORMATION, NULL, title, msg, no ? 2 : 1, no ? buttons : buttons + 1, NULL };
+    int hit = 0;
+    if (SDL_ShowMessageBox(&box, &hit) != 0)
+        return 0;
+    return hit == 1;
+}
+
+/* The copy from a setup, with the bar; the player's SWOS.ini read again for the options it
+ * brought. 1 when it worked. */
+static int copy_from(const PhoneFetchSetup *from, PlatformInitOptions *opts, const char *iniPath)
+{
+    char err[600];
+    Platform_ShowProgress(0);
+    const int ok = PhoneFetch_Copy(from, swos_assets_dir(), iniPath, Platform_ShowProgress, err, sizeof err);
+    if (ok) {
+        Settings_Load(opts, iniPath);
+        ask(PROJECT_NAME, "The game's data is copied. Have fun!", "Play", NULL);
+    } else
+        ask(PROJECT_NAME ": the copy did not work", err, "OK", NULL);
+    return ok;
+}
+
+/* The original game's data: made by OpenSWOS Setup on a PC or Mac and copied over -- over
+ * Wi-Fi from the setup (src/phone_fetch.c), or by hand into the assets folder. A link from the
+ * setup copies it (again, when there is data already). Without data, how to get it, until there
+ * is some or the player gives up: 0, the game cannot start. */
+int Mobile_CheckGameData(PlatformInitOptions *opts, const char *iniPath)
+{
+    char link[512];
+    PhoneFetchSetup from;
+    PhoneFetch_Tidy(swos_assets_dir());
+    if (pending_link(link, sizeof link)) {
+        fprintf(stderr, "[mobile] opened by %s\n", link);
+        if (!PhoneFetch_ParseLink(link, &from))
+            ask(PROJECT_NAME, "That link is not one from " PROJECT_SETUP_NAME ". Scan its QR code again.", "OK", NULL);
+        else if (!have_game_data() || strstr(link, "&ok=1") ||    /* (asked before the restart) */
+                 ask(PROJECT_NAME, "Copy the game's data from " PROJECT_SETUP_NAME " again? It replaces the data on this phone.",
+                     "Copy", "Not now"))
+            copy_from(&from, opts, iniPath);
+    }
+    while (!have_game_data()) {
+        fprintf(stderr, "[mobile] no game data in %s\n", swos_assets_dir());
+        /* (Short: a phone's dialog in landscape does not scroll, and its buttons go first.) */
+        const char *msg =
+            "The game's data comes from " PROJECT_SETUP_NAME " on your PC or Mac. Run it to its "
+            "phone screen, then scan its QR code with the camera"
 #ifdef SWOS_ANDROID_BUILD
-             "Run " PROJECT_SETUP_NAME ", then connect this phone to the computer by USB and copy "
-             "the setup's \"assets\" folder into:\n\nAndroid/data/" PROJECT_APP_ID "/files\n\n"
+            ", or tap Copy from my computer (on the same Wi-Fi)."
 #else
-             "Run " PROJECT_SETUP_NAME ", then copy the setup's \"assets\" folder into this app's "
-             "folder: in the Files app, On My iPhone > " PROJECT_NAME " (or from a Mac, in "
-             "Finder's view of the phone, Files > " PROJECT_NAME ").\n\n"
+            "."
 #endif
-             "Then start " PROJECT_NAME " again.\n\n(%s)", assets);
-    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, PROJECT_NAME ": copy your game data", msg, NULL);
-    return 0;
+            ;
+        if (!ask(PROJECT_NAME, msg, "Copy from my computer", "Close"))
+            return 0;
+        if (pending_link(link, sizeof link) && PhoneFetch_ParseLink(link, &from)) {
+            copy_from(&from, opts, iniPath);
+            continue;
+        }
+        Platform_ShowProgress(0);
+        if (PhoneFetch_Find(&from, 3000)) {
+            char q[300];
+            snprintf(q, sizeof q, "Copy the game's data from %s?", from.name);
+            if (ask(PROJECT_NAME, q, "Copy", "Cancel"))
+                copy_from(&from, opts, iniPath);
+        } else
+            ask(PROJECT_NAME, "No " PROJECT_SETUP_NAME " answered on this Wi-Fi. Open it on its phone screen "
+                "and scan its QR code with this phone's camera.", "OK", NULL);
+    }
+    playing();
+    return 1;
 }
 
 /* A text field is open (input_text.c): the system's keyboard, or not. */

@@ -25,6 +25,8 @@ string(REGEX MATCH "#define PROJECT_APP_ID +\"([^\"]+)\"" _ "${IDENTITY}")
 set(APP_ID ${CMAKE_MATCH_1})
 string(REGEX MATCH "#define PROJECT_NAME +\"([^\"]+)\"" _ "${IDENTITY}")
 set(APP_NAME ${CMAKE_MATCH_1})
+string(REGEX MATCH "#define PROJECT_URL_SCHEME +\"([^\"]+)\"" _ "${IDENTITY}")
+set(SWOS_URL_SCHEME ${CMAKE_MATCH_1})          # (packaging/ios/Info.plist.in: the setup's link)
 
 # ---- SDL2 ----
 include(FetchContent)
@@ -42,10 +44,13 @@ FetchContent_Declare(SDL2
 FetchContent_MakeAvailable(SDL2)
 
 # ---- the game: the Makefile's SDL build ----
-file(GLOB GAME_SOURCES ${REPO}/src/*.c ${REPO}/src/generated/*.c)
+# CONFIGURE_DEPENDS: the glob is checked again at every build. Without it a source added to
+# src/ after the first configure was never compiled into a build tree that already existed
+# (Gradle keeps its .cxx): the APK of 4708b6ab failed to link, CalLabel_Fit undefined.
+file(GLOB GAME_SOURCES CONFIGURE_DEPENDS ${REPO}/src/*.c ${REPO}/src/generated/*.c)
 
 set(GGPO_DIR ${REPO}/third_party/ggpo-x/src)
-file(GLOB GGPO_SOURCES ${GGPO_DIR}/lib/ggpo/*.cpp ${GGPO_DIR}/lib/ggpo/network/*.cpp
+file(GLOB GGPO_SOURCES CONFIGURE_DEPENDS ${GGPO_DIR}/lib/ggpo/*.cpp ${GGPO_DIR}/lib/ggpo/network/*.cpp
                        ${GGPO_DIR}/lib/ggpo/backends/*.cpp)
 list(FILTER GGPO_SOURCES EXCLUDE REGEX "platform_windows\\.cpp$")
 set(ENET_DIR ${REPO}/third_party/enet)
@@ -97,7 +102,7 @@ else()
     execute_process(COMMAND git rev-list --count HEAD WORKING_DIRECTORY ${REPO}
                     OUTPUT_VARIABLE APP_BUILD OUTPUT_STRIP_TRAILING_WHITESPACE)
     file(GLOB IOS_ICONS ${REPO}/packaging/ios/icons/*.png)
-    target_sources(${GAME} PRIVATE ${IOS_ICONS})
+    target_sources(${GAME} PRIVATE ${IOS_ICONS} ${REPO}/packaging/ios/app_delegate.m)
     set_source_files_properties(${IOS_ICONS} PROPERTIES MACOSX_PACKAGE_LOCATION .)
     set_target_properties(${GAME} PROPERTIES
         MACOSX_BUNDLE_INFO_PLIST ${REPO}/packaging/ios/Info.plist.in

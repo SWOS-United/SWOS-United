@@ -412,6 +412,14 @@ static int           s_frame_count;
  * hardware (D3D / GL / Metal) contexts are thread-bound. */
 static int           s_renderer_is_hw;
 static int           s_vsync_enabled;
+/* SWOS_FRAME_SKIP=1: for a screen that holds every present to its own refresh, whatever
+ * vsync says (the PortMaster handhelds' 60 Hz panels). DOS gameplay paces at 70 Hz, so
+ * there the presents held the whole game to 60 and it played 14% slow. A frame that
+ * starts past its deadline runs in full and only isn't shown, so the match keeps its
+ * rate, never two in a row. Nothing here touches the simulation. */
+static int           s_frame_skip;
+static int           s_frame_skip_now;   /* this frame is not shown */
+static int           s_frames_skipped;   /* for SWOS_PRESENT_STATS */
 
 /* Harness TURBO (env SWOS_HARNESS_TURBO, read once in Platform_Init): when
  * set, the inferior runs frames CPU-bound instead of paced to a 50 Hz wall
@@ -1100,6 +1108,7 @@ int Platform_Init(const PlatformInitOptions *opts)
         }
     }
     s_present_stats = (getenv("SWOS_PRESENT_STATS") != NULL);
+    s_frame_skip    = (getenv("SWOS_FRAME_SKIP") != NULL);
     {
         const char *pc = getenv("SWOS_PRESENT_CAPTURE");
         const char *from = getenv("SWOS_PRESENT_CAPTURE_FROM");
@@ -1627,6 +1636,15 @@ static void pump_events_any_thread(void)
     SDL_Event ev;
     while (SDL_PollEvent(&ev)) {
         switch (ev.type) {
+        case SDL_DROPFILE:
+#ifdef SWOS_IOS_BUILD
+            /* iOS hands a URL the app was opened with (OpenSWOS Setup's Wi-Fi copy) over as a
+             * dropped file, whenever its run loop gets to it -- often before the start-up's
+             * data check looks: kept here, or this pump threw it away (src/mobile.c). */
+            { extern void Mobile_LinkDropped(const char *link); Mobile_LinkDropped(ev.drop.file); }
+#endif
+            SDL_free(ev.drop.file);
+            break;
         case SDL_QUIT:
             Platform_RequestQuit();
             /* Hide the window immediately so the main-menu unwind
@@ -2115,6 +2133,7 @@ static void render_frame_impl(int pump_full)
 #endif
 
     if (!s_renderer || !s_textures[0]) return;
+    if (pump_full && s_frame_skip_now) return;
 
     SDL_LockMutex(s_render_mtx);
 
@@ -2373,10 +2392,22 @@ static void present_interval_stats(void)
                             "(%d Hz): %d long (>1.5x), %d short (<0.5x) of %d\n",
                     (double)s_sum / s_n * ms, (double)s_min * ms, (double)s_max * ms,
                     period * ms, Platform_ActivePacingFps(), s_long, s_short, s_n);
+            if (s_frame_skip)
+                fprintf(stderr, "[present] frame skip: %d of %d not shown\n",
+                        s_frames_skipped, s_n);
+            s_frames_skipped = 0;
             s_sum = s_max = 0; s_n = s_long = s_short = 0;
         }
     }
     s_last = now;
+}
+
+/* Has this frame already missed its deadline? s_next_frame_perf is still the last
+ * frame's, so the frame's own is one period on. */
+static int frame_is_late(void)
+{
+    Uint64 period = (Uint64)s_perf_freq / (Uint64)Platform_ActivePacingFps();
+    return s_next_frame_perf && SDL_GetPerformanceCounter() > s_next_frame_perf + period;
 }
 
 int Platform_Present(void)
@@ -2391,6 +2422,8 @@ int Platform_Present(void)
     key_script_tick();
     if (s_present_stats)
         present_interval_stats();
+    s_frame_skip_now = s_frame_skip && !s_frame_skip_now && frame_is_late();
+    s_frames_skipped += s_frame_skip_now;
     Platform_RenderFrame();
 
 #ifdef SWOS_WASM_BUILD
@@ -2489,6 +2522,7 @@ int Platform_Present(void)
     if (s_vsync_enabled && s_display_hz > 0 &&
         s_display_hz == Platform_ActivePacingFps()) {
         s_next_frame_perf = SDL_GetPerformanceCounter();
+        pump_events_any_thread();       /* (after the present's own wait: see below) */
         return _quitToDos ? 1 : 0;
     }
 
@@ -2500,7 +2534,8 @@ int Platform_Present(void)
 
     {
     const Sint64 frame_perf = (Sint64)((double)s_perf_freq * k_frame_secs);
-    if ((Sint64)(now - s_next_frame_perf) > frame_perf * s_catchup_frames) {
+    /* Skipping is how the frames catch up, so they must be allowed to fall behind. */
+    if ((Sint64)(now - s_next_frame_perf) > frame_perf * (s_frame_skip ? 3 : s_catchup_frames)) {
         /* Further behind than we catch up on (s_catchup_frames: one frame) — drop the
          * rest, and run what is left back to back. */
         s_next_frame_perf = now - (Uint64)(frame_perf * (s_catchup_frames - 1));
@@ -2521,10 +2556,42 @@ int Platform_Present(void)
     }
     }
 
+    /* The controls read as late as they can be: the frame's own pump ran before the
+     * present and the wait above (most of the 20 ms), so a press during the wait was
+     * seen only after the NEXT frame -- a frame of input lag the Amiga never had: it reads
+     * the joystick's register (JOY0DAT/JOY1DAT, Player1/2StatusProc) when the frame runs,
+     * after its VBlank wait, so a frame sees the stick as it is then (ReportBot 0051:
+     * ~40 ms more than a plain SDL game, by a 240 fps camera). Pumped again here, the
+     * frame about to run reads what was pressed up to now. */
+    pump_events_any_thread();
     return _quitToDos ? 1 : 0;
 }
 
 Uint64 Platform_NowMs(void)
 {
     return SDL_GetTicks64();
+}
+
+/* A bar across the screen, `permille`/1000 full: the phones' Wi-Fi copy of the game's data
+ * (src/mobile.c, src/phone_fetch.c), drawn before there are any of the game's graphics. */
+void Platform_ShowProgress(int permille)
+{
+    if (!s_renderer)
+        return;
+    SDL_PumpEvents();
+    int w = 0, h = 0;
+    SDL_RenderGetLogicalSize(s_renderer, &w, &h);
+    if (w <= 0 || h <= 0)
+        SDL_GetRendererOutputSize(s_renderer, &w, &h);
+    SDL_SetRenderTarget(s_renderer, NULL);
+    SDL_SetRenderDrawColor(s_renderer, 13, 17, 23, 255);
+    SDL_RenderClear(s_renderer);
+    SDL_Rect frame = { w / 8, h / 2 - h / 32, w * 3 / 4, h / 16 };
+    if (frame.h < 4) frame.h = 4;
+    SDL_SetRenderDrawColor(s_renderer, 48, 54, 61, 255);
+    SDL_RenderFillRect(s_renderer, &frame);
+    SDL_Rect bar = { frame.x, frame.y, (int)((int64_t)frame.w * (permille < 0 ? 0 : permille > 1000 ? 1000 : permille) / 1000), frame.h };
+    SDL_SetRenderDrawColor(s_renderer, 59, 130, 246, 255);
+    SDL_RenderFillRect(s_renderer, &bar);
+    SDL_RenderPresent(s_renderer);
 }
