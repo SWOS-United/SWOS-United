@@ -198,6 +198,12 @@ static int handler(void *user, const char *section,
             snprintf(opts->netplay_name, sizeof opts->netplay_name, "%s", value);
         else if (eqi(name, "account_site"))
             snprintf(opts->account_site, sizeof opts->account_site, "%s", value);
+        else if (eqi(name, "discord")) {
+            int b;
+            if (parse_bool(value, &b))
+                opts->discord = b;
+        } else if (eqi(name, "discord_webhook"))
+            snprintf(opts->discord_webhook, sizeof opts->discord_webhook, "%s", value);
         else if (eqi(name, "remember_login")) {
             int b;
             if (parse_bool(value, &b))
@@ -531,6 +537,15 @@ static int settings_build(const PlatformInitOptions *opts, IniEntry *items, char
         "; use: sensiblesoccer.de (the default), or SWOS United's own, swos.swosunited.com.\n"
         "; Ranked and league results go to sensiblesoccer.de either way, for now.",
         opts->account_site[0] ? opts->account_site : "sensiblesoccer" };
+    SETTING(n) = (IniEntry){ "netplay", "discord",
+        "; discord: true | false -- post your online matches to SWOS 2020's Discord, as SWOS 2020\n"
+        "; does: LIVE TICKERS (goals, cards, ... as they happen) and LIVE SCORE BOARDS (the stats).\n"
+        "; The game that opened the match posts them.",
+        opts->discord ? "true" : "false" };
+    SETTING(n) = (IniEntry){ "netplay", "discord_webhook",
+        "; discord_webhook: for testing -- a Discord webhook that takes EVERY post instead (each\n"
+        "; marked with the channel it is for). Empty: the real channels.",
+        opts->discord_webhook };
 #endif
     SETTING(n) = (IniEntry){ "netplay", "remember_login",
         "; remember_login: true | false -- the login screen's REMEMBER LOGIN INFO switch.",

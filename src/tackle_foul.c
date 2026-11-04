@@ -6,6 +6,7 @@
 #include "tackle_foul.h"
 #include "test_rules.h"
 #include "dos_sound.h"
+#include "live_ticker.h"   /* an online match's injuries, for Discord */
 #include "contest_log.h"    /* how long a slide leaves a player down (ContestLog_Down) */
 
 extern int16_t  _gsPlayerDownTimer;   /* Amiga 50 / DOS 55 — dos_gameplay.c */
@@ -260,6 +261,7 @@ PlayerTackled(Sprite *player, TeamGeneralInfo *team)
 apply_injury:
     pi->isInjured = 1;
     DOS_SOUND(DOS_EV_INJURY, team->playerNumber != 0);
+    LIVE_TICKER(LIVE_TICKER_INJURY, team->teamNumber, pi->shortName, 0, severity >> 5);
 
     /* Only upgrade injury severity, never downgrade */
     if ((uint8_t)severity > (uint8_t)pi->injuriesBitfield) {

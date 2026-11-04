@@ -972,6 +972,13 @@ const char *Account_MatchText(void)
     return "(NO MATCH SELECTED)";                     /* (SWOS 2020's words) */
 }
 
+const char *Account_MatchTournament(void)
+{
+    const LobbyRules *rules = NetplayLobby_Rules();
+    const OpenLeg *l = rules->mode == LOBBY_MODE_LEAGUE && rules->legId ? leg_by_id(rules->legId) : NULL;
+    return l && l->tournament[0] ? l->tournament : 0;
+}
+
 /* This leg's result has been taken -- or is on its way: queued or being sent (a rematch can end
  * before the last report has gone). */
 static int32_t done(uint32_t legId)
@@ -1432,6 +1439,7 @@ int32_t     Account_PlayerInfo(const char *name, char *country, uint32_t cap, in
 int32_t     Account_CupLocked(void)             { return 0; }
 int32_t     Account_LobbyCanStart(void)         { return 1; }
 const char *Account_MatchText(void)             { return 0; }
+const char *Account_MatchTournament(void)       { return 0; }
 void        Account_SelectMatch(void)           {}
 void        Account_MatchPlayed(const AccountResult *result) { (void)result; }
 void        UnitedMatches_Register(void)        {}

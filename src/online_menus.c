@@ -21,6 +21,7 @@
 #include "test_rules.h"
 #include "online_menus.h"
 #include "dos_mode.h"           /* the gameplay style: OPEN asks it, the lobby shows it */
+#include "live_ticker.h"        /* the match on Discord: LIVE TICKERS, LIVE SCORE BOARDS */
 #include "project_identity.h"  /* PROJECT_HIDE_SWOS2020_EXTRAS */
 #include "mm_client.h"         /* the matchmaking server (docs/NETPLAY.md section 7) */
 #include "p2p_menu.h"
@@ -3008,6 +3009,57 @@ static void tell_service(int32_t completed)
     Account_MatchPlayed(&r);
 }
 
+/* Who plays whom, for Discord (include/live_ticker.h): at kick-off, the match's rules in force. */
+static void ticker_begin(void)
+{
+    const LobbyRules *rules = NetplayLobby_Rules();
+    const char *tag = World_Tag();
+    const char *tour = Account_MatchTournament();
+    LiveTickerMatch m;
+    int32_t p;
+
+    memset(&m, 0, sizeof m);
+    for (p = 0; p < 2; p++) {
+        const LobbyPlayer *lp = NetplayLobby_Player(p + 1);
+        char country[40] = "", tactic[24];
+        int32_t srn, i, o = 0;
+        if (!lp)
+            continue;
+        snprintf(m.name[p], sizeof m.name[p], "%s", lp->name);
+        for (i = 0; i < 17 && lp->team.team.teamName[i] && o + 1 < (int32_t)sizeof m.team[p]; i++)
+            if (o || lp->team.team.teamName[i] != ' ')
+                m.team[p][o++] = (char)lp->team.team.teamName[i];
+        m.team[p][o] = 0;
+        snprintf(m.tactic[p], sizeof m.tactic[p], "%s", tactic_name(lp, tactic, sizeof tactic));
+        if (Account_PlayerInfo(lp->name, country, sizeof country, &srn)) {
+            const char *iso2 = country_iso2(country);
+            if (iso2) {
+                snprintf(m.country[p], sizeof m.country[p], "%s", iso2);
+                for (i = 0; i < (int32_t)(sizeof k_countryNames / sizeof k_countryNames[0]); i++)
+                    if (strcmp(k_countryNames[i][1], iso2) == 0) {
+                        snprintf(m.location[p], sizeof m.location[p], "%s", k_countryNames[i][0]);
+                        break;
+                    }
+                if (!m.location[p][0] && strncmp(iso2, "GB-", 3) == 0)
+                    snprintf(m.location[p], sizeof m.location[p], "%s",
+                             iso2[3] == 'E' ? "ENGLAND" : iso2[3] == 'S' ? "SCOTLAND" : iso2[3] == 'W' ? "WALES"
+                                                                                         : "NORTHERN IRELAND");
+            }
+        }
+    }
+    m.mode = rules->mode;
+    snprintf(m.tournament, sizeof m.tournament, "%s", tour ? tour : "");
+    m.style = _gGameplayStyle;
+    snprintf(m.teamDb, sizeof m.teamDb, "%.2s/%.2s", tag, strlen(tag) >= 4 ? tag + 2 : "");
+    m.legs = rules->legs;
+    m.leg = rules->leg;
+    m.firstLeg1 = rules->firstLeg1;
+    m.firstLeg2 = rules->firstLeg2;
+    m.host = NetplayLobby_IsHost();
+    m.localPlayer = NetplayLobby_LocalPlayer();
+    LiveTicker_Begin(&m);
+}
+
 static void run_live_match(void)
 {
     extern TeamFileEx  _selectedTeams[SELECTED_TEAMS_MAX];
@@ -3037,6 +3089,7 @@ static void run_live_match(void)
 
     snprintf(s_matchStatus, sizeof s_matchStatus, "PLAYING");
     _gFrameStepInput = 1;               /* one frame of input at a time (game_loop.h) */
+    ticker_begin();
     InitAndPlayGame(&_selectedTeams[0], &_selectedTeams[1]);
     s_lobbyMatches++;
 
@@ -3057,6 +3110,7 @@ static void run_live_match(void)
                      (unsigned)_statsTeam1Goals, (unsigned)_statsTeam2Goals);
         else
             snprintf(notice, sizeof notice, "FULL TIME - PRESS GO FOR A REMATCH");
+        LiveTicker_End(!s_matchEndedEarly, why);    /* (Discord: how it ended, the stats) */
         tell_service(!s_matchEndedEarly);       /* (before the rules move on: the leg it was) */
         /* A two-leg tie moves on (the host's rules; the joiner hears of it). */
         NetplayLobby_MatchPlayed(!s_matchEndedEarly, _statsTeam1Goals, _statsTeam2Goals);

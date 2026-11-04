@@ -141,6 +141,8 @@ typedef struct {
                                               * screen, kept while REMEMBER LOGIN INFO is on */
     int                    netplay_remember; /* [netplay] remember_login: that switch (default on) */
     char                   account_site[24]; /* [netplay] account_site: sensiblesoccer | swosunited (SWOS United) */
+    int                    discord;          /* [netplay] discord: post online matches to Discord (live_ticker.h) */
+    char                   discord_webhook[256]; /* [netplay] discord_webhook: a test channel's webhook, for every post */
     char                   record[80];       /* [netplay] record: stream every live match to a
                                               * recorder -- "server" (the matchmaker), "host[:port]",
                                               * or empty/"off". include/match_record.h */
