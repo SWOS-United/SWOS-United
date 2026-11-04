@@ -1,6 +1,11 @@
 /*
  * united_api.c -- SWOS United's side of sensiblesoccer.de (include/united_api.h).
  */
+/* SDL builds only: the accounts, the rankings and the leagues are SWOS United's online play,
+ * which the Amiga build does not have (its online menus are SDL-only too: Makefile.amiga
+ * SDL_ONLY_SRCS). Guarded here, in United's own file, so no shared file changes. */
+#ifdef SWOS_SDL_BUILD
+
 #include "united_api.h"
 #include "project_identity.h"
 #include "mjson.h"
@@ -330,3 +335,5 @@ __attribute__((constructor)) static void united_https_test(void)
     exit(r.status == 200 ? 0 : 1);
 }
 #endif
+
+#endif /* SWOS_SDL_BUILD */

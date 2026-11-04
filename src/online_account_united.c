@@ -11,6 +11,11 @@
  * same as sensiblesoccer.de's, so ranked and league results still go there. The key is kept in
  * memory for this session; each log-in makes a new one and ends the last.
  */
+/* SDL builds only: the accounts, the rankings and the leagues are SWOS United's online play,
+ * which the Amiga build does not have (its online menus are SDL-only too: Makefile.amiga
+ * SDL_ONLY_SRCS). Guarded here, in United's own file, so no shared file changes. */
+#ifdef SWOS_SDL_BUILD
+
 #include "online_account.h"
 #include "project_identity.h"
 #include "united_api.h"
@@ -211,3 +216,5 @@ static void test_login(void) {}
 #endif
 
 #endif /* PROJECT_ACCOUNTS */
+
+#endif /* SWOS_SDL_BUILD */
