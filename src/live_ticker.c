@@ -420,8 +420,10 @@ void LiveTicker_FrameBegin(int32_t frame)
             add(text, 0);
         }
         {
-            static const int16_t marks[3] = { 90, 105, 120 };
-            for (i = 0; i < 3; i++)
+            /* 105 only: at 90 and 120 the match is over, or goes on to extra time or the shoot-out,
+             * which say so ("Match is over!", the shoot-out's line) */
+            static const int16_t marks[1] = { 105 };
+            for (i = 0; i < 1; i++)
                 if (prev->minute < marks[i] && now.minute >= marks[i]) {
                     snprintf(text, sizeof text, ":hourglass: *(%d mins.)* %s **%d - %d**", marks[i], vs(),
                              goals(1), goals(2));

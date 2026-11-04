@@ -2089,7 +2089,7 @@ static void location_AfterDraw(MenuEntry *e)
 {
     const int32_t r = lobby_row_of(e, MpGameSetupMenu_location_01);
     if (r >= 0 && s_locFlag[r] >= 0)
-        draw_flag(s_locFlag[r], e->x + 4, e->y + (e->dwHeight - kFlagH) / 2);
+        draw_flag(s_locFlag[r], e->x + 3, e->y + (e->dwHeight - kFlagH) / 2);
     if (r == 1)
         lobby_kits(0, e->x + 2, e->y + e->dwHeight + 2);
 }
@@ -2106,8 +2106,8 @@ static void go_AfterDraw(MenuEntry *e)
 {
     const int32_t r = lobby_row_of(e, MpGameSetupMenu_go_01);
     if (r >= 0 && s_goState[r] >= 0)
-        put_map(k_checkSymbols, 13, 12 * (s_goState[r] ? 2 : 3), 12, e->x + e->dwWidth / 2 - 6,
-                e->y + e->dwHeight / 2 - 4);            /* (as the stars) */
+        put_map(k_checkSymbols, 13, 12 * (s_goState[r] ? 2 : 3), 12, e->x + (e->dwWidth - 7) / 2,
+                e->y + e->dwHeight / 2 - 4);            /* (as the stars; the tick and cross are 7 wide) */
     if (r == 1)
         lobby_kits(1, e->x + e->dwWidth - 15 - 16 - 1, e->y + e->dwHeight + 2);
 }
@@ -2134,6 +2134,17 @@ static void lobby2020_layout(void)
         entry_at(MpGameSetupMenu_location_00 + i)->isDisabled = 1;
     }
     set_entry(MpGameSetupMenu_location_00, "LOC.", 0, kGray);       /* (SWOS 2020 since its flags) */
+    /* LOC. 4 wider (room between the flag and the country), GO 4 narrower; the columns between
+     * them move along. From LOC.'s own x, so every draw puts them in the same place. */
+    for (i = 0; i < 3; i++) {
+        const int32_t L = entry_at(MpGameSetupMenu_location_00 + i)->x;
+        entry_at(MpGameSetupMenu_location_00 + i)->dwWidth = 30 + 4;
+        entry_at(MpGameSetupMenu_cPlayers_00 + i)->x = (uint16_t)(L + 32 + 4);
+        entry_at(MpGameSetupMenu_teams_00 + i)->x    = (uint16_t)(L + 140 + 4);
+        entry_at(MpGameSetupMenu_tactics_00 + i)->x  = (uint16_t)(L + 238 + 4);
+        entry_at(MpGameSetupMenu_go_00 + i)->x       = (uint16_t)(L + 284 + 4);
+        entry_at(MpGameSetupMenu_go_00 + i)->dwWidth = 36 - 4;
+    }
     snprintf(s_teamDb1, sizeof s_teamDb1, "%.2s/%.2s", tag, strlen(tag) >= 4 ? tag + 2 : "");
     snprintf(s_teamDb, sizeof s_teamDb, "TEAM DB: %s", s_teamDb1);
     set_visible(MpGameSetupMenu_teamDB, 1);

@@ -439,19 +439,6 @@ static void send_state(void)
         s_lobby.dirty = 0;
 }
 
-/* The other player's side is what they will play; ours stops being "agreed" when it
- * changes in any way that matters to the match. */
-static int32_t side_differs(const LobbyPlayer *a, const LobbyPlayer *b)
-{
-    if (a->hasTeam != b->hasTeam || a->tactic != b->tactic || a->extraDelay != b->extraDelay)
-        return 1;
-    if (a->hasTeam && memcmp(&a->team, &b->team, sizeof a->team) != 0)
-        return 1;
-    if (a->tactic >= TACTIC_USER_A && memcmp(&a->userTactic, &b->userTactic, TACTIC_BYTES) != 0)
-        return 1;
-    return 0;
-}
-
 static void team_check(void);      /* the matchmaking server's word on both teams */
 static int32_t team_blocks(const LobbyPlayer *p);
 
@@ -520,8 +507,9 @@ static void read_peer_state(void)
         got.refused = 1;
     }
 
-    if (theirs()->known && side_differs(theirs(), &got))
-        drop_my_ready();
+    /* (A change on the other side leaves this player's GO as it is -- SWOS 2020's: a confirmed line-up
+     * stays confirmed. Safe: the other player's own GO goes down with any change to their side, in
+     * the same state, so a match starts only on a side both games have.) */
     got.verified = theirs()->verified;      /* the server's word stands until the team changes (team_check) */
     *theirs() = got;
     if (!s_lobby.peerAnnounced && got.name[0]) {
