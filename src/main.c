@@ -36,6 +36,8 @@
 #include "swos_settings.h"
 #include "assets_check.h"
 #include "swos_io.h"            /* swos_save_dir_init() — macOS-writable save dir */
+#include "mods.h"               /* Mods_Init: the enabled mods, before any data */
+#include "tweaks.h"             /* Tweaks_Set: [tweaks] */
 #include "save_format_json.h"   /* DataJson_SelfTest */
 #include "dos_mode.h"   /* gDosGraphics/gDosGameplay — defined in dos_graphics.c */
 #include "touch_controls.h"   /* TouchControls_SetMode: [input] touch_controls */
@@ -445,6 +447,10 @@ int Video_ApplyDisplayChange(void)
     Platform_ViewChanged();
     return 1;
 }
+
+/* --mods=a,b: the mods for this run, over SWOS.ini (include/mods.h); never saved. */
+static char s_modsArg[256];          /* --mods=, for this run only */
+static int  s_modsArgSet;
 
 int main(int argc, char **argv)
 {
@@ -953,6 +959,10 @@ int main(int argc, char **argv)
                 fprintf(stderr, "Invalid --replay-max-errors value '%s' (expected >= 1)\n", v);
                 return 1;
             }
+        } else if ((v = match_kv(a, "mods")) != NULL) {
+            /* The mods for this run, over SWOS.ini's [mods] enabled (include/mods.h); not saved. */
+            snprintf(s_modsArg, sizeof s_modsArg, "%s", v);
+            s_modsArgSet = 1;
         } else if ((v = match_kv(a, "world")) != NULL) {
             /* The football world for this run, over SWOS.ini's (include/world.h). */
             if (World_FromTag(v) < 0) {
@@ -1299,6 +1309,18 @@ int main(int argc, char **argv)
      * answer "which build is this?" on its own. */
     fprintf(stderr, "[build] %s\n", Build_Version());
 
+    /* The mods (include/mods.h): --mods, else SWOS_MODS_ENABLED, else SWOS.ini's [mods] enabled.
+     * Before anything reads the game's data -- translations included, which a mod may carry. */
+    {
+        const char *env = getenv("SWOS_MODS_ENABLED");
+        Mods_Init(s_modsArgSet ? s_modsArg : env ? env : opts.mods);
+    }
+    Tweaks_Set(opts.tweaks);    /* [tweaks] (include/tweaks.h): off line only, off in the rigs */
+    if (opts.tweaks)
+        fprintf(stderr, "[tweaks] on:%s%s%s (off line only)\n",
+                (opts.tweaks & TWEAK_CPU_CARDS) ? " cpu_cards" : "",
+                (opts.tweaks & TWEAK_NO_TEAMMATE_TACKLES) ? " no_teammate_tackles" : "",
+                (opts.tweaks & TWEAK_TACKLE_CONTROLLED_PLAYER) ? " tackle_controlled_player" : "");
     /* Load the UI translation table for the selected language
      * (data_json/translations/<lang>.json) now that the CWD is the binary dir
      * and stderr is the log. tr(symbol) resolves menu/UI text through it; a
