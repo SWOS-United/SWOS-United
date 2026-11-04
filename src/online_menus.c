@@ -1168,7 +1168,8 @@ static void lobby_nav(int32_t ordinal, int32_t left, int32_t right, int32_t up, 
 extern void United_DrawStyleIcon(int32_t icon, int32_t x, int32_t y);
 static void style_button_AfterDraw(MenuEntry *e)
 {
-    United_DrawStyleIcon(e == entry_at(HostGameMessageMenu_button1) ? 0 : 1, e->x + 32, e->y + 2);
+    United_DrawStyleIcon(e == entry_at(HostGameMessageMenu_button1) ? 0
+                         : e == entry_at(HostGameMessageMenu_button2) ? 1 : 2, e->x + 32, e->y + 2);
 }
 #endif
 
@@ -1189,12 +1190,13 @@ static void hostGameMessageMenu_OnInit(void)
 #endif
         set_text(HostGameMessageMenu_message3, "");
 #if PROJECT_SWOS2020_MATCHMAKING
-        /* the two buttons as ONLINE RANKINGS' (rankingsMenu: 125 x 20, green, 36 apart, the
+        /* the three buttons as ONLINE RANKINGS' (rankingsMenu: 125 x 20, green, 36 apart, the
          * style's icon 32 in -- united_api.h), centred on the menu as those are */
         {
             MenuEntry *b1 = entry_at(HostGameMessageMenu_button1), *b2 = entry_at(HostGameMessageMenu_button2);
+            MenuEntry *b3 = entry_at(HostGameMessageMenu_button3);
             const int32_t centre = b1->x + b1->dwWidth / 2;
-            /* the panel half as tall (one line, CHOOSE GAMEPLAY, centred in it), and the two
+            /* the panel half as tall (one line, CHOOSE GAMEPLAY, centred in it), and the three
              * buttons centred between it and EXIT -- from the loaded menu's y, never absolute */
             MenuEntry *panel = entry_at(HostGameMessageMenu_panel), *line = entry_at(HostGameMessageMenu_message1);
             const int32_t exitTop = entry_at(HostGameMessageMenu_exit)->y;
@@ -1202,19 +1204,21 @@ static void hostGameMessageMenu_OnInit(void)
             panel->dwHeight = (uint16_t)(panel->dwHeight / 2);
             line->y = (uint16_t)(panel->y + ((int32_t)panel->dwHeight - (int32_t)line->dwHeight) / 2);
             below = panel->y + panel->dwHeight;
-            top = below + (exitTop - below - (20 + 16 + 20)) / 2;
+            top = below + (exitTop - below - (20 + 16 + 20 + 16 + 20)) / 2;
             set_entry(HostGameMessageMenu_button1, "     AMIGA", 1, kGreen);     /* (rankingsMenu's, */
             set_entry(HostGameMessageMenu_button2, "     PC DOS", 1, kGreen);    /*  clear of the icon) */
-            b1->dwWidth = b2->dwWidth = 125;
-            b1->dwHeight = b2->dwHeight = 20;
-            b1->x = b2->x = (uint16_t)(centre - 125 / 2);
+            set_entry(HostGameMessageMenu_button3, "     XBOX", 1, kGreen);      /* (SWOS 2020's third style) */
+            set_visible(HostGameMessageMenu_button3, 1);
+            b1->dwWidth = b2->dwWidth = b3->dwWidth = 125;
+            b1->dwHeight = b2->dwHeight = b3->dwHeight = 20;
+            b1->x = b2->x = b3->x = (uint16_t)(centre - 125 / 2);
             b1->y = (uint16_t)top;
             b2->y = (uint16_t)(top + 36);
-            b1->afterDrawCb = b2->afterDrawCb = style_button_AfterDraw;
-            /* (OpenSWOS's third, XBOX, is not offered here: no XBOX for now -- the document) */
-            set_visible(HostGameMessageMenu_button3, 0);
-            lobby_nav(HostGameMessageMenu_button2, -1, -1, HostGameMessageMenu_button1, HostGameMessageMenu_exit);
-            lobby_nav(HostGameMessageMenu_exit, -1, -1, HostGameMessageMenu_button2, -1);
+            b3->y = (uint16_t)(top + 72);
+            b1->afterDrawCb = b2->afterDrawCb = b3->afterDrawCb = style_button_AfterDraw;
+            lobby_nav(HostGameMessageMenu_button2, -1, -1, HostGameMessageMenu_button1, HostGameMessageMenu_button3);
+            lobby_nav(HostGameMessageMenu_button3, -1, -1, HostGameMessageMenu_button2, HostGameMessageMenu_exit);
+            lobby_nav(HostGameMessageMenu_exit, -1, -1, HostGameMessageMenu_button3, -1);
         }
 #else
         set_entry(HostGameMessageMenu_button1, "AMIGA (50FPS)", 1, kLightBrownWithRedFrame);

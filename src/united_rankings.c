@@ -2,7 +2,7 @@
  * united_rankings.c -- RANKINGS (SWOS United): SWOS 2020's two screens, its rankings and
  * ranking menus (imported, data_json/menus/swos2020/), with their handlers here -- the log-in's
  * RANKINGS and the matchmaking screen's open the first, AMIGA or PC DOS the second, the online
- * ranking from sensiblesoccer.de (view=ranking&id=5 the Amiga's, 13 the PC's; XBOX left out) or,
+ * ranking from sensiblesoccer.de (view=ranking&id=5 the Amiga's, 13 the PC's, 8 the XBOX's -- SWOS 2020's downloadRankingFile) or,
  * with [netplay] account_site = swosunited, from swos.swosunited.com (api/rankings/users, the same
  * ids; its active players, as the old site lists them -- and no SRN change, which it does not keep).
  *
@@ -35,7 +35,7 @@ typedef struct {
     char pos[6], name[32], shown[32], nation[4], played[6], won[6], drawn[6], lost[6], srn[7], change[7];
 } RankRow;                              /* name in full (the logged-in player's row), shown as it fits */
 
-static int32_t  s_rankId;               /* 5 the Amiga's, 13 the PC's */
+static int32_t  s_rankId;               /* 5 the Amiga's, 13 the PC's, 8 the XBOX's */
 static RankRow *s_rows;
 static int32_t  s_count, s_page, s_loading;
 static char     s_status[48], s_pageText[32], s_date[24];
@@ -171,19 +171,17 @@ static void parse_json(const char *body, uint32_t len)
     }
 }
 
-/* ---- rankingsMenu: AMIGA, PC DOS ---- */
+/* ---- rankingsMenu: AMIGA, PC DOS, XBOX ---- */
 
 static void set_style_icons(void);
 
 static void rankingsMenu_OnInit(void)
 {
-    entry_at(RankingsMenu_xbla)->isInvisible = 1;       /* (no XBOX, for now: the document) */
     set_style_icons();
 }
 
 static void rankingsMenu_OnDraw(void)
 {
-    entry_at(RankingsMenu_xbla)->isInvisible = 1;
     set_style_icons();
 }
 
@@ -195,6 +193,7 @@ static void show_ranking(int32_t id)
 
 static void selectAmigaRankingsMenu(void) { show_ranking(5); }
 static void selectPCDOSRankingsMenu(void) { show_ranking(13); }
+static void selectXBLARankingsMenu(void)  { show_ranking(8); }
 
 /* The buttons' icons: SWOS 2020's, drawn by United_DrawStyleIcon (src/united_api.c, shared with
  * the CHOOSE GAMEPLAY prompt) 32 in from the button's left and 2 down. Each button draws its own,
@@ -335,7 +334,7 @@ static void rankingMenu_OnDraw(void)
         }
     }
 
-    entry_at(RankingMenu_header)->fg = (uintptr_t)(s_rankId == 13 ? "PC DOS RANKING" : "AMIGA RANKING");
+    entry_at(RankingMenu_header)->fg = (uintptr_t)(s_rankId == 13 ? "PC DOS RANKING" : s_rankId == 8 ? "XBOX RANKING" : "AMIGA RANKING");
     entry_at(RankingMenu_timeStamp)->fg = (uintptr_t)s_date;
     pages = s_count ? (s_count + ROWS - 1) / ROWS : 1;
     if (s_page >= pages)
@@ -393,6 +392,7 @@ static const MenuSymbol k_handlers[] = {
     HANDLER(rankingsMenu_OnDraw),
     HANDLER(selectAmigaRankingsMenu),
     HANDLER(selectPCDOSRankingsMenu),
+    HANDLER(selectXBLARankingsMenu),
     HANDLER(rankingMenu_OnInit),
     HANDLER(rankingMenu_OnDraw),
     HANDLER(rankingMenu_OnReturn),
