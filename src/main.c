@@ -1168,6 +1168,10 @@ int main(int argc, char **argv)
     MatchRecord_SetConfigured(opts.record);
     /* And whether a match report leaves this machine (include/match_report.h). */
     MatchReport_SetEnabled(opts.reports);
+#if PROJECT_ACCOUNTS
+    /* Which site SWOS United's accounts use (include/united_api.h). */
+    { extern void United_SetSite(const char *name); United_SetSite(opts.account_site); }
+#endif
     { extern void ReplayRec_SetPredictionKept(int32_t on); ReplayRec_SetPredictionKept(opts.prediction); }
     /* The testers' rule, for offline play (include/test_rules.h). Said in the log: a
      * report from a career played without injuries is read differently. */

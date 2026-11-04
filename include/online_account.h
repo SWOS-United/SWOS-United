@@ -64,9 +64,23 @@ const char *Account_Error(void);
  * the players' ratings do not allow played as a friendly, a league match selected). Its lines
  * go into the chat (NetplayLobby_ChatNotice). */
 int32_t     Account_ChooseMode(void);
+/* After Account_ChooseMode: the gameplay style the chosen match is played in (0 the Amiga's, 1
+ * the PC's -- a league or cup match's ranking), so OPEN does not ask; -1 OPEN asks the player. */
+int32_t     Account_ChosenStyle(void);
+/* May this player join the game this player is hosting? 0: the host's game refuses them (a
+ * league or cup match picked before opening is for its opponent alone -- SWOS 2020's "YOU ARE
+ * NOT ALLOWED TO JOIN"). */
+int32_t     Account_JoinAllowed(const char *name);
+/* What the service knows of a lobby player, for the lobby's LOCATIONS and stars: 1 known --
+ * country (an ISO2 code such as "DE" or "GB-ENG", or a country's name) and their SRN in the game's
+ * style (-5000 unranked); 0 not (yet). */
+int32_t     Account_PlayerInfo(const char *name, char *country, uint32_t cap, int32_t *srn);
+/* 1: the selected match is a league (group) match, so the lobby's CUP stays OFF and greyed. */
+int32_t     Account_CupLocked(void);
 void        Account_LobbyOpened(int32_t host);
 void        Account_LobbyPeer(const char *name);    /* the other player's name has arrived */
 void        Account_LobbyPoll(void);                /* each frame the lobby is up */
+void        Account_LobbyClosed(void);              /* the player has left the lobby (blocks briefly) */
 /* 0 holds the host's START (greyed): the service is still deciding what the match is -- a
  * ranked match's ratings not in yet, a league match not selected. */
 int32_t     Account_LobbyCanStart(void);

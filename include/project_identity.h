@@ -61,9 +61,20 @@
  * the app; on Android it opens the app directly (an App Link: <site>/.well-known/assetlinks.json). */
 #define PROJECT_SITE            "openswos.net"
 
+/* SWOS United's own site, taking over from sensiblesoccer.de: its JSON API (the SWOS-API repo's
+ * issues 1-3). [netplay] account_site = swosunited (or SWOS_UNITED_SITE=swosunited) uses it for
+ * the log-in, the rankings and the leagues; sensiblesoccer, the default, keeps the old site.
+ * Ranked and league results still go to sensiblesoccer.de (the account ids are the same). */
+#define PROJECT_ACCOUNT_API     "https://swos.swosunited.com/api/"
+
 /* SWOS 2020's online-menu entries for features this project will not have -- the log-in's NEWS,
  * MULTIPLAYER SETTINGS' commentary and chat rows, JOIN AMIGA SUPER LEAGUE, JOIN DISCORD, HELP
  * DESK (src/online_menus.c): 1 hides them, 0 keeps them for a fork that builds them. */
 #define PROJECT_HIDE_SWOS2020_EXTRAS 0       /* (SWOS United builds them: kept, the owner 2026-11-02) */
+
+/* MATCH MAKING as SWOS 2020 draws it (src/online_menus.c, its matchMakingMenu_OnDraw_New): the
+ * seven-row table always drawn, MODE and JOIN / REQUESTED / ACCEPT, the red page arrows, HOST
+ * MATCH / CANCEL, the host accepting joiners from the table. 0: OpenSWOS's own screen. */
+#define PROJECT_SWOS2020_MATCHMAKING 1
 
 #endif /* PROJECT_IDENTITY_H */

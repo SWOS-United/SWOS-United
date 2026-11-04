@@ -20,6 +20,11 @@
  * opens that association (0-12, kLeagues' order), goes to that round and group once it has
  * loaded, and with ":m" presses MATCHES -- the screens tried without a mouse.
  *
+ * With [netplay] account_site = swosunited it is swos.swosunited.com's instead (JSON): the season
+ * from api/seasons/current (associations, their series, their tournaments), a tournament from
+ * api/tournament?id= -- its rounds, the standings of each group of a league round, and every
+ * leg played or to play, each with its round and group (0 in a cup round).
+ *
  * MY FRIENDLY STATS and MY RANKED STATS were SWOS 2020's own server's (galoreapi): hidden
  * until SWOS United's server keeps its matches (MATCH LOGS).
  */
@@ -32,11 +37,15 @@
 #include <string.h>
 
 #include <SDL.h>
+#include "display.h"            /* FRONTBUFFER_ROW_STRIDE_BYTES: the arrows */
 #include "https_client.h"
 #include "menu_load_json.h"
 #include "menu_system.h"
 #include "online_menus.h"
+#include "platform_sdl.h"       /* Platform_OpenUrl: APPLY */
 #include "swos2020_menus.h"
+
+uint16_t GetTextWidth(uint8_t *text, uint8_t *charsTable);     /* (text_render.h: its Round is not ours) */
 
 enum { NUM_LEAGUES = 13, MAX_TOURNA = 32, MAX_ROUNDS = 16, MAX_TABLES = 16,
        MAX_POS = 1024, MAX_MATCHES = 4096, MAX_LINES = 8192,
@@ -296,6 +305,174 @@ static void parse_tournament(const char *xml, uint32_t len)
     s_curRound = s_curTable = 0;
 }
 
+/* ---- the new site's replies (swos.swosunited.com, JSON) ---- */
+
+/* {"season":{"associations":[{"name","series":[{"tournaments":[{"id",...}]}]}]}} */
+static void parse_season_json(const char *body, uint32_t len)
+{
+    UnitedJson all = { body, (int32_t)len }, assocs, a, series, se, tours, t;
+    int32_t i, pa = 0;
+    for (i = 0; i < NUM_LEAGUES; i++)
+        s_numTourna[i] = s_curTourna[i] = 0;
+    if (!United_JsonFind(all, "$.season.associations", &assocs))
+        return;
+    while (United_JsonNext(assocs, &pa, NULL, &a)) {
+        char name[96];
+        int32_t league = -1, ps = 0;
+        United_JsonText(a, "$.name", name, sizeof name);
+        upper(name);
+        for (i = 0; i < NUM_LEAGUES; i++)
+            if (strcmp(name, kLeagues[i].association) == 0)
+                league = i;
+        if (league < 0 || !United_JsonFind(a, "$.series", &series))
+            continue;
+        while (United_JsonNext(series, &ps, NULL, &se)) {
+            int32_t pt = 0;
+            if (!United_JsonFind(se, "$.tournaments", &tours))
+                continue;
+            while (s_numTourna[league] < MAX_TOURNA && United_JsonNext(tours, &pt, NULL, &t))
+                United_JsonText(t, "$.id", s_tourna[league][s_numTourna[league]++].id, sizeof s_tourna[0][0].id);
+        }
+    }
+}
+
+typedef struct { int32_t round, group; } MatchPlace;
+
+/* One leg: {"match_id","round_id","group_id","home_name","away_name","score_a","score_b",
+ * "extra_time_score_a/b","penalties_score_a/b","is_played","played_at",...}; the scores are
+ * the leg's home side's first, as the old site's were. */
+static void json_match(UnitedJson j, Match *m, MatchPlace *at)
+{
+    char v[8];
+    memset(m, 0, sizeof *m);
+    United_JsonText(j, "$.match_id", m->mid, sizeof m->mid);
+    United_JsonText(j, "$.home_name", m->home, sizeof m->home);
+    United_JsonText(j, "$.away_name", m->away, sizeof m->away);
+    United_JsonText(j, "$.score_a", m->hg, sizeof m->hg);
+    United_JsonText(j, "$.score_b", m->ag, sizeof m->ag);
+    United_JsonText(j, "$.extra_time_score_a", m->he, sizeof m->he);
+    United_JsonText(j, "$.extra_time_score_b", m->ae, sizeof m->ae);
+    United_JsonText(j, "$.penalties_score_a", m->hp, sizeof m->hp);
+    United_JsonText(j, "$.penalties_score_b", m->ap, sizeof m->ap);
+    United_JsonText(j, "$.is_played", v, sizeof v);
+    m->finished = strcmp(v, "true") == 0 || strcmp(v, "1") == 0;
+    United_JsonText(j, "$.played_at", m->time, sizeof m->time);
+    upper(m->home);
+    upper(m->away);
+    at->round = United_JsonInt(j, "$.round_id");
+    at->group = United_JsonInt(j, "$.group_id");
+}
+
+/* The legs of one round (and group: -1 any) from all of them, in the site's order. */
+static void take_matches(const Match *all, const MatchPlace *at, int32_t n, int32_t round, int32_t group,
+                         int32_t *first, int32_t *count)
+{
+    int32_t i;
+    *first = s_numMatch;
+    *count = 0;
+    for (i = 0; i < n && s_numMatch < MAX_MATCHES; i++)
+        if (at[i].round == round && (group < 0 || at[i].group == group)) {
+            s_match[s_numMatch++] = all[i];
+            (*count)++;
+        }
+}
+
+/* A group's standings: [{"name","played","wins","draws","losses","goals_for","goals_against",
+ * "points",...}], best first. */
+static void json_table(UnitedJson rows, int32_t *first, int32_t *count)
+{
+    UnitedJson j;
+    int32_t pos = 0;
+    *first = s_numPos;
+    *count = 0;
+    while (s_numPos < MAX_POS && United_JsonNext(rows, &pos, NULL, &j)) {
+        Pos *r = &s_pos[s_numPos];
+        memset(r, 0, sizeof *r);
+        snprintf(r->nr, sizeof r->nr, "%d", (int)(*count + 1));
+        United_JsonText(j, "$.name", r->name, sizeof r->name);
+        United_JsonText(j, "$.played", r->played, sizeof r->played);
+        United_JsonText(j, "$.wins", r->wins, sizeof r->wins);
+        United_JsonText(j, "$.draws", r->draws, sizeof r->draws);
+        United_JsonText(j, "$.losses", r->losts, sizeof r->losts);
+        United_JsonText(j, "$.goals_for", r->goals, sizeof r->goals);
+        United_JsonText(j, "$.goals_against", r->conceded, sizeof r->conceded);
+        United_JsonText(j, "$.points", r->points, sizeof r->points);
+        upper(r->name);
+        s_numPos++;
+        (*count)++;
+    }
+}
+
+/* {"details":{"name","event_name","edition_name"},"rounds":[{"id","name","is_league",
+ * "group_count","qualify_count","losers_total"}],"standings":{"<round>":{"<group>":[...]}},
+ * "matches":[...]} */
+static void parse_tournament_json(const char *body, uint32_t len)
+{
+    UnitedJson all = { body, (int32_t)len }, rounds, rj, matches, mj, details;
+    Match *legs = NULL;
+    MatchPlace *at = NULL;
+    int32_t numLegs = 0, pos = 0;
+    s_numPos = s_numMatch = s_numRounds = 0;
+    s_event[0] = s_edition[0] = s_name[0] = 0;
+    if (!s_pos)
+        s_pos = (Pos *)malloc(MAX_POS * sizeof *s_pos);
+    if (!s_match)
+        s_match = (Match *)malloc(MAX_MATCHES * sizeof *s_match);
+    legs = (Match *)malloc(MAX_MATCHES * sizeof *legs);
+    at = (MatchPlace *)malloc(MAX_MATCHES * sizeof *at);
+    if (!s_pos || !s_match || !legs || !at)
+        goto done;
+    if (United_JsonFind(all, "$.details", &details)) {
+        United_JsonText(details, "$.event_name", s_event, sizeof s_event);
+        United_JsonText(details, "$.edition_name", s_edition, sizeof s_edition);
+        United_JsonText(details, "$.name", s_name, sizeof s_name);
+    }
+    if (United_JsonFind(all, "$.matches", &matches))
+        while (numLegs < MAX_MATCHES && United_JsonNext(matches, &pos, NULL, &mj)) {
+            json_match(mj, &legs[numLegs], &at[numLegs]);
+            numLegs++;
+        }
+    pos = 0;
+    if (United_JsonFind(all, "$.rounds", &rounds))
+        while (s_numRounds < MAX_ROUNDS && United_JsonNext(rounds, &pos, NULL, &rj)) {
+            Round *r = &s_round[s_numRounds];
+            const int32_t id = United_JsonInt(rj, "$.id");
+            char v[8];
+            memset(r, 0, sizeof *r);
+            United_JsonText(rj, "$.name", r->name, sizeof r->name);
+            upper(r->name);
+            r->winners = United_JsonInt(rj, "$.qualify_count");
+            r->losers = United_JsonInt(rj, "$.losers_total");
+            United_JsonText(rj, "$.is_league", v, sizeof v);
+            r->cup = !(strcmp(v, "true") == 0 || strcmp(v, "1") == 0);
+            if (r->cup) {
+                take_matches(legs, at, numLegs, id, -1, &r->matchFirst[0], &r->matchCount[0]);
+                if (r->matchCount[0])
+                    s_numRounds++;              /* (as the old site's: a cup round with no matches is left out) */
+            } else {
+                const int32_t groups = United_JsonInt(rj, "$.group_count");
+                int32_t g;
+                for (g = 1; g <= groups && r->numTables < MAX_TABLES; g++) {
+                    char path[48];
+                    UnitedJson table;
+                    snprintf(path, sizeof path, "$.standings.%d.%d", (int)id, (int)g);
+                    if (!United_JsonFind(all, path, &table))
+                        continue;
+                    json_table(table, &r->posFirst[r->numTables], &r->posCount[r->numTables]);
+                    if (!r->posCount[r->numTables])
+                        continue;
+                    take_matches(legs, at, numLegs, id, g, &r->matchFirst[r->numTables], &r->matchCount[r->numTables]);
+                    r->numTables++;
+                }
+                s_numRounds++;
+            }
+        }
+done:
+    free(legs);
+    free(at);
+    s_curRound = s_curTable = 0;
+}
+
 /* ---- requests ---- */
 
 static void request_season(void)
@@ -310,7 +487,10 @@ static void request_season(void)
         if (f && fseek(f, 0, SEEK_END) == 0 && (n = ftell(f)) > 0 && fseek(f, 0, SEEK_SET) == 0 &&
             (buf = (char *)malloc((size_t)n + 1)) != NULL && fread(buf, 1, (size_t)n, f) == (size_t)n) {
             buf[n] = 0;
-            parse_season(buf, (uint32_t)n);
+            if (buf[0] == '{')
+                parse_season_json(buf, (uint32_t)n);     /* (the new site's api/seasons/current) */
+            else
+                parse_season(buf, (uint32_t)n);
             s_season = SEASON_READY;
         } else {
             s_season = SEASON_FAILED;
@@ -322,7 +502,8 @@ static void request_season(void)
     }
     if (s_inflight)
         return;
-    if (Https_RequestAsync(United_ApiUrl("season", "format=xml"), NULL) == 0) {
+    if (Https_RequestAsync(United_NewSite() ? United_NewApiUrl("seasons/current", NULL) :
+                                              United_ApiUrl("season", "format=xml"), NULL) == 0) {
         s_inflight = 1;
         s_season = SEASON_LOADING;
     }
@@ -330,12 +511,15 @@ static void request_season(void)
 
 static void request_tournament(void)
 {
-    char query[48];
+    char query[96];
     if (s_inflight || s_season != SEASON_READY || s_numTourna[s_league] == 0)
         return;
     snprintf(s_tid, sizeof s_tid, "%s", s_tourna[s_league][s_curTourna[s_league]].id);
-    snprintf(query, sizeof query, "id=%s&format=xml", s_tid);
-    if (Https_RequestAsync(United_ApiUrl("tournament", query), NULL) == 0) {
+    s_name[0] = 0;                              /* (the last one's, until this one answers) */
+    snprintf(query, sizeof query, United_NewSite() ? "id=%s&include=details,rounds,matches,standings" : "id=%s&format=xml",
+             s_tid);                            /* (the new site: only the sections these screens show) */
+    if (Https_RequestAsync(United_NewSite() ? United_NewApiUrl("tournament", query) :
+                                              United_ApiUrl("tournament", query), NULL) == 0) {
         s_inflight = 2;
         s_tournaState = TOURNA_LOADING;
         s_wantTourna = 0;
@@ -349,13 +533,19 @@ static void poll(void)
     if (s_season == SEASON_NONE)
         request_season();                       /* (another screen's request held the line) */
     if (s_inflight && Https_PollAsync(&reply)) {
-        const int32_t ok = reply.status == 200 && reply.body && strstr(reply.body, "<?xml") != NULL;
+        const int32_t json = United_NewSite();
+        const int32_t ok = reply.status == 200 && reply.body &&
+                           (json ? United_JsonOk(reply.body, reply.length) : strstr(reply.body, "<?xml") != NULL);
         if (s_inflight == 1) {
-            if (ok)
+            if (ok && json)
+                parse_season_json(reply.body, reply.length);
+            else if (ok)
                 parse_season(reply.body, reply.length);
             s_season = ok ? SEASON_READY : SEASON_FAILED;
         } else {
-            if (ok)
+            if (ok && json)
+                parse_tournament_json(reply.body, reply.length);
+            else if (ok)
                 parse_tournament(reply.body, reply.length);
             s_tournaState = ok ? TOURNA_READY : TOURNA_FAILED;
         }
@@ -460,6 +650,60 @@ static void leagueInfoView_onInit(void)
     request_tournament();
 }
 
+/* SWOS 2020's arrows either side of the tournament's name (drawLeagueInfoViewArrows: frames 6 and
+ * 2 of arrows_12x12_13x1_Map, the tactics editor's yellow ones), '.' clear, else a palette
+ * index in hex. Drawn after the name and after each arrow's own entry (afterDrawCb), so a redraw
+ * of any of the three leaves them there. */
+static const char *const k_headerArrows[7] = {
+    "..F6.............6F.....",
+    ".F688.............6F....",
+    "2F6655544...4455566F2...",
+    "FFF6655548..455566FFF8..",
+    ".F68888888...888886F88..",
+    "..F6.............6F88...",
+    "...88.............88....",
+};
+
+static void header_arrows_AfterDraw(MenuEntry *unused)
+{
+    extern volatile uintptr_t _frontbufferBasePtr;
+    extern int _menu_draw_x_offset;
+    uint8_t *fb = (uint8_t *)_frontbufferBasePtr + _menu_draw_x_offset;
+    const MenuEntry *h = entry_at(LeagueInfoViewMenu_header2);
+    const int32_t oy = h->y + (h->dwHeight > 7 ? (h->dwHeight - 7) / 2 : 0);
+    const int32_t ox[2] = { h->x - 13, h->x + h->dwWidth + 3 };     /* (3 clear of the name) */
+    int32_t side, x, y;
+    (void)unused;
+    for (side = 0; side < 2; side++)
+        for (y = 0; y < 7; y++)
+            for (x = 0; x < 12; x++) {
+                const char c = k_headerArrows[y][side * 12 + x];
+                if (c != '.')
+                    fb[(uint32_t)(oy + y) * FRONTBUFFER_ROW_STRIDE_BYTES + ox[side] + x] =
+                        (uint8_t)(c <= '9' ? c - '0' : c - 'A' + 10);
+            }
+}
+
+/* Too wide for its box: cut and ended with "...", as SWOS 2020's shortenNameEx2 does the name
+ * line ("TR SUPER LIG 11/26 - ROUND TR SUPER ...") -- measured in the entry's own font, against
+ * its width less a margin (the association's line above: only when it overflows its box). */
+static void fit_text(char *s, const MenuEntry *e, int32_t margin)
+{
+    extern void *_charTables[];
+    uint8_t *font = (uint8_t *)_charTables[((e->stringFlags & STR_FLAGS_MASK) >> 2) / 4];
+    const int32_t limit = (int32_t)e->dwWidth - margin;
+    char buf[128];
+    int32_t n = (int32_t)strlen(s);
+    if (!font || (int32_t)GetTextWidth((uint8_t *)s, font) <= limit)
+        return;
+    while (n > 0) {
+        snprintf(buf, sizeof buf, "%.*s...", (int)--n, s);
+        if ((int32_t)GetTextWidth((uint8_t *)buf, font) <= limit)
+            break;
+    }
+    strcpy(s, buf);
+}
+
 static void leagueInfoView_header2_dec_onSelect(void) { open_tournament(-1); }
 static void leagueInfoView_header2_onSelect(void)     { open_tournament(0); }
 static void leagueInfoView_header2_inc_onSelect(void) { open_tournament(+1); }
@@ -486,14 +730,23 @@ static void leagueInfoView_onDraw(void)
             leagueInfoView_matches_onSelect();
     }
 
-    /* < > around the tournament's name */
+    /* SWOS 2020's yellow arrows around the tournament's name (the arrows' entries stay, clear, to
+     * be clicked), and left / right on the name itself go through the association's tournaments
+     * as the arrows do (SWOS 2020's finalControlsStatus 6 / 2) -- FIRE on it reloads this one. */
     {
+        extern uint8_t  _currentMenu[];
+        extern uint16_t _menuControlsDirection;
         MenuEntry *dec = entry_at(LeagueInfoViewMenu_header2_dec), *inc = entry_at(LeagueInfoViewMenu_header2_inc);
-        const int32_t more = s_numTourna[s_league] > 1;
-        dec->background = inc->background = ENTRY_FRAME_AND_BACK_COLOR;
-        dec->bgColor = inc->bgColor = more ? kRed : kGray;
-        dec->fg = (uintptr_t)"<";
-        inc->fg = (uintptr_t)">";
+        MenuEntry *name = entry_at(LeagueInfoViewMenu_header2);
+        dec->background = inc->background = 0;
+        dec->fg = inc->fg = (uintptr_t)" ";
+        dec->afterDrawCb = inc->afterDrawCb = name->afterDrawCb = header_arrows_AfterDraw;
+        if (((Menu *)_currentMenu)->selectedEntry == name) {
+            if (_menuControlsDirection == 6)
+                open_tournament(-1);
+            else if (_menuControlsDirection == 2)
+                open_tournament(+1);
+        }
     }
 
     /* what to say while there is no table */
@@ -532,11 +785,16 @@ static void leagueInfoView_onDraw(void)
             snprintf(s_header2, sizeof s_header2, "%s", s_name);
     } else {
         snprintf(s_header, sizeof s_header, "%s", kLeagues[s_league].association);
-        snprintf(s_header2, sizeof s_header2, "%s", s_tournaState == TOURNA_LOADING ? "" : s_name);
+        /* the tournament's name only when it is this association's: another one's (the last
+         * loaded, before this association had any) must not stand under this one's name */
+        const int32_t ours = s_numTourna[s_league] > 0 &&
+                             strcmp(s_tid, s_tourna[s_league][s_curTourna[s_league]].id) == 0;
+        snprintf(s_header2, sizeof s_header2, "%s", s_tournaState == TOURNA_LOADING || !ours ? "" : s_name);
     }
     upper(s_header);
     upper(s_header2);
-    s_header2[34] = 0;                          /* (the entry's width) */
+    fit_text(s_header, entry_at(LeagueInfoViewMenu_header), 0);      /* (only when it overflows) */
+    fit_text(s_header2, entry_at(LeagueInfoViewMenu_header2), 6);
     entry_at(LeagueInfoViewMenu_header)->fg = (uintptr_t)s_header;
     entry_at(LeagueInfoViewMenu_header2)->fg = (uintptr_t)s_header2;
 
@@ -592,8 +850,7 @@ static void leagueInfoView_apply_onSelect(void)
     const char *url = kLeagues[s_league].page;
     if (s_league == 3 && strcmp(s_tid, CHAMPIONS_LEAGUE_ID) == 0)
         url = CHAMPIONS_LEAGUE_PAGE;
-    if (SDL_OpenURL(url) != 0)
-        fprintf(stderr, "[leagues] could not open %s: %s\n", url, SDL_GetError());
+    Platform_OpenUrl(url);              /* (says so in the log when it cannot) */
 }
 
 /* A cup round's results, as SWOS 2020's makeResultInfo writes them: each tie's legs, then who

@@ -229,8 +229,9 @@ static int32_t one_request(const char *url, const char *form, HttpsReply *reply,
         goto done;
     if (form)
         snprintf(req, reqLen, "POST %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: %s\r\nConnection: close\r\n"
-                 "Content-Type: application/x-www-form-urlencoded\r\nContent-Length: %u\r\n\r\n%s",
-                 path, host, kUserAgent, (unsigned)strlen(form), form);
+                 "Content-Type: %s\r\nContent-Length: %u\r\n\r\n%s",
+                 path, host, kUserAgent, form[0] == '{' ? "application/json" : "application/x-www-form-urlencoded",
+                 (unsigned)strlen(form), form);
     else
         snprintf(req, reqLen, "GET %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: %s\r\nConnection: close\r\n\r\n",
                  path, host, kUserAgent);

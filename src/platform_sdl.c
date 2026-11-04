@@ -2595,3 +2595,44 @@ void Platform_ShowProgress(int permille)
     SDL_RenderFillRect(s_renderer, &bar);
     SDL_RenderPresent(s_renderer);
 }
+
+#ifdef __CYGWIN__
+#include <dlfcn.h>
+#endif
+
+int Platform_OpenUrl(const char *url)
+{
+    if (!url || !url[0])
+        return -1;
+#ifdef __CYGWIN__
+    {
+        /* ShellExecuteA from shell32.dll, found at run time: no windows.h, no new import. */
+        typedef void *(*ShellExecuteAFn)(void *, const char *, const char *, const char *, const char *, int);
+        static ShellExecuteAFn fn;
+        if (!fn) {
+            void *lib = dlopen("shell32.dll", RTLD_LAZY);
+            if (lib)
+                fn = (ShellExecuteAFn)dlsym(lib, "ShellExecuteA");
+        }
+        if (fn && (intptr_t)fn(NULL, "open", url, NULL, NULL, 1 /* SW_SHOWNORMAL */) > 32)
+            return 0;
+        fprintf(stderr, "[url] could not open %s\n", url);
+        return -1;
+    }
+#else
+    if (SDL_OpenURL(url) != 0) {
+        fprintf(stderr, "[url] could not open %s: %s\n", url, SDL_GetError());
+        return -1;
+    }
+    return 0;
+#endif
+}
+
+/* One colour of the palette the screen is drawn in (the lobby maps SWOS 2020's RGB flags to it). */
+void Platform_PaletteRgb(int index, uint8_t *r, uint8_t *g, uint8_t *b)
+{
+    const SDL_Color c = s_palette[index & 255];
+    *r = c.r;
+    *g = c.g;
+    *b = c.b;
+}
