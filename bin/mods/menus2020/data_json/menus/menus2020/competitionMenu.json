@@ -1,0 +1,269 @@
+{
+  "name": "competitionMenu",
+  "source": {
+    "project": "swos-2020",
+    "file": "src/menus/competition.mnu",
+    "commit": "df38d20"
+  },
+  "menu_flags": {
+    "dos_redraw": true
+  },
+  "onInit": "menus2020.competitionInit",
+  "onReturn": null,
+  "onDraw": null,
+  "defaultEntry": 4,
+  "exports": {},
+  "items": [
+    {
+      "kind": "entry",
+      "name": "header",
+      "coords": {
+        "x": 102,
+        "y": 0,
+        "w": 100,
+        "h": 16
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "COMPETITIONS"
+        },
+        {
+          "op": "colors",
+          "frame_color": 1,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "act0",
+      "coords": {
+        "x": 82,
+        "y": 35,
+        "w": 140,
+        "h": 20
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "ONLINE COMPETITIONS"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 13
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": -1,
+          "down": 2
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.online"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "act11",
+      "coords": {
+        "x": 32,
+        "y": 69,
+        "w": 110,
+        "h": 20
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "SPEEDRUNS"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 14
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": 3,
+          "up": 1,
+          "down": 4
+        },
+        {
+          "op": "invisible"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "act12",
+      "coords": {
+        "x": 162,
+        "y": 69,
+        "w": 110,
+        "h": 20
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "DIY COMPETITION"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 14
+        },
+        {
+          "op": "nav",
+          "left": 2,
+          "right": -1,
+          "up": 1,
+          "down": 5
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.diy"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "act21",
+      "coords": {
+        "x": 32,
+        "y": 103,
+        "w": 110,
+        "h": 20
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "CHALLENGES"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 14
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": 5,
+          "up": 2,
+          "down": 6
+        },
+        {
+          "op": "invisible"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "act22",
+      "coords": {
+        "x": 162,
+        "y": 103,
+        "w": 110,
+        "h": 20
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "PRESET COMPETITION"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 14
+        },
+        {
+          "op": "nav",
+          "left": 4,
+          "right": -1,
+          "up": 3,
+          "down": 6
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.preset"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "act3",
+      "coords": {
+        "x": 82,
+        "y": 137,
+        "w": 140,
+        "h": 20
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "CLASSIC CAREER MODE"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 5
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": 4,
+          "down": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.career"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "exit",
+      "coords": {
+        "x": 112,
+        "y": 186,
+        "w": 80,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "EXIT"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 12
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": 6,
+          "down": -1
+        },
+        {
+          "op": "onselect_fire",
+          "func": "SetExitMenuFlag"
+        }
+      ]
+    }
+  ]
+}

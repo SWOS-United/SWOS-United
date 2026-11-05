@@ -81,6 +81,28 @@ mod that registers handlers (§8.2 item 4, not built). Each button can route to 
 already has (COMPETE -> CAREER / DIY / PRESET / MULTIPLAYER; EDITING -> custom teams, tactics;
 REPLAYS -> highlights, `.SRP`), and PRACTICE to the canonical `practice` mod when it lands.
 
+### menus2020: built, v0.1 (2026-11-04)
+
+`src/mod_menus2020.c` (listed in `src/fork_mods.inc`), its menus made by
+`scripts/make_menus2020.py` into `bin/mods/menus2020/` (canonical, off by default; OPTIONS -> MODS
+or `[mods] enabled = menus2020`). SWOS 2020's main menu replaces the game's; its buttons:
+COMPETE -> COMPETITIONS (ONLINE = MULTIPLAYER, DIY, PRESET, CLASSIC CAREER), PRACTICE -> FRIENDLY
+MATCH + MODES (the mods' entries, when there are any), REPLAYS -> HIGHLIGHTS, OPTIONS, EDITING ->
+EDIT CUSTOM TEAMS / EDIT TACTICS, EXTRAS -> the same two + INSTRUCTION MANUAL, CONTINUE / SAVE /
+LOAD, QUIT (asks), CREDITS.
+
+- **Ordinals 11..16 keep the game's meanings** (CONTINUE, SAVE, LOAD, MULTIPLAYER, CREDITS, MODES):
+  CommonMenuExit sets them by ordinal, and every game handler ends in it.
+- **A sub-screen never runs a game handler itself**: it records the choice and closes; the main
+  button that opened it runs it with the main menu current (`open_screen`).
+- **The build line** is drawn by the mod (`menuDrawn`): the engine draws it only on a menu whose
+  onInit is `SWOSMainMenuInit`.
+- Not there yet: SEASON and SAVE DISK FILING (the original main menu's; SWOS 2020 has neither),
+  SPEEDRUNS / CHALLENGES (hidden until OpenSWOS's mods: then a lookup of a mod's MODES entry by
+  slug is needed), the ticker rows, SWOS 2020's icons (TV, QUIT, CREDITS, SAVE/LOAD disks, the little
+  player), menu descriptions. Checked: SDL headless -- the menu, COMPETE -> DIY -> back, PRACTICE;
+  both targets build; `--menu-selftest`, the mod-match test.
+
 ## 4. Hooks to request from OpenSWOS (specs)
 
 | | Hook | Fires | May read / write | Re-sim / netplay |

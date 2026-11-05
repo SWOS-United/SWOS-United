@@ -1,0 +1,11 @@
+{
+ "uuid": "f83ceb65-1f71-5823-873a-48ab8a8338d7",
+ "id": "menus2020",
+ "name": "SWOS 2020 menus",
+ "version": "0.1",
+ "author": "SWOS United (the menus: SWOS 2020's, github.com/SWOS-United)",
+ "about": "SWOS 2020's main menu: COMPETE, PRACTICE, REPLAYS, OPTIONS, EDITING, EXTRAS, and the screens they open.",
+ "targets": ["sdl"],
+ "changes": "cosmetic",
+ "default": false
+}

@@ -1,0 +1,494 @@
+{
+  "name": "swosMainMenu",
+  "source": {
+    "project": "swos-2020",
+    "file": "src/menus/main.mnu",
+    "commit": "df38d20"
+  },
+  "menu_flags": {
+    "dos_redraw": true
+  },
+  "onInit": "menus2020.mainInit",
+  "onReturn": null,
+  "onDraw": null,
+  "defaultEntry": 0,
+  "exports": {},
+  "items": [
+    {
+      "kind": "set_origin",
+      "x": 0,
+      "y": 1
+    },
+    {
+      "kind": "entry",
+      "name": "competition",
+      "coords": {
+        "x": 1,
+        "y": 41,
+        "w": 148,
+        "h": 30
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x10",
+          "literal": "COMPETE"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 3
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": 3,
+          "up": -1,
+          "down": 1
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.compete"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "practice",
+      "coords": {
+        "x": 1,
+        "y": 77,
+        "w": 148,
+        "h": 30
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x10",
+          "literal": "PRACTICE"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 3
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": 4,
+          "up": 0,
+          "down": 2
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.practice"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "replays",
+      "coords": {
+        "x": 1,
+        "y": 113,
+        "w": 148,
+        "h": 30
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x10",
+          "literal": "REPLAYS"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 11
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": 5,
+          "up": 1,
+          "down": 11
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.replays"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "options",
+      "coords": {
+        "x": 155,
+        "y": 41,
+        "w": 148,
+        "h": 30
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x10",
+          "str": "_aOptions"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 14
+        },
+        {
+          "op": "nav",
+          "left": 0,
+          "right": -1,
+          "up": -1,
+          "down": 4
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.options"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "editing",
+      "coords": {
+        "x": 155,
+        "y": 77,
+        "w": 148,
+        "h": 30
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x10",
+          "literal": "EDITING"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 14
+        },
+        {
+          "op": "nav",
+          "left": 1,
+          "right": -1,
+          "up": 3,
+          "down": 5
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.editing"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "extras",
+      "coords": {
+        "x": 155,
+        "y": 113,
+        "w": 148,
+        "h": 30
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x10",
+          "literal": "EXTRAS"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 14
+        },
+        {
+          "op": "nav",
+          "left": 2,
+          "right": -1,
+          "up": 4,
+          "down": 11
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.extras"
+        }
+      ]
+    },
+    {
+      "kind": "set_origin",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "kind": "entry",
+      "name": "exit",
+      "coords": {
+        "x": 4,
+        "y": 182,
+        "w": 56,
+        "h": 18
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "QUIT"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 4
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": 12,
+          "up": 11,
+          "down": -1
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.quit"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "coords": {
+        "x": 0,
+        "y": 0,
+        "w": 1,
+        "h": 1
+      },
+      "commands": [
+        {
+          "op": "invisible"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "coords": {
+        "x": 0,
+        "y": 0,
+        "w": 1,
+        "h": 1
+      },
+      "commands": [
+        {
+          "op": "invisible"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "coords": {
+        "x": 0,
+        "y": 0,
+        "w": 1,
+        "h": 1
+      },
+      "commands": [
+        {
+          "op": "invisible"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "coords": {
+        "x": 0,
+        "y": 0,
+        "w": 1,
+        "h": 1
+      },
+      "commands": [
+        {
+          "op": "invisible"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "continueContest",
+      "coords": {
+        "x": 27,
+        "y": 151,
+        "w": 250,
+        "h": 20
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 4
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": 2,
+          "down": 12
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.continueContest"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "saveContest",
+      "coords": {
+        "x": 77,
+        "y": 178,
+        "w": 72,
+        "h": 22
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x10",
+          "literal": "SAVE"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 4
+        },
+        {
+          "op": "nav",
+          "left": 6,
+          "right": 13,
+          "up": 11,
+          "down": 6
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.saveContest"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "loadOldCompetition",
+      "coords": {
+        "x": 155,
+        "y": 178,
+        "w": 72,
+        "h": 22
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x10",
+          "literal": "LOAD"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 4
+        },
+        {
+          "op": "nav",
+          "left": 12,
+          "right": 15,
+          "up": 11,
+          "down": 15
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.loadContest"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "multiplayer",
+      "coords": {
+        "x": 244,
+        "y": 182,
+        "w": 56,
+        "h": 18
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "str": "_aMultiplayer"
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.compete"
+        },
+        {
+          "op": "invisible"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "credits",
+      "coords": {
+        "x": 244,
+        "y": 182,
+        "w": 56,
+        "h": 18
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "str": "_aCredits"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 4
+        },
+        {
+          "op": "nav",
+          "left": 13,
+          "right": -1,
+          "up": 11,
+          "down": -1
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.credits"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "modes",
+      "coords": {
+        "x": 244,
+        "y": 182,
+        "w": 56,
+        "h": 18
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "MODES"
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.practice"
+        },
+        {
+          "op": "invisible"
+        }
+      ]
+    }
+  ]
+}

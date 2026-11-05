@@ -1,0 +1,294 @@
+{
+  "name": "extrasMenu",
+  "source": {
+    "project": "swos-2020",
+    "file": "src/menus/extrasEx.mnu",
+    "commit": "df38d20"
+  },
+  "menu_flags": {
+    "dos_redraw": true
+  },
+  "onInit": "menus2020.extrasInit",
+  "onReturn": null,
+  "onDraw": null,
+  "defaultEntry": 1,
+  "exports": {
+    "EXM_X1": 24,
+    "EXM_X2": 172,
+    "EXM_Y": 43,
+    "EXM_W": 124,
+    "EXM_H": 18,
+    "EXM_GAP": 36
+  },
+  "items": [
+    {
+      "kind": "entry",
+      "name": "header",
+      "coords": {
+        "x": 102,
+        "y": 0,
+        "w": 100,
+        "h": 16
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "EXTRAS"
+        },
+        {
+          "op": "colors",
+          "frame_color": 1,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "newsList",
+      "coords": {
+        "x": 16,
+        "y": 43,
+        "w": 124,
+        "h": 18
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "LATEST NEWS"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 3
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": 4,
+          "up": -1,
+          "down": 2
+        },
+        {
+          "op": "invisible"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "tipsList",
+      "coords": {
+        "x": 16,
+        "y": 79,
+        "w": 124,
+        "h": 18
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "TIPS AND REVIEWS"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 3
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": 5,
+          "up": 1,
+          "down": 3
+        },
+        {
+          "op": "invisible"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "streamsList",
+      "coords": {
+        "x": 16,
+        "y": 115,
+        "w": 124,
+        "h": 18
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "STREAMS AND VIDEOS"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 3
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": 6,
+          "up": 2,
+          "down": 8
+        },
+        {
+          "op": "invisible"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "editCustomTeams",
+      "coords": {
+        "x": 164,
+        "y": 43,
+        "w": 124,
+        "h": 18
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "EDIT CUSTOM TEAMS"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 14
+        },
+        {
+          "op": "nav",
+          "left": 1,
+          "right": -1,
+          "up": -1,
+          "down": 5
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.editTeams"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "editTactics",
+      "coords": {
+        "x": 164,
+        "y": 79,
+        "w": 124,
+        "h": 18
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "EDIT TACTICS"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 14
+        },
+        {
+          "op": "nav",
+          "left": 2,
+          "right": -1,
+          "up": 4,
+          "down": 6
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.editTactics"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "manual",
+      "coords": {
+        "x": 164,
+        "y": 115,
+        "w": 124,
+        "h": 18
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "INSTRUCTION MANUAL"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 11
+        },
+        {
+          "op": "nav",
+          "left": 3,
+          "right": -1,
+          "up": 5,
+          "down": 8
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.manual"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "HelpMsg",
+      "coords": {
+        "x": 102,
+        "y": 162,
+        "w": 101,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "invisible"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "exit",
+      "coords": {
+        "x": 122,
+        "y": 185,
+        "w": 60,
+        "h": 15
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "str": "_aExit"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 12
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": 6,
+          "down": -1
+        },
+        {
+          "op": "onselect_fire",
+          "func": "SetExitMenuFlag"
+        }
+      ]
+    }
+  ]
+}
