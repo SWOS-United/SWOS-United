@@ -50,7 +50,10 @@
           "op": "onselect_fire",
           "func": "menus2020.compete"
         }
-      ]
+      ],
+      "image": "grafs_2020/menus2020/compete.bmp",
+      "image_x": 30,
+      "image_y": 7
     },
     {
       "kind": "entry",
@@ -83,7 +86,10 @@
           "op": "onselect_fire",
           "func": "menus2020.practice"
         }
-      ]
+      ],
+      "image": "grafs_2020/menus2020/practice.bmp",
+      "image_x": 27,
+      "image_y": 7
     },
     {
       "kind": "entry",
@@ -116,7 +122,10 @@
           "op": "onselect_fire",
           "func": "menus2020.replays"
         }
-      ]
+      ],
+      "image": "grafs_2020/menus2020/replays.bmp",
+      "image_x": 27,
+      "image_y": 7
     },
     {
       "kind": "entry",
@@ -149,7 +158,10 @@
           "op": "onselect_fire",
           "func": "menus2020.options"
         }
-      ]
+      ],
+      "image": "grafs_2020/menus2020/options.bmp",
+      "image_x": 98,
+      "image_y": 7
     },
     {
       "kind": "entry",
@@ -182,7 +194,10 @@
           "op": "onselect_fire",
           "func": "menus2020.editing"
         }
-      ]
+      ],
+      "image": "grafs_2020/menus2020/editing.bmp",
+      "image_x": 96,
+      "image_y": 7
     },
     {
       "kind": "entry",
@@ -215,7 +230,10 @@
           "op": "onselect_fire",
           "func": "menus2020.extras"
         }
-      ]
+      ],
+      "image": "grafs_2020/menus2020/extras.bmp",
+      "image_x": 95,
+      "image_y": 7
     },
     {
       "kind": "set_origin",
@@ -258,16 +276,17 @@
     {
       "kind": "entry",
       "coords": {
-        "x": 0,
-        "y": 0,
-        "w": 1,
-        "h": 1
+        "x": 8,
+        "y": 6,
+        "w": 304,
+        "h": 10
       },
       "commands": [
         {
           "op": "invisible"
         }
-      ]
+      ],
+      "name": "ticker"
     },
     {
       "kind": "entry",
@@ -490,5 +509,6 @@
         }
       ]
     }
-  ]
+  ],
+  "ticker_entry": 7
 }

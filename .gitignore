@@ -208,3 +208,5 @@ include/united_secrets.h
 
 # HISTORIC TOURNAMENTS: the cups are the player's own (SWOS 2020 / the PC game), never in the repo
 bin/mods/classics/classic/
+# SWOS 2020 art made on the player's machine (scripts/make_menus2020_icons.py), never in git
+bin/mods/menus2020/grafs_2020/

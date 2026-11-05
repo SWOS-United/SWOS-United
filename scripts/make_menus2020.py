@@ -113,6 +113,10 @@ MAIN_ORDER = ["competition", "practice", "replays", "options", "editing", "extra
               "exit", None, None, None, None,
               "continueContest", "saveContest", "loadOldCompetition",
               "multiplayer", "credits", "modes"]
+# (button, its picture, the icon's column on it): SWOS 2020's onDraw, the menu without MULTIPLAYER_MENU.
+ICON_COLUMNS = [("competition", "compete", 30), ("practice", "practice", 27),
+                ("replays", "replays", 27), ("options", "options", 98),
+                ("editing", "editing", 96), ("extras", "extras", 95)]
 MAIN_HANDLERS = {
     "SWOS_competitionMainMenu_onSelect": "compete",
     "SWOS_practiceMainMenu_onSelect": "practice",
@@ -267,6 +271,23 @@ def build_main(doc):
     dropped = [n for n in old_ord if n not in MAIN_ORDER]
     if dropped:
         print("  mainMenu: dropped %s (SWOS 2020's TV icon and animation, not ported)" % dropped)
+
+    # SWOS 2020's button icons (its onDraw, game.cpp: drawMapEx256_8sets at the button's x + a
+    # column, y + 7): each button's "image" (docs/MENUS.md §13) at that column. The pictures are
+    # made on the player's machine by scripts/make_menus2020_icons.py; without them nothing is
+    # drawn. (On the buttons themselves: this menu replaces the compiled one in place, which
+    # leaves no room for entries of their own.)
+    for name, picture, dx in ICON_COLUMNS:
+        it, _o = by_name[name]
+        it["image"] = "grafs_2020/menus2020/%s.bmp" % picture
+        it["image_x"], it["image_y"] = dx, 7
+    # The news ticker's row (the canonical `ticker` mod scrolls its news through it,
+    # "ticker_entry"): across the top, where SWOS 2020 drew its logo -- the first filler, which
+    # is never drawn, so the row costs the menu nothing.
+    filler = MAIN_ORDER.index(None)
+    ordered[filler][0]["name"] = "ticker"
+    ordered[filler][0]["coords"] = {"x": 8, "y": 6, "w": 304, "h": 10}
+    doc["ticker_entry"] = filler
 
     doc["items"] = emit(ordered)
     doc["name"] = "swosMainMenu"
