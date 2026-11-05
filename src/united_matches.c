@@ -986,6 +986,13 @@ static int32_t done(uint32_t legId)
     return s_running && (s_current.kind == JOB_SUBMIT || s_current.kind == JOB_N_REPORT) && s_current.legId == legId;
 }
 
+/* A player's row in the matchmaking list. SWOS 2020 opens MATCH INFO / PLAYER INFO there
+ * (mpgame.cpp:10648); United has neither screen yet (docs/SWOS2020_MODS.md §6), so nothing. */
+void Account_UserSelected(const char *name)
+{
+    (void)name;
+}
+
 /* SELECT MATCH: the first open leg between the two of us in a tournament of this game's style. */
 void Account_SelectMatch(void)
 {
@@ -1433,6 +1440,7 @@ int32_t     Account_CupLocked(void)             { return 0; }
 int32_t     Account_LobbyCanStart(void)         { return 1; }
 const char *Account_MatchText(void)             { return 0; }
 void        Account_SelectMatch(void)           {}
+void        Account_UserSelected(const char *name) { (void)name; }
 void        Account_MatchPlayed(const AccountResult *result) { (void)result; }
 void        UnitedMatches_Register(void)        {}
 
