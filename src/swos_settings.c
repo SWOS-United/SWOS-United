@@ -205,6 +205,11 @@ static int handler(void *user, const char *section,
                 opts->netplay_remember = b;
         } else if (eqi(name, "record"))
             snprintf(opts->record, sizeof opts->record, "%s", value);
+        else if (eqi(name, "live_cast")) {
+            int b;
+            if (parse_bool(value, &b))
+                opts->live_cast = b;
+        }
         else if (eqi(name, "reports")) {
             int b;
             if (parse_bool(value, &b))
@@ -552,6 +557,10 @@ static int settings_build(const PlatformInitOptions *opts, IniEntry *items, char
         "; above, for the matches it arranges), a recorder of your own as \"host\" or\n"
         "; \"host:port\" (every match), or \"off\". Empty means the default.",
         opts->record };
+    SETTING(n) = (IniEntry){ "netplay", "live_cast",
+        "; live_cast: true | false -- let LIVE CAST's viewers watch your online matches on the\n"
+        "; recorder (false keeps them off its list; recording for desync checks goes on).",
+        opts->live_cast ? "true" : "false" };
     SETTING(n) = (IniEntry){ "netplay", "reports",
         "; reports: true | false -- after an online match, send both players' SWOS.log and\n"
         "; HOW WAS THE MATCH? to the other player and the server, zipped (a copy is kept in\n"
@@ -675,6 +684,14 @@ static int settings_build(const PlatformInitOptions *opts, IniEntry *items, char
         "; tackle_controlled_player: true | false -- fire slides the player you control\n"
         "; (in the original a nearer team-mate may slide instead).",
         (opts->tweaks & TWEAK_TACKLE_CONTROLLED_PLAYER) ? "true" : "false" };
+    SETTING(n) = (IniEntry){ "tweaks", "more_fouls",
+        "; more_fouls: true | false -- one borderline tackle in 16, from the side, is a foul\n"
+        "; (the original gives a foul only from behind; benefactorr's Career+).",
+        (opts->tweaks & TWEAK_MORE_FOULS) ? "true" : "false" };
+    SETTING(n) = (IniEntry){ "tweaks", "ai_injury_subs",
+        "; ai_injury_subs: true | false -- the computer replaces an injured player at a stoppage\n"
+        "; (the original's computer never substitutes; benefactorr's Career+).",
+        (opts->tweaks & TWEAK_AI_INJURY_SUBS) ? "true" : "false" };
     {   /* [options]: unset = the game's defaults (SetDefaultOptions) */
         static const char *const kLength[] = { "3", "5", "7", "10" };
         static const char *const kPitch[]  = { "seasonal", "random", "frozen", "muddy", "wet",

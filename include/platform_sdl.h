@@ -141,6 +141,8 @@ typedef struct {
                                               * screen, kept while REMEMBER LOGIN INFO is on */
     int                    netplay_remember; /* [netplay] remember_login: that switch (default on) */
     char                   account_site[24]; /* [netplay] account_site: sensiblesoccer | swosunited (SWOS United) */
+    int                    live_cast;        /* [netplay] live_cast: 1 viewers may watch this player's
+                                              * matches (LIVE CAST, the default), 0 not */
     char                   record[80];       /* [netplay] record: stream every live match to a
                                               * recorder -- "server" (the matchmaker), "host[:port]",
                                               * or empty/"off". include/match_record.h */
