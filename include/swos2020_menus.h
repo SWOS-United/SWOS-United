@@ -32,7 +32,7 @@
     X(leagueInfoViewMenu, "swos2020/leagueInfoViewMenu", LeagueInfoViewMenu, 181) \
     X(matchViewMenu, "swos2020/matchViewMenu", MatchViewMenu, 100) \
     X(cupMatchViewMenu, "swos2020/cupMatchViewMenu", CupMatchViewMenu, 46) \
-    X(selectMyCustomTeams, "swos2020/selectMyCustomTeams", SelectMyCustomTeams, 5) \
+    X(selectMyCustomTeams, "swos2020/selectMyCustomTeams", SelectMyCustomTeams, 10) \
     X(selectFunCupTeams, "swos2020/selectFunCupTeams", SelectFunCupTeams, 10) \
     X(mLogReaderMenu, "swos2020/mLogReaderMenu", MLogReaderMenu, 102) \
     X(mLogTickerMenu, "swos2020/mLogTickerMenu", MLogTickerMenu, 42) \
@@ -41,7 +41,7 @@
     X(myFriendlyStatsMenu, "swos2020/myFriendlyStatsMenu", MyFriendlyStatsMenu, 107) \
     X(selectUniformMenu, "swos2020/selectUniformMenu", SelectUniformMenu, 39) \
 
-/* Every handler name the imported menus reference (262), sorted. */
+/* Every handler name the imported menus reference (265), sorted. */
 #define SWOS2020_MENU_CALLBACKS(X) \
     X(LeftBasicColor_Dec_onSelect) \
     X(LeftBasicColor_Inc_onSelect) \
@@ -275,6 +275,9 @@
     X(selectMyCustomTeam1) \
     X(selectMyCustomTeam2) \
     X(selectMyCustomTeam3) \
+    X(selectMyCustomTeamsImport) \
+    X(selectMyCustomTeamsImportNo) \
+    X(selectMyCustomTeamsImportYes) \
     X(selectMyCustomTeamsMenu_OnDraw) \
     X(selectMyCustomTeamsMenu_OnInit) \
     X(selectOOO) \
@@ -1658,8 +1661,13 @@ enum {
     SelectMyCustomTeams_team2 = 2,
     SelectMyCustomTeams_team3 = 3,
     SelectMyCustomTeams_exit = 4,
+    SelectMyCustomTeams_importTeams = 5,
+    SelectMyCustomTeams_importYes = 6,
+    SelectMyCustomTeams_importNo = 7,
+    SelectMyCustomTeams_importLine1 = 8,
+    SelectMyCustomTeams_importLine2 = 9,
 };
-#define SelectMyCustomTeams_numEntries 5
+#define SelectMyCustomTeams_numEntries 10
 
 /* ---- selectFunCupTeams -- src/menus/selectFunCupTeams.mnu ---- */
 enum {

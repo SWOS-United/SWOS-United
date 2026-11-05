@@ -72,6 +72,10 @@
  * channel name ("live_ticker_friendly", ...) and the text, never a webhook. "" posts nothing. */
 #define PROJECT_DISCORD_PROXY   "https://sensiblesoccer.de/swos2020/discord_proxy.php"
 
+/* Where SWOS 2020 keeps its players' custom teams: <USER>.TEAM, <USER>_2.TEAM, <USER>_3.TEAM
+ * (MY CUSTOM TEAMS' IMPORT FROM SWOS 2020, src/united_teamimport.c). */
+#define PROJECT_SWOS2020_TEAMS  "https://sensiblesoccer.de/swos2020/mp/db/teams/"
+
 /* SWOS 2020's online-menu entries for features this project will not have -- the log-in's NEWS,
  * MULTIPLAYER SETTINGS' commentary and chat rows, JOIN AMIGA SUPER LEAGUE, JOIN DISCORD, HELP
  * DESK (src/online_menus.c): 1 hides them, 0 keeps them for a fork that builds them. */

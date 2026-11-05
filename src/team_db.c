@@ -30,6 +30,7 @@
 #include <string.h>
 
 #include "team_db.h"
+#include "world.h"
 #include "endian_helpers.h"
 #include "swos_io.h"
 
@@ -192,7 +193,8 @@ static struct Country {
     TeamDbEntry *entries;
     int32_t      count;
     int32_t      absent;
-} s_country[kCountries];
+} s_countries[2][kCountries];       /* 96/97's, and the world's: custom teams are 96/97's, whatever
+                                     * world is played (src/custom_team.c), and each is read once */
 
 /* One country's teams as LoadTeamFile reads them -- the JSON database unless it is
  * turned off or has no such country, then the binary TEAM.nnn (big-endian count) --
@@ -237,7 +239,7 @@ static struct Country *country_of(int32_t country)
 
     if (country < 0 || country >= kCountries || country == kOwnCustoms)
         return NULL;
-    c = &s_country[country];
+    c = &s_countries[World_Current() == WORLD_9697 ? 0 : 1][country];
     if (c->absent)
         return NULL;
     if (c->entries)

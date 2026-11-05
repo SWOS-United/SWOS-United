@@ -35,6 +35,7 @@ typedef enum {
     ACCOUNT_HAS_LEAGUES,
     ACCOUNT_HAS_MATCH_LOGS,
     ACCOUNT_HAS_RANKED,         /* OPEN offers FRIENDLY, RANKED MATCH and LEAGUE / CUP */
+    ACCOUNT_HAS_TEAM_IMPORT,    /* MY CUSTOM TEAMS offers IMPORT FROM SWOS 2020 */
     ACCOUNT_FEATURES
 } AccountFeature;
 
@@ -92,7 +93,6 @@ const char *Account_MatchText(void);
 const char *Account_MatchTournament(void);
 void        Account_SelectMatch(void);              /* SELECT MATCH */
 
-/* After every match, on both machines: how it ended, from THIS player's side -- goals in the
 /* MATCH INFO for a player, by name: a click on a name (the online list, the lobby, RANKINGS).
  * Returns when the player leaves it; nothing where the service has no such thing. */
 void        Account_ShowPlayer(const char *name);
@@ -106,6 +106,7 @@ int32_t     Account_TeamImportPoll(const char **line1, const char **line2, int32
 void        Account_TeamImportAnswer(int32_t yes);
 void        Account_TeamImportReset(void);
 
+/* After every match, on both machines: how it ended, from THIS player's side -- goals in the
  * ninety minutes, in extra time, in the shoot-out -- and whether it was played to the end. */
 typedef struct {
     int32_t  mode;                  /* LOBBY_MODE_*: the rules it was played by */

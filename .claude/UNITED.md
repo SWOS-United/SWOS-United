@@ -69,6 +69,35 @@ rebase), `git cherry-pick <commit>` one fix, or nothing at all. `upstream` is fe
   and TESTER2 have open legs of "testtourna1" there). A joiner that leaves before the host's
   next leg id arrives closes the session without that leg (it never reported it). `src/united_api.c` reads its JSON (decodes `\/` and
   `\u00XX`, which mjson gives up on).
+- **MATCH INFO** (`src/united_matchinfo.c`): a click on a player's name -- the online list
+  (with SWOS 2020's hint), the lobby's PLAYERS column (their GO goes down while they look, and
+  comes back) and RANKINGS -- opens SWOS 2020's matchInfoMenu: PLAYER (playerInfoMenu), RANKED
+  MATCH (oooInfoMenu), LEAGUE / TOURNAMENT (tournaInfoMenu, `UnitedMatches_BrowseTournaments`:
+  the same menu SELECT A MATCH picks from, here to look at). Old site: `view=userdetail`,
+  `view=matches&uid=`, any player's. New site: the id from `api/rankings/users` (it is the old
+  site's user id too), `api/user-details`, each running tournament's matches; open ranked
+  matches need the player's own key, so only their own are shown there, and it is slow (over
+  14 s: a 660 KB ranking, then a call a tournament). The asking runs on a thread of its own: the
+  game never stops for it, the menu says LOADING. `SWOS_UNITED_TEST_INFO=<name>[:p|o|t]` with
+  `--menu=swos2020/matchInfoMenu` opens one.
+- **IMPORT FROM SWOS 2020** (`src/united_teamimport.c`, its button in `src/custom_team.c` behind
+  `ACCOUNT_HAS_TEAM_IMPORT`, its entries in the import script's `EXTRA_ENTRIES`): the logged-in
+  player's `<USER>.TEAM`, `_2`, `_3` from `PROJECT_SWOS2020_TEAMS`, converted like any raw record
+  in a slot. Empty slots first; a team already in a slot is left alone; too few empty slots asks
+  DO YOU WANT TO OVERWRITE..., and NO still fills the empty ones. Teams are found by their players
+  alone; one that cannot be verified is refused: `'NAME' CANNOT BE IMPORTED. PLEASE CREATE IT MANUALLY.`
+  `SWOS_UNITED_TEST_IMPORT=<name>[:y|n]` imports another player's and answers for you.
+- **A CUSTOM TEAM IS 96/97's, always** (the owner, 2026-11-04: building one from any other data is
+  prohibited). `src/custom_team.c`'s `base_begin`/`base_end` scope makes everything that makes,
+  reads or checks one read 96/97, whatever world is played; `src/team_db.c` keeps one copy a
+  world. With a world on: a world's team may be played as it is, renamed it is refused
+  (`CustomTeam_Allowed`); the list a new team is made from shows the world, so making one is
+  refused there. `SWOS_WORLD=2627 --custom-team-selftest` proves it (2,281 teams) and fails if
+  the world's data is not there to test.
+- **Discord** (`src/live_ticker.c`, `include/live_ticker.h`): SWOS 2020's LIVE TICKERS and LIVE
+  SCORE BOARDS through sensiblesoccer.de's `discord_proxy.php` (`PROJECT_DISCORD_PROXY`).
+  `[netplay] discord`, `discord_webhook` (a test channel for every post; or
+  `SWOS_DISCORD_WEBHOOK`); `SWOS_DISCORD=0` for a run.
 - **Secrets**: `include/united_secrets.h` (gitignored; `include/united_secrets.sample.h` is the
   template, the file itself is in SWOS-API-secrets.zip). Without it a build cannot host a
   ranked match.

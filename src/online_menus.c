@@ -1029,6 +1029,7 @@ static void matchMakingMenu_OnDraw(void)
      * request however many frames it takes to answer. SWOS_MM_AUTO=host answers
      * it for a test -- there is nobody to press the button on either machine. */
     if (MmClient_TakeJoinRequest(who, sizeof who)) {
+        const int32_t allowed = Account_JoinAllowed(who);
         snprintf(s_joinAsker, sizeof s_joinAsker, "%s", who);
         if (allowed)
             online_sound("sound_dos/join.wav");         /* (SWOS 2020's playJoinSound) */
@@ -1037,7 +1038,6 @@ static void matchMakingMenu_OnDraw(void)
             fprintf(stderr, "[mm] refusing '%s': not this match's opponent\n", s_joinAsker);
             MmClient_Eject(s_joinAsker);
             s_joinAsker[0] = '\0';
-        const int32_t allowed = Account_JoinAllowed(who);
         } else if (s_mmAuto == MM_AUTO_HOST) {
             if (mm_auto_is_peer(s_joinAsker))
                 MmClient_Approve(s_joinAsker);
@@ -1630,18 +1630,18 @@ static int32_t s_openMode;          /* LOBBY_MODE_*: what OPEN's game counts for
 
 void OnlineMenus_EnterLobby(int32_t player, const char *name)
 {
+    extern PlatformInitOptions *g_arcadeOpts;
+
     OnlineMenus_Init();
+    /* The joiner, accepted (SWOS 2020's playAcceptSound): once, not on each return from a match. */
+    if (player == 2 && (!g_arcadeOpts || g_arcadeOpts->accept_sound))
+        online_sound("sound_dos/accept_1.wav");
     NetplayLobby_Begin(player, name);
     if (player == 1 && s_openMode != LOBBY_MODE_FRIENDLY) {    /* what OPEN's game counts for */
         LobbyRules r = *NetplayLobby_Rules();
         r.mode = (uint16_t)s_openMode;
         NetplayLobby_SetRules(&r);
-    extern PlatformInitOptions *g_arcadeOpts;
-
     }
-    /* The joiner, accepted (SWOS 2020's playAcceptSound): once, not on each return from a match. */
-    if (player == 2 && (!g_arcadeOpts || g_arcadeOpts->accept_sound))
-        online_sound("sound_dos/accept_1.wav");
     s_peerTold = 0;
     Account_LobbyOpened(player == 1);
     lobby_test_knobs();
@@ -3372,6 +3372,10 @@ static void mmsOnDraw(void)
      * (include/match_report.h). */
     set_text(MmSettingsMenu_soundFxLabel, "SEND MATCH REPORTS");
     set_text(MmSettingsMenu_soundFx, MatchReport_Enabled() ? "ON" : "OFF");
+    {   /* (SWOS 2020's words; its SOUND 2 was never ours) */
+        extern PlatformInitOptions *g_arcadeOpts;
+        set_text(MmSettingsMenu_acceptSound, !g_arcadeOpts || g_arcadeOpts->accept_sound ? "SOUND 1" : "OFF");
+    }
     /* SWOS 2020's other rows -- its commentary and chat options, JOIN AMIGA SUPER LEAGUE,
      * JOIN DISCORD, HELP DESK -- are features this project will not have: hidden (the cursor
      * passes over a hidden entry to the next one its way), MY CUSTOM TEAM moved up under the
@@ -3424,13 +3428,22 @@ static void mmsSelectSoundFx(void)
     extern const char *g_arcadeIniPath;
 
     if (!g_arcadeOpts)
-    {   /* (SWOS 2020's words; its SOUND 2 was never ours) */
-        extern PlatformInitOptions *g_arcadeOpts;
-        set_text(MmSettingsMenu_acceptSound, !g_arcadeOpts || g_arcadeOpts->accept_sound ? "SOUND 1" : "OFF");
-    }
         return;
     g_arcadeOpts->reports = !g_arcadeOpts->reports;
     MatchReport_SetEnabled(g_arcadeOpts->reports);
+    if (g_arcadeIniPath)
+        Settings_Save(g_arcadeOpts, g_arcadeIniPath);
+}
+
+/* ACCEPT SOUND: on or off, in SWOS.ini. */
+static void mmsAcceptSound(void)
+{
+    extern PlatformInitOptions *g_arcadeOpts;
+    extern const char *g_arcadeIniPath;
+
+    if (!g_arcadeOpts)
+        return;
+    g_arcadeOpts->accept_sound = !g_arcadeOpts->accept_sound;
     if (g_arcadeIniPath)
         Settings_Save(g_arcadeOpts, g_arcadeIniPath);
 }
@@ -3483,23 +3496,11 @@ static const MenuSymbol k_handlers[] = {
     HANDLER(mmsOnDraw),
     HANDLER(mmsSelectPitchSet),
     HANDLER(mmsSelectSoundFx),
+    HANDLER(mmsAcceptSound),
     HANDLER(matchMaking_rankings_onSelect),
     HANDLER(matchMaking_openGame_onSelect),
     HANDLER(matchMaking_cancelGame_onSelect),
     HANDLER(matchMaking_host_onSelect),
-/* ACCEPT SOUND: on or off, in SWOS.ini. */
-static void mmsAcceptSound(void)
-{
-    extern PlatformInitOptions *g_arcadeOpts;
-    extern const char *g_arcadeIniPath;
-
-    if (!g_arcadeOpts)
-        return;
-    g_arcadeOpts->accept_sound = !g_arcadeOpts->accept_sound;
-    if (g_arcadeIniPath)
-        Settings_Save(g_arcadeOpts, g_arcadeIniPath);
-}
-
     HANDLER(matchMaking_users_onSelect),
     HANDLER(matchMaking_exit_onSelect),
 #if PROJECT_SWOS2020_MATCHMAKING
@@ -3548,7 +3549,6 @@ static void mmsAcceptSound(void)
      * server, so all of them just close their menu. */
     HANDLER_AS("cupMatchView_exit_onSelect",         SetExitMenuFlag),
     HANDLER_AS("exitNewsMenu_OnSelect",              SetExitMenuFlag),
-    HANDLER(mmsAcceptSound),
     HANDLER_AS("exitRankingMenu_OnSelect",           SetExitMenuFlag),
     HANDLER_AS("hostGameMessageMenu_exit_OnSelect",  SetExitMenuFlag),
     HANDLER_AS("leagueInfo1_exit_onSelect",          SetExitMenuFlag),

@@ -55,7 +55,7 @@ void Account_Init(void)
 int32_t Account_Has(AccountFeature feature)
 {
     return feature == ACCOUNT_HAS_RANKINGS || feature == ACCOUNT_HAS_RANKED ||
-           feature == ACCOUNT_HAS_LEAGUES;      /* (MATCH LOGS: to come) */
+           feature == ACCOUNT_HAS_LEAGUES || feature == ACCOUNT_HAS_TEAM_IMPORT;      /* (MATCH LOGS: to come) */
 }
 
 int32_t     Account_Enabled(void)         { return 1; }
