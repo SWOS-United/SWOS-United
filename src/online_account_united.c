@@ -48,6 +48,7 @@ void Account_Init(void)
     UnitedRankings_Register();
     UnitedLeagues_Register();
     UnitedMatches_Register();
+    UnitedMatchInfo_Register();
     test_login();
 }
 

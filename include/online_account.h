@@ -93,6 +93,19 @@ const char *Account_MatchTournament(void);
 void        Account_SelectMatch(void);              /* SELECT MATCH */
 
 /* After every match, on both machines: how it ended, from THIS player's side -- goals in the
+/* MATCH INFO for a player, by name: a click on a name (the online list, the lobby, RANKINGS).
+ * Returns when the player leaves it; nothing where the service has no such thing. */
+void        Account_ShowPlayer(const char *name);
+
+/* IMPORT FROM SWOS 2020 (MY CUSTOM TEAMS, src/custom_team.c). Start asks for the logged-in player's
+ * teams; Poll, each draw, says how it stands, the two lines to show and whether the slots changed;
+ * Answer is YES (1) or NO (0) to overwriting; Reset forgets what was last said. */
+enum { TEAM_IMPORT_IDLE, TEAM_IMPORT_BUSY, TEAM_IMPORT_ASKING, TEAM_IMPORT_MAX = 3 };
+void        Account_TeamImportStart(void);
+int32_t     Account_TeamImportPoll(const char **line1, const char **line2, int32_t *changed);
+void        Account_TeamImportAnswer(int32_t yes);
+void        Account_TeamImportReset(void);
+
  * ninety minutes, in extra time, in the shoot-out -- and whether it was played to the end. */
 typedef struct {
     int32_t  mode;                  /* LOBBY_MODE_*: the rules it was played by */

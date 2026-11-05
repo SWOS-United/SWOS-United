@@ -24,6 +24,7 @@
 #include "https_client.h"
 #include "menu_load_json.h"
 #include "menu_system.h"
+#include "online_account.h"
 #include "online_menus.h"
 #include "swos2020_menus.h"
 #include "text_render.h"        /* GetTextWidth: a name too wide for its column */
@@ -384,7 +385,20 @@ static void ranking_ScrollDown_onSelect(void)
     s_page++;                           /* (OnDraw keeps it in range) */
 }
 
-static void ranking_username_onSelect(void) {}     /* (a player's page: still to come) */
+/* A name: their MATCH INFO (SWOS 2020's ranking_username_onSelect). */
+static void ranking_username_onSelect(void)
+{
+    extern uint8_t _currentMenu[];
+    const MenuEntry *sel = ((Menu *)_currentMenu)->selectedEntry;
+    int32_t r;
+    for (r = 0; r < ROWS; r++)
+        if (sel == entry_at(RankingMenu_username_001 + r)) {
+            const int32_t idx = r + s_page * ROWS;
+            if (s_rows && idx < s_count && s_rows[idx].name[0])
+                Account_ShowPlayer(s_rows[idx].name);
+            return;
+        }
+}
 
 #define HANDLER(fn) { #fn, (void *)fn, SYM_FUNC }
 static const MenuSymbol k_handlers[] = {

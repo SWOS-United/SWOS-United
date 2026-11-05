@@ -794,6 +794,12 @@ static void mm2_buttons(MmMenuMode mode)
     const int32_t busy = mode == MMM_1_WAIT || mode == MMM_2_REQUESTED || mode == MMM_3_ACCEPT;
     set_entry(MatchMakingMenu_desc, mode == MMM_X && MmClient_State() == MM_CONNECTING ? "CONNECTING TO SERVER"
                                                                                        : kDesc[mode], 0, 0);
+    if (mode == MMM_0_DEFAULT) {        /* (the cursor on a name: SWOS 2020's hint) */
+        extern uint8_t _currentMenu[];
+        const MenuEntry *sel = ((Menu *)_currentMenu)->selectedEntry;
+        if (sel >= entry_at(MatchMakingMenu_users_00) && sel <= entry_at(MatchMakingMenu_users_00 + MM_USERS - 1))
+            set_entry(MatchMakingMenu_desc, "CLICK PLAYER NAME TO VIEW MATCH INFO", 0, 0);
+    }
     set_entry(MatchMakingMenu_openGame, "HOST MATCH", 1, mode == MMM_0_DEFAULT ? kGreen : kGray);
     set_entry(MatchMakingMenu_cancelGame, "CANCEL", 1, busy ? kGreen : kGray);
     set_entry(MatchMakingMenu_menuSettings, "SETTINGS", 1, busy ? kGray : kGreen);
@@ -1778,7 +1784,9 @@ static void lobby_layout(void)
     int32_t tactics = MpGameSetupMenu_tactics_00 + row;
     int32_t go = MpGameSetupMenu_go_00 + row;
 
-    lobby_nav(teams,   -1,      tactics, -1, MpGameSetupMenu_legOpt1);
+    lobby_nav(teams,   MpGameSetupMenu_cPlayers_00 + row, tactics, -1, MpGameSetupMenu_legOpt1);
+    lobby_nav(MpGameSetupMenu_cPlayers_01, -1, row == 1 ? teams : -1, -1, MpGameSetupMenu_cPlayers_02);
+    lobby_nav(MpGameSetupMenu_cPlayers_02, -1, row == 2 ? teams : -1, MpGameSetupMenu_cPlayers_01, -1);
     lobby_nav(tactics, teams,   go,      -1, MpGameSetupMenu_etPen1);
     lobby_nav(go,      tactics, -1,      -1, MpGameSetupMenu_etPen1);
     lobby_nav(MpGameSetupMenu_legOpt1, -1, MpGameSetupMenu_etPen1, teams, MpGameSetupMenu_gameLength1);
@@ -2115,6 +2123,11 @@ static void location_AfterDraw(MenuEntry *e)
         lobby_kits(0, e->x + 2, e->y + e->dwHeight + 2);
 }
 
+void OnlineMenus_DrawStars(int32_t srn, int32_t x, int32_t y)
+{
+    put_map(&k_starsMap[star_level(srn) * 10], 10, 0, 36, x, y);
+}
+
 static void player_AfterDraw(MenuEntry *e)
 {
     const int32_t r = lobby_row_of(e, MpGameSetupMenu_cPlayers_01);
@@ -2198,6 +2211,28 @@ static void lobby2020_layout(void)
 
 /* One player's row, SWOS 2020's way (after OpenSWOS's has set what each may do). */
 static char s_rowName2[2][LOBBY_NAME_MAX + 4], s_rowTeam2[2][24];
+/* FIRE on a name: their MATCH INFO. While this player is in it the match cannot start (as in the
+ * team list), so their GO goes down for that time and comes back if it stood. */
+static void lobby_player_onSelect(MenuEntry *unused)
+{
+    extern uint8_t _currentMenu[];
+    const MenuEntry *e = ((Menu *)_currentMenu)->selectedEntry;
+    const int32_t me = NetplayLobby_LocalPlayer();
+    const LobbyPlayer *p = NetplayLobby_Player(e == entry_at(MpGameSetupMenu_cPlayers_01) ? 1 : 2);
+    const LobbyPlayer *mine = NetplayLobby_Player(me);
+    const int32_t wasReady = mine && mine->ready;
+    (void)unused;
+    if (!p || !p->name[0])
+        return;
+    if (wasReady) {
+        NetplayLobby_SetReady(0);
+        NetplayLobby_Poll();
+    }
+    Account_ShowPlayer(p->name);
+    if (wasReady && NetplayLobby_State() == LOBBY_OPEN)
+        NetplayLobby_SetReady(1);
+}
+
 static void lobby2020_row(int32_t row, const LobbyPlayer *p, int32_t canEdit)
 {
     extern uint8_t _smallCharsTable[];
@@ -2227,7 +2262,8 @@ static void lobby2020_row(int32_t row, const LobbyPlayer *p, int32_t canEdit)
             break;
         }
     }
-    set_entry(MpGameSetupMenu_cPlayers_01 + row, s_rowName2[row], 0, kPurple);
+    set_entry(MpGameSetupMenu_cPlayers_01 + row, s_rowName2[row], known, kPurple);
+    pe->onSelect = known ? lobby_player_onSelect : NULL;
     text_flags(MpGameSetupMenu_cPlayers_01 + row, kWhiteText2, gone ? 0 : kLeftAligned);
 
     /* TEAMS (from the left) and TACTICS light brown, GO red with its symbol */
@@ -3230,9 +3266,25 @@ static void matchMaking_host_onSelect(void)
     MmClient_JoinGame(games[s_rowGame[row]].owner);
 }
 
-/* A user row. Upstream opens playerInfoMenu here; nothing to show yet. */
+/* A user row: their MATCH INFO, unless a game is being hosted or asked for (SWOS 2020's). */
 static void matchMaking_users_onSelect(void)
 {
+#if PROJECT_SWOS2020_MATCHMAKING
+    extern uint8_t _currentMenu[];
+    const MenuEntry *sel = ((Menu *)_currentMenu)->selectedEntry;
+    int32_t r, count = 0;
+    const MmUser *users = MmClient_Users(&count);
+
+    if (mm2_mode() != MMM_0_DEFAULT)
+        return;
+    for (r = 0; r < MM_USERS; r++)
+        if (sel == entry_at(MatchMakingMenu_users_00 + r)) {
+            const int32_t idx = r + s_usersPage * MM_USERS;
+            if (idx < count)
+                Account_ShowPlayer(users[idx].name);
+            return;
+        }
+#endif
 }
 
 /* EXIT: leave the lobby properly rather than abandoning a socket -- otherwise

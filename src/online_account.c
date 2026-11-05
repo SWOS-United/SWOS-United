@@ -34,6 +34,7 @@ void        Account_LobbyClosed(void)          {}
 int32_t     Account_LobbyCanStart(void)        { return 1; }
 const char *Account_MatchText(void)            { return 0; }
 const char *Account_MatchTournament(void)      { return 0; }
+void        Account_ShowPlayer(const char *name) { (void)name; }
 void        Account_SelectMatch(void)          {}
 void        Account_MatchPlayed(const AccountResult *result) { (void)result; }
 

@@ -23,10 +23,15 @@ void United_SetSite(const char *name)
 
 int32_t United_NewSite(void) { return s_newSite; }
 
+void United_NewApiUrlTo(char *url, uint32_t cap, const char *path, const char *query)
+{
+    snprintf(url, cap, PROJECT_ACCOUNT_API "%s%s%s", path, query ? "?" : "", query ? query : "");
+}
+
 const char *United_NewApiUrl(const char *path, const char *query)
 {
     static char url[512];
-    snprintf(url, sizeof url, PROJECT_ACCOUNT_API "%s%s%s", path, query ? "?" : "", query ? query : "");
+    United_NewApiUrlTo(url, sizeof url, path, query);
     return url;
 }
 
@@ -259,10 +264,15 @@ int32_t United_JsonOk(const char *body, uint32_t len)
     return strcmp(v, "ok") == 0;
 }
 
+void United_ApiUrlTo(char *url, uint32_t cap, const char *view, const char *query)
+{
+    snprintf(url, cap, UNITED_API_BASE "&view=%s%s%s", view, query ? "&" : "", query ? query : "");
+}
+
 const char *United_ApiUrl(const char *view, const char *query)
 {
     static char url[512];
-    snprintf(url, sizeof url, UNITED_API_BASE "&view=%s%s%s", view, query ? "&" : "", query ? query : "");
+    United_ApiUrlTo(url, sizeof url, view, query);
     return url;
 }
 
