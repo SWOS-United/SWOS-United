@@ -2127,6 +2127,10 @@ void DrawQueuedSprites(void)
          * but sprites moved from asm to C data sections so addresses are no longer contiguous. */
         if (a4->teamNumber == 1 || a4->teamNumber == 2) {
             QueueMaskedSpriteBlitClipped(a0, d1, d2);
+#ifdef SWOS_SDL_BUILD
+            { extern void ModHooks_PlayerDrawn(const Sprite *, const SpriteGraphics *, int16_t, int16_t);
+              ModHooks_PlayerDrawn(a4, a0, (int16_t)(d1 + _menu_draw_x_offset), d2); }   /* (the hair mod; where it landed) */
+#endif
             continue;
         }
 

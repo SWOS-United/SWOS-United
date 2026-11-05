@@ -414,6 +414,45 @@ other. The code runs at **hooks**, fixed points of the engine, never patches of 
 |---|---|---|
 | `ModHooks_FrameDrawn(renderer)` | `platform_sdl.c`'s present, after the frame and its HUD, before the CRT effects, the touch controls and the swap | draw over the finished picture in its logical size. Runs once per frame SHOWN, so never on a re-simulated one: the place to keep a mod's own state |
 | `ModHooks_PitchDrawn()` | `game_loop.c`, after `ScrollToCurrent` drew the pitch into the frame being made, before the sprites | draw into the 8bpp frame UNDER the players. The frame may be one GGPO re-simulates and never shows, so only draw here |
+| `ModHooks_PlayerSetsRaw()` | `color_sprites.c` ConvertColorsAndTextSprites, once a match, before the player sets are recoloured | read the raw art (team 1's first set, sprites 227..327) |
+| `ModHooks_ReplayFrameBegin(first, fresh)`, `ModHooks_ReplaySprite(image, left, top)` | `highlight.c` DrawReplayFrame (the in-match replay) and `replay_v2.c` ReplayV2_DrawFrame (VIEW's .SRP): the pitch drawn, before the sprites; then each recorded sprite | draw under the replay's sprites; learn where its players are (`ModApi_ReplayPlayerFeet`) |
+| `ModHooks_PlayerDrawn(sprite, gfx, x, y)` | `sprites.c` DrawQueuedSprites, right after a player sprite is drawn, before anything is drawn over it | redraw that sprite's own pixels, draw beside it; draw only, as PitchDrawn |
+
+**A built-in mod is one `ModDef`** (`include/mod_api.h`): its slug and the hooks it has, each
+optional, defined in its own `src/mod_<slug>.c` and listed in `src/mods_builtin.c`. A fork lists
+its own in `src/fork_mods.inc` (`extern const ModDef ModDef_<slug>;` lines, then
+`#define FORK_MOD_LIST &ModDef_<slug>,`), a file OpenSWOS does not have, so a merge never meets
+it. `init` runs at start-up (after the mod list, before the menus are built from JSON);
+`src/mod_hooks.c` calls every hook of every mod that is on. The hooks, by what they are for
+(include/mod_api.h says each one's exact point):
+
+| what | how | where it runs |
+|---|---|---|
+| drawing | `frameDrawn`, `pitchDrawn`, `playerSetsRaw`, `playerDrawn`, `replayFrameBegin`, `replaySprite` | the table above |
+| a menu overlay (H5) | `menuDrawn` | `menu_system.c`: each menu frame, before it is shown (a whole redraw: DrawMenu; else MenuProc's frame) |
+| entries (H1, H6) | `ModApi_AddEntry(point, slug, label, fn)` in `init` | `MODPOINT_MODES`: the main menu's **MODES** button (entry 16, above CREDITS; shown only while an entry is there, never on the Amiga) opens `openswos/modEntriesMenu`, the list; `MODPOINT_AFTER_MATCH`: the same list after a friendly the player played (`game_loop.c`, after its REPLAY / EXIT). `ModApi_ShowEntries(point)` shows any point's list from a fork's own screen |
+| its own menus (H10) | `ModApi_RegisterHandlers(slug, {name, fn}[], n)` in `init`; `ModApi_ShowMenu(path)` | handlers named `<slug>.<name>` in the menus' JSON, resolved only while the mod is on; a mod's replacement of one of the game's menus names its own onInit, never the engine's |
+| settings (H7) | mod.json `"settings"`; `ModApi_Setting / SettingInt / SetSetting` | SWOS.ini `[mod.<slug>]` (Settings_Save keeps sections it does not know); the mod's page: OPTIONS -> MODS, fire on its name (`openswos/modPageMenu`), fire cycles a choice. The weather mod's two |
+| save data (H8) | `ModApi_SaveFile / LoadFile(slug, name, ...)` | the save folder's `mods/<slug>/<name>`, durable as a save (`Resload_SaveFileAt`: the web's sync, the Switch's commit); named fields, never dumps |
+| a match of its own (H2, H4) | `ModApi_DefaultSetup`, `ModApi_PlayMatch(slug, &setup, &result)` -- blocks until it is over; then `ModApi_EndMatch`, `StartShootout`, `Score`, `MatchFrames`, `ModMatch(slug)` | `src/mod_match.c`: a friendly without its menus, as the arcade cabinet plays one -- the teams by id (file << 8 \| ordinal), each side CPU / player 1 / player 2 (`SetupPlayers` asks no one), pitch, length, subs, extra time / penalties / straight to a shoot-out, replays, the stadium screen and the REPLAY menu or not, the match's name, the score and the minute (0-44) at kick-off (`InitGameRestoreTeams`' end); the friendly's own settings put back after. What comes after (retry, its menu) is the mod's own code, after PlayMatch returns |
+| match events (H3) | `matchStart`, `matchFrame`, `matchEvent`, `matchEnded` | every match: kick-off; each frame after the clock; goal / own goal / penalty goal (`GoalScored`), foul, yellow, second yellow, red, injury (`tackle_foul.c`), half time, second half, full time, extra time, shoot-out, each shoot-out kick (`NextPenalty`, in or not), the final whistle; the result. Each with its team (0 top, 1 bottom), the player's index, the minute and the frame. Never for a frame GGPO re-simulates (`NetplayMatch_Resimulating`) |
+| the online account (United) | `Account_UserSelected(name)` (online_account.h) | a player's row chosen in the matchmaking list (SWOS 2020's MATCH INFO / PLAYER INFO) |
+
+Checked: `SWOS_MOD_MATCH_TEST=1` (with `SWOS_HARNESS_TURBO=1`) plays a mod's match at the first
+main menu -- Norway v New Zealand, CPU v CPU, 2-1 at minute 40 -- logs its events and result and
+quits with PASS (it played to 90 minutes, 4-1: an injury, a goal, half time, the second half,
+fouls, a goal, full time, the final whistle); `SWOS_MOD_MATCH_TEST=entry` makes it a MODES entry
+instead, to try by hand. `SWOS_MOD_EVENT_LOG=1` logs any match's events. `SWOS_SKIP_INTRO=1`
+starts at the main menu. **Next** (from SWOS United's mapping of SWOS 2020's modes,
+G1-G15): the sides and the kick-off team before `StartingMatch`, sent-off players after it, a
+starting minute past a period's boundary, ghost players as a draw-time filter, a forced restart,
+a frozen clock, classified events (headers, tackles) -- each a hook as practice, challenges and
+speedrun are ported.
+
+**The mod API** (`include/mod_api.h`, `src/mod_api.c`): what a mod asks the game -- whether a
+match or a replay is on, the pitch type and minute, the players (where, facing, face, name),
+the camera, the screen, the frame to draw into, the palette, its own folder -- never the game's
+globals, so an engine change changes mod_api.c and no mod.
 
 Neither may write match state: the frame buffers are not in it (`src/sim_state.c`), and a mod's
 own state must not be either. A built-in mod that is cosmetic plays online like any other
@@ -434,9 +473,35 @@ its own generator.
   match's palette fades). A print starts dark and dries through the three, and in the last
   quarter of its life its pixels go one by one, so the pitch never fills up: 14 s on muddy, 8 s
   wet (both starting at full strength), 5 s soft (starting a level lighter). Both palettes, the
-  Amiga's and the PC's, take it.
+  Amiga's and the PC's, take it. A replay has a trail of its own (the match's waits), made at
+  ReplayFrameBegin from the players its last frame showed, each followed by the nearest of where
+  they were; it starts again at a replay's start or a jump.
 - `SWOS_WEATHER_PITCH=<0..6>` plays a pitch type's weather and mud whatever the match's -- for a
   test: `SWOS_WEATHER_PITCH=1 SWOS_PRESENT_CAPTURE=150 SWOS_PRESENT_CAPTURE_FROM=1500
   bin/SWOS.x86_64 --mods=weather --replay-test=../tests/replay/<a .swr> --dos-graphics=off`
   writes the presented frames as `swos_presentNNN.png`.
+- **The splashes.** On a rain pitch, drops hitting the pitch, in the pitch's own cells of 32
+  pixels (so they stay where they hit as the camera moves): 4 slots a cell, a share of them
+  raining (150 heavy, 90 rain, 35 drizzle a screen at full intensity, times the weather's), each
+  landing a drop every 360 ms somewhere new in its cell -- a dot, a crown, a ring going, 60 ms
+  each -- stamped under the players through a lightening palette table. Real time.
 - SDL only (`"targets": ["sdl"]`): neither hook exists on the Amiga.
+
+**`hair`** (off by default; `src/mod_hair.c`): players with more than one head of hair.
+- At PlayerSetsRaw the raw frames are kept, with where each one's hair is (raw 9, 12, 13). At
+  PlayerDrawn an outfield player's frame is made again for his look, in raw colours, and every
+  pixel that changed is written through his face's colour table, only where the frame still
+  shows his sprite's pixel.
+- **Looks**: blonde (face 3's yellow and orange), black, receding (the 96/97 Mod's 'E' shape:
+  the hair's top row skin, and the next row's hair with a pixel on both sides), shaved (the
+  skull's tone, nearest the palette has to the Mod's), ponytail (the owner's 3x3 PONYTAIL.bmp in
+  hair colour 9: as drawn facing left, mirrored facing right, down the back facing away, unseen
+  from the front; upright frames only). Goalkeepers keep theirs.
+- **Who looks how**: `looks.csv` in the mod's folder (the Mod's `bald-looks` format:
+  `country,club,name,look[,face]`, matched by full name and club), else a hash of his name (7%
+  receding, 6% shaved, 4% ponytail; white 14% blonde, 10% black; ginger 30% black), so a player
+  always looks the same. `SWOS_HAIR_LOOK=<look>` gives everyone one (a test's).
+- **Marco's shaved art** (the Mod's `tools/shavedart.json`, per frame per skin) is used when it is
+  in the mod's folder as `shavedart.json`, else the hair becomes the skull's colour, its lowest
+  row a shade. Neither it nor the Mod's `packs/bald-looks-2627.csv` is in this repo: the Mod's
+  data is not MIT (its LICENSE §2) -- the owner asks Davide and Marco first.
