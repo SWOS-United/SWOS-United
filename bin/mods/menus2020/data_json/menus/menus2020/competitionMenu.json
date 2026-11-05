@@ -205,9 +205,9 @@
       "kind": "entry",
       "name": "act3",
       "coords": {
-        "x": 82,
+        "x": 162,
         "y": 137,
-        "w": 140,
+        "w": 110,
         "h": 20
       },
       "commands": [
@@ -264,6 +264,32 @@
         {
           "op": "onselect_fire",
           "func": "SetExitMenuFlag"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "season",
+      "coords": {
+        "x": 32,
+        "y": 137,
+        "w": 110,
+        "h": 20
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "str": "_aSeason_1"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 5
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.season"
         }
       ]
     }

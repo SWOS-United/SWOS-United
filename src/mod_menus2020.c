@@ -8,13 +8,13 @@
  * handler they name is one of these, "menus2020.<name>" (ModApi_RegisterHandlers).
  *
  * What the buttons do here, by what they say:
- *   COMPETE    COMPETITIONS: ONLINE (the game's MULTIPLAYER), DIY, PRESET, CLASSIC CAREER,
+ *   COMPETE    COMPETITIONS: ONLINE (the game's MULTIPLAYER), DIY, PRESET, SEASON, CLASSIC CAREER,
  *              and SPEEDRUNS / CHALLENGES when OpenSWOS's speedrun / challenges mods are on
- *   PRACTICE   FRIENDLY MATCH, and MODES -- the mods' entries (MODPOINT_MODES) -- when a mod
- *              that is on has one
+ *   PRACTICE   FRIENDLY MATCH; PENALTY SHOOTOUT and DEMO GAME (OpenSWOS's practice mod, when
+ *              on); MODES -- the mods' entries (MODPOINT_MODES) -- when a mod has one
  *   REPLAYS    the game's HIGHLIGHTS
  *   OPTIONS    the game's OPTIONS
- *   EDITING    EDIT CUSTOM TEAMS, EDIT TACTICS
+ *   EDITING    EDIT CUSTOM TEAMS, EDIT TACTICS, SAVE DISK FILING
  *   EXTRAS     EDIT CUSTOM TEAMS, EDIT TACTICS, INSTRUCTION MANUAL (LATEST NEWS, TIPS AND
  *              REVIEWS, STREAMS AND VIDEOS hidden: the ticker mod's)
  *   CONTINUE / SAVE / LOAD, QUIT, CREDITS
@@ -176,7 +176,8 @@ static void quit(void)
  * COMPETITIONS (swos-2020 competition.mnu). Ordinals: its entries, in order.
  * ====================================================================================== */
 enum { Comp_header, Comp_online, Comp_speedruns, Comp_diy, Comp_challenges, Comp_preset,
-       Comp_career, Comp_exit };
+       Comp_career, Comp_exit,
+       Comp_season };                   /* (ours: the original main menu's SEASON) */
 
 /* A row pair: SWOS 2020's two columns when the left one (a mod's) is there, else the right one
  * alone in the middle. Returns the ordinal arrows reach the row by. */
@@ -208,9 +209,10 @@ static void competitionInit(void)
     nav(Comp_online, -1, -1, -1, row2);
     nav(Comp_speedruns, -1, Comp_diy, top, Comp_challenges);
     nav(Comp_diy, row2 == Comp_speedruns ? Comp_speedruns : -1, -1, top, Comp_preset);
-    nav(Comp_challenges, -1, Comp_preset, row2, Comp_career);
+    nav(Comp_challenges, -1, Comp_preset, row2, Comp_season);
     nav(Comp_preset, row3 == Comp_challenges ? Comp_challenges : -1, -1, Comp_diy, Comp_career);
-    nav(Comp_career, -1, -1, row3, Comp_exit);
+    nav(Comp_season, -1, Comp_career, row3, Comp_exit);
+    nav(Comp_career, Comp_season, -1, Comp_preset, Comp_exit);
     nav(Comp_exit, -1, -1, Comp_career, -1);
     SetCurrentEntry(Comp_diy);
 }
@@ -232,22 +234,29 @@ static void online(void) { choose(MultiplayerMenuSelected); }
 static void diy(void)    { choose(DIYCompetitionMenu); }
 static void preset(void) { choose(PresetCompetitionMenu); }
 static void career(void) { choose(CareerMenu); }
+static void season(void) { choose(SeasonMenu); }
 
 /* ======================================================================================
- * PRACTICE (swos-2020 practice.mnu): FRIENDLY MATCH; its TEAM TRAINING row is MODES here.
+ * PRACTICE (swos-2020 practice.mnu): FRIENDLY MATCH; PENALTY SHOOTOUT and DEMO GAME are OpenSWOS's
+ * practice mod's (practice.shootout, practice.demo: named in the JSON), shown while it is on; its
+ * TEAM TRAINING row is MODES here (the mods' entries) until the practice mod has training.
  * ====================================================================================== */
-enum { Prac_header, Prac_friendly, Prac_modes, Prac_penalties, Prac_demo, Prac_help, Prac_exit };
+enum { Prac_header, Prac_friendly, Prac_modes, Prac_shootout, Prac_demo, Prac_help, Prac_exit };
 
 static void practiceInit(void)
 {
-    static char modesText[] = "MODES";
+    const int32_t practice = ModApi_FindEntry(MODPOINT_MODES, "practice") >= 0;
     const int32_t modes = ModApi_EntryCount(MODPOINT_MODES) > 0;
+    const int32_t below = practice ? Prac_shootout : Prac_exit;    /* what follows MODES */
 
-    entry(Prac_modes)->fg = (uintptr_t)modesText;
     show(Prac_modes, modes);
-    nav(Prac_friendly, -1, -1, -1, modes ? Prac_modes : Prac_exit);
-    nav(Prac_modes, -1, -1, Prac_friendly, Prac_exit);
-    nav(Prac_exit, -1, -1, modes ? Prac_modes : Prac_friendly, -1);
+    show(Prac_shootout, practice);
+    show(Prac_demo, practice);
+    nav(Prac_friendly, -1, -1, -1, modes ? Prac_modes : below);
+    nav(Prac_modes, -1, -1, Prac_friendly, below);
+    nav(Prac_shootout, -1, -1, modes ? Prac_modes : Prac_friendly, Prac_demo);
+    nav(Prac_demo, -1, -1, Prac_shootout, Prac_exit);
+    nav(Prac_exit, -1, -1, practice ? Prac_demo : modes ? Prac_modes : Prac_friendly, -1);
 }
 
 static void friendly(void) { choose(FriendlyMenu); }
@@ -276,6 +285,7 @@ static void extrasInit(void)
 
 static void editTeams(void)   { choose(EditCustomTeamMenu); }
 static void editTactics(void) { choose(EditTacticsMenu); }
+static void diskFiling(void)  { choose(SaveDiskFilingMenu); }
 
 /* INSTRUCTION MANUAL: the one SWOS 2020 opens (manualExtras_OnSelect), in the browser. */
 static void manual(void)
@@ -295,13 +305,14 @@ static void init(void)
 
         { "competitionInit", competitionInit },
         { "online", online }, { "diy", diy }, { "preset", preset }, { "career", career },
-        { "speedruns", speedruns }, { "challenges", challenges },
+        { "speedruns", speedruns }, { "challenges", challenges }, { "season", season },
 
         { "practiceInit", practiceInit },
         { "friendly", friendly }, { "modes", modes },
 
         { "extrasInit", extrasInit },
         { "editTeams", editTeams }, { "editTactics", editTactics }, { "manual", manual },
+        { "diskFiling", diskFiling },
     };
     ModApi_RegisterHandlers(SLUG, handlers, (int32_t)(sizeof handlers / sizeof handlers[0]));
 }

@@ -9,6 +9,14 @@ file says which SWOS 2020 feature goes where and which engine hooks each needs.
 hook. United-only mod code may use only hooks that already exist. The owner decides which of
 the mods below are canonical OpenSWOS mods and which are United-only.
 
+**SWOS United is OpenSWOS + all of SWOS 2020** (the owner, 2026-11-04): every SWOS 2020 feature
+comes in -- **in OpenSWOS's formats, never SWOS 2020's**: teams as the JSON with uuid and checksum
+(docs/TEAM_IDS.md, docs/CUSTOM_TEAMS.md), replays as `.SRP`, saves as JSON, a mod's records as
+named fields through `ModApi_SaveFile` -- not `.EDT` databases, `.RPL`/`.HIL`, `.SCN` or raw `.dat`
+dumps. **Where OpenSWOS has no format for something, United makes a JSON one** -- JSON is the
+project's format for data. A SWOS 2020 file may be READ (imported) where a player has one; it is
+never what the game writes or plays from.
+
 **The owner's decisions (2026-11-04):**
 - **Canonical OpenSWOS mods, built in OpenSWOS** and merged into United: `practice`, `challenges`,
   `speedrun`, `ticker` ("since these are mods we can easily move these around if we change our
@@ -86,9 +94,10 @@ REPLAYS -> highlights, `.SRP`), and PRACTICE to the canonical `practice` mod whe
 `src/mod_menus2020.c` (listed in `src/fork_mods.inc`), its menus made by
 `scripts/make_menus2020.py` into `bin/mods/menus2020/` (canonical, off by default; OPTIONS -> MODS
 or `[mods] enabled = menus2020`). SWOS 2020's main menu replaces the game's; its buttons:
-COMPETE -> COMPETITIONS (ONLINE = MULTIPLAYER, DIY, PRESET, CLASSIC CAREER), PRACTICE -> FRIENDLY
-MATCH + MODES (the mods' entries, when there are any), REPLAYS -> HIGHLIGHTS, OPTIONS, EDITING ->
-EDIT CUSTOM TEAMS / EDIT TACTICS, EXTRAS -> the same two + INSTRUCTION MANUAL, CONTINUE / SAVE /
+COMPETE -> COMPETITIONS (ONLINE = MULTIPLAYER, DIY, PRESET, SEASON, CLASSIC CAREER), PRACTICE ->
+FRIENDLY MATCH, MODES (the mods' entries, when there are any), PENALTY SHOOTOUT and DEMO GAME
+(OpenSWOS's practice mod's `practice.shootout` / `practice.demo`, while it is on), REPLAYS ->
+HIGHLIGHTS, OPTIONS, EDITING -> EDIT CUSTOM TEAMS / EDIT TACTICS / SAVE DISK FILING, EXTRAS -> the same two + INSTRUCTION MANUAL, CONTINUE / SAVE /
 LOAD, QUIT (asks), CREDITS.
 
 - **Ordinals 11..16 keep the game's meanings** (CONTINUE, SAVE, LOAD, MULTIPLAYER, CREDITS, MODES):
@@ -97,8 +106,10 @@ LOAD, QUIT (asks), CREDITS.
   button that opened it runs it with the main menu current (`open_screen`).
 - **SPEEDRUNS / CHALLENGES** show when OpenSWOS's `speedrun` / `challenges` mods are on, and run
   their MODES entry (`ModApi_FindEntry` / `ModApi_RunEntry`, OpenSWOS c46c56eb).
-- Not there yet: SEASON and SAVE DISK FILING (the original main menu's; SWOS 2020 has neither),
-  the ticker rows, SWOS 2020's icons (TV, QUIT, CREDITS, SAVE/LOAD disks, the little
+- SEASON and SAVE DISK FILING (the original main menu's; SWOS 2020 has neither) are kept: SEASON
+  beside CLASSIC CAREER, SAVE DISK FILING under the editors.
+- Not there yet: TEAM TRAINING (`practice.training`, when OpenSWOS's practice mod has it), the
+  ticker rows, SWOS 2020's icons (TV, QUIT, CREDITS, SAVE/LOAD disks, the little
   player), menu descriptions. Checked: SDL headless -- the menu, COMPETE -> DIY -> back, PRACTICE;
   both targets build; `--menu-selftest`, the mod-match test.
 
@@ -130,6 +141,6 @@ LOAD, QUIT (asks), CREDITS.
 | Menu | Its data in SWOS 2020 | Status |
 |---|---|---|
 | NEWS | speedrun "LATEST RUNS" (`viewNewsCurrent_v2`, game.cpp:10233) | comes with the canonical `speedrun` mod (agreed) |
-| MATCH LOGS (`mLogReader`/`mLogTicker`/`mLogStats`), MY FRIENDLY / RANKED STATS | SWOS 2020's galore API, `sensiblesoccer.de/swos2020/galoreapi_v15.php` (`list_log_files`, `get_my_*_stats`) -- SWOS 2020's database, not United's matches | **owner's decision** whether United uses it (`united_leagues.c` hides MY STATS until United's server keeps matches) |
+| MATCH LOGS (`mLogReader`/`mLogTicker`/`mLogStats`), MY FRIENDLY / RANKED STATS | SWOS 2020's galore API, `sensiblesoccer.de/swos2020/galoreapi_v15.php` (`list_log_files`, `get_my_*_stats`) | **yes** (the owner): ported in United's files |
 | MATCH INFO, PLAYER INFO | `loadPlayerAndMatchInfo` (mpgame.cpp:10648), from a matchmaking user row; `userdetail` on sensiblesoccer.de, which United already calls | waits for `Account_UserSelected(name)` (online_account.h), in OpenSWOS's hook batch; then a United port in United's files |
-| FUN CUP | local `MP\DB\*.EDT` custom databases (game.cpp:22770) | **owner's decision**: custom databases vs the online rule (database teams only) |
+| FUN CUP | local `MP\DB\*.EDT` custom databases (game.cpp:22770) | **yes** (the owner), as OpenSWOS teams: a "data" mod of JSON teams (uuid, checksum), accepted online when both have the mod -- the team rule to take mods' teams is asked of OpenSWOS |

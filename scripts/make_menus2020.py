@@ -53,15 +53,29 @@ SUBMENUS = {
             "selectScenarioMode": "challenges",             # its challenges mod, when on
         },
         hide=[],
+        # SEASON: the original main menu's, which SWOS 2020 has not -- kept (the owner: every
+        # feature of both), beside CLASSIC CAREER MODE in its row.
+        move={"act3": (162, 137, 110, 20)},
+        add=[dict(name="season", like="act3", coords=(32, 137, 110, 20),
+                  symbol="_aSeason_1", handler="season")],
     ),
     "practice": dict(
         out="practiceMenu", onInit="practiceInit",
         handlers={
             "FriendlyMenu": "friendly",
             "trainingModePractice_OnSelect": "modes",   # this row is MODES (mod_menus2020.c)
+            # OpenSWOS's practice mod's own handlers (its H10 names), resolved while it is on;
+            # mod_menus2020.c hides the rows while it is off. They run nested in this screen,
+            # which comes back from these bytes without its onInit: so the defaults here are
+            # the practice-on layout.
+            "challengeGame2Practice_OnSelect": "practice.shootout",
+            "demoGamePractice_OnSelect": "practice.demo",
             "exitPractice_OnSelect": "SetExitMenuFlag",
         },
-        hide=["challengeGame2", "demoGame", "HelpMsg"],  # come with OpenSWOS's practice mod
+        hide=["HelpMsg", "trainingMode"],
+        text={"trainingMode": "MODES"},
+        nav={"friendlyMode": (-1, -1, -1, 3), "challengeGame2": (-1, -1, 1, 4),
+             "demoGame": (-1, -1, 3, 6), "exit": (-1, -1, 4, -1)},
     ),
     "editing": dict(
         out="editingMenu", onInit=None,
@@ -71,6 +85,11 @@ SUBMENUS = {
             "exit_editingMenu_onSelect": "SetExitMenuFlag",
         },
         hide=[],
+        # SAVE DISK FILING: the original main menu's (SWOS 2020 has none), under the editors.
+        move={"editCustomTeams": (92, 50, 125, 20), "editTactics": (92, 95, 125, 20)},
+        add=[dict(name="diskFiling", like="editTactics", coords=(92, 140, 125, 20),
+                  symbol="_aSaveDiskFiling", handler="diskFiling")],
+        nav={"editTactics": (-1, -1, 1, 4), "diskFiling": (-1, -1, 2, 3), "exit": (-1, -1, 4, -1)},
     ),
     "extrasEx": dict(
         out="extrasMenu", onInit="extrasInit",
@@ -126,8 +145,8 @@ def rehandle(item, handlers, where):
         if f is None or f == "SetExitMenuFlag":
             cmds.append(c)
         elif f in handlers:
-            ours = handlers[f]
-            cmds.append(dict(c, func=ours if ours == "SetExitMenuFlag" else mod(ours)))
+            ours = handlers[f]          # ours, or another mod's "<slug>.<name>" as it is
+            cmds.append(dict(c, func=ours if ours == "SetExitMenuFlag" or "." in ours else mod(ours)))
         else:
             print("  %s: %s dropped (no counterpart)" % (where, f))
     item["commands"] = cmds
@@ -255,11 +274,33 @@ def build_main(doc):
 
 
 def build_sub(doc, spec):
-    for it, _o in entries_of(doc):
+    found = entries_of(doc)
+    by_name = {it.get("name"): it for it, _o in found}
+    for it, _o in found:
         name = it.get("name")
         rehandle(it, spec["handlers"], "%s.%s" % (spec["out"], name))
         if name in spec["hide"]:
             hide(it)
+    for name, text in spec.get("text", {}).items():
+        set_text(by_name[name], text)
+    for name, (x, y, w, h) in spec.get("move", {}).items():
+        by_name[name]["coords"] = {"x": x, "y": y, "w": w, "h": h}
+    # Entries of ours, after SWOS 2020's (so its ordinals stay): a copy of `like` (its colours,
+    # text flags) with our text and handler.
+    for add in spec.get("add", []):
+        item = json.loads(json.dumps(by_name[add["like"]]))
+        item["name"] = add["name"]
+        x, y, w, h = add["coords"]
+        item["coords"] = {"x": x, "y": y, "w": w, "h": h}
+        item["commands"] = [c for c in item["commands"] if c["op"] not in ("nav", "onselect_fire")]
+        set_text(item, symbol=add["symbol"])
+        item["commands"].append({"op": "onselect_fire", "func": mod(add["handler"])})
+        doc["items"].append(item)
+        by_name[add["name"]] = item
+    for name, (l, r, u, d) in spec.get("nav", {}).items():
+        it = by_name[name]
+        it["commands"] = [c for c in it["commands"] if c["op"] != "nav"]
+        it["commands"].append({"op": "nav", "left": l, "right": r, "up": u, "down": d})
     doc["name"] = spec["out"]
     doc["onInit"] = mod(spec["onInit"]) if spec["onInit"] else None
     doc["onDraw"] = None

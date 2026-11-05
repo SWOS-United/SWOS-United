@@ -63,15 +63,15 @@
           "background_color": 14
         },
         {
+          "op": "onselect_fire",
+          "func": "menus2020.friendly"
+        },
+        {
           "op": "nav",
           "left": -1,
           "right": -1,
           "up": -1,
-          "down": 2
-        },
-        {
-          "op": "onselect_fire",
-          "func": "menus2020.friendly"
+          "down": 3
         }
       ]
     },
@@ -88,7 +88,7 @@
         {
           "op": "text",
           "flags": "0x0",
-          "literal": "TEAM TRAINING"
+          "literal": "MODES"
         },
         {
           "op": "colors",
@@ -105,6 +105,9 @@
         {
           "op": "onselect_fire",
           "func": "menus2020.modes"
+        },
+        {
+          "op": "invisible"
         }
       ]
     },
@@ -129,14 +132,15 @@
           "background_color": 14
         },
         {
+          "op": "onselect_fire",
+          "func": "practice.shootout"
+        },
+        {
           "op": "nav",
           "left": -1,
           "right": -1,
-          "up": 2,
+          "up": 1,
           "down": 4
-        },
-        {
-          "op": "invisible"
         }
       ]
     },
@@ -161,14 +165,15 @@
           "background_color": 14
         },
         {
+          "op": "onselect_fire",
+          "func": "practice.demo"
+        },
+        {
           "op": "nav",
           "left": -1,
           "right": -1,
           "up": 3,
           "down": 6
-        },
-        {
-          "op": "invisible"
         }
       ]
     },
@@ -212,15 +217,15 @@
           "background_color": 12
         },
         {
+          "op": "onselect_fire",
+          "func": "SetExitMenuFlag"
+        },
+        {
           "op": "nav",
           "left": -1,
           "right": -1,
           "up": 4,
           "down": -1
-        },
-        {
-          "op": "onselect_fire",
-          "func": "SetExitMenuFlag"
         }
       ]
     }

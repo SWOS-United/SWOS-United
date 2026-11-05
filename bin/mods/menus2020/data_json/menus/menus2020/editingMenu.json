@@ -41,7 +41,7 @@
       "name": "editCustomTeams",
       "coords": {
         "x": 92,
-        "y": 60,
+        "y": 50,
         "w": 125,
         "h": 20
       },
@@ -74,7 +74,7 @@
       "name": "editTactics",
       "coords": {
         "x": 92,
-        "y": 110,
+        "y": 95,
         "w": 125,
         "h": 20
       },
@@ -90,15 +90,15 @@
           "background_color": 14
         },
         {
+          "op": "onselect_fire",
+          "func": "menus2020.editTactics"
+        },
+        {
           "op": "nav",
           "left": -1,
           "right": -1,
           "up": 1,
-          "down": 3
-        },
-        {
-          "op": "onselect_fire",
-          "func": "menus2020.editTactics"
+          "down": 4
         }
       ]
     },
@@ -123,15 +123,48 @@
           "background_color": 12
         },
         {
+          "op": "onselect_fire",
+          "func": "SetExitMenuFlag"
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": 4,
+          "down": -1
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "diskFiling",
+      "coords": {
+        "x": 92,
+        "y": 140,
+        "w": 125,
+        "h": 20
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "str": "_aSaveDiskFiling"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 14
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.diskFiling"
+        },
+        {
           "op": "nav",
           "left": -1,
           "right": -1,
           "up": 2,
-          "down": -1
-        },
-        {
-          "op": "onselect_fire",
-          "func": "SetExitMenuFlag"
+          "down": 3
         }
       ]
     }
