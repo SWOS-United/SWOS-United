@@ -128,6 +128,10 @@ static int32_t keep_feed(const char *body, uint32_t length)
  * screen's: ask again next frame), then take the answer. */
 static void feed_step(void)
 {
+#ifndef SWOS_HTTPS
+    s_feed = 2;                         /* (no HTTPS client in this build -- the web's: the
+                                         * news kept before, else the mod's own) */
+#else
     HttpsReply reply;
     if (s_feed == 0) {
         if (Https_RequestAsync(FEED_URL, NULL) == 0)
@@ -147,6 +151,7 @@ static void feed_step(void)
                 FEED_URL, (int)reply.status);
     }
     Https_Free(&reply);
+#endif
 }
 
 static void load(void)
