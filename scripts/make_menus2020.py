@@ -113,10 +113,13 @@ MAIN_ORDER = ["competition", "practice", "replays", "options", "editing", "extra
               "exit", None, None, None, None,
               "continueContest", "saveContest", "loadOldCompetition",
               "multiplayer", "credits", "modes"]
-# (button, its picture, the icon's column on it): SWOS 2020's onDraw, the menu without MULTIPLAYER_MENU.
-ICON_COLUMNS = [("competition", "compete", 30), ("practice", "practice", 27),
-                ("replays", "replays", 27), ("options", "options", 98),
-                ("editing", "editing", 96), ("extras", "extras", 95)]
+# (button, its picture, the icon's column on it). SWOS 2020 drew them at columns 27-30 and
+# 95-98 (its onDraw, the menu without MULTIPLAYER_MENU), beside text in its own font; in the
+# game's big menu font those columns touch the words, so here they sit 12 in from the
+# button's outer edge (the buttons are 148 wide).
+ICON_COLUMNS = [("competition", "compete", 12), ("practice", "practice", 12),
+                ("replays", "replays", 12), ("options", "options", 120),
+                ("editing", "editing", 120), ("extras", "extras", 120)]
 MAIN_HANDLERS = {
     "SWOS_competitionMainMenu_onSelect": "compete",
     "SWOS_practiceMainMenu_onSelect": "practice",

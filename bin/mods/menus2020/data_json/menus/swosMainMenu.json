@@ -52,7 +52,7 @@
         }
       ],
       "image": "grafs_2020/menus2020/compete.bmp",
-      "image_x": 30,
+      "image_x": 12,
       "image_y": 7
     },
     {
@@ -88,7 +88,7 @@
         }
       ],
       "image": "grafs_2020/menus2020/practice.bmp",
-      "image_x": 27,
+      "image_x": 12,
       "image_y": 7
     },
     {
@@ -124,7 +124,7 @@
         }
       ],
       "image": "grafs_2020/menus2020/replays.bmp",
-      "image_x": 27,
+      "image_x": 12,
       "image_y": 7
     },
     {
@@ -160,7 +160,7 @@
         }
       ],
       "image": "grafs_2020/menus2020/options.bmp",
-      "image_x": 98,
+      "image_x": 120,
       "image_y": 7
     },
     {
@@ -196,7 +196,7 @@
         }
       ],
       "image": "grafs_2020/menus2020/editing.bmp",
-      "image_x": 96,
+      "image_x": 120,
       "image_y": 7
     },
     {
@@ -232,7 +232,7 @@
         }
       ],
       "image": "grafs_2020/menus2020/extras.bmp",
-      "image_x": 95,
+      "image_x": 120,
       "image_y": 7
     },
     {
