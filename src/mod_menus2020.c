@@ -65,7 +65,7 @@ static void show(int32_t ordinal, int32_t visible) { entry(ordinal)->isInvisible
  * ====================================================================================== */
 enum {
     Main_compete, Main_practice, Main_replays, Main_options, Main_editing, Main_extras,
-    Main_quit,
+    Main_quit, Main_ticker, Main_liveCast,
     Main_continue = 11, Main_save, Main_load, Main_multiplayer, Main_credits, Main_modes,
 };
 
@@ -77,6 +77,8 @@ static int32_t  s_loadKnown;
  * when a mod has an entry. Here: MULTIPLAYER and MODES stay hidden (COMPETE and PRACTICE
  * have them), LOAD is centred on CONTINUE's row when it is alone, and the arrows go where
  * the buttons are. */
+static int32_t s_liveShown = -2;        /* the TV's picture: 1 live, 0 idle, -2 as unpacked */
+
 static void main_refresh(void)
 {
     MenuEntry *cont = entry(Main_continue), *load = entry(Main_load);
@@ -84,6 +86,13 @@ static void main_refresh(void)
 
     show(Main_multiplayer, 0);
     show(Main_modes, 0);
+    s_liveShown = -2;                   /* (unpacked again: the JSON's idle picture) */
+#ifdef SWOS_NETPLAY
+    nav(Main_compete, -1, Main_options, Main_liveCast, Main_practice);
+#else
+    show(Main_liveCast, 0);             /* LIVE CAST watches online matches */
+    nav(Main_compete, -1, Main_options, -1, Main_practice);
+#endif
 
     if (!s_loadKnown && contest) {      /* (CommonMenuExit has not moved it) */
         s_loadX = load->x;
@@ -123,6 +132,19 @@ static void mainInit(void)
     extern void SWOSMainMenuInit(void);
     SWOSMainMenuInit();                 /* the game's: CommonMenuExit, its test hook */
     main_refresh();
+}
+
+/* Each frame of the main menu: the TV shows a match when one is live (SWOS 2020's drawTvIcon). */
+static void mainDrawn(void)
+{
+#ifdef SWOS_NETPLAY
+    const int32_t live = ModApi_LiveAny() == 1;
+    if (live != s_liveShown) {
+        s_liveShown = live;
+        ModApi_SetMenuImage(Main_liveCast, live ? "grafs_2020/menus2020/tv_live.bmp"
+                                                : "grafs_2020/menus2020/tv_idle.bmp");
+    }
+#endif
 }
 
 /* What a sub-screen chose, run by the main-menu button that opened it. */
@@ -295,10 +317,85 @@ static void manual(void)
 }
 
 /* ====================================================================================== */
+/* ======================================================================================
+ * LIVE CAST: the live online matches (SWOS 2020 sent its TV to swos.eu/rpl in a browser; here
+ * they are watched in the game, OpenSWOS's viewer ~3 s behind the players: ModApi_LiveList /
+ * ModApi_LiveWatch, docs/NETPLAY.md §7). Ordinals: menus2020/liveMenu.json.
+ * ====================================================================================== */
+#ifdef SWOS_NETPLAY
+enum { kLiveRows = 8 };
+enum { Live_header, Live_first, Live_status = Live_first + kLiveRows, Live_refresh, Live_exit };
+
+static ModLiveMatch s_live[kLiveRows];
+static int32_t      s_liveCount;
+static int32_t      s_liveAction;       /* what the list chose: 0 leave, 1 watch, 2 refresh */
+static uint64_t     s_watchId;
+static char         s_liveRow[kLiveRows][52];
+
+static void liveInit(void)
+{
+    for (int32_t i = 0; i < kLiveRows; i++) {
+        if (i < s_liveCount) {
+            const ModLiveMatch *m = &s_live[i];
+            snprintf(s_liveRow[i], sizeof s_liveRow[i], "%s V %s (%s V %s)",
+                     m->players[0], m->players[1], m->teams[0], m->teams[1]);
+            ModApi_MenuText(Live_first + i, s_liveRow[i]);
+        }
+        ModApi_MenuVisible(Live_first + i, i < s_liveCount);
+        ModApi_MenuNav(Live_first + i, i ? Live_first + i - 1 : -1,
+                       i + 1 < s_liveCount ? Live_first + i + 1 : Live_refresh);
+    }
+    ModApi_MenuText(Live_status, s_liveCount < 0 ? "THE SERVER CANNOT BE REACHED"
+                                 : s_liveCount == 0 ? "NO MATCHES ARE LIVE RIGHT NOW"
+                                 : "FIRE ON A MATCH TO WATCH IT");
+    const int32_t last = s_liveCount > 0 ? Live_first + s_liveCount - 1 : -1;
+    ModApi_MenuNav4(Live_refresh, -1, Live_exit, last, -1);
+    ModApi_MenuNav4(Live_exit, Live_refresh, -1, last, -1);
+    ModApi_MenuSelect(s_liveCount > 0 ? Live_first : Live_refresh);
+}
+
+static void liveWatch(void)
+{
+    const int32_t i = ModApi_MenuCurrentEntry() - Live_first;
+    if (i < 0 || i >= s_liveCount)
+        return;
+    s_watchId = s_live[i].id;
+    s_liveAction = 1;
+    SetExitMenuFlag();
+}
+
+static void liveRefresh(void) { s_liveAction = 2; SetExitMenuFlag(); }
+
+static void liveCast(void)
+{
+    for (;;) {
+        s_liveCount = ModApi_LiveList(s_live, kLiveRows);
+        s_liveAction = 0;
+        if (ModApi_ShowMenu(SLUG "/liveMenu") != 0)
+            break;
+        if (s_liveAction == 1) {
+            if (ModApi_LiveWatch(s_watchId) < 0)
+                ModApi_ShowError("THAT MATCH IS NO LONGER LIVE");
+        } else if (s_liveAction != 2) {
+            break;
+        }
+    }
+    CommonMenuExit();
+    main_refresh();
+}
+#else
+static void liveInit(void) {}
+static void liveWatch(void) {}
+static void liveRefresh(void) {}
+static void liveCast(void) {}
+#endif
+
 static void init(void)
 {
     static const ModHandler handlers[] = {
-        { "mainInit", mainInit },
+        { "mainInit", mainInit }, { "mainDrawn", mainDrawn },
+        { "liveCast", liveCast }, { "liveInit", liveInit }, { "liveWatch", liveWatch },
+        { "liveRefresh", liveRefresh },
         { "compete", compete }, { "practice", practice }, { "replays", replays },
         { "options", options }, { "editing", editing }, { "extras", extras },
         { "continueContest", continueContest }, { "saveContest", saveContest },

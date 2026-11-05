@@ -9,7 +9,7 @@
     "dos_redraw": true
   },
   "onInit": "menus2020.mainInit",
-  "onReturn": null,
+  "onReturn": "menus2020.mainDrawn",
   "onDraw": null,
   "defaultEntry": 0,
   "exports": {},
@@ -276,9 +276,9 @@
     {
       "kind": "entry",
       "coords": {
-        "x": 8,
+        "x": 50,
         "y": 6,
-        "w": 304,
+        "w": 262,
         "h": 10
       },
       "commands": [
@@ -291,16 +291,31 @@
     {
       "kind": "entry",
       "coords": {
-        "x": 0,
-        "y": 0,
-        "w": 1,
-        "h": 1
+        "x": 4,
+        "y": 4,
+        "w": 42,
+        "h": 38
       },
       "commands": [
         {
-          "op": "invisible"
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 0
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": -1,
+          "down": 0
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.liveCast"
         }
-      ]
+      ],
+      "name": "liveCast",
+      "image": "grafs_2020/menus2020/tv_idle.bmp"
     },
     {
       "kind": "entry",

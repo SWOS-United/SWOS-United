@@ -1,0 +1,388 @@
+{
+  "name": "liveMenu",
+  "comment": "SWOS United's LIVE CAST list (bin/mods/menus2020, src/mod_menus2020.c): the live online matches from the matchmaking server (ModApi_LiveList); a row watches one (ModApi_LiveWatch). Ordinals: 0 header, 1-8 matches, 9 status, 10 REFRESH, 11 EXIT.",
+  "onInit": "menus2020.liveInit",
+  "onReturn": null,
+  "onDraw": null,
+  "defaultEntry": 1,
+  "items": [
+    {
+      "kind": "coords_mode",
+      "wide": true
+    },
+    {
+      "kind": "entry",
+      "name": "header",
+      "coords": {
+        "x": 48,
+        "y": 0,
+        "w": 200,
+        "h": 15
+      },
+      "commands": [
+        {
+          "op": "colors",
+          "frame_color": 1,
+          "background_color": 7
+        },
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "LIVE CAST"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "match0",
+      "coords": {
+        "x": 0,
+        "y": 22,
+        "w": 296,
+        "h": 13
+      },
+      "commands": [
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": -1,
+          "down": 2
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 13
+        },
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "-"
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.liveWatch"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "match1",
+      "coords": {
+        "x": 0,
+        "y": 38,
+        "w": 296,
+        "h": 13
+      },
+      "commands": [
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": 1,
+          "down": 3
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 13
+        },
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "-"
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.liveWatch"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "match2",
+      "coords": {
+        "x": 0,
+        "y": 54,
+        "w": 296,
+        "h": 13
+      },
+      "commands": [
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": 2,
+          "down": 4
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 13
+        },
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "-"
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.liveWatch"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "match3",
+      "coords": {
+        "x": 0,
+        "y": 70,
+        "w": 296,
+        "h": 13
+      },
+      "commands": [
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": 3,
+          "down": 5
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 13
+        },
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "-"
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.liveWatch"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "match4",
+      "coords": {
+        "x": 0,
+        "y": 86,
+        "w": 296,
+        "h": 13
+      },
+      "commands": [
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": 4,
+          "down": 6
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 13
+        },
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "-"
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.liveWatch"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "match5",
+      "coords": {
+        "x": 0,
+        "y": 102,
+        "w": 296,
+        "h": 13
+      },
+      "commands": [
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": 5,
+          "down": 7
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 13
+        },
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "-"
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.liveWatch"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "match6",
+      "coords": {
+        "x": 0,
+        "y": 118,
+        "w": 296,
+        "h": 13
+      },
+      "commands": [
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": 6,
+          "down": 8
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 13
+        },
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "-"
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.liveWatch"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "match7",
+      "coords": {
+        "x": 0,
+        "y": 134,
+        "w": 296,
+        "h": 13
+      },
+      "commands": [
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": 7,
+          "down": 10
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 13
+        },
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "-"
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.liveWatch"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "status",
+      "coords": {
+        "x": 0,
+        "y": 154,
+        "w": 296,
+        "h": 13
+      },
+      "commands": [
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "refresh",
+      "coords": {
+        "x": 28,
+        "y": 176,
+        "w": 110,
+        "h": 15
+      },
+      "commands": [
+        {
+          "op": "nav",
+          "left": -1,
+          "right": 11,
+          "up": 8,
+          "down": -1
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 14
+        },
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "REFRESH"
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.liveRefresh"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "exit",
+      "coords": {
+        "x": 158,
+        "y": 176,
+        "w": 110,
+        "h": 15
+      },
+      "commands": [
+        {
+          "op": "nav",
+          "left": 10,
+          "right": -1,
+          "up": 8,
+          "down": -1
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 12
+        },
+        {
+          "op": "text",
+          "flags": "0x0",
+          "str": "_aExit"
+        },
+        {
+          "op": "onselect_fire",
+          "func": "SetExitMenuFlag"
+        }
+      ]
+    }
+  ]
+}

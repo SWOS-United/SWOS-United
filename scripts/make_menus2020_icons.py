@@ -33,10 +33,10 @@ ICONS = ["compete", "practice", "replays", "options", "editing", "extras", "mult
 SEE_THROUGH = 0xE9
 
 
-def read_map(header, name, rows, cols):
+def read_map(header, name, rows, cols, prefix=""):
     with open(header, encoding="latin-1") as f:
         src = f.read()
-    m = re.search(r"\b%s\s*\[%d\]\s*\[%d\]\s*=\s*\{(.*?)\};" % (re.escape(name), rows, cols), src, re.S)
+    m = re.search(prefix + r"\b%s\s*\[%d\]\s*\[%d\]\s*=\s*\{(.*?)\};" % (re.escape(name), rows, cols), src, re.S)
     if not m:
         sys.exit("make_menus2020_icons: %s not found in %s" % (name, header))
     vals = [int(v, 0) for v in re.findall(r"0x[0-9A-Fa-f]+|\d+", m.group(1))]
@@ -55,6 +55,20 @@ def read_palette(assets):
                 return [tuple(c * 255 // 63 for c in pal[i * 3:i * 3 + 3]) for i in range(256)]
     sys.exit("make_menus2020_icons: no grafs_dos/FILL.256 in %s (run OpenSWOS Setup with the PC game)"
              % assets)
+
+
+def read_byte_map(source, name):
+    """A `const byte name[38][42]` grid from game.cpp."""
+    return read_map(source, name, 38, 42, prefix=r"byte\s+")
+
+
+def read_bmp_palette(path):
+    """The palette of an 8-bit BMP, as 256 (r, g, b)."""
+    data = open(path, "rb").read()
+    off = 14 + struct.unpack_from("<I", data, 14)[0]
+    count = struct.unpack_from("<I", data, 46)[0] or 256
+    pal = [(data[off + i * 4 + 2], data[off + i * 4 + 1], data[off + i * 4]) for i in range(count)]
+    return pal + [(0, 0, 0)] * (256 - len(pal))
 
 
 def write_bmp(path, pixels):
@@ -87,6 +101,24 @@ def main():
         pixels = [[(255, 0, 255) if v == SEE_THROUGH else pal[v]
                    for v in row[n * 16:(n + 1) * 16]] for row in icons]
         path = os.path.join(OUT, name + ".bmp")
+        write_bmp(path, pixels)
+        print("  -> %s" % os.path.relpath(path, REPO))
+
+    # The LIVE CAST TV (game.cpp, SWOS::drawTvIcon): a 42x38 housing over one of two screens
+    # (idle / live), indices into the in-game palette its developer icons carry (0 = see-through).
+    game = os.path.join(args.swos2020, "src", "game.cpp")
+    tvpal = read_bmp_palette(os.path.join(args.swos2020, "developer_icons", "starwindz_256.bmp"))
+    overlay = read_byte_map(game, "tv_overlay_map")
+    for state in ("idle", "live"):
+        under = read_byte_map(game, "tv_underlay_%s_map" % state)
+        pixels = []
+        for orow, urow in zip(overlay, under):
+            row = []
+            for o, u in zip(orow, urow):
+                v = o or u
+                row.append((255, 0, 255) if v == 0 else tvpal[v])
+            pixels.append(row)
+        path = os.path.join(OUT, "tv_%s.bmp" % state)
         write_bmp(path, pixels)
         print("  -> %s" % os.path.relpath(path, REPO))
 

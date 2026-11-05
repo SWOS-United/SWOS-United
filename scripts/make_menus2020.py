@@ -289,14 +289,24 @@ def build_main(doc):
     # is never drawn, so the row costs the menu nothing.
     filler = MAIN_ORDER.index(None)
     ordered[filler][0]["name"] = "ticker"
-    ordered[filler][0]["coords"] = {"x": 8, "y": 6, "w": 304, "h": 10}
+    ordered[filler][0]["coords"] = {"x": 50, "y": 6, "w": 262, "h": 10}
     doc["ticker_entry"] = filler
+    # LIVE CAST's TV (SWOS 2020's tvIcon: x kColumn1X + 3, y kStartY - 37, 42x38): the next
+    # filler, shown -- its picture idle or live (mod_menus2020.c, ModApi_LiveAny), a click or
+    # UP from COMPETE opens the live matches. Hidden by mod_menus2020.c without netplay.
+    tv = ordered[filler + 1][0]
+    tv["name"] = "liveCast"
+    tv["coords"] = {"x": 4, "y": 4, "w": 42, "h": 38}
+    tv["image"] = "grafs_2020/menus2020/tv_idle.bmp"
+    tv["commands"] = [{"op": "colors", "frame_color": 0, "background_color": 0},   # (a frame when chosen)
+                      {"op": "nav", "left": -1, "right": -1, "up": -1, "down": MAIN_ORDER.index("competition")},
+                      {"op": "onselect_fire", "func": mod("liveCast")}]
 
     doc["items"] = emit(ordered)
     doc["name"] = "swosMainMenu"
     doc["onInit"] = mod("mainInit")
     doc["onDraw"] = None
-    doc["onReturn"] = None
+    doc["onReturn"] = mod("mainDrawn")         # (each frame: the TV's live / idle picture)
     doc["defaultEntry"] = 0
     return doc
 

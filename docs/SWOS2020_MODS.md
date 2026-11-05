@@ -109,8 +109,15 @@ LOAD, QUIT (asks), CREDITS.
   their MODES entry (`ModApi_FindEntry` / `ModApi_RunEntry`, OpenSWOS c46c56eb).
 - SEASON and SAVE DISK FILING (the original main menu's; SWOS 2020 has neither) are kept: SEASON
   beside CLASSIC CAREER, SAVE DISK FILING under the editors.
-- Not there yet: the ticker rows, SWOS 2020's icons (TV, QUIT, CREDITS, SAVE/LOAD disks, the little
-  player), menu descriptions. Checked: SDL headless -- the menu, COMPETE -> DIY -> back, PRACTICE;
+- 2026-11-05: the six buttons' icons ("image" + image_x/y, MENUS.md §13), the news ticker across
+  the top (the canonical `ticker` mod, "ticker_entry" on the first filler), and **LIVE CAST**: SWOS
+  2020's TV (the second filler; idle/live from `ModApi_LiveAny`, UP from COMPETE or a click) opens
+  `menus2020/liveMenu` -- the live matches (`ModApi_LiveList`), fire watches one in OpenSWOS's viewer
+  (`ModApi_LiveWatch`), back to the list. SWOS 2020 sent the TV to swos.eu/rpl in a browser. The
+  pictures are SWOS 2020's art, made on the player's machine by `scripts/make_menus2020_icons.py`
+  (gitignored). Viewers need the matchmaking server rebuilt with LIVE CAST (the owner's step).
+- Not there yet: SAVE/LOAD disk icons, the little player animation (SWOS 2020's main-menu sprites;
+  menu descriptions turned out to be its challenge screens' only, OpenSWOS's). Checked: SDL headless -- the menu, COMPETE -> DIY -> back, PRACTICE;
   both targets build; `--menu-selftest`, the mod-match test.
 
 ## 4. Hooks to request from OpenSWOS (specs)
