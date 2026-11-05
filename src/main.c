@@ -565,6 +565,7 @@ int main(int argc, char **argv)
     opts.matchmaker[0] = '\0';    /* default: a matchmaking server on this machine */
     opts.record[0] = '\0';        /* default: "server" once SWOS.ini is read (below) */
     opts.prediction = 1;          /* default: a live match's replay keeps what each player saw */
+    opts.accept_sound = 1;        /* default: SWOS 2020's, when a host takes this player in */
     opts.discord = 1;             /* default: online matches on Discord, as SWOS 2020's (live_ticker.h) */
     opts.discord_webhook[0] = '\0';
     opts.no_injuries_cards = 0;   /* [testing] no_injuries_cards: the real rules unless asked (test_rules.h) */

@@ -22,6 +22,7 @@
 #include "online_menus.h"
 #include "dos_mode.h"           /* the gameplay style: OPEN asks it, the lobby shows it */
 #include "live_ticker.h"        /* the match on Discord: LIVE TICKERS, LIVE SCORE BOARDS */
+#include "swos_io.h"            /* swos_data_path: the online sounds */
 #include "project_identity.h"  /* PROJECT_HIDE_SWOS2020_EXTRAS */
 #include "mm_client.h"         /* the matchmaking server (docs/NETPLAY.md section 7) */
 #include "p2p_menu.h"
@@ -387,6 +388,18 @@ static void liveCast_OnSelect(void)          { s_liveCast = !s_liveCast; }
  * Default is a matchmaker on this machine (scripts/run_matchmaker.sh), which is
  * what the whole local setup exists for. SWOS_MM_HOST / SWOS_MM_PORT point it
  * somewhere else without a rebuild. */
+/* SWOS 2020's two online sounds (bin/sound_dos), through the one-shot sample. */
+static void online_sound(const char *rel)
+{
+    extern int  AudioSDL_LoadOverlaySample(const char *path);
+    extern void AudioSDL_PlayOverlaySample(void);
+    char path[512];
+    if (AudioSDL_LoadOverlaySample(swos_data_path(rel, path, sizeof path)) == 0) {
+        AudioSDL_PlayOverlaySample();
+        fprintf(stderr, "[mm] played %s\n", rel);
+    }
+}
+
 static const char *mm_host(void) { return MmClient_DefaultHost(); }
 static uint16_t    mm_port(void) { return MmClient_DefaultPort(); }
 
@@ -1011,11 +1024,14 @@ static void matchMakingMenu_OnDraw(void)
      * it for a test -- there is nobody to press the button on either machine. */
     if (MmClient_TakeJoinRequest(who, sizeof who)) {
         snprintf(s_joinAsker, sizeof s_joinAsker, "%s", who);
-        if (!Account_JoinAllowed(s_joinAsker)) {
+        if (allowed)
+            online_sound("sound_dos/join.wav");         /* (SWOS 2020's playJoinSound) */
+        if (!allowed) {
             /* not this game's player (a league or cup match's opponent alone): refused */
             fprintf(stderr, "[mm] refusing '%s': not this match's opponent\n", s_joinAsker);
             MmClient_Eject(s_joinAsker);
             s_joinAsker[0] = '\0';
+        const int32_t allowed = Account_JoinAllowed(who);
         } else if (s_mmAuto == MM_AUTO_HOST) {
             if (mm_auto_is_peer(s_joinAsker))
                 MmClient_Approve(s_joinAsker);
@@ -1614,7 +1630,12 @@ void OnlineMenus_EnterLobby(int32_t player, const char *name)
         LobbyRules r = *NetplayLobby_Rules();
         r.mode = (uint16_t)s_openMode;
         NetplayLobby_SetRules(&r);
+    extern PlatformInitOptions *g_arcadeOpts;
+
     }
+    /* The joiner, accepted (SWOS 2020's playAcceptSound): once, not on each return from a match. */
+    if (player == 2 && (!g_arcadeOpts || g_arcadeOpts->accept_sound))
+        online_sound("sound_dos/accept_1.wav");
     s_peerTold = 0;
     Account_LobbyOpened(player == 1);
     lobby_test_knobs();
@@ -3351,6 +3372,10 @@ static void mmsSelectSoundFx(void)
     extern const char *g_arcadeIniPath;
 
     if (!g_arcadeOpts)
+    {   /* (SWOS 2020's words; its SOUND 2 was never ours) */
+        extern PlatformInitOptions *g_arcadeOpts;
+        set_text(MmSettingsMenu_acceptSound, !g_arcadeOpts || g_arcadeOpts->accept_sound ? "SOUND 1" : "OFF");
+    }
         return;
     g_arcadeOpts->reports = !g_arcadeOpts->reports;
     MatchReport_SetEnabled(g_arcadeOpts->reports);
@@ -3410,6 +3435,19 @@ static const MenuSymbol k_handlers[] = {
     HANDLER(matchMaking_openGame_onSelect),
     HANDLER(matchMaking_cancelGame_onSelect),
     HANDLER(matchMaking_host_onSelect),
+/* ACCEPT SOUND: on or off, in SWOS.ini. */
+static void mmsAcceptSound(void)
+{
+    extern PlatformInitOptions *g_arcadeOpts;
+    extern const char *g_arcadeIniPath;
+
+    if (!g_arcadeOpts)
+        return;
+    g_arcadeOpts->accept_sound = !g_arcadeOpts->accept_sound;
+    if (g_arcadeIniPath)
+        Settings_Save(g_arcadeOpts, g_arcadeIniPath);
+}
+
     HANDLER(matchMaking_users_onSelect),
     HANDLER(matchMaking_exit_onSelect),
 #if PROJECT_SWOS2020_MATCHMAKING
@@ -3458,6 +3496,7 @@ static const MenuSymbol k_handlers[] = {
      * server, so all of them just close their menu. */
     HANDLER_AS("cupMatchView_exit_onSelect",         SetExitMenuFlag),
     HANDLER_AS("exitNewsMenu_OnSelect",              SetExitMenuFlag),
+    HANDLER(mmsAcceptSound),
     HANDLER_AS("exitRankingMenu_OnSelect",           SetExitMenuFlag),
     HANDLER_AS("hostGameMessageMenu_exit_OnSelect",  SetExitMenuFlag),
     HANDLER_AS("leagueInfo1_exit_onSelect",          SetExitMenuFlag),

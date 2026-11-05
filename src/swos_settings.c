@@ -210,7 +210,11 @@ static int handler(void *user, const char *section,
                 opts->netplay_remember = b;
         } else if (eqi(name, "record"))
             snprintf(opts->record, sizeof opts->record, "%s", value);
-        else if (eqi(name, "reports")) {
+        else if (eqi(name, "accept_sound")) {
+            int b;
+            if (parse_bool(value, &b))
+                opts->accept_sound = b;
+        } else if (eqi(name, "reports")) {
             int b;
             if (parse_bool(value, &b))
                 opts->reports = b;
@@ -556,6 +560,10 @@ static int settings_build(const PlatformInitOptions *opts, IniEntry *items, char
         "; above, for the matches it arranges), a recorder of your own as \"host\" or\n"
         "; \"host:port\" (every match), or \"off\". Empty means the default.",
         opts->record };
+    SETTING(n) = (IniEntry){ "netplay", "accept_sound",
+        "; accept_sound: true | false -- MULTIPLAYER SETTINGS' ACCEPT SOUND: play a sound when the\n"
+        "; host of a game accepts you.",
+        opts->accept_sound ? "true" : "false" };
     SETTING(n) = (IniEntry){ "netplay", "reports",
         "; reports: true | false -- after an online match, send both players' SWOS.log and\n"
         "; HOW WAS THE MATCH? to the other player and the server, zipped (a copy is kept in\n"
