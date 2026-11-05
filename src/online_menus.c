@@ -1428,6 +1428,12 @@ void OnlineMenus_StartMatchFromMatchmaking(void)
     }
 
     OnlineMenus_Show(SWOS2020_MENU(mpWaitingMenu));
+
+    /* Back on MATCH MAKING: the lobby was left, or the link never came. The connection to the server
+     * went to make room for the link (above): log in again, or the player is left with a list
+     * that says DISCONNECTED. */
+    if (MmClient_State() == MM_IDLE && s_myName[0])
+        MmClient_Connect(mm_host(), mm_port(), s_myName, NULL);
 }
 
 const char *OnlineMenus_MatchStatus(void)

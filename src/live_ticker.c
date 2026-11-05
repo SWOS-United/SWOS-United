@@ -226,12 +226,14 @@ static int32_t s_collect;               /* ... and this machine posts its moment
 static int32_t s_frame;                 /* the frame being played */
 static int32_t s_confirmed;
 static int32_t s_injuries[2];
+static int32_t s_finalPosted;           /* the final whistle's line has gone */
 
 /* A moment reported in a frame that is not confirmed yet. */
 #define PENDING_MAX 48
 typedef struct {
     int32_t frame;
     int32_t injuryTeam;                 /* an injury: its team, for the score board's count */
+    int32_t final;                      /* the final whistle's line: the score board goes with it */
     char    text[320];
 } Pending;
 static Pending s_pending[PENDING_MAX];
@@ -332,20 +334,58 @@ static void flag_emoji(const char *iso2, char *out, uint32_t cap)
         snprintf(out, cap, "\xF0\x9F\x8F\xB4\xE2\x80\x8D\xE2\x98\xA0\xEF\xB8\x8F");
 }
 
-static void add(const char *text, int32_t injuryTeam)
+static void score_board(void);
+
+/* The final whistle's line has been decided on: it, and the match's stats, which are final now. */
+static void post_final(const char *text)
+{
+    s_finalPosted = 1;
+    post(ticker_type(), text);
+    score_board();
+}
+
+static void add_event(const char *text, int32_t injuryTeam, int32_t final)
 {
     if (s_frame <= s_confirmed) {           /* (a frame already confirmed: nothing to wait for) */
         if (injuryTeam)
             s_injuries[injuryTeam - 1]++;
-        post(ticker_type(), text);
+        if (final)
+            post_final(text);
+        else
+            post(ticker_type(), text);
         return;
     }
     if (s_pendingCount == PENDING_MAX)
         return;
     s_pending[s_pendingCount].frame = s_frame;
     s_pending[s_pendingCount].injuryTeam = injuryTeam;
+    s_pending[s_pendingCount].final = final;
     snprintf(s_pending[s_pendingCount].text, sizeof s_pending[0].text, "%s", text);
     s_pendingCount++;
+}
+
+static void add(const char *text, int32_t injuryTeam)
+{
+    add_event(text, injuryTeam, 0);
+}
+
+static void won_str(char *out, uint32_t cap);
+static void score_str(char *out, uint32_t cap);
+
+/* The game has ended: EndOfGame's state, the DOS shoot-out's walk off (it skips that one:
+ * goalkeeper.c), or the result. A half or extra time ends in none of them. */
+static int32_t final_state(uint16_t state)
+{
+    return state == ST_GAME_ENDED || state == ST_PLAYERS_GOING_TO_SHOWER || state == ST_RESULT_AFTER_THE_GAME;
+}
+
+/* SWOS 2020's line, with the whistle. */
+static void match_over_text(char *text, uint32_t cap)
+{
+    char won[64], score[96];
+    won_str(won, sizeof won);
+    score_str(score, sizeof score);
+    snprintf(text, cap, ":alarm_clock: *(%d mins.)* %s *Match is over!* %s. %s", minute(), vs(), won, score);
 }
 
 void LiveTicker_Begin(const LiveTickerMatch *match)
@@ -360,6 +400,7 @@ void LiveTicker_Begin(const LiveTickerMatch *match)
     s_confirmed = -1;
     s_pendingCount = 0;
     s_injuries[0] = s_injuries[1] = 0;
+    s_finalPosted = 0;
     s_goal.have = 0;
     s_penaltyTeam = 0;
     memset(s_snap, 0xFF, sizeof s_snap);
@@ -434,6 +475,11 @@ void LiveTicker_FrameBegin(int32_t frame)
             snprintf(text, sizeof text, EMO_PLAY " *(%d mins.)* %s *Penalty shootout started*", now.minute, vs());
             add(text, 0);
         }
+        if (final_state(now.gameState) && !final_state(prev->gameState)) {
+            char over[320];
+            match_over_text(over, sizeof over);
+            add_event(over, 0, 1);
+        }
     }
     s_snap[(uint32_t)frame & (SNAP_FRAMES - 1)] = now;
 }
@@ -448,7 +494,10 @@ void LiveTicker_Confirmed(int32_t frame)
         if (s_pending[i].frame <= frame) {
             if (s_pending[i].injuryTeam)
                 s_injuries[s_pending[i].injuryTeam - 1]++;
-            post(ticker_type(), s_pending[i].text);
+            if (s_pending[i].final)
+                post_final(s_pending[i].text);
+            else
+                post(ticker_type(), s_pending[i].text);
         } else {
             s_pending[n++] = s_pending[i];
         }
@@ -648,7 +697,7 @@ static void score_board(void)
 
 void LiveTicker_End(int32_t finished, const char *why)
 {
-    char text[400], won[64], score[96];
+    char text[400];
     const char *me, *other;
 
     if (!s_enabled)
@@ -660,11 +709,10 @@ void LiveTicker_End(int32_t finished, const char *why)
         if (!s_collect)
             return;
         LiveTicker_Confirmed(0x7FFFFFFF);       /* every frame was played */
-        won_str(won, sizeof won);
-        score_str(score, sizeof score);
-        snprintf(text, sizeof text, ":alarm_clock: *(%d mins.)* %s *Match is over!* %s. %s", minute(), vs(), won, score);
-        post(ticker_type(), text);
-        score_board();
+        if (!s_finalPosted) {                   /* (a test's cut-off match has no whistle) */
+            match_over_text(text, sizeof text);
+            post_final(text);
+        }
         s_collect = 0;
         return;
     }
