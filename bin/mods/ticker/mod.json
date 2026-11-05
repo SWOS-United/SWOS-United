@@ -1,0 +1,16 @@
+{
+ "uuid": "7fdefad9-e534-48dc-8a26-6d196ce0f3c4",
+ "id": "ticker",
+ "name": "News Ticker",
+ "version": "1.0",
+ "author": "SWOS United (SWOS 2020's news ticker)",
+ "about": "News and tips scrolling across the main menu, from sensiblesoccer.de.",
+ "targets": [
+  "sdl"
+ ],
+ "changes": "cosmetic",
+ "default": true,
+ "settings": [
+  { "key": "speed", "label": "speed", "choices": ["slow", "normal", "fast"], "default": "normal" }
+ ]
+}

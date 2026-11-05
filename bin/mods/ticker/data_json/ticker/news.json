@@ -1,0 +1,9 @@
+{
+ "format": "openswos-news",
+ "version": 1,
+ "items": [
+  { "text": "SWOS United: Sensible World of Soccer, online", "link": "https://sensiblesoccer.de/" },
+  { "text": "TIP: SWOS United community forum", "link": "https://sensiblesoccer.de/forum" },
+  { "text": "LIVE CAST: the TV on the main menu shows the online matches being played", "link": "https://sensiblesoccer.de/" }
+ ]
+}
