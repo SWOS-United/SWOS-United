@@ -10,8 +10,8 @@
  * What the buttons do here, by what they say:
  *   COMPETE    COMPETITIONS: ONLINE (the game's MULTIPLAYER), DIY, PRESET, SEASON, CLASSIC CAREER,
  *              and SPEEDRUNS / CHALLENGES when OpenSWOS's speedrun / challenges mods are on
- *   PRACTICE   FRIENDLY MATCH; PENALTY SHOOTOUT and DEMO GAME (OpenSWOS's practice mod, when
- *              on); MODES -- the mods' entries (MODPOINT_MODES) -- when a mod has one
+ *   PRACTICE   FRIENDLY MATCH; TEAM TRAINING, PENALTY SHOOTOUT, DEMO GAME (OpenSWOS's practice
+ *              mod, when on); MODES -- the mods' entries (MODPOINT_MODES) -- when another has one
  *   REPLAYS    the game's HIGHLIGHTS
  *   OPTIONS    the game's OPTIONS
  *   EDITING    EDIT CUSTOM TEAMS, EDIT TACTICS, SAVE DISK FILING
@@ -237,26 +237,27 @@ static void career(void) { choose(CareerMenu); }
 static void season(void) { choose(SeasonMenu); }
 
 /* ======================================================================================
- * PRACTICE (swos-2020 practice.mnu): FRIENDLY MATCH; PENALTY SHOOTOUT and DEMO GAME are OpenSWOS's
- * practice mod's (practice.shootout, practice.demo: named in the JSON), shown while it is on; its
- * TEAM TRAINING row is MODES here (the mods' entries) until the practice mod has training.
+ * PRACTICE (swos-2020 practice.mnu): FRIENDLY MATCH; TEAM TRAINING, PENALTY SHOOTOUT and DEMO GAME
+ * are OpenSWOS's practice mod's (practice.training / .shootout / .demo, named in the JSON), shown
+ * while it is on; MODES (ours, the mods' entries) when a mod other than practice has one.
  * ====================================================================================== */
-enum { Prac_header, Prac_friendly, Prac_modes, Prac_shootout, Prac_demo, Prac_help, Prac_exit };
+enum { Prac_header, Prac_friendly, Prac_training, Prac_shootout, Prac_demo, Prac_help, Prac_exit,
+       Prac_modes };
 
 static void practiceInit(void)
 {
     const int32_t practice = ModApi_FindEntry(MODPOINT_MODES, "practice") >= 0;
-    const int32_t modes = ModApi_EntryCount(MODPOINT_MODES) > 0;
-    const int32_t below = practice ? Prac_shootout : Prac_exit;    /* what follows MODES */
+    const int32_t modes = ModApi_EntryCount(MODPOINT_MODES) > (practice ? 1 : 0);
+    const int32_t last = modes ? Prac_modes : practice ? Prac_demo : Prac_friendly;
 
-    show(Prac_modes, modes);
+    show(Prac_training, practice);
     show(Prac_shootout, practice);
     show(Prac_demo, practice);
-    nav(Prac_friendly, -1, -1, -1, modes ? Prac_modes : below);
-    nav(Prac_modes, -1, -1, Prac_friendly, below);
-    nav(Prac_shootout, -1, -1, modes ? Prac_modes : Prac_friendly, Prac_demo);
-    nav(Prac_demo, -1, -1, Prac_shootout, Prac_exit);
-    nav(Prac_exit, -1, -1, practice ? Prac_demo : modes ? Prac_modes : Prac_friendly, -1);
+    show(Prac_modes, modes);
+    nav(Prac_friendly, -1, -1, -1, practice ? Prac_training : modes ? Prac_modes : Prac_exit);
+    nav(Prac_demo, -1, -1, Prac_shootout, modes ? Prac_modes : Prac_exit);
+    nav(Prac_modes, -1, -1, practice ? Prac_demo : Prac_friendly, Prac_exit);
+    nav(Prac_exit, -1, -1, last, -1);
 }
 
 static void friendly(void) { choose(FriendlyMenu); }

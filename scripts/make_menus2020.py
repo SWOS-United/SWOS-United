@@ -63,19 +63,23 @@ SUBMENUS = {
         out="practiceMenu", onInit="practiceInit",
         handlers={
             "FriendlyMenu": "friendly",
-            "trainingModePractice_OnSelect": "modes",   # this row is MODES (mod_menus2020.c)
             # OpenSWOS's practice mod's own handlers (its H10 names), resolved while it is on;
             # mod_menus2020.c hides the rows while it is off. They run nested in this screen,
             # which comes back from these bytes without its onInit: so the defaults here are
             # the practice-on layout.
+            "trainingModePractice_OnSelect": "practice.training",
             "challengeGame2Practice_OnSelect": "practice.shootout",
             "demoGamePractice_OnSelect": "practice.demo",
             "exitPractice_OnSelect": "SetExitMenuFlag",
         },
-        hide=["HelpMsg", "trainingMode"],
-        text={"trainingMode": "MODES"},
-        nav={"friendlyMode": (-1, -1, -1, 3), "challengeGame2": (-1, -1, 1, 4),
-             "demoGame": (-1, -1, 3, 6), "exit": (-1, -1, 4, -1)},
+        hide=["HelpMsg"],
+        # MODES (the mods' entries, ours): under DEMO GAME, where SWOS 2020's help line was;
+        # hidden by default, shown by mod_menus2020.c when a mod other than practice has one.
+        add=[dict(name="modes", like="demoGame", coords=(90, 162, 124, 18),
+                  literal="MODES", handler="modes", hidden=True)],
+        nav={"friendlyMode": (-1, -1, -1, 2), "trainingMode": (-1, -1, 1, 3),
+             "challengeGame2": (-1, -1, 2, 4), "demoGame": (-1, -1, 3, 6),
+             "exit": (-1, -1, 4, -1)},
     ),
     "editing": dict(
         out="editingMenu", onInit=None,
@@ -293,8 +297,10 @@ def build_sub(doc, spec):
         x, y, w, h = add["coords"]
         item["coords"] = {"x": x, "y": y, "w": w, "h": h}
         item["commands"] = [c for c in item["commands"] if c["op"] not in ("nav", "onselect_fire")]
-        set_text(item, symbol=add["symbol"])
+        set_text(item, add.get("literal"), symbol=add.get("symbol"))
         item["commands"].append({"op": "onselect_fire", "func": mod(add["handler"])})
+        if add.get("hidden"):
+            hide(item)
         doc["items"].append(item)
         by_name[add["name"]] = item
     for name, (l, r, u, d) in spec.get("nav", {}).items():

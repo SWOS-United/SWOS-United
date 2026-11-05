@@ -95,8 +95,9 @@ REPLAYS -> highlights, `.SRP`), and PRACTICE to the canonical `practice` mod whe
 `scripts/make_menus2020.py` into `bin/mods/menus2020/` (canonical, off by default; OPTIONS -> MODS
 or `[mods] enabled = menus2020`). SWOS 2020's main menu replaces the game's; its buttons:
 COMPETE -> COMPETITIONS (ONLINE = MULTIPLAYER, DIY, PRESET, SEASON, CLASSIC CAREER), PRACTICE ->
-FRIENDLY MATCH, MODES (the mods' entries, when there are any), PENALTY SHOOTOUT and DEMO GAME
-(OpenSWOS's practice mod's `practice.shootout` / `practice.demo`, while it is on), REPLAYS ->
+FRIENDLY MATCH, TEAM TRAINING, PENALTY SHOOTOUT and DEMO GAME (OpenSWOS's practice mod's
+`practice.training` / `.shootout` / `.demo`, while it is on), MODES (the mods' entries, when a mod
+other than practice has one), REPLAYS ->
 HIGHLIGHTS, OPTIONS, EDITING -> EDIT CUSTOM TEAMS / EDIT TACTICS / SAVE DISK FILING, EXTRAS -> the same two + INSTRUCTION MANUAL, CONTINUE / SAVE /
 LOAD, QUIT (asks), CREDITS.
 
@@ -108,8 +109,7 @@ LOAD, QUIT (asks), CREDITS.
   their MODES entry (`ModApi_FindEntry` / `ModApi_RunEntry`, OpenSWOS c46c56eb).
 - SEASON and SAVE DISK FILING (the original main menu's; SWOS 2020 has neither) are kept: SEASON
   beside CLASSIC CAREER, SAVE DISK FILING under the editors.
-- Not there yet: TEAM TRAINING (`practice.training`, when OpenSWOS's practice mod has it), the
-  ticker rows, SWOS 2020's icons (TV, QUIT, CREDITS, SAVE/LOAD disks, the little
+- Not there yet: the ticker rows, SWOS 2020's icons (TV, QUIT, CREDITS, SAVE/LOAD disks, the little
   player), menu descriptions. Checked: SDL headless -- the menu, COMPETE -> DIY -> back, PRACTICE;
   both targets build; `--menu-selftest`, the mod-match test.
 
