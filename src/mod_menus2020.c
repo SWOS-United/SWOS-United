@@ -8,8 +8,8 @@
  * handler they name is one of these, "menus2020.<name>" (ModApi_RegisterHandlers).
  *
  * What the buttons do here, by what they say:
- *   COMPETE    COMPETITIONS: ONLINE (the game's MULTIPLAYER), DIY, PRESET, CLASSIC CAREER
- *              (SPEEDRUNS and CHALLENGES hidden: OpenSWOS's mods, when they come)
+ *   COMPETE    COMPETITIONS: ONLINE (the game's MULTIPLAYER), DIY, PRESET, CLASSIC CAREER,
+ *              and SPEEDRUNS / CHALLENGES when OpenSWOS's speedrun / challenges mods are on
  *   PRACTICE   FRIENDLY MATCH, and MODES -- the mods' entries (MODPOINT_MODES) -- when a mod
  *              that is on has one
  *   REPLAYS    the game's HIGHLIGHTS
@@ -35,10 +35,8 @@
 
 #include <stdio.h>
 
-#include "build_info.h"         /* Build_ScreenText: the main menu's build line */
 #include "menu_system.h"
 #include "menus.h"
-#include "text_render.h"
 #include "platform_sdl.h"       /* Platform_OpenUrl, Platform_RequestQuit */
 
 #define SLUG "menus2020"
@@ -174,45 +172,61 @@ static void quit(void)
     main_refresh();
 }
 
-/* The game draws its build line on the main menu, which it knows by its onInit being
- * SWOSMainMenuInit (src/menu_system.c); this one's is mainInit, so it is drawn here, at the
- * same point (ModDef.menuDrawn: after the entries, before the frame is shown). */
-extern uint8_t _currentMenu[];
-extern void *_charTables[];
-
-static void menuDrawn(void)
-{
-    if (((Menu *)_currentMenu)->onInit == (MenuVoidFn)mainInit)
-        DrawMenuText(4, 256, 7, (uint8_t *)Build_ScreenText(), (uint8_t *)_charTables[0]);
-}
-
 /* ======================================================================================
  * COMPETITIONS (swos-2020 competition.mnu). Ordinals: its entries, in order.
  * ====================================================================================== */
 enum { Comp_header, Comp_online, Comp_speedruns, Comp_diy, Comp_challenges, Comp_preset,
        Comp_career, Comp_exit };
 
+/* A row pair: SWOS 2020's two columns when the left one (a mod's) is there, else the right one
+ * alone in the middle. Returns the ordinal arrows reach the row by. */
+static int32_t comp_row(int32_t left, const char *slug, int32_t right, int32_t mid)
+{
+    const int32_t there = ModApi_FindEntry(MODPOINT_MODES, slug) >= 0;
+    MenuEntry *r = entry(right);
+    show(left, there);
+    if (!there)
+        r->x = (uint16_t)(mid - r->dwWidth / 2);
+    return there ? left : right;
+}
+
 static void competitionInit(void)
 {
-    /* SPEEDRUNS and CHALLENGES are hidden (the generator): DIY and PRESET move in from the
-     * right-hand column to the middle, under ONLINE and over CAREER. */
+    /* SPEEDRUNS and CHALLENGES are OpenSWOS's mods' (speedrun, challenges): shown when that
+     * mod is on, beside DIY and PRESET as in SWOS 2020; without them DIY and PRESET move in
+     * from the right-hand column to the middle. */
     const MenuEntry *online = entry(Comp_online);
     const int32_t mid = online->x + online->dwWidth / 2;
-    MenuEntry *diy = entry(Comp_diy), *preset = entry(Comp_preset);
-    diy->x = (uint16_t)(mid - diy->dwWidth / 2);
-    preset->x = (uint16_t)(mid - preset->dwWidth / 2);
+    const int32_t row2 = comp_row(Comp_speedruns, "speedrun", Comp_diy, mid);
+    const int32_t row3 = comp_row(Comp_challenges, "challenges", Comp_preset, mid);
 #ifdef SWOS_NETPLAY
-    nav(Comp_online, -1, -1, -1, Comp_diy);
-    nav(Comp_diy, -1, -1, Comp_online, Comp_preset);
+    const int32_t top = Comp_online;
 #else
+    const int32_t top = -1;
     show(Comp_online, 0);              /* (no online play in this build) */
-    nav(Comp_diy, -1, -1, -1, Comp_preset);
 #endif
-    nav(Comp_preset, -1, -1, Comp_diy, Comp_career);
-    nav(Comp_career, -1, -1, Comp_preset, Comp_exit);
+    nav(Comp_online, -1, -1, -1, row2);
+    nav(Comp_speedruns, -1, Comp_diy, top, Comp_challenges);
+    nav(Comp_diy, row2 == Comp_speedruns ? Comp_speedruns : -1, -1, top, Comp_preset);
+    nav(Comp_challenges, -1, Comp_preset, row2, Comp_career);
+    nav(Comp_preset, row3 == Comp_challenges ? Comp_challenges : -1, -1, Comp_diy, Comp_career);
+    nav(Comp_career, -1, -1, row3, Comp_exit);
     nav(Comp_exit, -1, -1, Comp_career, -1);
     SetCurrentEntry(Comp_diy);
 }
+
+/* A mod's MODES entry, run with the main menu current (as every choice here is). */
+static const char *s_entrySlug;
+
+static void run_entry(void)
+{
+    const int32_t i = ModApi_FindEntry(MODPOINT_MODES, s_entrySlug);
+    if (i >= 0)
+        ModApi_RunEntry(MODPOINT_MODES, i);
+}
+
+static void speedruns(void)  { s_entrySlug = "speedrun";   choose(run_entry); }
+static void challenges(void) { s_entrySlug = "challenges"; choose(run_entry); }
 
 static void online(void) { choose(MultiplayerMenuSelected); }
 static void diy(void)    { choose(DIYCompetitionMenu); }
@@ -281,6 +295,7 @@ static void init(void)
 
         { "competitionInit", competitionInit },
         { "online", online }, { "diy", diy }, { "preset", preset }, { "career", career },
+        { "speedruns", speedruns }, { "challenges", challenges },
 
         { "practiceInit", practiceInit },
         { "friendly", friendly }, { "modes", modes },
@@ -294,7 +309,6 @@ static void init(void)
 const ModDef ModDef_menus2020 = {
     .slug = SLUG,
     .init = init,
-    .menuDrawn = menuDrawn,
 };
 
 #endif /* SWOS_SDL_BUILD */

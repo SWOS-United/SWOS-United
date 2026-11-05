@@ -97,7 +97,8 @@
           "down": 4
         },
         {
-          "op": "invisible"
+          "op": "onselect_fire",
+          "func": "menus2020.speedruns"
         }
       ]
     },
@@ -162,7 +163,8 @@
           "down": 6
         },
         {
-          "op": "invisible"
+          "op": "onselect_fire",
+          "func": "menus2020.challenges"
         }
       ]
     },

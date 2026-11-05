@@ -95,11 +95,10 @@ LOAD, QUIT (asks), CREDITS.
   CommonMenuExit sets them by ordinal, and every game handler ends in it.
 - **A sub-screen never runs a game handler itself**: it records the choice and closes; the main
   button that opened it runs it with the main menu current (`open_screen`).
-- **The build line** is drawn by the mod (`menuDrawn`): the engine draws it only on a menu whose
-  onInit is `SWOSMainMenuInit`.
+- **SPEEDRUNS / CHALLENGES** show when OpenSWOS's `speedrun` / `challenges` mods are on, and run
+  their MODES entry (`ModApi_FindEntry` / `ModApi_RunEntry`, OpenSWOS c46c56eb).
 - Not there yet: SEASON and SAVE DISK FILING (the original main menu's; SWOS 2020 has neither),
-  SPEEDRUNS / CHALLENGES (hidden until OpenSWOS's mods: then a lookup of a mod's MODES entry by
-  slug is needed), the ticker rows, SWOS 2020's icons (TV, QUIT, CREDITS, SAVE/LOAD disks, the little
+  the ticker rows, SWOS 2020's icons (TV, QUIT, CREDITS, SAVE/LOAD disks, the little
   player), menu descriptions. Checked: SDL headless -- the menu, COMPETE -> DIY -> back, PRACTICE;
   both targets build; `--menu-selftest`, the mod-match test.
 

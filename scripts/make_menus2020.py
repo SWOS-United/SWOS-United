@@ -49,8 +49,10 @@ SUBMENUS = {
             "selectDIYCompetitionMenu": "diy",
             "selectPresetCompetitionMenu": "preset",
             "SWOS_careerMainMenu_onSelect": "career",
+            "SWOS_speedrunMainMenu_onSelect": "speedruns",  # OpenSWOS's speedrun mod, when on
+            "selectScenarioMode": "challenges",             # its challenges mod, when on
         },
-        hide=["act11", "act21"],               # SPEEDRUNS, CHALLENGES: OpenSWOS's mods
+        hide=[],
     ),
     "practice": dict(
         out="practiceMenu", onInit="practiceInit",
