@@ -932,11 +932,16 @@ static int32_t import_draw(void)
     }
     for (i = 0; i < 5; i++)
         CalcMenuEntryAddress((uint16_t)all[i])->isInvisible = !on && !(i >= 3 && s_note1[0]);
-    CalcMenuEntryAddress(SelectMyCustomTeams_importTeams)->isInvisible = !on || state == TEAM_IMPORT_ASKING;
+    if (on) {       /* the four at one pitch, the button first; without it the slots stay as they are */
+        const MenuEntry *top = CalcMenuEntryAddress(SelectMyCustomTeams_importTeams);
+        for (i = 0; i < CUSTOM_TEAM_SLOTS; i++)
+            CalcMenuEntryAddress((uint16_t)(SelectMyCustomTeams_team1 + i))->y = (uint16_t)(top->y + (i + 1) * 32);
+    }
+    CalcMenuEntryAddress(SelectMyCustomTeams_importTeams)->isDisabled = state != TEAM_IMPORT_IDLE;
     CalcMenuEntryAddress(SelectMyCustomTeams_importYes)->isInvisible = state != TEAM_IMPORT_ASKING;
     CalcMenuEntryAddress(SelectMyCustomTeams_importNo)->isInvisible = state != TEAM_IMPORT_ASKING;
     CalcMenuEntryAddress(SelectMyCustomTeams_importTeams)->fg = (uintptr_t)(state == TEAM_IMPORT_BUSY ? busy : label);
-    CalcMenuEntryAddress(SelectMyCustomTeams_importTeams)->bgColor = state == TEAM_IMPORT_BUSY ? 7 : 14;
+    CalcMenuEntryAddress(SelectMyCustomTeams_importTeams)->bgColor = state == TEAM_IMPORT_IDLE ? 14 : 7;
     CalcMenuEntryAddress(SelectMyCustomTeams_importYes)->fg = (uintptr_t)yes;
     CalcMenuEntryAddress(SelectMyCustomTeams_importNo)->fg = (uintptr_t)no;
     CalcMenuEntryAddress(SelectMyCustomTeams_importLine1)->fg = (uintptr_t)line1;
@@ -948,12 +953,15 @@ static int32_t import_draw(void)
         slots_link(SelectMyCustomTeams_importYes, -1, SelectMyCustomTeams_importNo, -1, SelectMyCustomTeams_exit);
         slots_link(SelectMyCustomTeams_importNo, SelectMyCustomTeams_importYes, -1, -1, SelectMyCustomTeams_exit);
         slots_link(SelectMyCustomTeams_exit, -1, -1, SelectMyCustomTeams_importNo, -1);
-        if (menu->selectedEntry == CalcMenuEntryAddress(SelectMyCustomTeams_importTeams))
+        if (menu->selectedEntry != CalcMenuEntryAddress(SelectMyCustomTeams_importYes) &&
+            menu->selectedEntry != CalcMenuEntryAddress(SelectMyCustomTeams_exit))
             menu->selectedEntry = CalcMenuEntryAddress(SelectMyCustomTeams_importNo);   /* (nothing lost by default) */
     } else if (on) {
-        slots_link(SelectMyCustomTeams_team3, -1, -1, SelectMyCustomTeams_team2, SelectMyCustomTeams_importTeams);
-        slots_link(SelectMyCustomTeams_importTeams, -1, -1, SelectMyCustomTeams_team3, SelectMyCustomTeams_exit);
-        slots_link(SelectMyCustomTeams_exit, -1, -1, SelectMyCustomTeams_importTeams, -1);
+        slots_link(SelectMyCustomTeams_importTeams, -1, -1, -1, SelectMyCustomTeams_team1);
+        slots_link(SelectMyCustomTeams_team1, -1, -1, SelectMyCustomTeams_importTeams, SelectMyCustomTeams_team2);
+        slots_link(SelectMyCustomTeams_team2, -1, -1, SelectMyCustomTeams_team1, SelectMyCustomTeams_team3);
+        slots_link(SelectMyCustomTeams_team3, -1, -1, SelectMyCustomTeams_team2, SelectMyCustomTeams_exit);
+        slots_link(SelectMyCustomTeams_exit, -1, -1, SelectMyCustomTeams_team3, -1);
         if (menu->selectedEntry == CalcMenuEntryAddress(SelectMyCustomTeams_importYes) ||
             menu->selectedEntry == CalcMenuEntryAddress(SelectMyCustomTeams_importNo))
             menu->selectedEntry = CalcMenuEntryAddress(SelectMyCustomTeams_importTeams);
