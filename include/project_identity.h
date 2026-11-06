@@ -76,6 +76,9 @@
  * (MY CUSTOM TEAMS' IMPORT FROM SWOS 2020, src/united_teamimport.c). */
 #define PROJECT_SWOS2020_TEAMS  "https://sensiblesoccer.de/swos2020/mp/db/teams/"
 
+/* SWOS 2020's ban list, "NAME, MODE, *" a line (src/online_account_united.c): read at each log-in. */
+#define PROJECT_BAN_LIST        "https://sensiblesoccer.de/swos2020/ban-users.txt"
+
 /* SWOS 2020's online-menu entries for features this project will not have -- the log-in's NEWS,
  * MULTIPLAYER SETTINGS' commentary and chat rows, JOIN AMIGA SUPER LEAGUE, JOIN DISCORD, HELP
  * DESK (src/online_menus.c): 1 hides them, 0 keeps them for a fork that builds them. */

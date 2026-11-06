@@ -74,4 +74,9 @@ const char *United_UserName(void);
 const char *United_Password(void);      /* (kept in memory for this player's own results only) */
 const char *United_ApiKey(void);        /* the new site's key for this session; "" none (old site) */
 
+/* SWOS 2020's ban list: whether `name` is banned from `mode`: "ALL LOG IN", "RANKED MATCHES",
+ * "FRIENDLY MATCHES" (and its "SWOS GALORE", to come). A ban from one mode is from that mode
+ * alone: RANKED MATCHES leaves friendlies and league / cup matches. */
+int32_t     United_Banned(const char *name, const char *mode);
+
 #endif /* UNITED_API_H */

@@ -39,9 +39,73 @@ static char    s_user[40];
 static char    s_password[64];          /* kept for submitting results (this player's own only) */
 static int32_t s_userId;
 static char    s_apiKey[80];            /* (the new site's, for this session) */
-static int32_t s_checking;
+static int32_t s_checking;              /* 1 the log-in is out, 2 the ban list */
 
 static void test_login(void);
+
+/* ---- SWOS 2020's ban list ----
+ *
+ * Its BanUsers: "NAME, MODE, *" a line, ended by "- END OF SETTING -", read at each log-in, names in
+ * capitals. As in SWOS 2020, a list that does not come bans nobody: the site being down locks
+ * no one out. SWOS_UNITED_BANS_TEST="NAME, MODE;..." adds lines, for a test. */
+#if defined(SWOS_SDL_BUILD) && defined(SWOS_HTTPS)
+enum { MAX_BANS = 512 };
+static struct { char name[40], mode[24]; } s_bans[MAX_BANS];
+static int32_t s_banCount;
+
+static void trim(char *s)
+{
+    char *p = s;
+    size_t n;
+    while (*p == ' ' || *p == '\t')
+        p++;
+    memmove(s, p, strlen(p) + 1);
+    n = strlen(s);
+    while (n > 0 && (s[n - 1] == ' ' || s[n - 1] == '\t' || s[n - 1] == '\r' || s[n - 1] == '\n'))
+        s[--n] = 0;
+}
+
+static void ban_line(const char *line)
+{
+    char copy[128], *comma, *end;
+    snprintf(copy, sizeof copy, "%s", line);
+    if (s_banCount == MAX_BANS || !(comma = strchr(copy, ',')))
+        return;
+    *comma++ = 0;
+    if ((end = strchr(comma, ',')) != NULL)
+        *end = 0;
+    trim(copy);
+    trim(comma);
+    if (!copy[0] || !comma[0])
+        return;
+    snprintf(s_bans[s_banCount].name, sizeof s_bans[0].name, "%s", copy);
+    snprintf(s_bans[s_banCount].mode, sizeof s_bans[0].mode, "%s", comma);
+    s_banCount++;
+}
+
+static void ban_lines(const char *text, char separator)
+{
+    while (text && *text) {
+        const char *next = strchr(text, separator);
+        const size_t n = next ? (size_t)(next - text) : strlen(text);
+        char line[128];
+        snprintf(line, sizeof line, "%.*s", (int)(n < sizeof line ? n : sizeof line - 1), text);
+        ban_line(line);
+        text = next ? next + 1 : NULL;
+    }
+}
+
+int32_t United_Banned(const char *name, const char *mode)
+{
+    int32_t i;
+    for (i = 0; name && i < s_banCount; i++)
+        if (strcmp(s_bans[i].mode, mode) == 0 && SDL_strcasecmp(s_bans[i].name, name) == 0)
+            return 1;
+    return 0;
+}
+#else
+int32_t United_Banned(const char *name, const char *mode) { (void)name; (void)mode; return 0; }
+#endif
 
 void Account_Init(void)
 {
@@ -108,6 +172,28 @@ void Account_Begin(const char *user, const char *password)
 }
 
 #if defined(SWOS_SDL_BUILD) && defined(SWOS_HTTPS)
+/* The site has said yes: now the ban list. 0 asked; else as after it (ban_verdict). */
+static int32_t ban_verdict(void)
+{
+    if (!United_Banned(s_user, "ALL LOG IN"))
+        return 1;
+    fprintf(stderr, "[account] %s is banned from all log in\n", s_user);
+    snprintf(s_error, sizeof s_error, "BANNED FROM ALL LOG IN. CONTACT THE SITE MANAGER.");
+    s_userId = 0;
+    s_apiKey[0] = 0;
+    memset(s_password, 0, sizeof s_password);
+    return -1;
+}
+
+static int32_t ask_bans(void)
+{
+    if (Https_RequestAsync(PROJECT_BAN_LIST, NULL) == 0) {
+        s_checking = 2;
+        return 0;
+    }
+    return ban_verdict();
+}
+
 /* The new site's answer (frees it): 1 logged in, -1 refused. */
 static int32_t poll_new_site(HttpsReply *reply)
 {
@@ -120,7 +206,7 @@ static int32_t poll_new_site(HttpsReply *reply)
         United_JsonText(all, "$.api_key", s_apiKey, sizeof s_apiKey);
         fprintf(stderr, "[account] logged in as %s (swos.swosunited.com)\n", s_user);
         Https_Free(reply);
-        return 1;
+        return ask_bans();
     }
     snprintf(s_error, sizeof s_error, "%s",
              strcmp(status, "too_many_attempts") == 0 ? "TOO MANY TRIES - WAIT 5 MINUTES" :
@@ -140,6 +226,18 @@ int32_t Account_Poll(void)
         return s_userId > 0 ? 1 : -1;
     if (!Https_PollAsync(&reply))
         return 0;
+    if (s_checking == 2) {
+        s_checking = 0;
+        s_banCount = 0;
+        if (reply.status == 200 && reply.body)
+            ban_lines(reply.body, '\n');
+        else
+            fprintf(stderr, "[account] no ban list (%d): nobody is banned this session\n", (int)reply.status);
+        Https_Free(&reply);
+        ban_lines(getenv("SWOS_UNITED_BANS_TEST"), ';');
+        fprintf(stderr, "[account] ban list: %d lines\n", (int)s_banCount);
+        return ban_verdict();
+    }
     s_checking = 0;
     if (United_NewSite() && reply.body && (reply.status == 200 || reply.status == 400 ||
                                            reply.status == 401 || reply.status == 429))
@@ -164,7 +262,7 @@ int32_t Account_Poll(void)
             s_userId = id;
             fprintf(stderr, "[account] logged in as %s\n", s_user);
             Https_Free(&reply);
-            return 1;
+            return ask_bans();
         }
     }
     snprintf(s_error, sizeof s_error, "WRONG USERNAME OR PASSWORD");

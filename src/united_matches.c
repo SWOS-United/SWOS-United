@@ -615,6 +615,7 @@ static void srn_lines(void)
 /* ---- OPEN: openLobbyMenu ---- */
 
 static int32_t s_choice, s_notSigned, s_waitLegs, s_noKeys;
+static const char *s_banned;            /* the mode OPEN LOBBY has just refused this player, or NULL */
 /* LEAGUE / CUP's match, picked on SWOS 2020's tournaInfoMenu before the game is opened */
 static OpenLeg  s_picked;
 static int32_t  s_havePicked, s_pickTold;
@@ -664,6 +665,11 @@ static void openLobbyMenu_layout(void)
             snprintf(s_desc[0], sizeof s_desc[0], "%s", "");
             snprintf(s_desc[1], sizeof s_desc[1], "LOOKING FOR YOUR LEAGUE AND CUP MATCHES...");
             s_desc[2][0] = s_desc[3][0] = 0;
+        } else if (s_banned) {                  /* (SWOS 2020's showFeatureNotAvailableMessage) */
+            snprintf(s_desc[0], sizeof s_desc[0], "%s", "");
+            snprintf(s_desc[1], sizeof s_desc[1], "YOU ARE BANNED FROM %s.", s_banned);
+            snprintf(s_desc[2], sizeof s_desc[2], "PLEASE CONTACT THE SITE MANAGER.");
+            s_desc[3][0] = 0;
         } else if (s_noKeys) {                  /* (RANKED MATCH pressed in a build without the keys) */
             snprintf(s_desc[0], sizeof s_desc[0], "THIS BUILD CANNOT HOST RANKED MATCHES:");
             snprintf(s_desc[1], sizeof s_desc[1], "IT WAS MADE WITHOUT SENSIBLESOCCER.DE'S KEYS.");
@@ -706,6 +712,9 @@ static void openLobbyMenu_OnDraw(void)
 
 static void selectFriendly(void)
 {
+    s_banned = United_Banned(United_UserName(), "FRIENDLY MATCHES") ? "FRIENDLY MATCHES" : NULL;
+    if (s_banned)
+        return;
     s_choice = LOBBY_MODE_FRIENDLY;
     SetExitMenuFlag();
 }
@@ -716,6 +725,9 @@ static void selectRanked(void)
         open_url(Account_Url(ACCOUNT_LINK_LEAGUES));
         return;
     }
+    s_banned = United_Banned(United_UserName(), "RANKED MATCHES") ? "RANKED MATCHES" : NULL;
+    if (s_banned)
+        return;
     if (!United_NewSite() && !UNITED_RANKED_CREATE_KEY[0]) {     /* (a build without the old site's keys) */
         s_noKeys = 1;                           /* (said by openLobbyMenu_layout, which redraws the lines) */
         return;
@@ -732,6 +744,7 @@ static void selectLeagueAndTournament(void)
     }
     if (s_waitLegs)
         return;
+    s_banned = NULL;                    /* (a ban from the others is not from league and cup matches) */
     s_waitLegs = 1;
     ask_legs();
 }
@@ -780,6 +793,13 @@ int32_t Account_PlayerInfo(const char *name, char *country, uint32_t cap, int32_
 int32_t Account_JoinAllowed(const char *name)
 {
     const char *opp;
+    /* A joiner's game cannot see what a game is for (the matchmaker keeps no such thing), so SWOS
+     * 2020's check at JOIN is made here, by the game they ask to join. */
+    if ((s_choice == LOBBY_MODE_RANKED && United_Banned(name, "RANKED MATCHES")) ||
+        (s_choice == LOBBY_MODE_FRIENDLY && United_Banned(name, "FRIENDLY MATCHES"))) {
+        fprintf(stderr, "[united] %s is banned from this kind of match\n", name);
+        return 0;
+    }
     if (s_choice != LOBBY_MODE_LEAGUE || !s_havePicked || !name)
         return 1;
     opp = SDL_strcasecmp(s_picked.home, United_UserName()) == 0 ? s_picked.away : s_picked.home;
@@ -790,6 +810,7 @@ int32_t Account_ChooseMode(void)
 {
     s_choice = -1;
     s_notSigned = s_waitLegs = s_noKeys = 0;
+    s_banned = NULL;
     s_havePicked = 0;
     OnlineMenus_Show("swos2020/openLobbyMenu");
     return s_choice;

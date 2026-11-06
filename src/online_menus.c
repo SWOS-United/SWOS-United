@@ -1034,8 +1034,8 @@ static void matchMakingMenu_OnDraw(void)
         if (allowed)
             online_sound("sound_dos/join.wav");         /* (SWOS 2020's playJoinSound) */
         if (!allowed) {
-            /* not this game's player (a league or cup match's opponent alone): refused */
-            fprintf(stderr, "[mm] refusing '%s': not this match's opponent\n", s_joinAsker);
+            /* not this game's player (a league or cup match's opponent alone), or banned from it: refused */
+            fprintf(stderr, "[mm] refusing '%s': not allowed in this game\n", s_joinAsker);
             MmClient_Eject(s_joinAsker);
             s_joinAsker[0] = '\0';
         } else if (s_mmAuto == MM_AUTO_HOST) {
