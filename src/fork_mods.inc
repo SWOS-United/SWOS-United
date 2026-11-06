@@ -4,4 +4,6 @@
 extern const ModDef ModDef_menus2020;       /* SWOS 2020's main menu (docs/SWOS2020_MODS.md) */
 extern const ModDef ModDef_unitedTicker;    /* SWOS 2020's news ticker, slug "ticker" */
 
-#define FORK_MOD_LIST &ModDef_menus2020, &ModDef_unitedTicker,
+/* (MOD_SDL: both are the SDL build's -- the mods list is built on the Amiga too since OpenSWOS
+ *  ab481ba9; mods_builtin.c defines MOD_SDL / MOD_AMIGA before the list expands this) */
+#define FORK_MOD_LIST MOD_SDL(ModDef_menus2020) MOD_SDL(ModDef_unitedTicker)
