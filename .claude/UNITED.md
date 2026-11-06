@@ -94,6 +94,20 @@ rebase), `git cherry-pick <commit>` one fix, or nothing at all. `upstream` is fe
   (`CustomTeam_Allowed`); the list a new team is made from shows the world, so making one is
   refused there. `SWOS_WORLD=2627 --custom-team-selftest` proves it (2,281 teams) and fails if
   the world's data is not there to test.
+- **Bans** (`src/online_account_united.c`, `United_Banned`): SWOS 2020's list, `PROJECT_BAN_LIST`
+  (`NAME, MODE, *`), read at each log-in on either site. ALL LOG IN stops the log-in after the
+  password. RANKED MATCHES / FRIENDLY MATCHES: OPEN LOBBY refuses that choice alone, and the HOST's
+  game refuses a banned joiner (`Account_JoinAllowed`), since a joiner cannot see what a game is
+  for. League / cup is never affected. No list, no bans, as in SWOS 2020.
+  `SWOS_UNITED_BANS_TEST="NAME, MODE;..."` adds lines for a test.
+- **A cup tie's second leg** (`src/netplay_lobby.c`, `leg_carry`; NETPLAY_COMPAT 10): after a
+  completed first leg each game reads its injuries and sendings-off off the match into both
+  teams' `cardsInjuries` (both played the same match, so nothing is sent), by `playerIndex`, a
+  substituted player too. SWOS 2020's rule: in the eleven, a sending-off or an injury past a knock
+  (level 2+) refuses GO (`NetplayLobby_SetReady`), START, and hides CONFIRM on the team screen;
+  a knock plays. Cleared after the second leg. The team stays for the second leg (ours: another
+  would leave the injuries behind). `SWOS_LOBBY_TEST_LEG=<side>:<file index>:<status>,...`
+  on BOTH games forces one; file index, not line-up slot.
 - **Discord** (`src/live_ticker.c`, `include/live_ticker.h`): SWOS 2020's LIVE TICKERS and LIVE
   SCORE BOARDS through sensiblesoccer.de's `discord_proxy.php` (`PROJECT_DISCORD_PROXY`).
   `[netplay] discord`, `discord_webhook` (a test channel for every post; or
