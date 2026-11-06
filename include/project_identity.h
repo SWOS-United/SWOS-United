@@ -77,4 +77,10 @@
  * MATCH / CANCEL, the host accepting joiners from the table. 0: OpenSWOS's own screen. */
 #define PROJECT_SWOS2020_MATCHMAKING 1
 
+/* [tweaks] (include/tweaks.h, docs/MODS.md §4): 1 builds them -- SWOS.ini's [tweaks] section and
+ * the mods' ModApi_SetTweak; 0 leaves them out, the original's behaviour only and no [tweaks] in
+ * SWOS.ini. `make SWOS_TWEAKS=0|1` overrides it for one build. Either way they are off online, so
+ * a build without them still plays one with them. */
+#define PROJECT_TWEAKS          1
+
 #endif /* PROJECT_IDENTITY_H */
