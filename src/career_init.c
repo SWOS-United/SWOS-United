@@ -43,6 +43,7 @@ extern uint16_t _lastOfferPrimaryPlayerOrdinal;
 extern uint16_t _offerNegotiationAttemptCount;
 extern uint16_t _careerSeasonsCompleted;
 #include "career_params.h"
+#include "mod_hooks.h"       /* the career events (docs/MODS.md §27): SDL builds */
 #include "league_groups.h"
 #include "team_pool.h"
 #include "world_playoff.h"
@@ -134,6 +135,8 @@ void Career_InitSeasonTransferMarketState(void)
     int16_t numerator = (int16_t)(0x1B0 - _numForeignMarketPlayers2 - seasonsAdj);
     /* ext.l + divu.w: sign-extend to 32-bit then unsigned divide by word */
     uint16_t quota = (uint16_t)((uint32_t)(int32_t)numerator / divisor);
+    if (_careerParams.transfer_quota_mode == 1)     /* (career_params: a fixed quota, Career+'s: */
+        quota = _careerParams.transfer_quota;       /* a pool past 432 left the formula at 0) */
 
     _seasonTransferQuota = quota;
     _pendingForeignPlayerCount = 0;
@@ -314,6 +317,7 @@ void ContinueCareer(void)
         SetExitMenuFlag();
     } else {
         ContinueCareerNextSeason();
+        ModHooks_CareerBeforeContinue();    /* (a career mod's screen before the season's menu) */
         ActivateMenu(_contestMenu);
     }
 }
@@ -747,6 +751,7 @@ void InitCareer(uint16_t teamNo)
     _euroCupsCompetitionContextBuf.tourn.header.slotStateC = 8;
     _currentSeasonShowing = 0xFFFF;
     _seasonPlaying--;
+    ModHooks_CareerNew();       /* (a career mod: the new career's clubs are set up) */
     InitializeNewSeason();
     _careerLoadedFlag = 0;
 }
@@ -787,6 +792,7 @@ void ContinueCareerNextSeason(void)
         InitializeNewSeason();
         SWOS_AUTOSKIP_LOG("[bug1] back from InitializeNewSeason: youreSacked=%u", (unsigned)_youreSacked);
     }
+    ModHooks_CareerSeasonEnd(_currentSeasonShowing);   /* (either branch: the new season set up) */
     SWOS_AUTOSKIP_LOG("[bug1] ContinueCareerNextSeason EXIT");
 }
 

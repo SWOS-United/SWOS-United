@@ -11,7 +11,7 @@
  */
 
 #include "swos_fixed_team_name.h"   /* SWOS_TeamNameCopy: a 17-byte name may have no NUL */
-#include "career_params.h"   /* num_seasons: the career's last season */
+#include "career_params.h"   /* num_seasons: the career's last season; job_offers_capacity */
 #include "job_offers.h"
 #include "translations.h"  /* tr_fmt — localize the offer-letter text */
 #include "endian_helpers.h"
@@ -27,9 +27,9 @@
 
 /* ---- ASM externs ---- */
 extern uint16_t _numJobOffers;
-extern JobOffer _jobOffers[];         /* 5-entry job offers queue (in SWOS2.s BSS) */
+extern JobOffer _jobOffers[];         /* job offers queue: 5 entries, job_offers_capacity (SWOS2.s BSS) */
 extern uint16_t _numNewJobOffers;
-extern JobOffer _newJobOffers[];      /* 5-entry new job offers queue (in SWOS2.s BSS) */
+extern JobOffer _newJobOffers[];      /* new job offers queue: 5, job_offers_capacity (SWOS2.s BSS) */
 extern uint8_t _fundsBuffer[];        /* temporary buffer for team name during offer conversion */
 extern MenuEntry _menuEntries[];
 extern uint16_t _teamNoOfferAccepted;
@@ -41,6 +41,7 @@ extern uint16_t _highlightedLeagueTeamId;
 extern uint16_t _careerSeasonsCompleted;
 extern uint16_t _currentSeasonShowing;
 extern uint16_t _careerJobOfferMode;
+extern uint16_t _seasonWeeksDeducted;    /* (job_offer_first_week) */
 extern uint8_t  _viewRandomPhase;
 extern int8_t   _careerJobOfferPhaseBias;
 extern uint16_t _wageScalingDivisor;
@@ -187,12 +188,13 @@ JobOffer *GetJobOfferPtr(uint16_t index)
  * AddJobOffer  (SWOS2.s line 84244)
  *
  * Adds a new job offer to the front of the newJobOffers queue.
- * Shifts existing entries right by one position. Max 5 offers.
+ * Shifts existing entries right by one position. Max job_offers_capacity offers (5, the
+ * original's, by default).
  * ================================================================ */
 __attribute__((used, externally_visible, optimize("no-tree-loop-distribute-patterns")))
 void AddJobOffer(uint16_t teamNumber, uint32_t initialFunds)
 {
-    if (_numNewJobOffers >= 5)
+    if (_numNewJobOffers >= _careerParams.job_offers_capacity)
         return;
 
     uint16_t count = _numNewJobOffers;
@@ -312,7 +314,7 @@ __attribute__((used, externally_visible))
 void JobOffers_MaybeExpireSomeNewOffers(void)
 {
     uint16_t count = _numNewJobOffers;
-    if (count == 0)
+    if (count == 0 || !_careerParams.job_offer_expiry)   /* (career_params: offers kept, Career+'s) */
         return;
 
     for (int16_t i = (int16_t)(count - 1); i >= 0; i--) {
@@ -392,8 +394,8 @@ void JobOffers_ConvertNewOfferToOffer(uint16_t teamNumber, uint32_t initialFunds
     /* Remove from new offers */
     RemoveJobOffer(teamNumber);
 
-    /* Add to old offers (max 5) */
-    if (_numJobOffers >= 5)
+    /* Add to old offers (max job_offers_capacity: 5) */
+    if (_numJobOffers >= _careerParams.job_offers_capacity)
         return;
 
     JobOffer *dest = &_jobOffers[_numJobOffers];
@@ -705,11 +707,51 @@ void ConsiderJobOffer(void) {
 
 extern uint8_t _gotJobOfferMenu[];
 
+/* Pages of the JOB OFFERS screen (job_offers_capacity above the original's 5: include/
+ * career_capacity.h). The screen has the original's room, five rows: a page is five offers of
+ * the new ones followed by the old ones, page 0 the first five. With 5 offers at most (the
+ * original's) there is one page and every row is the original's. */
+#define JOB_OFFER_ROWS 5u
+#define JOB_OFFERS_NEXT_PAGE_ENTRY 17   /* NEXT PAGE, left of EXIT (12) */
+#define JOB_OFFERS_EXIT_ENTRY      12
+static uint16_t s_jobOfferPage;
+
+static uint16_t jobOfferPages(void)
+{
+    uint16_t total = (uint16_t)(_numNewJobOffers + _numJobOffers);
+    uint16_t pages = (uint16_t)((total + JOB_OFFER_ROWS - 1) / JOB_OFFER_ROWS);
+    return pages ? pages : 1;
+}
+
+/* This page's new offers [*newStart, +*newCount) and old ones [*oldStart, +*oldCount). */
+static void jobOfferPageRange(uint16_t *newStart, uint16_t *newCount, uint16_t *oldStart, uint16_t *oldCount)
+{
+    const uint16_t first = (uint16_t)(s_jobOfferPage * JOB_OFFER_ROWS), last = (uint16_t)(first + JOB_OFFER_ROWS);
+    const uint16_t n = _numNewJobOffers, o = _numJobOffers;
+    *newStart = first < n ? first : n;
+    *newCount = (uint16_t)((last < n ? last : n) - *newStart);
+    *oldStart = first > n ? (uint16_t)(first - n) : 0;
+    uint16_t oldEnd = last > n ? (uint16_t)(last - n) : 0;
+    if (oldEnd > o) oldEnd = o;
+    *oldCount = oldEnd > *oldStart ? (uint16_t)(oldEnd - *oldStart) : 0;
+}
+
 /* JobOffers_UpdateMenuEntryLayout — position old offer menu entries
  * based on number of new/old offers (SWOS2.s line 81335) */
 __attribute__((used, externally_visible))
 void JobOffers_UpdateMenuEntryLayout(void)
 {
+    /* (a page past the last, when offers were taken or withdrawn: the last) */
+    const uint16_t pages = jobOfferPages();
+    if (s_jobOfferPage >= pages)
+        s_jobOfferPage = (uint16_t)(pages - 1);
+    uint16_t newStart, newCount, oldStart, oldCount;
+    jobOfferPageRange(&newStart, &newCount, &oldStart, &oldCount);
+
+    /* NEXT PAGE only with more than one page, and EXIT's left goes to it then */
+    _menuEntries[JOB_OFFERS_NEXT_PAGE_ENTRY].isInvisible = pages <= 1;
+    _menuEntries[JOB_OFFERS_EXIT_ENTRY].leftEntry = pages > 1 ? JOB_OFFERS_NEXT_PAGE_ENTRY : -1;
+
     /* Hide entries 13,14 and 15,16 */
     _menuEntries[13].isInvisible = 1;
     _menuEntries[14].isInvisible = 1;
@@ -719,15 +761,15 @@ void JobOffers_UpdateMenuEntryLayout(void)
     /* Hide entry 6 (old offers header) */
     _menuEntries[6].isInvisible = 1;
 
-    if (_numJobOffers == 0)
+    if (oldCount == 0)      /* (one page: _numJobOffers == 0, the original's test) */
         return;
 
     /* Show entry 6 */
     _menuEntries[6].isInvisible = 0;
 
-    /* Calculate y position: start from entry 1's y, offset by new offers */
+    /* Calculate y position: start from entry 1's y, offset by new offers (this page's) */
     uint16_t yPos = _menuEntries[1].y;
-    yPos += (uint16_t)(_numNewJobOffers * 0xF);
+    yPos += (uint16_t)(newCount * 0xF);
     yPos += 0x1E;
 
     /* Entry 6: old offers header */
@@ -761,6 +803,9 @@ void JobOffersCommon(MenuEntry *entry)
 {
     uint16_t baseOrdinal = _menuEntries[1].ordinal;
     int16_t d7 = (int16_t)(entry->ordinal - baseOrdinal);
+    uint16_t newStart, newCount, oldStart, oldCount;
+    jobOfferPageRange(&newStart, &newCount, &oldStart, &oldCount);
+    d7 += (int16_t)newStart;      /* (the offer the row shows: its page's) */
     _jobOfferOrdinal = d7;
     _oldJobOfferOrdinal = 0xFFFF;
     ShowMenu(_gotJobOfferMenu);
@@ -783,6 +828,9 @@ void OldJobOffersCommon(MenuEntry *entry)
 {
     uint16_t baseOrdinal = _menuEntries[7].ordinal;
     int16_t d7 = (int16_t)(entry->ordinal - baseOrdinal);
+    uint16_t newStart, newCount, oldStart, oldCount;
+    jobOfferPageRange(&newStart, &newCount, &oldStart, &oldCount);
+    d7 += (int16_t)oldStart;      /* (the offer the row shows: its page's) */
     _jobOfferOrdinal = 0xFFFF;
     _oldJobOfferOrdinal = d7;
     ShowMenu(_gotJobOfferMenu);
@@ -796,6 +844,16 @@ void OldJobOffersCommon(MenuEntry *entry)
         return;
     }
     SetExitMenuFlag();
+}
+
+/* JobOffersNextPage — NEXT PAGE (entry 17, shown with more than one page): the next five
+ * offers, after the last page the first. */
+__attribute__((used, externally_visible))
+void JobOffersNextPage(void)
+{
+    s_jobOfferPage = (uint16_t)((s_jobOfferPage + 1) % jobOfferPages());
+    JobOffers_UpdateMenuEntryLayout();
+    DrawMenu();
 }
 
 /* JobOffersExit — remove expired offers and exit menu (SWOS2.s line 81328) */
@@ -834,6 +892,7 @@ void JobOffersInit(void)
 
     JobOffers_FillMissingNewOfferTeamNames();
     _selectedOldJobOfferOrdinal = 0xFFFF;
+    s_jobOfferPage = 0;
 
     /* Fall through to JobOffersFinish */
     JobOffersFinish();
@@ -854,11 +913,14 @@ void JobOffers_DrawOldOfferLine(void *entryPtr)
     MenuEntry *a5 = (MenuEntry *)entryPtr;
     a5->isDisabled = 1;
 
-    /* d7 = a5->ordinal - entries[7].ordinal (entry 7 = 0x188/0x38) */
+    /* d7 = a5->ordinal - entries[7].ordinal (entry 7 = 0x188/0x38), then the page's offer */
     int16_t d7 = (int16_t)a5->ordinal - (int16_t)_menuEntries[7].ordinal;
+    uint16_t newStart, newCount, oldStart, oldCount;
+    jobOfferPageRange(&newStart, &newCount, &oldStart, &oldCount);
 
-    if ((uint16_t)d7 >= _numJobOffers)
+    if ((uint16_t)d7 >= oldCount)   /* (one page: _numJobOffers, the original's test) */
         return;
+    d7 += (int16_t)oldStart;
 
     a5->isDisabled = 0;
 
@@ -936,11 +998,14 @@ void JobOffersAfterDrawCommon(void *entryPtr)
     MenuEntry *a5 = (MenuEntry *)entryPtr;
     a5->isDisabled = 1;
 
-    /* d7 = a5->ordinal - entries[1].ordinal (entry 1 = 0x38/0x38) */
+    /* d7 = a5->ordinal - entries[1].ordinal (entry 1 = 0x38/0x38), then the page's offer */
     int16_t d7 = (int16_t)a5->ordinal - (int16_t)_menuEntries[1].ordinal;
+    uint16_t newStart, newCount, oldStart, oldCount;
+    jobOfferPageRange(&newStart, &newCount, &oldStart, &oldCount);
 
-    if ((uint16_t)d7 >= _numNewJobOffers)
+    if ((uint16_t)d7 >= newCount)   /* (one page: _numNewJobOffers, the original's test) */
         return;
+    d7 += (int16_t)newStart;
 
     a5->isDisabled = 0;
 
@@ -1007,10 +1072,14 @@ void Career_MaybeGenerateJobOffer(void)
 
     if (_teamNoOfferAccepted != 0xFFFF)
         return;
-    if (_careerSeasonsCompleted == 7)
+    if (_careerSeasonsCompleted == 7 && _careerParams.job_offer_stop_season7)
+        return;
+    /* (career_params: routine offers only from job_offer_first_week; sacked or searching, at once) */
+    if (_careerParams.job_offer_first_week && _careerJobOfferMode == 0 && _youreSacked == 0 &&
+        _seasonWeeksDeducted < _careerParams.job_offer_first_week)
         return;
 
-    int16_t maxNewOffers = 5 - (int16_t)_numJobOffers;
+    int16_t maxNewOffers = (int16_t)_careerParams.job_offers_capacity - (int16_t)_numJobOffers;
     if (maxNewOffers == 0)
         return;
     if ((int16_t)_numNewJobOffers >= maxNewOffers)
@@ -1048,7 +1117,7 @@ void Career_MaybeGenerateJobOffer(void)
         goto searchDomestic;
 
     /* Random phase check */
-    {
+    if (_careerParams.job_offer_phase_gate) {
         int8_t d0 = (int8_t)_viewRandomPhase - _careerJobOfferPhaseBias;
         int16_t d0w = (int16_t)d0;
         int32_t d0l = (int32_t)(d0w << 2);
@@ -1058,8 +1127,8 @@ void Career_MaybeGenerateJobOffer(void)
     }
 
 checkNational:
-    /* Try national team offer */
-    if (_sameNationalCallFlag == 0) {
+    /* Try national team offer (career_params: your own nation first, or only when searching) */
+    if (_sameNationalCallFlag == 0 && (_careerParams.job_offer_own_national || _careerJobOfferMode == 2)) {
         uint16_t natCall = _lastNationalityCall;
         if (natCall != 0xFFFF) {
             if (_careerJobOfferMode != 2) {
@@ -1093,7 +1162,7 @@ noNational:
     /* Random chance to generate offer */
     {
         uint16_t rnd = Rand();
-        if (rnd >= 42)
+        if (rnd >= _careerParams.job_offer_pass)     /* (42, the original's) */
             return;
     }
 
@@ -1129,7 +1198,11 @@ searchDomestic:
         }
     }
 
-    if (_youreSacked == 0) {
+    if (_youreSacked == 0 && (_careerParams.job_offer_rep_high_pct != 100 || _careerParams.job_offer_rep_low_pct != 75)) {
+        /* (career_params: a wider window, benefactorr's Career+) */
+        repHigh = (uint16_t)((uint32_t)repScore * _careerParams.job_offer_rep_high_pct / 100u);
+        repLow = (uint16_t)((uint32_t)repScore * _careerParams.job_offer_rep_low_pct / 100u);
+    } else if (_youreSacked == 0) {
         repHigh = repScore;
         repLow = (uint16_t)((uint16_t)(repHigh * 0x4B) / 100);
     } else {
@@ -1142,6 +1215,21 @@ searchDomestic:
 
     if (_youreSacked != 0 && _isNationalSelector != 0)
         goto searchSacked;
+
+    /* career_params (benefactorr's Career+; each 0, the original's, takes no Rand()): a national
+     * selector's club offers, a club manager looked at for national jobs, club offers abroad. */
+    if (_careerParams.job_offer_selector_clubs && _isNationalSelector != 0 && _careerJobOfferMode == 0) {
+        if ((Rand() & 0xFFu) < _careerParams.job_offer_selector_clubs)
+            goto searchNational;
+        goto searchForeign;
+    }
+    if (_careerParams.job_offer_national_chance && _careerJobOfferMode == 0 && _isNationalSelector == 0 &&
+        _youreSacked == 0 && _careerSeasonsCompleted >= 2 && GetBoardConfidenceScore() >= 0 &&
+        (Rand() & 0xFFu) < _careerParams.job_offer_national_chance)
+        goto searchNational;
+    if (_careerParams.job_offer_abroad_chance && _isNationalSelector == 0 &&
+        (Rand() & 0xFFu) < _careerParams.job_offer_abroad_chance)
+        goto searchForeign;
 
     /* Try domestic (selected teams) first */
     {
@@ -1229,6 +1317,10 @@ searchForeign:
     {
         uint16_t selTeam = _selTeamNumber;
         uint8_t *base = &_tmdFileBuffer;
+        /* (Career+'s routes here -- a selector's, abroad first -- can find no foreign clubs
+         * loaded; the original's never came here then) */
+        if (_careerFileBuffer == 0 && (_careerParams.job_offer_selector_clubs || _careerParams.job_offer_abroad_chance))
+            return;
 
         for (int16_t tries = 99; tries >= 0; tries--) {
             uint16_t rnd = Rand();
@@ -1243,8 +1335,9 @@ searchForeign:
              * byte-read pre-fix used the ordinal, so the skip rarely
              * fired and same-country teams accidentally counted as
              * foreign candidates. */
-            if (World_FileCountry((uint8_t)(_selTeamNumber >> 8)) ==
-                World_FileCountry(a0tf->countryNumber))
+            if (!(_careerParams.job_offer_selector_clubs && _isNationalSelector != 0) &&   /* (a selector */
+                World_FileCountry((uint8_t)(_selTeamNumber >> 8)) ==                       /* has no club */
+                World_FileCountry(a0tf->countryNumber))                                     /* country) */
                 continue;
 
             /* Asm: move.w (a0),d3 — reads packed team number at offset 0 */

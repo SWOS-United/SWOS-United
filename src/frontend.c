@@ -122,6 +122,8 @@ void FrontEndPreLoopSetup(void)
 #ifdef SWOS_SDL_BUILD
     /* SWOS_DATA_JSON: rebuild normal-country competition tables from data_json/
        before any menu reads competitionsTable[]. No-op unless the env var is set. */
+    extern void DataJson_FitModTeamFiles(void);
+    DataJson_FitModTeamFiles();         /* (a mod's bigger team file: its country's team numbers) */
     extern void DataJson_InstallCompetitionGraph(void);
     DataJson_InstallCompetitionGraph();
     WorldCups_Install();
@@ -130,6 +132,8 @@ void FrontEndPreLoopSetup(void)
        without a rebuild. Absent file -> compiled defaults. */
     extern void DataJson_LoadCareerParams(void);
     DataJson_LoadCareerParams();
+    extern void DataJson_LoadNationalTeams(void);
+    DataJson_LoadNationalTeams();       /* (a mod's national teams: include/national_teams.h) */
     /* SWOS_MENU_JSON: load every menu from bin/data_json/menus/*.json and overwrite
        the compiled static menu bytes IN PLACE (docs/MENUS.md §2d), so editing the
        JSON changes the running game. Bounded by each menu's compiled size; a menu

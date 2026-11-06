@@ -8,6 +8,7 @@
 #include "world_playoff.h"
 #include "player_face3.h"
 #include "menus.h"
+#include "mod_hooks.h"        /* playerRowDrawn (SDL) */
 #include "dos_mode.h"         /* GAMEPLAY_*, Gameplay_SetStyle: OPTIONS -> GAMEPLAY */
 #ifdef SWOS_SDL_BUILD
 /* PlatformInitOptions + Settings_Save, for the OPTIONS -> GAMEPLAY row. Guarded
@@ -1854,6 +1855,8 @@ void SquadAfterDrawCommon(void *entryPtr)
         e->y = yPos;
     }
 
+    ModHooks_PlayerRowDrawn(0 /* MODROWS_SQUAD */, PACK_BE_U16(tf->countryNumber, tf->teamOrdinal),
+                            (uint8_t)d4_fileIdx, (int16_t)d7, 46, 18, pf);
     /* Draw 18 entries starting from entry 46 */
     DrawMultipleItems(18, &_menuEntries[46]);
 }
@@ -2506,10 +2509,8 @@ __attribute__((used, externally_visible))
 __attribute__((used, externally_visible))
 void ModesMenuSelected(void)
 {
-#ifdef SWOS_SDL_BUILD
     extern void ModEntries_Show(int32_t point);
     ModEntries_Show(0 /* MODPOINT_MODES */);
-#endif
     CommonMenuExit();
 }
 
@@ -2709,17 +2710,14 @@ void CommonMenuExit(void)
     _menuEntries[15].isInvisible = 1;
 #endif
     /* MODES (entry 16): the mods' entries (include/mod_api.h MODPOINT_MODES) -- shown only
-     * while a mod that is on has one; never on the Amiga (no built-in mods there). */
-#ifdef SWOS_SDL_BUILD
+     * while a mod that is on has one. */
     {
         extern int32_t ModEntries_Count(int32_t point);
         const int32_t modes = ModEntries_Count(0 /* MODPOINT_MODES */) > 0;
         _menuEntries[16].isInvisible = !modes;
         _menuEntries[15].upEntry = (int8_t)(modes ? 16 : 13);   /* CREDITS up: MODES or LOAD OLD */
+        _menuEntries[13].downEntry = (int8_t)(modes ? 16 : 15); /* LOAD OLD down: MODES or CREDITS */
     }
-#else
-    _menuEntries[16].isInvisible = 1;
-#endif
 #ifndef SWOS_NETPLAY
     /* OpenSWOS's MULTIPLAYER button (entry 14) plays over the network, so it is only
      * in a build that has the netplay library (make NETPLAY=1, docs/NETPLAY.md): never
@@ -3941,7 +3939,6 @@ void PresetCompetitionMenu(void)
     }
 
     SelectTeamsForPresetCompetition();
-#ifdef SWOS_SDL_BUILD
     /* A mod's competition, loaded from the row above WORLD CUP (src/mod_comps.c): started as
      * a loaded one is (LoadOldCompetitionMenu). */
     {
@@ -3952,7 +3949,6 @@ void PresetCompetitionMenu(void)
             return;
         }
     }
-#endif
     if (_chooseTeamsResult == 0) {
         CommonMenuExit();
         return;
@@ -4959,21 +4955,35 @@ extern CompetitionSlotBuffer _euroCupsCompetitionContextBuf;   /* slot-3 untangl
 extern uint8_t  _plNationality;
 extern uint8_t  _nationalityOrdinal;
 extern uint8_t  _nationalityOrdinalsArray[];
+#include "national_teams.h"     /* NATIONALITIES_MAX, NATIONAL_TEAM_NO_FILE */
 
-/* The career menu's nationalities: the game's 63 and OTHER (0xFF); a world's own adds the SWOS 96/97
- * Mod's four before OTHER (careerworld.py MENU_NATS: East Germany 153, the USSR 154, West Germany
- * 155, Yugoslavia 37 -- a coach can be one). */
+/* The career menu's nationalities: the game's 63 and OTHER (0xFF) -- or a mod's list
+ * (include/national_teams.h), OTHER still last; a world's own adds the SWOS 96/97 Mod's four
+ * before OTHER (careerworld.py MENU_NATS: East Germany 153, the USSR 154, West Germany 155,
+ * Yugoslavia 37 -- a coach can be one), each once. */
 static const uint8_t *career_nationalities(int32_t *count)
 {
-    static uint8_t world[68];
+    static uint8_t world[NATIONALITIES_MAX + 4];
+    int32_t n = 0;
+    while (n < (int32_t)NATIONALITIES_MAX - 1 && _nationalityOrdinalsArray[n] != 0xFF)
+        n++;                                    /* (the nationalities before OTHER: 63 the original's) */
     if (World_Current() == WORLD_9697) {
-        *count = 64;
+        *count = n + 1;
         return _nationalityOrdinalsArray;
     }
-    for (int32_t i = 0; i < 63; i++)
-        world[i] = _nationalityOrdinalsArray[i];
-    world[63] = 153; world[64] = 154; world[65] = 155; world[66] = 37; world[67] = 0xFF;
-    *count = 68;
+    static const uint8_t modNats[4] = { 153, 154, 155, 37 };
+    int32_t w = 0;
+    for (int32_t i = 0; i < n; i++)
+        world[w++] = _nationalityOrdinalsArray[i];
+    for (int32_t k = 0; k < 4; k++) {
+        int32_t dup = 0;
+        for (int32_t i = 0; i < n; i++)
+            dup |= _nationalityOrdinalsArray[i] == modNats[k];
+        if (!dup)
+            world[w++] = modNats[k];
+    }
+    world[w++] = 0xFF;
+    *count = w;
     return world;
 }
 extern uint8_t  _shortCountryNames[];
@@ -6114,6 +6124,11 @@ void ViewSquadAfterDrawCommon(void *entryPtr)
     }
 
     uint16_t yCoord = a5->y;
+    {   /* (whose player: the mods' playerRowDrawn) */
+        extern void TransferRow_Identity(uint16_t team, uint16_t slot, int16_t row);
+        const TeamFileEx *sq = (const TeamFileEx *)_squadTeamPtr;
+        TransferRow_Identity(PACK_BE_U16(sq->team.countryNumber, sq->team.teamOrdinal), outPlayerIndex, (int16_t)d1);
+    }
     BuildTransferPlayerMenuEntry(&_menuEntries[23], player, yCoord,
                                    (int16_t)d6, style, 0);
     DrawMultipleItems(12, &_menuEntries[23]);
@@ -6335,6 +6350,7 @@ extern int16_t  ShowSquad(TeamFile *teamPtr, uint8_t *title, uint32_t maskLo,
 extern void Career_CopyUnavailablePlayerToCareerTeamSlot(uint8_t *srcPlayer,
     uint8_t *dstTeam, uint8_t *srcName, uint16_t srcTeamNumber,
     uint16_t srcPlayerIndex, uint16_t dstSlotIndex);
+void Career_AddInternationalPlayerPicked(uint16_t team, uint16_t slot);
 
 /* Career_ShowAddInternationalPlayerDialog — show dialog to add international player.
  * If homeOrAbroadFlag==0: use nationality filter (home), else show all (abroad).
@@ -6344,6 +6360,13 @@ __attribute__((used, externally_visible))
 void Career_ShowAddInternationalPlayerDialog(uint16_t homeOrAbroadFlag)
 {
     _careerAddIntlPlayerResult = 0xFFFF;
+    if (homeOrAbroadFlag == 2) {    /* (a mod's pick, ModApi_CallUpPlayer: no dialog) */
+        extern int32_t ModCareer_TakeCallUp(uint16_t *team, uint16_t *slot);
+        uint16_t team, slot;
+        if (ModCareer_TakeCallUp(&team, &slot))
+            Career_AddInternationalPlayerPicked(team, slot);
+        return;
+    }
     if (homeOrAbroadFlag == 0) {
         /* Home: filter by nationality */
         ChooseTeamsDialogWithNationality((uint16_t)_nationalTeamFileId, 1, 0, 0,
@@ -6364,6 +6387,8 @@ void Career_ShowAddInternationalPlayerDialog(uint16_t homeOrAbroadFlag)
  * Displays a squad view filtered by nationality/unavailability, lets the
  * user pick a player, then copies that player into the career team.
  * ========================================================================== */
+
+static void addInternationalPlayerChosen(TeamFileEx *teamEx, uint16_t selected);
 
 /* Career_AddInternationalPlayerCommon
  * selectedTeam: pointer to team selection data (first word = team number)
@@ -6429,6 +6454,14 @@ void Career_AddInternationalPlayerCommon(uint8_t *selectedTeam, uint8_t *title)
     if (selected < 0)
         return;
 
+    addInternationalPlayerChosen(teamEx, (uint16_t)selected);
+}
+
+/* The squad pick made (the screen above, or a mod's: Career_AddInternationalPlayerPicked): the
+ * player goes into a free, position-compatible slot of the national squad, or -- none --
+ * _careerAddIntlPlayerResult 1, for NationalTeamAddPlayer to keep him pending. */
+static void addInternationalPlayerChosen(TeamFileEx *teamEx, uint16_t selected)
+{
     _careerSquadScreenDidSelectPlayerFlag = 1;
     _careerAddIntlPlayerSelectedPlayerOrdinal = (uint16_t)selected;
 
@@ -6529,6 +6562,15 @@ void Career_AddInternationalPlayerCommon(uint8_t *selectedTeam, uint8_t *title)
 
     /* No compatible empty slot found */
     _careerAddIntlPlayerResult = 1;
+}
+
+/* A mod's pick (ModApi_CallUpPlayer, then its ADD PLAYER row): team `team`'s player `slot`,
+ * checked there, added as the squad screen's pick is. */
+void Career_AddInternationalPlayerPicked(uint16_t team, uint16_t slot)
+{
+    _careerAddIntlPlayerSelectedTeamNumber = team;
+    _careerAddIntlPlayerResult = 0xFFFF;
+    addInternationalPlayerChosen(GetTeamPointer(team), slot);
 }
 
 /* AddInternationalPlayerHome — callback for home nationality team selection.
@@ -6670,10 +6712,85 @@ void Career_RebuildInternationalPlayerSelectionMasks(void)
     _careerIntlPlayersWrongTypeMask = wrongMask;
 }
 
+/* ---- the career screens' rows for the mods (include/menus.h, docs/MODS.md §28) ---- */
+#include "mod_api.h"
+extern const char *ModEntries_RowLabel(ModPoint point);     /* (src/mod_entries.c) */
+extern void ModEntries_RowChosen(ModPoint point);
+static const ModPoint k_modRowPoint[4] = {
+    MODPOINT_BUY_PLAYER, MODPOINT_TRANSFER_MARKET, MODPOINT_NATIONAL_ADD_PLAYER, MODPOINT_COMPETITION_STATS,
+};
+
+int32_t ModRow_Show(uint16_t entry, int32_t row)
+{
+    const char *label = ModEntries_RowLabel(k_modRowPoint[row]);
+    if (label) {
+        _menuEntries[entry].fg = (uintptr_t)label;
+        _menuEntries[entry].isInvisible = 0;
+        return 1;
+    }
+    _menuEntries[entry].isInvisible = 1;
+    return 0;
+}
+
+static void modRowChosen(int32_t row)
+{
+    ModEntries_RowChosen(k_modRowPoint[row]);
+}
+
+/* After a mod's entry: a transfer it completed (ModApi_OfferForPlayer) closes BUY PLAYER and
+ * TRANSFER MARKET as the game's own buys do; a player it picked (ModApi_CallUpPlayer) closes ADD
+ * PLAYER, which adds him (NationalTeamAddPlayer, add type 2). */
+__attribute__((used, externally_visible)) void BuyPlayerModRow(void)
+{
+    extern uint16_t _transferCompleted;
+    extern void BuyPlayerExit(void);
+    _transferCompleted = 0;
+    modRowChosen(MODROW_BUY_PLAYER);
+    if (_transferCompleted == 1)
+        BuyPlayerExit();
+}
+__attribute__((used, externally_visible)) void TransferMarketModRow(void)
+{
+    extern uint16_t _transferCompleted;
+    _transferCompleted = 0;
+    modRowChosen(MODROW_TRANSFER_MARKET);
+    if (_transferCompleted == 1)
+        SetExitMenuFlag();
+}
+__attribute__((used, externally_visible)) void NationalTeamAddPlayerModRow(void)
+{
+    modRowChosen(MODROW_NATIONAL_ADD_PLAYER);
+    extern int32_t ModCareer_CallUpPending(void);
+    extern uint16_t _careerNationalTeamAddPlayerType;
+    if (ModCareer_CallUpPending()) {
+        _careerNationalTeamAddPlayerType = 2;
+        SetExitMenuFlag();
+    }
+}
+__attribute__((used, externally_visible)) void CompetitionStatsModRow(void) { modRowChosen(MODROW_COMPETITION_STATS); }
+
 /* NationalTeamAddPlayer — shows the home/abroad sub-menu, then lets user
  * select a player. If player selected but no room in career team (result==1),
  * copies player data for pending addition. */
 __attribute__((used, externally_visible))
+/* NATIONAL TEAM -> ADD PLAYER's init (the original's is empty): a nation with no club league in
+ * the game (its record's team file NATIONAL_TEAM_NO_FILE, a mod's national teams) has no HOME --
+ * only ABROAD, which lists every club; and a mod's row under ABROAD (entry 4). */
+__attribute__((used, externally_visible))
+void NationalTeamAddPlayerInit(void)
+{
+    extern uint8_t _nationalTeamFileId;
+    if (ModRow_Show(4, MODROW_NATIONAL_ADD_PLAYER)) {
+        _menuEntries[2].downEntry = 4;      /* ABROAD -> the row -> EXIT */
+        _menuEntries[3].upEntry = 4;
+    }
+    if (_nationalTeamFileId != NATIONAL_TEAM_NO_FILE)
+        return;
+    _menuEntries[1].isInvisible = 1;
+    _menuEntries[2].upEntry = -1;
+    SetCurrentEntry(2);
+}
+
 void NationalTeamAddPlayer(void)
 {
     _careerIntlPlayersRemoveMask = 0;
@@ -6842,6 +6959,11 @@ void SelectNationalTeamAfterDrawCommon(void *entryPtr)
         uint16_t slot, fileIdx;
         uint8_t *careerPlayer = GetPlayerInfoBreakPosition(
             &_careerTeam, d1, &slot, &fileIdx);
+        {   /* (whose player: the national squad's, the mods' playerRowDrawn) */
+            extern void TransferRow_Identity(uint16_t team, uint16_t slot, int16_t row);
+            extern uint16_t _selTeamNumber;
+            TransferRow_Identity(_selTeamNumber, fileIdx, (int16_t)relIdx);
+        }
         a6_player = careerPlayer;
 
         /* Default color based on position type */

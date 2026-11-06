@@ -28,6 +28,7 @@
 #include "diy_competition.h"
 #include "career_teams.h"
 #include "menu_system.h"
+#include "menus.h"           /* ModRow_Show */
 #undef STR_COLOR_MASK                   /* (menu_data.h's enum names them too) */
 #undef STR_FLAGS_MASK
 #undef YELLOW_GREEN_BLACK_15
@@ -107,6 +108,27 @@ static const LeaguePlayoffs *viewed_titles(uint8_t *division)
     }
     *division = t->league;
     return country_rules(World_FileCountry(t->countryNumber));
+}
+
+int32_t WorldWinners_Viewed(uint8_t *competitionId, int32_t *league, uint8_t *division)
+{
+    const DIYCompetitionEx *c = viewed();
+    if (c->base.numTeams < 1)
+        return -1;
+    *competitionId = (uint8_t)c->base.field_2E;
+    *league = 0;
+    *division = 0;
+    if (c->base.competitionType == 0 && c->base.numTeams >= 2) {
+        const TeamFile *t = row_team(c, 0);
+        extern void *_competitionsTable[];  /* (its country's league, not a cup's group: viewed_titles) */
+        void **entry = (void **)_competitionsTable[t->countryNumber];
+        const Competition *primary = entry ? (const Competition *)entry[0] : 0;
+        if (primary && (intptr_t)primary != -1 && (uint8_t)primary->compId == *competitionId) {
+            *league = 1;
+            *division = t->league;
+        }
+    }
+    return 0;
 }
 
 static int32_t count_titles(const LeaguePlayoffs *lp, uint8_t division)
@@ -466,6 +488,7 @@ void CompetitionStatsWinners(void)
 #define STATS_SQUADS  3
 #define STATS_EXIT    4
 #define STATS_WINNERS 5
+#define STATS_MOD_ROW 6     /* (a mod's row: MODPOINT_COMPETITION_STATS, include/menus.h ModRow_Show) */
 int32_t WorldWinners_Available(void)
 {
     uint8_t division = 0;
@@ -479,6 +502,15 @@ void CompetitionStatsInit(void)
     _menuEntries[STATS_WINNERS].isInvisible = !on;
     _menuEntries[STATS_SQUADS].downEntry = on ? STATS_WINNERS : STATS_EXIT;
     _menuEntries[STATS_EXIT].upEntry = on ? STATS_WINNERS : STATS_SQUADS;
+    /* a mod's row (entry 6, MODPOINT_COMPETITION_STATS): after WINNERS, or in its place */
+    if (ModRow_Show(STATS_MOD_ROW, MODROW_COMPETITION_STATS)) {
+        const int32_t above = on ? STATS_WINNERS : STATS_SQUADS;
+        _menuEntries[STATS_MOD_ROW].y = (uint16_t)(_menuEntries[0].y + (on ? 140 : 115));
+        _menuEntries[above].downEntry = STATS_MOD_ROW;
+        _menuEntries[STATS_MOD_ROW].upEntry = (int8_t)above;
+        _menuEntries[STATS_MOD_ROW].downEntry = STATS_EXIT;
+        _menuEntries[STATS_EXIT].upEntry = STATS_MOD_ROW;
+    }
 }
 
 /* ---- The last season's record (league_playoffs.c writes it) ---- */

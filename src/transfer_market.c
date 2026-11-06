@@ -14,6 +14,9 @@
 #include "teams.h"
 #include "auto_skip_debug.h"
 #include "world.h"
+#include "career_params.h"   /* the list capacities (include/career_capacity.h), trialist_count_mode */
+#include "mod_hooks.h"       /* playerMoved / playerCreated (docs/MODS.md §27): SDL builds */
+#include "mod_api.h"         /* (ModPlayerKind: SDL builds) */
 
 /* Offset from GetPlayer() return value to actual PlayerFile data */
 #define PF_OFF              76  /* sizeof(TeamFile) */
@@ -23,7 +26,9 @@
 /* Home market player entry: 4 bytes (word teamNum + byte playerOrd + pad) */
 #define MARKET_ENTRY_SIZE   4
 #define HOME_MARKET_MAX     25
-#define FOREIGN_MARKET_MAX  15
+/* The foreign listing's size is a career param (foreign_listing_capacity: 15, the original's,
+ * by default; include/career_capacity.h). */
+#define FOREIGN_MARKET_MAX  (_careerParams.foreign_listing_capacity)
 
 #define POOLPLAYER_COUNT        900
 
@@ -130,6 +135,11 @@ uint16_t _cGetPlayerAtIndexFileIdx __attribute__((used, externally_visible));
 __attribute__((used, externally_visible))
 uint16_t GetRemainingTransferPoolSlots(void)
 {
+    if (_careerParams.transfer_quota_mode == 1) {   /* (career_params: buys limited by the pool's room) */
+        const uint32_t used = _numForeignMarketPlayers2, cap = _careerParams.foreign_pool_capacity;
+        const uint32_t room = used >= cap ? 0 : cap - used;
+        return (uint16_t)(room > 32767u ? 32767u : room);
+    }
     return _transferPoolSlotLimit - _transferPoolSlotsUsed;
 }
 
@@ -144,6 +154,14 @@ uint16_t GetRemainingTransferPoolSlots(void)
 __attribute__((used, externally_visible))
 uint16_t GetRemainingOfferSwapSlots(void)
 {
+    /* The original's subtraction (SWOS2.s `sub.w`), which its quota never lets underflow. A
+     * bigger list (a capacity param above the original's) can use more slots than the season's
+     * limit: then none are left, not 65535. */
+    if (CareerParams_CapacitiesRaised() && _offerSwapSlotsUsed > _offerSwapSlotLimit)
+        return 0;
+    if (_careerParams.transfer_quota_mode == 1 &&   /* (a fixed quota: none once the pool is full) */
+        (_offerSwapSlotsUsed >= _offerSwapSlotLimit || _numForeignMarketPlayers2 >= _careerParams.foreign_pool_capacity))
+        return 0;
     return _offerSwapSlotLimit - _offerSwapSlotsUsed;
 }
 
@@ -864,6 +882,7 @@ void FillForeignMarketPlayers(void)
 
     numToAdd = 15;                                          /* move.w #$F,d7 */
     numToAdd -= (Rand2() & 7);                             /* andi.w #7,d0; sub.w */
+    numToAdd = (uint16_t)(numToAdd * _careerParams.foreign_refill_mult);   /* (career_params: 1) */
     if ((int16_t)numToAdd <= 0)
         return;
 
@@ -1300,7 +1319,8 @@ int16_t FindPlayerOnTransferMarket(uint16_t playerId)
 /* ================================================================
  * AddPlayerToTransferMarket  (SWOS2.s line 72992)
  *
- * Appends a playerId to the transfer market list (max 5 entries).
+ * Appends a playerId to the transfer market list (max transfer_list_capacity entries: 5, the
+ * original's, by default).
  *
  * Asm register convention:
  *   in:  d0.w = playerId
@@ -1310,7 +1330,7 @@ void AddPlayerToTransferMarket(uint16_t playerId)
 {
     uint16_t count;
 
-    if (_numPlayersOnTransferMarket >= 5)
+    if (_numPlayersOnTransferMarket >= _careerParams.transfer_list_capacity)
         return;
 
     count = _numPlayersOnTransferMarket;
@@ -1462,6 +1482,91 @@ void AddCareerPoolPlayer(uint16_t teamNumber, uint16_t playerOrdinal, PlayerFile
     _numForeignMarketPlayers2 = idx + 1;
     _pendingForeignPlayerCount = _pendingForeignPlayerCount + 1;
     _lastLoadedExtNumber = 255;
+}
+
+/* ================================================================
+ * Career_WriteTeamPlayer -- a career mod's change to another club's player (ModApi_SetCareerPlayer):
+ * the player at `slot` of team `teamId` becomes `player`, for the rest of the career. Written as
+ * the game writes its own transfers, into the career's foreign-market pool (every claim on that
+ * slot, or a new one appended: Career_PatchTeamWithForeignMarketPlayers puts it on the team
+ * whenever its file is read), and into every live copy -- the selected teams, the TMD pool, the
+ * current team -- so a screen and a match see it at once (benefactorr's Career+,
+ * SWOS_AI_P3WriteOverrideAt / SyncLiveSlot). Not the career club (its squad is its own), not a
+ * slot past 15. 0 written; -1 refused (the pool full: foreign_pool_capacity).
+ * ================================================================ */
+int32_t Career_WriteTeamPlayer(uint16_t teamId, uint16_t slot, const PlayerFile *player)
+{
+    extern uint16_t _careerFileBuffer, _currentTeamNumber;
+    extern uint8_t  _tmdFileBuffer;              /* (the TMD pool: TeamFileEx records) */
+    extern uint8_t  _currentTeam[];
+    extern uint8_t  _viewRandomPhase;
+    if (slot >= 16 || teamId == _selTeamNumber || !player)
+        return -1;
+    const uint8_t hi = (uint8_t)(teamId >> 8), lo = (uint8_t)teamId;
+    int32_t claimed = 0;
+    for (uint16_t k = 0; k < _numForeignMarketPlayers2; k++) {
+        MarketPlayer *e = &_careerForeignMarketPlayers[k];
+        if (((uint8_t *)&e->teamId)[0] == hi && ((uint8_t *)&e->teamId)[1] == lo && (uint8_t)e->playerOrdinal == slot) {
+            e->player = *player;
+            claimed = 1;
+        }
+    }
+    if (!claimed) {
+        if (_numForeignMarketPlayers2 >= _careerParams.foreign_pool_capacity)
+            return -1;
+        MarketPlayer *e = &_careerForeignMarketPlayers[_numForeignMarketPlayers2];
+        ((uint8_t *)&e->teamId)[0] = hi;
+        ((uint8_t *)&e->teamId)[1] = lo;
+        e->playerOrdinal = (int8_t)slot;
+        e->padding = (int8_t)_viewRandomPhase;
+        e->player = *player;
+        _numForeignMarketPlayers2++;
+        _pendingForeignPlayerCount++;
+    }
+    for (uint16_t i = 0; i < _numSelectedTeams; i++)
+        if (PACK_BE_U16(_selectedTeams[i].team.countryNumber, _selectedTeams[i].team.teamOrdinal) == teamId)
+            _selectedTeams[i].players[slot] = *player;
+    TeamFileEx *tmd = (TeamFileEx *)&_tmdFileBuffer;
+    for (uint16_t i = 0; i < _careerFileBuffer; i++)
+        if (PACK_BE_U16(tmd[i].team.countryNumber, tmd[i].team.teamOrdinal) == teamId)
+            tmd[i].players[slot] = *player;
+    if (_currentTeamNumber == teamId) {
+        TeamFileEx *ct = (TeamFileEx *)_currentTeam;
+        if (PACK_BE_U16(ct->team.countryNumber, ct->team.teamOrdinal) == teamId)
+            ct->players[slot] = *player;
+    }
+    _lastLoadedExtNumber = 255;     /* (a team file read again gets the pool's change) */
+    return 0;
+}
+
+/* ================================================================
+ * Career_WriteOwnPlayer -- the career club's player at `slot` (0..31: the squad and the reserves)
+ * becomes `player`: a new man in his place (ModApi_SetOwnPlayer; Career+'s retirements). Into the
+ * career squad and every live copy of it -- the current team, the selected teams (their 16) --
+ * with the squad's values marked to be worked out again. 0 written, -1 not (no player, a slot
+ * past 31, a national selector's team).
+ * ================================================================ */
+int32_t Career_WriteOwnPlayer(uint16_t slot, const PlayerFile *player)
+{
+    extern uint16_t _currentTeamNumber, _isNationalSelector;
+    extern uint8_t  _currentTeam[];
+    extern TeamFileEx _careerTeam;
+    if (slot >= 32 || !player || _isNationalSelector)
+        return -1;
+    /* (the squad's 16 and then its 16 reserves, one run of PlayerFiles after the header) */
+    *(PlayerFile *)((uint8_t *)&_careerTeam + sizeof(TeamFile) + slot * sizeof(PlayerFile)) = *player;
+    if (_currentTeamNumber == _selTeamNumber) {
+        *(PlayerFile *)(_currentTeam + sizeof(TeamFile) + slot * sizeof(PlayerFile)) = *player;
+        ((TeamFileEx *)_currentTeam)->team.playerValuesDirty = TEAM_VALUES_DIRTY;
+    }
+    _careerTeam.team.playerValuesDirty = TEAM_VALUES_DIRTY;
+    if (slot < 16)
+        for (uint16_t i = 0; i < _numSelectedTeams; i++)
+            if (PACK_BE_U16(_selectedTeams[i].team.countryNumber, _selectedTeams[i].team.teamOrdinal) == _selTeamNumber) {
+                _selectedTeams[i].players[slot] = *player;
+                _selectedTeams[i].team.playerValuesDirty = TEAM_VALUES_DIRTY;
+            }
+    return 0;
 }
 
 /* ================================================================
@@ -1744,12 +1849,75 @@ void BuyPlayerInit(void)
 {
     uint8_t *str = (uint8_t *)_menuEntries[1].fg;
     GetBankBalance(str);
+    /* (a mod's row, entry 8, above EXIT: the five rows close up to make room -- local y 48 to
+     * 136, 22 apart, the row at 158; without it the original's layout) */
+    if (ModRow_Show(8, MODROW_BUY_PLAYER)) {
+        const uint16_t top = _menuEntries[0].y;
+        for (uint16_t e = 2; e <= 6; e++)
+            _menuEntries[e].y = (uint16_t)(top + 48 + 22 * (e - 2));
+        _menuEntries[8].y = (uint16_t)(top + 158);
+        _menuEntries[6].downEntry = 8;
+        _menuEntries[7].upEntry = 8;
+    }
+}
+
+/* The TRANSFER MARKET's list rows: the original's five are entries 9-13; rows 6-10 (entries
+ * 26-30, OpenSWOS) show only when transfer_list_capacity is above the original's 5, and then
+ * the screen is laid out for ten. */
+#define TM_ROWS_FIRST        9
+#define TM_ROWS_EXTRA_FIRST  26
+#define TM_ROWS_ORIG         5
+
+static uint16_t tmRowEntry(uint16_t row)
+{
+    return (uint16_t)(row < TM_ROWS_ORIG ? TM_ROWS_FIRST + row : TM_ROWS_EXTRA_FIRST + (row - TM_ROWS_ORIG));
+}
+
+static uint16_t tmRowOfEntry(const MenuEntry *entry)
+{
+    uint16_t row = (uint16_t)(entry->ordinal - _menuEntries[TM_ROWS_FIRST].ordinal);
+    if (row >= TM_ROWS_ORIG)
+        row = (uint16_t)(entry->ordinal - _menuEntries[TM_ROWS_EXTRA_FIRST].ordinal + TM_ROWS_ORIG);
+    return row;
+}
+
+/* The original's layout with five rows; with a longer list (local y, the menu's own
+ * coordinates): BUY 34, VIEW OFFERS 52, PUT ON MARKET 70, the list's title 88, ten rows from
+ * 100, the bottom row at 201 (below the original's 185, as Career+ had it). Positions are set
+ * from the title's (entry 0, local y 0), so a call after a return redraws the same. */
+static void tmLayoutRows(void)
+{
+    if (ModRow_Show(31, MODROW_TRANSFER_MARKET)) {  /* (a mod's row, entry 31: BUY PLAYER and it side */
+        const uint16_t left = (uint16_t)(_menuEntries[0].x - 92);   /* by side, centred: local x 46 and */
+        _menuEntries[2].x = (uint16_t)(left + 46);                  /* 158, from the title's, so a call */
+        _menuEntries[31].x = (uint16_t)(left + 158);                /* after a return lays out the same) */
+        _menuEntries[2].rightEntry = 31;
+    }
+    const int32_t big = _careerParams.transfer_list_capacity > TM_ROWS_ORIG;
+    for (uint16_t k = 0; k < TM_ROWS_ORIG; k++)
+        _menuEntries[TM_ROWS_EXTRA_FIRST + k].isInvisible = !big;
+    if (!big)
+        return;
+    const uint16_t top = _menuEntries[0].y;
+    _menuEntries[2].y = (uint16_t)(top + 34);
+    _menuEntries[31].y = _menuEntries[2].y;     /* (the mod's row, beside BUY PLAYER) */
+    _menuEntries[3].y = (uint16_t)(top + 52);
+    _menuEntries[4].y = (uint16_t)(top + 70);
+    _menuEntries[8].y = (uint16_t)(top + 88);
+    for (uint16_t row = 0; row < 2 * TM_ROWS_ORIG; row++)
+        _menuEntries[tmRowEntry(row)].y = (uint16_t)(top + 100 + 9 * row);
+    for (uint16_t e = 5; e <= 7; e++) {
+        _menuEntries[e].y = (uint16_t)(top + 201);
+        _menuEntries[e].upEntry = (int8_t)tmRowEntry(2 * TM_ROWS_ORIG - 1);
+    }
+    _menuEntries[tmRowEntry(TM_ROWS_ORIG - 1)].downEntry = (int8_t)tmRowEntry(TM_ROWS_ORIG);
 }
 
 /* TransferMarketFinish — refresh all transfer menu state (SWOS2.s line 76181) */
 __attribute__((used, externally_visible))
 void TransferMarketFinish(void)
 {
+    tmLayoutRows();
     TransferMenuSetBankState();
     CheckNumPlayersOnTransferMarket();
     CheckIfPlayerSelected();
@@ -1953,7 +2121,7 @@ void GenerateRandomTransferOffers(void)
                 int onMarket = 0;
                 /* _cGetPlayerAtIndexFileIdx holds the file index from last GetPlayerAtIndex call */
                 if (FindPlayerOnTransferMarket(fileIdx) == 0) {
-                    threshold = 11;
+                    threshold = _careerParams.listed_bid_chance;   /* (11, the original's) */
                     onMarket = 1;
                     boostedFound++;
                 }
@@ -2145,12 +2313,12 @@ extern void ShowChairmanMessage(void);
 /* ================================================================
  * CheckNumPlayersOnTransferMarket  (SWOS2.s line 70068)
  *
- * If 5 players on market, hide "put on market" entry (4).
+ * If the list is full (5 players, transfer_list_capacity), hide "put on market" entry (4).
  * If 0 players, hide "take off market" entry (8).
  * ================================================================ */
 static void checkNumPlayersOnTransferMarket(void)
 {
-    if (_numPlayersOnTransferMarket >= 5) {
+    if (_numPlayersOnTransferMarket >= _careerParams.transfer_list_capacity) {
         _menuEntries[4].isInvisible = 1;
     } else {
         _menuEntries[4].isInvisible = 0;
@@ -2311,7 +2479,7 @@ void TransferMarketCommon(void *entryPtr)
     /* Compute relative index: entry ordinal minus base entry ordinal */
     /* Base entry is at menuEntries + MENUENTRY_ALREADYDRAWN + 0x1F8
      * = entry (8+0x1F8)/0x38 = 0x200/0x38 = 9.14... = entry 9 */
-    uint16_t d7 = entry->ordinal - _menuEntries[9].ordinal;
+    uint16_t d7 = tmRowOfEntry(entry);   /* (entries 9-13, and 26-30 for rows 6-10) */
     if (d7 == _playerSelected)
         d7 = 0xFFFF;
 
@@ -2320,7 +2488,7 @@ void TransferMarketCommon(void *entryPtr)
 
     /* If old selection was valid, redraw that entry */
     if ((int16_t)oldSel >= 0) {
-        uint16_t entryIdx = oldSel + 9;
+        uint16_t entryIdx = tmRowEntry(oldSel);
         MenuEntry *oldEntry = CalcMenuEntryAddress(entryIdx);
         CallDrawMenuItem(oldEntry);
     }
@@ -2354,6 +2522,18 @@ extern void FormTopSkillsString(uint8_t *dst, PlayerFile *playerFile);
 extern void SetSquadMenuEntryStatusSprite_AfterSim(MenuEntry *entry, PlayerFile *playerFile);
 extern void InitPlayerValueDisplayStruct(uint8_t *playerEntry, uint8_t *dst);
 extern void FormatPlayerValueOrStatusText(uint8_t *base, uint8_t *dst);
+
+/* The player the next BuildTransferPlayerMenuEntry row shows, when its caller knows it (for the
+ * mods' playerRowDrawn); taken by that call. */
+static uint16_t s_rowTeam = 0xFFFF;
+static uint8_t  s_rowSlot = 0xFF;
+static int16_t  s_rowIndex = -1;
+void TransferRow_Identity(uint16_t team, uint16_t slot, int16_t row)
+{
+    s_rowTeam = team;
+    s_rowSlot = (uint8_t)slot;
+    s_rowIndex = row;
+}
 
 /* ================================================================
  * BuildTransferPlayerMenuEntry  (SWOS2.s line 70078)
@@ -2389,6 +2569,7 @@ void BuildTransferPlayerMenuEntry(void *itemPtr, uint8_t *player,
             a0->y = y;
             a0++;
         } while (--count >= 0);
+        s_rowTeam = 0xFFFF; s_rowSlot = 0xFF; s_rowIndex = -1;     /* (an empty row: no one's) */
         return;
     }
 
@@ -2533,6 +2714,9 @@ void BuildTransferPlayerMenuEntry(void *itemPtr, uint8_t *player,
         flags = (flags & 0xFFF0) | colorBits;
         a0->stringFlags = flags;
     }
+    ModHooks_PlayerRowDrawn(2 /* MODROWS_MARKET */, s_rowTeam, s_rowSlot, s_rowIndex,
+                            (int16_t)((MenuEntry *)itemPtr - _menuEntries), 12, pf);
+    s_rowTeam = 0xFFFF; s_rowSlot = 0xFF; s_rowIndex = -1;
 }
 
 /* ================================================================
@@ -2548,8 +2732,8 @@ __attribute__((used, externally_visible))
 void TransferMarketAfterDrawCommon(void *entryPtr)
 {
     MenuEntry *entry = (MenuEntry *)entryPtr;
-    /* Base entry is menuEntries[9] */
-    uint16_t d6 = entry->ordinal - _menuEntries[9].ordinal;
+    /* Base entry is menuEntries[9] (rows 6-10: entries 26-30) */
+    uint16_t d6 = tmRowOfEntry(entry);
     uint8_t *player;
 
     if (d6 >= _numPlayersOnTransferMarket) {
@@ -2568,6 +2752,7 @@ void TransferMarketAfterDrawCommon(void *entryPtr)
         d6++;   /* 1-based index for display */
 
         uint16_t yCoord = entry->y;
+        TransferRow_Identity(_selTeamNumber, playerOrd, (int16_t)(d6 - 1));  /* (your transfer list) */
         BuildTransferPlayerMenuEntry(&_menuEntries[14], player, yCoord,
                                        (int16_t)d6, style, 0);
         /* Draw 12 entries starting from menuEntries[14] */
@@ -2802,6 +2987,7 @@ void PlayerMarketItemBeforeDraw(MenuEntry *entry)
         player = 0;
     } else {
         uint8_t *item = (uint8_t *)_playerMarketVisibleItems[relIdx];
+        TransferRow_Identity(PACK_BE_U16(item[0], item[1]), item[2], (int16_t)relIdx);   /* (a market's player) */
 
         if (_showDomesticPlayerMarket) {
             /* Domestic player */
@@ -2902,6 +3088,8 @@ void BuyOtherPlayersAfterDrawCommon(void *entryPtr)
                                                     d1, &outSlot, &outPlayerIndex);
 
     uint16_t yCoord = a5->y;
+    TransferRow_Identity(PACK_BE_U16(_buyOtherPlayersTeamPtr->team.countryNumber, _buyOtherPlayersTeamPtr->team.teamOrdinal),
+                  outPlayerIndex, (int16_t)(d6 - 1));     /* (another club's squad) */
     BuildTransferPlayerMenuEntry(&_menuEntries[19], player, yCoord,
                                    (int16_t)d6, 0, 0);
     DrawMultipleItems(12, &_menuEntries[19]);
@@ -3006,6 +3194,8 @@ static void offerAfterDrawCommonShared(MenuEntry *a5,
 
     uint16_t yCoord = a5->y;
     MenuEntry *targetEntry = &_menuEntries[targetEntryIdx];
+    if (playerOrd >= 0)
+        TransferRow_Identity(teamId, (uint16_t)playerOrd, -1);    /* (an offer's player) */
     BuildTransferPlayerMenuEntry(targetEntry, playerData, yCoord,
                                    (int16_t)0xFFFF, 0xD, (uint8_t *)0);
     DrawMultipleItems(12, targetEntry);
@@ -4093,6 +4283,8 @@ void Career_TransferPlayerAndAddReplacedToMarketPool(uint16_t sourceTeam, uint16
         Career_RemovePlayerFromTeamInternal(d6, bestOrdinal);
         AddCareerPoolPlayer(d6, bestOrdinal, (PlayerFile *)bestPlayer);
         _offerSwapSlotsUsed++;
+        /* (sold: your player is now the buyer's, in the slot of the one he replaced) */
+        ModHooks_PlayerMoved(_selTeamNumber, (uint8_t)savedOrd, d6, (uint8_t)bestOrdinal);
 
         /* Remove from selected team roster */
         Career_RemovePlayerFromSelectedTeamRoster(savedOrd);
@@ -4309,6 +4501,8 @@ void Career_RemovePlayerAndAddAsTrialist(uint16_t sourceTeam, uint16_t playerOrd
     _careerNumPlayers++;
     SquadNumbers_Free(freeSlot);        /* (real squad numbers: his own, or a free one; teams.c) */
     Career_UpdatePlayerWeeklyWageCache(freeSlot);
+    /* (bought: his club's player is now yours; his old slot gets a new player, below) */
+    ModHooks_PlayerMoved(savedTeam, (uint8_t)savedOrd, _selTeamNumber, (uint8_t)freeSlot);
 
     /* Convert player to trialist using source name */
     Career_ConvertPlayerToTrialistFromName(savedTeam, savedOrd);
@@ -4545,6 +4739,7 @@ void Career_GenerateTrialistForTeamPlayer(uint16_t playerIndex)
     /* Mark as trialist (bit 1) */
     pf->positionAndFace |= PF_LOAN;  /* bset #1 */
     pf->form = 0;
+    ModHooks_PlayerCreated(d4, (uint8_t)d6, MODPLAYER_TRIALIST, pf);   /* (a career mod may change him) */
 }
 
 /* ================================================================
@@ -4745,6 +4940,9 @@ void Career_ConvertPlayerToTrialistFromName(uint16_t sourceTeam, uint16_t player
 
     /* Init skill attributes */
     careerInitTrialistAttributes(pf, d5);
+    /* (his name, nationality and skills made: a career mod may change him -- before another
+     * club's copy goes into the career pool, so the pool has the changed one) */
+    ModHooks_PlayerCreated(d5, (uint8_t)d6, d5 == _selTeamNumber ? MODPLAYER_TRIALIST : MODPLAYER_REPLACEMENT, pf);
 
     if (d5 == _selTeamNumber) {
         /* Same team: set as goalkeeper sub and clear trialist/other flags */
@@ -4831,10 +5029,15 @@ void TrainingMatch_AdjustSelectedTeamRosterForTrialists(uint16_t excludeFlags, u
 
     uint16_t d4 = excludeFlags;   /* (the availability flag, not a team: `move.w d4,d0` before each count) */
     uint16_t d5 = baseCount;
+    /* trialist_count_mode 1 (Career+): every non-training match counts injured AND suspended
+     * players out (-1), so an injury and a suspension together still bring a trialist in; a
+     * training match counts everyone (0). 0 = the caller's flag, as the original. */
+    const int16_t availability = _careerParams.trialist_count_mode == 1 ? (_trainingGame ? 0 : -1)
+                                                                        : (int16_t)excludeFlags;
 
     if (_trainingGame == 0) {
         /* Non-training: remove excess goalkeepers if more than 2 subs */
-        uint32_t subsResult = GetNumberOfAvailableSubstitutes(teamPtr, (int16_t)excludeFlags);
+        uint32_t subsResult = GetNumberOfAvailableSubstitutes(teamPtr, availability);
         uint16_t subs = (uint16_t)(subsResult & 0xFFFF);
         if (subs > 2) {
             int16_t d2 = (int16_t)_careerNumPlayers - 1;
@@ -4857,7 +5060,7 @@ void TrainingMatch_AdjustSelectedTeamRosterForTrialists(uint16_t excludeFlags, u
         }
 
         /* Remove excess starting players if more than 16 */
-        uint32_t startResult = GetNumberOfAvailableStartingPlayers(teamPtr, (int16_t)excludeFlags);
+        uint32_t startResult = GetNumberOfAvailableStartingPlayers(teamPtr, availability);
         uint16_t starters = (uint16_t)(startResult & 0xFFFF);
         if (starters > 16) {
             int16_t d2 = (int16_t)_careerNumPlayers - 1;
@@ -4884,7 +5087,7 @@ void TrainingMatch_AdjustSelectedTeamRosterForTrialists(uint16_t excludeFlags, u
 
     /* Add trial GK if needed: ensure at least 2 goalkeeper subs */
     while (_careerNumPlayers < 30) {
-        uint32_t subsResult = GetNumberOfAvailableSubstitutes(teamPtr, (int16_t)excludeFlags);
+        uint32_t subsResult = GetNumberOfAvailableSubstitutes(teamPtr, availability);
         uint16_t subs = (uint16_t)(subsResult & 0xFFFF);
         if (subs >= 2)
             break;
@@ -4901,7 +5104,7 @@ void TrainingMatch_AdjustSelectedTeamRosterForTrialists(uint16_t excludeFlags, u
 
     /* Add trial field players if needed: fill to required starter count */
     while (_careerNumPlayers < 30) {
-        uint32_t startResult = GetNumberOfAvailableStartingPlayers(teamPtr, (int16_t)excludeFlags);
+        uint32_t startResult = GetNumberOfAvailableStartingPlayers(teamPtr, availability);
         uint16_t starters = (uint16_t)(startResult & 0xFFFF);
 
         uint16_t required = 11;
@@ -4976,14 +5179,14 @@ void PutPlayerOnMarketMenu(void)
         } else {
             /* Not on market — add */
             AddPlayerToTransferMarket(playerIdx);
-            if (_numPlayersOnTransferMarket == 5)
+            if (_numPlayersOnTransferMarket >= _careerParams.transfer_list_capacity)
                 break;
         }
     }
 
     /* Update transfer market UI state */
     CheckNumPlayersOnTransferMarket();
-    if (_numPlayersOnTransferMarket == 5)
+    if (_numPlayersOnTransferMarket >= _careerParams.transfer_list_capacity)
         SetCurrentEntry(6);
 }
 
@@ -5258,6 +5461,25 @@ extern void RestoreRand2State(void);
 extern void Randomize2(uint16_t _seed);
 extern uint16_t GetPlayerRandomNum(PlayerFile *playerFile);
 
+/* A home club that may bid for your listed player: the original's (IsTeamEligibleForOfferByRefSkill),
+ * and with domestic_buyer_mode 1 also any club in the league with a player priced at half the
+ * listed one's or more (benefactorr's Career+). 0 = eligible, as IsTeamEligibleForOfferByRefSkill. */
+static int16_t domesticBuyerEligible(TeamFileEx *team, uint16_t refSkill)
+{
+    if (IsTeamEligibleForOfferByRefSkill(team, refSkill) == 0)
+        return 0;
+    if (_careerParams.domestic_buyer_mode != 1)
+        return 1;
+    if (PACK_BE_U16(team->team.countryNumber, team->team.teamOrdinal) == _selTeamNumber ||
+        Team_IsOutsideLeague(&team->team))
+        return 1;
+    const uint8_t minPrice = (uint8_t)(((uint8_t)refSkill + 1u) / 2u);
+    for (int32_t i = 0; i < 16; i++)
+        if ((uint8_t)team->players[i].price >= minPrice)
+            return 0;
+    return 1;
+}
+
 __attribute__((used, externally_visible))
 void CreateRandomTransferOfferForPlayer(uint16_t playerOrdinal)
 {
@@ -5286,7 +5508,7 @@ void CreateRandomTransferOfferForPlayer(uint16_t playerOrdinal)
     uint8_t *teamsBase;
     uint16_t teamCount;
 
-    if (rnd >= 8) {
+    if (rnd >= _careerParams.foreign_bid_chance) {     /* (8, the original's) */
         /* Home market path */
         _homeMarketRandomPickRetries++;
         uint8_t *a0 = &_selTeamsPtr;
@@ -5302,7 +5524,7 @@ void CreateRandomTransferOfferForPlayer(uint16_t playerOrdinal)
         uint8_t selTeamByte = (uint8_t)(_selTeamNumber >> 8);
         while (d4 < _numSelectedTeams) {
             if (selTeamByte == *a0) {
-                if (IsTeamEligibleForOfferByRefSkill((TeamFileEx *)a0, refSkill) == 0) {
+                if (domesticBuyerEligible((TeamFileEx *)a0, refSkill) == 0) {
                     _offerCandidateTeamIndexBuffer[d5] = (uint8_t)d4;
                     d5++;
                 }

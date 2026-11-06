@@ -462,8 +462,8 @@ void ConvertColorsAndTextSprites(TeamGame *team1, TeamGame *team2)
     /* SWOS_DUMP_HEADS=<folder> (a tool, for the hair work: docs/MODS.md): team 1's raw set, its
      * hair pixels found, before anything recolours it. */
     { extern void HeadDump_Raw(void); HeadDump_Raw(); }
-    { extern void ModHooks_PlayerSetsRaw(void); ModHooks_PlayerSetsRaw(); }   /* (the hair mod) */
 #endif
+    { extern void ModHooks_PlayerSetsRaw(void); ModHooks_PlayerSetsRaw(); }   /* (the hair mod) */
 
     /* Face 3 (black, blond hair): each team's raw first set copied before it is recoloured
      * (player_face3.c, the Mod's copy_sets) */
@@ -565,4 +565,7 @@ void ConvertColorsAndTextSprites(TeamGame *team1, TeamGame *team2)
     }
 
     ShirtNumbers_Build();   /* the shirt numbers 17..99 from this match's digits (shirt_numbers.c) */
+#ifdef SWOS_SDL_BUILD
+    TeamColors_MatchArt();  /* purple's entry 12: the match's own maroon art kept maroon (team_colors.c) */
+#endif
 }
