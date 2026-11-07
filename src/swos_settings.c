@@ -77,7 +77,11 @@ static int handler(void *user, const char *section,
     PlatformInitOptions *opts = (PlatformInitOptions *)user;
 
     if (eqi(section, "video")) {
-        if (eqi(name, "renderer")) {
+        if (eqi(name, "scoreboard")) {
+            int b;
+            if (parse_bool(value, &b))
+                opts->scoreboard = b;
+        } else if (eqi(name, "renderer")) {
             if      (eqi(value, "software")) opts->renderer = PLATFORM_RENDERER_SOFTWARE;
             else if (eqi(value, "accel"))    opts->renderer = PLATFORM_RENDERER_ACCEL;
         } else if (eqi(name, "vsync")) {
@@ -415,6 +419,10 @@ static int settings_build(const PlatformInitOptions *opts, IniEntry *items, char
      * happily emits a longer line and the READER then reports "parse error at
      * line N" on our own generated file. Cost me one round-trip to notice. */
     int n = 0;
+    SETTING(n) = (IniEntry){ "video", "scoreboard",
+        "; scoreboard: true | false -- SWOS 2020's scoreboard in a match: the minute, both kits and the\n"
+        "; score at the top left, from the kick-off to the final whistle.",
+        opts->scoreboard ? "true" : "false" };
     SETTING(n) = (IniEntry){ "video",  "renderer",   "; renderer: software | accel  (hardware-accelerated)", renderer_str(opts->renderer) };
     SETTING(n) = (IniEntry){ "video",  "vsync",      "; vsync: true | false  (accel renderer only)", opts->vsync ? "true" : "false" };
     SETTING(n) = (IniEntry){ "video",  "subpixel_scroll", "; subpixel_scroll: true | false. Smooths scrolling by shifting the frame by the camera's sub-pixel remainder. Never blurs. Off = compare", opts->subpixel_scroll ? "true" : "false" };

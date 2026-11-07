@@ -2122,6 +2122,21 @@ void DrawQueuedSprites(void)
         }
 #endif
 
+#ifdef SWOS_SDL_BUILD
+        /* SWOS 2020's scoreboard has the minute: the game's own clock is not drawn beside it (its
+         * new scoreboard moves this sprite off the screen), and the controlled player's name goes 7
+         * rows down, clear of the board (its SetCurrentPlayerName hook). Only the drawing: the sprites
+         * are as they were. */
+        {
+            extern Sprite  _currentTimeSprite, _currentPlayerNameSprite;
+            extern int32_t MatchScoreboard_Showing(void), MatchScoreboard_HidesClock(void);
+            if (a4 == &_currentTimeSprite && MatchScoreboard_HidesClock())
+                continue;
+            if (a4 == &_currentPlayerNameSprite && MatchScoreboard_Showing())
+                d2 += 7;
+        }
+#endif
+
         /* Check if a4 is a player sprite (teamNumber 1 or 2).
          * Original asm used address range check (goalie1Sprite..bottomCornerLeftPositions),
          * but sprites moved from asm to C data sections so addresses are no longer contiguous. */

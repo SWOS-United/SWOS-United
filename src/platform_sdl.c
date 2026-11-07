@@ -13,6 +13,7 @@
 #include <stdint.h>
 #include "project_identity.h"
 #include "platform_sdl.h"
+#include "match_scoreboard.h"  /* SWOS 2020's scoreboard, drawn on the picture */
 #include "crt_effects.h"   /* CRT mask / vignette / curved corners */
 #include "display.h"
 #include "dos_mode.h"        /* gDosGraphics */
@@ -2081,6 +2082,10 @@ static void present_frame_copy(SDL_Texture *tex)
  * once not — as a ghost. Captures are rare, so the allocation is free.
  * Returns fb unchanged when there is nothing to composite; free via
  * screenshot_frame_release. */
+/* SWOS 2020's scoreboard this frame: 0 none, 1 in the HUD strip (the sub-pixel shift must not move
+ * it), 2 in the picture itself. */
+static int s_scoreboard;
+
 static uint32_t *screenshot_frame_with_hud(uint32_t *fb)
 {
     if (!hud_layer_pending()) return fb;
@@ -2100,6 +2105,8 @@ static uint32_t *screenshot_frame_with_hud(uint32_t *fb)
                      ((uint32_t)c.g << 8)    | (uint32_t)c.b;
         }
     }
+    if (s_scoreboard == 1)
+        MatchScoreboard_Draw(tmp, _screen_width, 0, 0, 0);
     return tmp;
 }
 
@@ -2165,6 +2172,20 @@ static void render_frame_impl(int pump_full)
           if (_gArcadeMode)
               Arcade_CompositeOverlay(fb, fbpx, _screen_width, _screen_height); }
     }
+    /* SWOS 2020's scoreboard (match_scoreboard.c): with the sub-pixel scroll on, over the world in
+     * the HUD strip, its box joined to the strip's here; else straight into the picture. */
+    s_scoreboard = 0;
+    if (!arcade_full && MatchScoreboard_Showing()) {
+        if (s_hud_layer && s_subpixel_scroll) {
+            int32_t bx, by, bw, bh;
+            MatchScoreboard_Rect(&bx, &by, &bw, &bh);
+            Platform_HudLayerMark(bx, by, bw, bh);
+            s_scoreboard = 1;
+        } else {
+            MatchScoreboard_Draw(fb, fbpx, 0, 0, 0);
+            s_scoreboard = 2;
+        }
+    }
 
     /* Screenshots read the packed RAM buffer directly (always the right stride now,
      * so the old pitch-mismatch skip is gone). Only write the F12 shot from the
@@ -2216,6 +2237,8 @@ shots_done:
      * uploads barely more than the screen itself. */
     {
         int stripRows = compose_hud_strip(fb, _screen_width);
+        if (s_scoreboard == 1 && s_hud_strip_w > 0)
+            MatchScoreboard_Draw(fb + (size_t)PLATFORM_SCREEN_H * fbpx, fbpx, s_hud_dst_x, s_hud_dst_y, 1);
         SDL_Rect up = { 0, 0, _screen_width, PLATFORM_SCREEN_H + stripRows };
         SDL_UpdateTexture(tex, &up, fb, _screen_width * 4);
     }

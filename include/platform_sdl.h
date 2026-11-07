@@ -141,6 +141,7 @@ typedef struct {
                                               * screen, kept while REMEMBER LOGIN INFO is on */
     int                    netplay_remember; /* [netplay] remember_login: that switch (default on) */
     char                   account_site[24]; /* [netplay] account_site: sensiblesoccer | swosunited (SWOS United) */
+    int                    scoreboard;       /* [video] scoreboard: SWOS 2020's, at the top left (default on) */
     int                    accept_sound;     /* [netplay] accept_sound: MULTIPLAYER SETTINGS' ACCEPT SOUND (default on) */
     int                    discord;          /* [netplay] discord: post online matches to Discord (live_ticker.h) */
     char                   discord_webhook[256]; /* [netplay] discord_webhook: a test channel's webhook, for every post */

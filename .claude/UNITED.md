@@ -108,6 +108,12 @@ rebase), `git cherry-pick <commit>` one fix, or nothing at all. `upstream` is fe
   a knock plays. Cleared after the second leg. The team stays for the second leg (ours: another
   would leave the injuries behind). `SWOS_LOBBY_TEST_LEG=<side>:<file index>:<status>,...`
   on BOTH games forces one; file index, not line-up slot.
+- **The scoreboard** (`src/match_scoreboard.c`, `[video] scoreboard`, on by default): SWOS 2020's
+  new scoreboard, its scores mode 4 -- the minute, both kits and the score in a darkened box at the
+  top left, from the kick-off to the final whistle, gone for replays and the statistics. Drawn on the
+  picture as it goes to the screen (platform_sdl.c: the HUD strip with the sub-pixel scroll on, the
+  picture without), so nothing the match keeps, hashes or records changes. The game's own clock is
+  left out for the whole match and the player's name drawn 7 rows lower (sprites.c), as SWOS 2020.
 - **Discord** (`src/live_ticker.c`, `include/live_ticker.h`): SWOS 2020's LIVE TICKERS and LIVE
   SCORE BOARDS through sensiblesoccer.de's `discord_proxy.php` (`PROJECT_DISCORD_PROXY`).
   `[netplay] discord`, `discord_webhook` (a test channel for every post; or
