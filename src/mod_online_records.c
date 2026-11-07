@@ -11,8 +11,8 @@
  *                         2020's VIEW ONLINE STATS)
  *   challenges.ranking    {"category"}: "<player>\t<beaten>" lines, most first (its SCENARIO
  *                         COMPLETION)
- *   challenges.won        the win, sent
- *   speedrun.finished     the run into the player's record, sent
+ *   challenges.won        the win, sent -- OFF (UNITED_WRITE_RECORDS): -1
+ *   speedrun.finished     the run into the player's record, sent -- OFF (UNITED_WRITE_RECORDS): -1
  *   speedrun.line         "WORLD RANK 3   BEST 2.21 NAME" for the result screen
  *   speedrun.board        {"style","target"}: the target's leaderboard, its five difficulties
  *   speedrun.mine         {"style"}: the player's records at that style
@@ -46,6 +46,13 @@
 #include <string.h>
 
 #define SLUG "online-records"
+
+/* WRITES to sensiblesoccer.de -- a challenge won, a speedrun run -- are OFF: "Nothing from OpenSWOS
+ * should go to sensiblesoccer.de" (the owner, 2026-11-07). The records are read from there (the
+ * boards, the tallies, the shared challenges), never written; a win or a run stays the player's
+ * own until SWOS United's own server (SWOS-API) takes them. The code that sent them stays, behind
+ * this switch, for that server. */
+#define UNITED_WRITE_RECORDS 0
 
 static void who(char *out, uint32_t cap, int32_t mustBeLoggedIn)
 {
@@ -349,6 +356,8 @@ static int32_t service(const char *method, const char *args, char *out, uint32_t
         !strcmp(method, "challenges.ranking"))
         return challenges_read(method, args, out, cap);
     if (!strcmp(method, "challenges.won")) {
+        if (!UNITED_WRITE_RECORDS)
+            return -1;          /* (not sent: see UNITED_WRITE_RECORDS) */
         who(me, sizeof me, 1);
         if (!me[0])
             return -1;          /* (nobody logged in: nothing sent under a name) */
@@ -369,6 +378,8 @@ static int32_t service(const char *method, const char *args, char *out, uint32_t
         return 0;
     }
     if (!strcmp(method, "speedrun.finished")) {
+        if (!UNITED_WRITE_RECORDS)
+            return -1;          /* (not sent: see UNITED_WRITE_RECORDS) */
         who(me, sizeof me, 1);
         if (!me[0])
             return -1;
@@ -424,6 +435,18 @@ static void records_test(void)
     if (!me[0])
         return;                             /* (the test log-in not through yet) */
     done = 1;
+    if (!UNITED_WRITE_RECORDS) {    /* (writes off: the reads alone) */
+        UnitedChallengeTally t;
+        static char board[1 << 16];
+        const int32_t a = UnitedRecords_ChallengeTally(me, &t);
+        const int32_t b = UnitedRecords_SpeedrunBoard(UnitedRecords_Style("AMIGA"), 0, board, sizeof board);
+        printf("RECORDS TEST (reads only) as %s: tally %s (%d rows), board %s\n", me, a ? "fetched" : "FAILED",
+               (int)t.numRows, b ? "fetched" : "FAILED");
+        UnitedRecords_FreeTally(&t);
+        printf("RECORDS TEST %s\n", a && b ? "PASS" : "FAIL");
+        fflush(stdout);
+        exit(a && b ? 0 : 1);
+    }
     UnitedChallengeTally before, after;
     const int32_t a = UnitedRecords_ChallengeTally(me, &before);
     const int32_t n0 = a ? UnitedRecords_TallyPlayers(&before, key) : -1;

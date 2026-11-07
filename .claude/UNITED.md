@@ -74,8 +74,11 @@ rebase), `git cherry-pick <commit>` one fix, or nothing at all. `upstream` is fe
   SWOS 2020's own `challenges/` (github.com/starwindz/swos-2020: `challenges.ini` and its
   `.EDT` / `.DIY` teams, which become `teams/*.EDT`) -- regenerate it with the script, never edit
   it by hand. OpenSWOS's challenges mod plays it (format v2, docs/MODS.md §18); its LOCKED
-  categories stay closed, as in SWOS 2020. Online, a win is sent by the online-records mod, by
-  SWOS 2020's scenario name and category.
+  categories stay closed, as in SWOS 2020. Online, the online-records mod READS SWOS 2020's records
+  (by its scenario name and category); nothing is ever sent to sensiblesoccer.de -- "Nothing from
+  OpenSWOS should go to sensiblesoccer.de" (the owner, 2026-11-07): the wins and speedrun runs it
+  used to send are off (`UNITED_WRITE_RECORDS` 0 in src/mod_online_records.c) until SWOS United's
+  own server takes them, and SHARE / SWOS Galore's uploads are never pointed there.
 - **SWOS 2020's challenge screens** (`src/united_challenges.c`, mod `challenges2020`, on by
   default): MODES / COMPETE -> CHALLENGES opens SWOS 2020's SELECT CATEGORY (six a page, MORE,
   CUSTOM CHALLENGES), a category's challenges twelve a page with stars, tick / lock and the

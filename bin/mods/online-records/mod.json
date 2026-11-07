@@ -4,7 +4,7 @@
  "name": "Online Records",
  "version": "1.0",
  "author": "SWOS United (SWOS 2020's challenge and speedrun records)",
- "about": "Your challenges and speedruns on sensiblesoccer.de, as in SWOS 2020: what you have beaten, how many players have, your world rank.",
+ "about": "SWOS 2020's challenge and speedrun records, read from sensiblesoccer.de: who has beaten a challenge, the completion, the leaderboards, your records, the latest runs, the shared custom challenges. Nothing is sent there: your wins and runs stay your own until SWOS United's own server takes them.",
  "targets": [
   "sdl"
  ],
