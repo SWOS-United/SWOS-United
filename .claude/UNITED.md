@@ -69,6 +69,13 @@ rebase), `git cherry-pick <commit>` one fix, or nothing at all. `upstream` is fe
   and TESTER2 have open legs of "testtourna1" there). A joiner that leaves before the host's
   next leg id arrives closes the session without that leg (it never reported it). `src/united_api.c` reads its JSON (decodes `\/` and
   `\u00XX`, which mjson gives up on).
+- **SWOS 2020's challenges** (`bin/mods/swos2020-challenges`, canonical, on by default): its 92
+  scenarios in 8 categories, written by OpenSWOS's `scripts/convert_swos2020_challenges.py` from
+  SWOS 2020's own `challenges/` (github.com/starwindz/swos-2020: `challenges.ini` and its
+  `.EDT` / `.DIY` teams, which become `teams/*.EDT`) -- regenerate it with the script, never edit
+  it by hand. OpenSWOS's challenges mod plays it (format v2, docs/MODS.md §18); its LOCKED
+  categories stay closed, as in SWOS 2020. Online, a win is sent by the online-records mod, by
+  SWOS 2020's scenario name and category.
 - **Secrets**: `include/united_secrets.h` (gitignored; `include/united_secrets.sample.h` is the
   template, the file itself is in SWOS-API-secrets.zip). Without it a build cannot host a
   ranked match.

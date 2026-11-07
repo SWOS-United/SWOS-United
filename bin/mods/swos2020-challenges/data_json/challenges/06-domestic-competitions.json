@@ -1,0 +1,137 @@
+{
+ "format": "openswos-challenges",
+ "version": 2,
+ "category": "DOMESTIC COMPETITIONS",
+ "challenges": [
+  {
+   "id": "swos2020-601",
+   "name": "BIRMINGHAM 1-1 ARSENAL",
+   "category": "DOMESTIC COMPETITIONS",
+   "difficulty": 5,
+   "about": "1-1, 88TH MIN, FREE KICK, BIRMINGHAM CITY MUST WIN",
+   "description": [
+    "- BIRMINGHAM 1-1 ARSENAL (2010-11 CARLING CUP FINAL) -",
+    "SCORE IS 1-1.",
+    "WIN THE LEAGUE CUP FOR BIRMINGHAM CITY.",
+    "STARTING WITH A FREE KICK IN THE 88TH MINUTE.",
+    "* 1-1, 88TH MIN, FREE KICK, BIRMINGHAM CITY MUST WIN *"
+   ],
+   "win_message": "BIRMINGHAM MUST WIN",
+   "teams": [
+    {
+     "file": "teams/2010CARLINGCUPFINAL.EDT",
+     "name": "BIRMINGHAM CITY"
+    },
+    {
+     "file": "teams/2010CARLINGCUPFINAL.EDT",
+     "name": "ARSENAL"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    1,
+    1
+   ],
+   "minute": 88,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    2,
+    5
+   ],
+   "locked": true,
+   "win": "win",
+   "restart": {
+    "kind": "free_kick",
+    "spot": 1,
+    "deep": true,
+    "team": 0
+   }
+  },
+  {
+   "id": "swos2020-602",
+   "name": "READING 4-0 ARSENAL",
+   "category": "DOMESTIC COMPETITIONS",
+   "difficulty": 3,
+   "about": "4-0, 2ND HALF, KICK-OFF, ARSENAL MUST WIN (ET/PEN)",
+   "description": [
+    "- READING 4-0 ARSENAL (2012 CARABAO CUP ROUND 4) -",
+    "READING AT HOME AND BEATING THE FAVOURITES ARSENAL 4-0.",
+    "IT IS THE BEGINNING OF THE SECOND HALF,",
+    "FIGHT BACK TO THE NEXT ROUND. ET AND PEN ACTIVATED.",
+    "* 4-0, 2ND HALF, KICK-OFF, ARSENAL MUST WIN (ET/PEN) *"
+   ],
+   "win_message": "ARSENAL MUST WIN",
+   "teams": [
+    {
+     "file": "teams/2012CARABAOCUPROUND4.EDT",
+     "name": "READING"
+    },
+    {
+     "file": "teams/2012CARABAOCUPROUND4.EDT",
+     "name": "ARSENAL"
+    }
+   ],
+   "yours": 1,
+   "score": [
+    4,
+    0
+   ],
+   "minute": 45,
+   "extra_time": true,
+   "penalties": true,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 1,
+   "subs": [
+    2,
+    5
+   ],
+   "win": "win"
+  },
+  {
+   "id": "swos2020-603",
+   "name": "BIRMINGHAM 0-2 BOLTON",
+   "category": "DOMESTIC COMPETITIONS",
+   "difficulty": 5,
+   "about": "0-2, 78TH MIN, KICK-OFF, BIRMINGHAM CITY MUST AT LEAST DRAW",
+   "description": [
+    "- BIRMINGHAM 0-2 BOLTON (12/13 ENGLISH FOOTBALL LEAGUE S.4 -",
+    "SCORE IS 0-2 TO BOLTON WITH 12 MINUTES LEFT ON THE CLOCK.",
+    "CLAW BACK AT LEAST A DRAW TO COMPLETE AND",
+    "HELP BIRMINGHAM SURVIVE FOR RELEGATION.",
+    "* 0-2, 78TH MIN, KICK-OFF, BIRMINGHAM CITY MUST AT LEAST DRAW *"
+   ],
+   "win_message": "BIRMINGHAM MUST AT LEAST DRAW",
+   "teams": [
+    {
+     "file": "teams/2013EFLFINALDAY.EDT",
+     "name": "BIRMINGHAM CITY"
+    },
+    {
+     "file": "teams/2013EFLFINALDAY.EDT",
+     "name": "BOLTON WANDERERS"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    0,
+    2
+   ],
+   "minute": 78,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    2,
+    5
+   ],
+   "win": "draw"
+  }
+ ]
+}

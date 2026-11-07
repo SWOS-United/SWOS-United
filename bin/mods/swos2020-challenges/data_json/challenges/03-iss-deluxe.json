@@ -1,0 +1,993 @@
+{
+ "format": "openswos-challenges",
+ "version": 2,
+ "category": "ISS DELUXE",
+ "challenges": [
+  {
+   "id": "swos2020-301",
+   "name": "ITALY 1-2 CROATIA",
+   "category": "ISS DELUXE",
+   "difficulty": 3,
+   "about": "1-2, 85TH MIN, CORNER KICK, ITALY MUST AT LEAST DRAW",
+   "description": [
+    "- ITALY 1-2 CROATIA (EURO 96 QUALIFIER) -",
+    "IT SEEMS LIKE A DEFEAT FOR ITALY AGAINST THE TALENTED",
+    "CROATIA. ITALY SCORED A GOAL IN THE SECOND HALF.",
+    "NOW THEY ARE TRYING TO TURN THE TABLES AROUND.",
+    "* 1-2, 85TH MIN, CORNER KICK, ITALY MUST AT LEAST DRAW *"
+   ],
+   "win_message": "ITALY MUST AT LEAST DRAW",
+   "teams": [
+    {
+     "file": "teams/ISSD.EDT",
+     "name": "ITALY"
+    },
+    {
+     "file": "teams/ISSD.EDT",
+     "name": "CROATIA"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    1,
+    2
+   ],
+   "minute": 85,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    5,
+    5
+   ],
+   "win": "draw",
+   "restart": {
+    "kind": "corner",
+    "wing": -1,
+    "team": 0
+   }
+  },
+  {
+   "id": "swos2020-302",
+   "name": "GERMANY 2-3 BULGARIA",
+   "category": "ISS DELUXE",
+   "difficulty": 3,
+   "about": "2-3, 85TH MIN, FREE KICK, GERMANY MUST AT LEAST DRAW",
+   "description": [
+    "- GERMANY 2-3 BULGARIA (ON NOVEMBER 15, 1995) -",
+    "ALTHOUGH GERMANY HAD A 2 GOALS LEAD, THEY GAVE BULGARIA A",
+    "PENALTY, AND NOW THEY ARE BEHIND BY A GOAL.",
+    "BULGARIA IS A DANGEROUS TEAM TO HANDLE.",
+    "* 2-3, 85TH MIN, FREE KICK, GERMANY MUST AT LEAST DRAW *"
+   ],
+   "win_message": "GERMANY MUST AT LEAST  DRAW",
+   "teams": [
+    {
+     "file": "teams/ISSD.EDT",
+     "name": "GERMANY"
+    },
+    {
+     "file": "teams/ISSD.EDT",
+     "name": "BULGARIA"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    2,
+    3
+   ],
+   "minute": 85,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    5,
+    5
+   ],
+   "win": "draw",
+   "restart": {
+    "kind": "free_kick",
+    "spot": -1,
+    "team": 0
+   }
+  },
+  {
+   "id": "swos2020-303",
+   "name": "ENGLAND 1-3 BRAZIL",
+   "category": "ISS DELUXE",
+   "difficulty": 4,
+   "about": "1-3, 80TH MIN, CORNER KICK, ENGLAND MUST AT LEAST DRAW",
+   "description": [
+    "- ENGLAND 1-3 BRAZIL (1995 UMBRO CUP) -",
+    "IT'S ENGLAND, THE HOME OF FOOTBALL, AGAINST THE CHAMPIONS,",
+    "BRAZIL. ENGLAND CAN NOT END THE GAME AS IT IS,",
+    "FOR THE SAKE OF THEIR PRIDE.",
+    "* 1-3, 80TH MIN, CORNER KICK, ENGLAND MUST AT LEAST DRAW *"
+   ],
+   "win_message": "ENGLAND MUST AT LEAST DRAW",
+   "teams": [
+    {
+     "file": "teams/ISSD.EDT",
+     "name": "ENGLAND"
+    },
+    {
+     "file": "teams/ISSD.EDT",
+     "name": "BRAZIL"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    1,
+    3
+   ],
+   "minute": 80,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    5,
+    5
+   ],
+   "win": "draw",
+   "restart": {
+    "kind": "corner",
+    "wing": -1,
+    "team": 0
+   }
+  },
+  {
+   "id": "swos2020-304",
+   "name": "GERMANY 0-0 ITALY",
+   "category": "ISS DELUXE",
+   "difficulty": 3,
+   "about": "0-0, 85TH MIN, FREE KICK, GERMANY MUST WIN",
+   "description": [
+    "- GERMANY 0-0 ITALY (EURO 1988) -",
+    "GERMANY CAN NOT SCORE A GOAL AGAINST ITALY,",
+    "EVEN THOUGH THE ITALIANS ARE PLAYING POORLY.",
+    "GERMANY WANTS TO TURN THE TABLES WITH THIS FREE KICK.",
+    "* 0-0, 85TH MIN, FREE KICK, GERMANY MUST WIN *"
+   ],
+   "win_message": "GERMANY MUST WIN",
+   "teams": [
+    {
+     "file": "teams/ISSD.EDT",
+     "name": "GERMANY"
+    },
+    {
+     "file": "teams/ISSD.EDT",
+     "name": "ITALY"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    0,
+    0
+   ],
+   "minute": 85,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    5,
+    5
+   ],
+   "win": "win",
+   "restart": {
+    "kind": "free_kick",
+    "spot": -1,
+    "team": 0
+   }
+  },
+  {
+   "id": "swos2020-305",
+   "name": "TURKEY 1-1 SWEDEN",
+   "category": "ISS DELUXE",
+   "difficulty": 3,
+   "about": "1-1, 85TH MIN, THROW IN, TURKEY MUST WIN",
+   "description": [
+    "- TURKEY 1-1 SWEDEN (EURO 96 QUALIFIER) -",
+    "TURKEY IS DOING EXTREMELY WELL AGAINST SWEDEN,",
+    "WHO HAVE BEEN PLAYING WITH THEIR BEST TEAM.",
+    "ONE MORE GOAL FOR A HISTORICAL WIN.",
+    "* 1-1, 85TH MIN, THROW IN, TURKEY MUST WIN *"
+   ],
+   "win_message": "TURKEY MUST WIN",
+   "teams": [
+    {
+     "file": "teams/ISSD.EDT",
+     "name": "TURKEY"
+    },
+    {
+     "file": "teams/ISSD.EDT",
+     "name": "SWEDEN"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    1,
+    1
+   ],
+   "minute": 85,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    5,
+    5
+   ],
+   "win": "win",
+   "restart": {
+    "kind": "throw_in",
+    "wing": -1,
+    "team": 0
+   }
+  },
+  {
+   "id": "swos2020-306",
+   "name": "BELGIUM 1-1 SPAIN",
+   "category": "ISS DELUXE",
+   "difficulty": 3,
+   "about": "1-1, 85TH MIN, FREE KICK, BELGIUM MUST WIN",
+   "description": [
+    "- BELGIUM 1-1 SPAIN (EURO 96 QUALIFIER) -",
+    "IN THE LAST GAME WHEN THEY FACED EACH OTHER,",
+    "BELGIUM WERE SOUNDLY BEATEN. ALTHOUGH MANY KEY PLAYERS",
+    "ARE OUT, THIS TIME THEY WANT TO MAKE IT EVEN.",
+    "* 1-1, 85TH MIN, FREE KICK, BELGIUM MUST WIN *"
+   ],
+   "win_message": "BELGIUM MUST WIN",
+   "teams": [
+    {
+     "file": "teams/ISSD.EDT",
+     "name": "BELGIUM"
+    },
+    {
+     "file": "teams/ISSD.EDT",
+     "name": "SPAIN"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    1,
+    1
+   ],
+   "minute": 85,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    5,
+    5
+   ],
+   "win": "win",
+   "restart": {
+    "kind": "free_kick",
+    "spot": -1,
+    "team": 0
+   }
+  },
+  {
+   "id": "swos2020-307",
+   "name": "ROMANIA 0-1 POLAND",
+   "category": "ISS DELUXE",
+   "difficulty": 2,
+   "about": "0-1, 80TH MIN, FREE KICK, ROMANIA MUST AT LEAST DRAW",
+   "description": [
+    "- ROMANIA 0-1 POLAND (EURO 96 QUALIFIER) -",
+    "ROMANIA IS IN GOOD CONDITION.",
+    "EVEN THOUGH THEY HAVE LET POLAND TAKE THE LEAD,",
+    "THERE IS PLENTY OF TIME TO TURN IT AROUND.",
+    "* 0-1, 80TH MIN, FREE KICK, ROMANIA MUST AT LEAST DRAW *"
+   ],
+   "win_message": "ROMANIA MUST AT LEAST DRAW",
+   "teams": [
+    {
+     "file": "teams/ISSD.EDT",
+     "name": "ROMANIA"
+    },
+    {
+     "file": "teams/ISSD.EDT",
+     "name": "POLAND"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    0,
+    1
+   ],
+   "minute": 80,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    5,
+    5
+   ],
+   "win": "draw",
+   "restart": {
+    "kind": "free_kick",
+    "spot": -1,
+    "team": 0
+   }
+  },
+  {
+   "id": "swos2020-308",
+   "name": "SCOTLAND 0-0 RUSSIA",
+   "category": "ISS DELUXE",
+   "difficulty": 2,
+   "about": "0-0, 80TH MIN, GOAL KICK, SCOTLAND MUST WIN",
+   "description": [
+    "- SCOTLAND 0-0 RUSSIA (EURO 96 QUALIFIER) -",
+    "SCOTLAND IS EAGER FOR A TICKET TO ENGLAND FOR THE FINALS.",
+    "THE MOST IMPORTANT THING TO DO, IS",
+    "TO DEFEAT RUSSIA RIGHT NOW.",
+    "* 0-0, 80TH MIN, GOAL KICK, SCOTLAND MUST WIN *"
+   ],
+   "win_message": "SCOTLAND MUST WIN",
+   "teams": [
+    {
+     "file": "teams/ISSD.EDT",
+     "name": "SCOTLAND"
+    },
+    {
+     "file": "teams/ISSD.EDT",
+     "name": "RUSSIA"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    0,
+    0
+   ],
+   "minute": 80,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    5,
+    5
+   ],
+   "win": "win",
+   "restart": {
+    "kind": "goal_kick",
+    "wing": -1,
+    "team": 0
+   }
+  },
+  {
+   "id": "swos2020-309",
+   "name": "PORTUGAL 0-1 IRELAND",
+   "category": "ISS DELUXE",
+   "difficulty": 3,
+   "about": "0-1, 85TH MIN, FREE KICK, PORTUGAL MUST AT LEAST DRAW",
+   "description": [
+    "- PORTUGAL 0-1 IRELAND (EURO 96 QUALIFIER) -",
+    "PORTUGAL HAVE REGAINED THEIR OLD STRONG FORM.",
+    "BUT THEY HAVE JUST CONCEDED AN OWN GOAL.",
+    "CONCENTRATE AND YOU MAY YET SCORE.",
+    "* 0-1, 85TH MIN, FREE KICK, PORTUGAL MUST AT LEAST DRAW *"
+   ],
+   "win_message": "PORTUGAL MUST AT LEAST DRAW",
+   "teams": [
+    {
+     "file": "teams/ISSD.EDT",
+     "name": "PORTUGAL"
+    },
+    {
+     "file": "teams/ISSD.EDT",
+     "name": "REPUBLIC IRELAND"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    0,
+    1
+   ],
+   "minute": 85,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    5,
+    5
+   ],
+   "win": "draw",
+   "restart": {
+    "kind": "free_kick",
+    "spot": -1,
+    "team": 0
+   }
+  },
+  {
+   "id": "swos2020-310",
+   "name": "ARGENTINA 2-2 BRAZIL",
+   "category": "ISS DELUXE",
+   "difficulty": 3,
+   "about": "2-2, 85TH MIN, CORNER KICK, ARGENTINA MUST WIN",
+   "description": [
+    "- ARGENTINA 2-2 BRAZIL (1995 COPA AMERICA) -",
+    "BRAZIL ARE STRONG. THEY SEEM LIKE THEY CAN SCORE FROM",
+    "ANYWHERE. BUT THIS IS FOR THE SOUTH AMERICAN",
+    "CHAMPIONSHIP, SO ARGENTINA MUST FIGHT BACK.",
+    "* 2-2, 85TH MIN, CORNER KICK, ARGENTINA MUST WIN *"
+   ],
+   "win_message": "ARGENTINA MUST WIN",
+   "teams": [
+    {
+     "file": "teams/ISSD.EDT",
+     "name": "ARGENTINA"
+    },
+    {
+     "file": "teams/ISSD.EDT",
+     "name": "BRAZIL"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    2,
+    2
+   ],
+   "minute": 85,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    5,
+    5
+   ],
+   "win": "win",
+   "restart": {
+    "kind": "corner",
+    "wing": -1,
+    "team": 0
+   }
+  },
+  {
+   "id": "swos2020-311",
+   "name": "HOLLAND 1-3 CZECH",
+   "category": "ISS DELUXE",
+   "difficulty": 4,
+   "about": "1-3, 80TH MIN, FREE KICK, HOLLAND MUST AT LEAST DRAW",
+   "description": [
+    "- HOLLAND 1-3 CZECH (EURO 96 QUALIFIER) -",
+    "DEFENCE OF HOLLAND HAS BEEN SHATTERED IN THE SECOND HALF.",
+    "UNLESS THEIR OFFENCE STARTS SOMETHING,",
+    "THEY HAVE NO CHOICE BUT TO LOSE.",
+    "* 1-3, 80TH MIN, FREE KICK, HOLLAND MUST AT LEAST DRAW *"
+   ],
+   "win_message": "HOLLAND MUST AT LEAST DRAW",
+   "teams": [
+    {
+     "file": "teams/ISSD.EDT",
+     "name": "HOLLAND"
+    },
+    {
+     "file": "teams/ISSD.EDT",
+     "name": "CZECH REPUBLIC"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    1,
+    3
+   ],
+   "minute": 80,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    5,
+    5
+   ],
+   "win": "draw",
+   "restart": {
+    "kind": "free_kick",
+    "spot": -1,
+    "team": 0
+   }
+  },
+  {
+   "id": "swos2020-312",
+   "name": "ENGLAND 1-1 JAPAN",
+   "category": "ISS DELUXE",
+   "difficulty": 3,
+   "about": "1-1, 85TH MIN, CORNER KICK, ENGLAND MUST WIN",
+   "description": [
+    "- ENGLAND 1-1 JAPAN (1995 UMBRO CUP) -",
+    "UNBELIEVABLY, ENGLAND CONCEDED A GOAL TO A COUNTRY",
+    "FROM ASIA. IT WILL BE JUST AS BAD AS LOSING",
+    "IF THE GAME ENDS IN A TIE.",
+    "* 1-1, 85TH MIN, CORNER KICK, ENGLAND MUST WIN *"
+   ],
+   "win_message": "ENGLAND MUST WIN",
+   "teams": [
+    {
+     "file": "teams/ISSD.EDT",
+     "name": "ENGLAND"
+    },
+    {
+     "file": "teams/ISSD.EDT",
+     "name": "JAPAN"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    1,
+    1
+   ],
+   "minute": 85,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    5,
+    5
+   ],
+   "win": "win",
+   "restart": {
+    "kind": "corner",
+    "wing": -1,
+    "team": 0
+   }
+  },
+  {
+   "id": "swos2020-313",
+   "name": "BRAZIL 0-0 U.S.A.",
+   "category": "ISS DELUXE",
+   "difficulty": 2,
+   "about": "0-0, 80TH MIN, THROW IN, BRAZIL MUST WIN",
+   "description": [
+    "- BRAZIL 0-0 U.S.A. (1994 WORLD CUP) -",
+    "THE BRAZILIANS ARE DOWN TO TEN MEN",
+    "AND ARE STRUGGLING AGAINST",
+    "THE U.S. TEAM.",
+    "* 0-0, 80TH MIN, THROW IN, BRAZIL MUST WIN *"
+   ],
+   "win_message": "BRAZIL MUST WIN",
+   "teams": [
+    {
+     "file": "teams/ISSD.EDT",
+     "name": "BRAZIL"
+    },
+    {
+     "file": "teams/ISSD.EDT",
+     "name": "UNITED STATES"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    0,
+    0
+   ],
+   "minute": 80,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 1,
+   "subs": [
+    0,
+    0
+   ],
+   "sent_off": [
+    [
+     6
+    ],
+    []
+   ],
+   "win": "win",
+   "restart": {
+    "kind": "throw_in",
+    "wing": -1,
+    "team": 1
+   }
+  },
+  {
+   "id": "swos2020-314",
+   "name": "ITALY 0-1 NIGERIA",
+   "category": "ISS DELUXE",
+   "difficulty": 2,
+   "about": "0-1, 80TH MIN, THROW IN, ITALY MUST AT LEAST DRAW",
+   "description": [
+    "- ITALY 0-1 NIGERIA (1994 WORLD CUP) -",
+    "THE ITALIANS ARE DOWN TO NINE PLAYERS",
+    "DUE TO THE REFEREE",
+    "WHO IS BIASED TOWARDS NIGERIA.",
+    "* 0-1, 80TH MIN, THROW IN, ITALY MUST AT LEAST DRAW *"
+   ],
+   "win_message": "ITALY MUST AT LEAST DRAW",
+   "teams": [
+    {
+     "file": "teams/ISSD.EDT",
+     "name": "ITALY"
+    },
+    {
+     "file": "teams/ISSD.EDT",
+     "name": "NIGERIA"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    0,
+    1
+   ],
+   "minute": 80,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 1,
+   "subs": [
+    0,
+    0
+   ],
+   "sent_off": [
+    [
+     7,
+     9
+    ],
+    []
+   ],
+   "win": "draw",
+   "restart": {
+    "kind": "throw_in",
+    "wing": -1,
+    "team": 1
+   }
+  },
+  {
+   "id": "swos2020-315",
+   "name": "KOREA 0-2 SPAIN",
+   "category": "ISS DELUXE",
+   "difficulty": 5,
+   "about": "0-2, 85TH MIN, FREE KICK, KOREA MUST AT LEAST DRAW",
+   "description": [
+    "- KOREA 0-2 SPAIN (1994 WORLD CUP) -",
+    "THE SPANISH ARE TWO GOALS UP AND ARE STRONG",
+    "CONTENDERS FOR A WIN BUT KOREA HAS NOT GIVEN UP AND",
+    "IS FIGHTING BACK.",
+    "* 0-2, 85TH MIN, FREE KICK, KOREA MUST AT LEAST DRAW *"
+   ],
+   "win_message": "KOREA MUST AT LEAST DRAW",
+   "teams": [
+    {
+     "file": "teams/ISSD.EDT",
+     "name": "SOUTH KOREA"
+    },
+    {
+     "file": "teams/ISSD.EDT",
+     "name": "SPAIN"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    0,
+    2
+   ],
+   "minute": 85,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    5,
+    5
+   ],
+   "pitch_type": 1,
+   "win": "draw",
+   "restart": {
+    "kind": "free_kick",
+    "spot": -1,
+    "team": 0
+   }
+  },
+  {
+   "id": "swos2020-316",
+   "name": "SCOTLAND 1-0 HOLLAND",
+   "category": "ISS DELUXE",
+   "difficulty": 1,
+   "about": "1-0, 80TH MIN, THROW IN, SCOTLAND MUST WIN",
+   "description": [
+    "- SCOTLAND 1-0 HOLLAND (ON MARCH 23, 1994) -",
+    "THE POTENT DUTCH OFFENSE IS UP AGAINST",
+    "A STRONG DEFENSE AND",
+    "SCOTLAND LOOKS LIKELY TO WIN.",
+    "* 1-0, 80TH MIN, THROW IN, SCOTLAND MUST WIN *"
+   ],
+   "win_message": "SCOTLAND MUST WIN",
+   "teams": [
+    {
+     "file": "teams/ISSD.EDT",
+     "name": "SCOTLAND"
+    },
+    {
+     "file": "teams/ISSD.EDT",
+     "name": "HOLLAND"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    1,
+    0
+   ],
+   "minute": 80,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 1,
+   "subs": [
+    5,
+    5
+   ],
+   "win": "win",
+   "restart": {
+    "kind": "throw_in",
+    "wing": -1,
+    "team": 1
+   }
+  },
+  {
+   "id": "swos2020-317",
+   "name": "BULGARIA 0-1 GERMANY",
+   "category": "ISS DELUXE",
+   "difficulty": 4,
+   "about": "0-1, 80TH MIN, FREE KICK, BULGARIA MUST WIN",
+   "description": [
+    "- BULGARIA 0-1 GERMANY (1994 WORLD CUP) -",
+    "GERMANY WAS AWARDED A PENALTY EARLY ON WHICH",
+    "THEY CONVERTED BUT THE EXPLOSIVE BULGARIAN STRIKERS",
+    "ARE LOOKING TO TURN THE TABLES.",
+    "* 0-1, 80TH MIN, FREE KICK, BULGARIA MUST WIN *"
+   ],
+   "win_message": "BULGARIA MUST WIN",
+   "teams": [
+    {
+     "file": "teams/ISSD.EDT",
+     "name": "BULGARIA"
+    },
+    {
+     "file": "teams/ISSD.EDT",
+     "name": "GERMANY"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    0,
+    1
+   ],
+   "minute": 80,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    5,
+    5
+   ],
+   "win": "win",
+   "restart": {
+    "kind": "free_kick",
+    "spot": -1,
+    "team": 0
+   }
+  },
+  {
+   "id": "swos2020-318",
+   "name": "HOLLAND 1-2 BRAZIL",
+   "category": "ISS DELUXE",
+   "difficulty": 4,
+   "about": "1-2, 80TH MIN, CORNER KICK, HOLLAND MUST WIN",
+   "description": [
+    "- HOLLAND 1-2 BRAZIL (1994 WORLD CUP) -",
+    "HOLLAND WAS 2 DOWN BUT HAS JUST STRUCK BACK",
+    "WITH A GREAT GOAL AND MUST WIN TO",
+    "QUALIFY FOR THE SEMI-FINALS.",
+    "* 1-2, 80TH MIN, CORNER KICK, HOLLAND MUST WIN *"
+   ],
+   "win_message": "HOLLAND MUST WIN",
+   "teams": [
+    {
+     "file": "teams/ISSD.EDT",
+     "name": "HOLLAND"
+    },
+    {
+     "file": "teams/ISSD.EDT",
+     "name": "BRAZIL"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    1,
+    2
+   ],
+   "minute": 80,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    5,
+    5
+   ],
+   "win": "win",
+   "restart": {
+    "kind": "corner",
+    "wing": -1,
+    "team": 0
+   }
+  },
+  {
+   "id": "swos2020-319",
+   "name": "ARGENTINA 1-3 ROMANIA",
+   "category": "ISS DELUXE",
+   "difficulty": 5,
+   "about": "1-3, 80TH MIN, CORNER KICK, ARGENTINA MUST WIN",
+   "description": [
+    "- ARGENTINA 1-3 ROMANIA (1994 WORLD CUP) -",
+    "THE KEY ARGENTINE PLAYER HAS JUST BEEN SENT OFF",
+    "FOR NO APPARENT REASON. CAN THEY GO ON TO THE QUARTER",
+    "FINALS WITHOUT HIM BY BEATING THIS GREAT ROMANIAN SIDE?",
+    "* 1-3, 80TH MIN, CORNER KICK, ARGENTINA MUST WIN *"
+   ],
+   "win_message": "ARGENTINA MUST WIN",
+   "teams": [
+    {
+     "file": "teams/ISSD.EDT",
+     "name": "ARGENTINA"
+    },
+    {
+     "file": "teams/ISSD.EDT",
+     "name": "ROMANIA"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    1,
+    3
+   ],
+   "minute": 80,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    0,
+    0
+   ],
+   "sent_off": [
+    [
+     10
+    ],
+    []
+   ],
+   "win": "win",
+   "restart": {
+    "kind": "corner",
+    "wing": -1,
+    "team": 0
+   }
+  },
+  {
+   "id": "swos2020-320",
+   "name": "U.S.A. 2-1 COLOMBIA",
+   "category": "ISS DELUXE",
+   "difficulty": 1,
+   "about": "2-1, 80TH MIN, THROW IN, U.S.A. MUST WIN",
+   "description": [
+    "- U.S.A. 2-1 COLOMBIA (1994 WORLD CUP) -",
+    "THE U.S. IS WINNING 2-1. BUT THE COLOMBIANS ARE",
+    "VERY SKILLFUL. DO YOUR BEST TO STOP THEM CATCHING",
+    "UP IN THE FINAL TEN MINUTES.",
+    "* 2-1, 80TH MIN, THROW IN, U.S.A. MUST WIN *"
+   ],
+   "win_message": "U.S.A. MUST WIN",
+   "teams": [
+    {
+     "file": "teams/ISSD.EDT",
+     "name": "UNITED STATES"
+    },
+    {
+     "file": "teams/ISSD.EDT",
+     "name": "COLOMBIA"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    2,
+    1
+   ],
+   "minute": 80,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 1,
+   "subs": [
+    5,
+    5
+   ],
+   "win": "win",
+   "restart": {
+    "kind": "throw_in",
+    "wing": -1,
+    "team": 1
+   }
+  },
+  {
+   "id": "swos2020-321",
+   "name": "BULGARIA 1-1 FRANCE",
+   "category": "ISS DELUXE",
+   "difficulty": 3,
+   "about": "1-1, 85TH MIN, CORNER KICK, BULGARIA MUST WIN",
+   "description": [
+    "- BULGARIA 1-1 FRANCE (1994 WORLD CUP QUALIFIER) -",
+    "BULGARIA MUST WIN THIS GAME TO QUALIFY",
+    "WHEREAS THE FRENCH ONLY NEED TO DRAW.",
+    "FRENCH COMPLACENCY COULD BE PUNISHED.",
+    "* 1-1, 85TH MIN, CORNER KICK, BULGARIA MUST WIN *"
+   ],
+   "win_message": "BULGARIA MUST WIN",
+   "teams": [
+    {
+     "file": "teams/ISSD.EDT",
+     "name": "BULGARIA"
+    },
+    {
+     "file": "teams/ISSD.EDT",
+     "name": "FRANCE"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    1,
+    1
+   ],
+   "minute": 85,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 1,
+   "subs": [
+    5,
+    5
+   ],
+   "win": "win",
+   "restart": {
+    "kind": "corner",
+    "wing": -1,
+    "team": 1
+   }
+  }
+ ]
+}

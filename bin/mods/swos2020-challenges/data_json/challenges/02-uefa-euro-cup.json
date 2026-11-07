@@ -1,0 +1,503 @@
+{
+ "format": "openswos-challenges",
+ "version": 2,
+ "category": "UEFA EURO CUP",
+ "challenges": [
+  {
+   "id": "swos2020-201",
+   "name": "ITALY 2-0 YUGOSLAVIA",
+   "category": "UEFA EURO CUP",
+   "difficulty": 3,
+   "about": "2-0, 31ST MIN, KICK OFF, YUGOSLAVIA MUST WIN",
+   "description": [
+    "- ITALY 2-0 YUGOSLAVIA (1968 UEFA EURO CUP FINAL) -",
+    "PIETRO ANASTASI JUST SCORED 2-0 FOR ITALY",
+    "IN THE 31ST MINUTE. CAN YOU CHANGE HISTORY AND",
+    "BEAT ITALY IN THE FINAL?",
+    "* 2-0, 31ST MIN, KICK OFF, YUGOSLAVIA MUST WIN *"
+   ],
+   "win_message": "YUGOSLAVIA MUST WIN",
+   "teams": [
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "ITALY 1968"
+    },
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "YUGOSLAVIA 1968"
+    }
+   ],
+   "yours": 1,
+   "score": [
+    2,
+    0
+   ],
+   "minute": 31,
+   "extra_time": true,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 1,
+   "subs": [
+    0,
+    0
+   ],
+   "win": "win"
+  },
+  {
+   "id": "swos2020-202",
+   "name": "W.GERMANY 3-0 USSR",
+   "category": "UEFA EURO CUP",
+   "difficulty": 4,
+   "about": "3-0, 58TH MIN, KICK OFF, USSR MUST WIN",
+   "description": [
+    "- W.GERMANY 3-0 USSR (1972 UEFA EURO CUP FINAL) -",
+    "GERD MULLER JUST SCORED 3-0 FOR WEST GERMANY",
+    "IN THE 58TH MINUTE. CAN YOU CHANGE HISTORY AND",
+    "BEAT WEST GERMANY IN THE FINAL?",
+    "* 3-0, 58TH MIN, KICK OFF, USSR MUST WIN *"
+   ],
+   "win_message": "USSR MUST WIN",
+   "teams": [
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "W. GERMANY 1972"
+    },
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "USSR 1972"
+    }
+   ],
+   "yours": 1,
+   "score": [
+    3,
+    0
+   ],
+   "minute": 58,
+   "extra_time": true,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 1,
+   "subs": [
+    2,
+    5
+   ],
+   "win": "win"
+  },
+  {
+   "id": "swos2020-203",
+   "name": "CSSR 2-2 W.GERMANY",
+   "category": "UEFA EURO CUP",
+   "difficulty": 1,
+   "about": "2-2, A.E.T., PENALTY SHOOTOUT, CSSR MUST WIN",
+   "description": [
+    "- CSSR 2-2 W.GERMANY (1976 UEFA EURO CUP FINAL) -",
+    "IT IS 2-2 AFTER EXTRA TIME AND BOTH TEAMS ARE GOING",
+    "INTO A PENALTY SHOOTOUT. CAN YOU REPEAT HISTORY AND",
+    "BEAT WEST GERMANY IN THE FINAL?",
+    "* 2-2, A.E.T., PENALTY SHOOTOUT, CSSR MUST WIN *"
+   ],
+   "win_message": "CSSR MUST WIN",
+   "teams": [
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "CSSR 1976"
+    },
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "W. GERMANY 1976"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    2,
+    2
+   ],
+   "minute": 120,
+   "extra_time": true,
+   "penalties": true,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    0,
+    0
+   ],
+   "win": "win",
+   "shootout": true
+  },
+  {
+   "id": "swos2020-204",
+   "name": "BELGIUM 1-1 W.GERMANY",
+   "category": "UEFA EURO CUP",
+   "difficulty": 2,
+   "about": "1-1, 75TH MIN, KICK OFF, BELGIUM MUST WIN",
+   "description": [
+    "- BELGIUM 1-1 W.GERMANY (1980 UEFA EURO CUP FINAL) -",
+    "RENE VANDEREYCKEN JUST SCORED 1-1 FOR BELGIUM",
+    "IN THE 75TH MINUTE. CAN YOU CHANGE HISTORY AND",
+    "BEAT WEST GERMANY IN THE FINAL?",
+    "* 1-1, 75TH MIN, KICK OFF, BELGIUM MUST WIN *"
+   ],
+   "win_message": "BELGIUM MUST WIN",
+   "teams": [
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "BELGIUM 1980"
+    },
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "W. GERMANY 1980"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    1,
+    1
+   ],
+   "minute": 75,
+   "extra_time": true,
+   "penalties": true,
+   "length": 0,
+   "playing_up": 0,
+   "kick_off": 1,
+   "subs": [
+    2,
+    5
+   ],
+   "win": "win"
+  },
+  {
+   "id": "swos2020-205",
+   "name": "FRANCE 1-0 SPAIN",
+   "category": "UEFA EURO CUP",
+   "difficulty": 2,
+   "about": "1-0, 57TH MIN, KICK OFF, SPAIN MUST WIN",
+   "description": [
+    "- FRANCE 1-0 SPAIN (1984 UEFA EURO CUP FINAL) -",
+    "MICHEL PLATINI JUST SCORED 1-0 FOR FRANCE",
+    "IN THE 57TH MINUTE. CAN YOU CHANGE HISTORY AND",
+    "BEAT FRANCE IN THE FINAL?",
+    "* 1-0, 57TH MIN, KICK OFF, SPAIN MUST WIN *"
+   ],
+   "win_message": "SPAIN MUST WIN",
+   "teams": [
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "FRANCE 1984"
+    },
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "SPAIN 1984"
+    }
+   ],
+   "yours": 1,
+   "score": [
+    1,
+    0
+   ],
+   "minute": 57,
+   "extra_time": true,
+   "penalties": true,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 1,
+   "subs": [
+    2,
+    5
+   ],
+   "win": "win"
+  },
+  {
+   "id": "swos2020-206",
+   "name": "USSR 0-2 HOLLAND",
+   "category": "UEFA EURO CUP",
+   "difficulty": 3,
+   "about": "0-2, 54TH MIN, KICK OFF, USSR MUST WIN",
+   "description": [
+    "- USSR 0-2 HOLLAND (1988 UEFA EURO CUP FINAL) -",
+    "MARCO VAN BASTEN JUST SCORED 0-2 FOR HOLLAND",
+    "IN THE 54TH MINUTE. CAN YOU CHANGE HISTORY AND",
+    "BEAT HOLLAND IN THE FINAL?",
+    "* 0-2, 54TH MIN, KICK OFF, USSR MUST WIN *"
+   ],
+   "win_message": "USSR MUST WIN",
+   "teams": [
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "USSR 1988"
+    },
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "HOLLAND 1988"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    0,
+    2
+   ],
+   "minute": 54,
+   "extra_time": true,
+   "penalties": true,
+   "length": 0,
+   "playing_up": 0,
+   "kick_off": 0,
+   "subs": [
+    2,
+    5
+   ],
+   "win": "win"
+  },
+  {
+   "id": "swos2020-207",
+   "name": "DENMARK 2-0 GERMANY",
+   "category": "UEFA EURO CUP",
+   "difficulty": 5,
+   "about": "2-0, 78TH MIN, KICK OFF, GERMANY MUST WIN",
+   "description": [
+    "- DENMARK 2-0 GERMANY (1992 UEFA EURO CUP FINAL) -",
+    "KIM VILFORT JUST SCORED 2-0 FOR DENMARK",
+    "IN THE 78TH MINUTE. CAN YOU CHANGE HISTORY AND",
+    "BEAT DENMARK IN THE FINAL?",
+    "* 2-0, 78TH MIN, KICK OFF, GERMANY MUST WIN *"
+   ],
+   "win_message": "GERMANY MUST WIN",
+   "teams": [
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "DENMARK 1992"
+    },
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "GERMANY 1992"
+    }
+   ],
+   "yours": 1,
+   "score": [
+    2,
+    0
+   ],
+   "minute": 78,
+   "extra_time": true,
+   "penalties": true,
+   "length": 0,
+   "playing_up": 0,
+   "kick_off": 1,
+   "subs": [
+    2,
+    5
+   ],
+   "win": "win"
+  },
+  {
+   "id": "swos2020-208",
+   "name": "CZECH 1-1 GERMANY",
+   "category": "UEFA EURO CUP",
+   "difficulty": 2,
+   "about": "1-1, EXTRA TIME, KICK OFF, GERMANY MUST WIN",
+   "description": [
+    "- CZECH 1-1 GERMANY (1996 UEFA EURO CUP FINAL) -",
+    "IT IS 1-1 AND THE FINAL IS GOING INTO EXTRA TIME.",
+    "CAN YOU REPEAT HISTORY AND",
+    "BEAT CZECH REPUBLIC IN THE FINAL?",
+    "* 1-1, EXTRA TIME, KICK OFF, GERMANY MUST WIN *"
+   ],
+   "win_message": "GERMANY MUST WIN",
+   "teams": [
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "CZECH REP. 1996"
+    },
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "GERMANY 1996"
+    }
+   ],
+   "yours": 1,
+   "score": [
+    1,
+    1
+   ],
+   "minute": 90,
+   "extra_time": true,
+   "penalties": true,
+   "length": 0,
+   "playing_up": 0,
+   "kick_off": 0,
+   "subs": [
+    3,
+    5
+   ],
+   "win": "win",
+   "extra_time_rule": "golden_goal"
+  },
+  {
+   "id": "swos2020-209",
+   "name": "FRANCE 1-1 ITALY",
+   "category": "UEFA EURO CUP",
+   "difficulty": 2,
+   "about": "1-1, EXTRA TIME, KICK OFF, ITALY MUST WIN",
+   "description": [
+    "- FRANCE 1-1 ITALY (2000 UEFA EURO CUP FINAL) -",
+    "IT IS 1-1 AND THE FINAL IS GOING INTO EXTRA TIME.",
+    "CAN YOU CHANGE HISTORY AND",
+    "BEAT FRANCE IN THE FINAL?",
+    "* 1-1, EXTRA TIME, KICK OFF, ITALY MUST WIN *"
+   ],
+   "win_message": "ITALY MUST WIN",
+   "teams": [
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "FRANCE 2000"
+    },
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "ITALY 2000"
+    }
+   ],
+   "yours": 1,
+   "score": [
+    1,
+    1
+   ],
+   "minute": 90,
+   "extra_time": true,
+   "penalties": true,
+   "length": 0,
+   "playing_up": 0,
+   "kick_off": 1,
+   "subs": [
+    3,
+    5
+   ],
+   "win": "win",
+   "extra_time_rule": "golden_goal"
+  },
+  {
+   "id": "swos2020-210",
+   "name": "PORTUGAL 0-1 GREECE",
+   "category": "UEFA EURO CUP",
+   "difficulty": 2,
+   "about": "0-1, 57TH MIN, KICK OFF, PORTUGAL MUST WIN",
+   "description": [
+    "- PORTUGAL 0-1 GREECE (2004 UEFA EURO CUP FINAL) -",
+    "ANGELOS CHARISTEAS JUST SCORED 0-1 FOR GREECE",
+    "IN THE 57TH MINUTE. CAN YOU CHANGE HISTORY AND",
+    "BEAT GREECE IN THE FINAL?",
+    "* 0-1, 57TH MIN, KICK OFF, PORTUGAL MUST WIN *"
+   ],
+   "win_message": "PORTUGAL MUST WIN",
+   "teams": [
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "PORTUGAL 2004"
+    },
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "GREECE 2004"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    0,
+    1
+   ],
+   "minute": 57,
+   "extra_time": true,
+   "penalties": true,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    3,
+    5
+   ],
+   "win": "win",
+   "extra_time_rule": "silver_goal"
+  },
+  {
+   "id": "swos2020-211",
+   "name": "GERMANY 0-1 SPAIN",
+   "category": "UEFA EURO CUP",
+   "difficulty": 2,
+   "about": "0-1, 33RD MIN, KICK OFF, GERMANY MUST WIN",
+   "description": [
+    "- GERMANY 0-1 SPAIN (2008 UEFA EURO CUP FINAL) -",
+    "FERNANDO TORRES JUST SCORED 0-1 FOR SPAIN",
+    "IN THE 33RD MINUTE. CAN YOU CHANGE HISTORY",
+    "AND BEAT SPAIN IN THE FINAL?",
+    "* 0-1, 33RD MIN, KICK OFF, GERMANY MUST WIN *"
+   ],
+   "win_message": "GERMANY MUST WIN",
+   "teams": [
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "GERMANY 2008"
+    },
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "SPAIN 2008"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    0,
+    1
+   ],
+   "minute": 33,
+   "extra_time": true,
+   "penalties": true,
+   "length": 0,
+   "playing_up": 0,
+   "kick_off": 0,
+   "subs": [
+    3,
+    5
+   ],
+   "win": "win"
+  },
+  {
+   "id": "swos2020-212",
+   "name": "SPAIN 2-0 ITALY",
+   "category": "UEFA EURO CUP",
+   "difficulty": 3,
+   "about": "2-0, 2ND HALF, KICK OFF, ITALY MUST WIN",
+   "description": [
+    "- SPAIN 2-0 ITALY (2012 UEFA EURO CUP FINAL) -",
+    "SPAIN IS LEADING 2-0 AT HALF-TIME.",
+    "CAN YOU CHANGE HISTORY AND",
+    "BEAT SPAIN IN THE FINAL?",
+    "* 2-0, 2ND HALF, KICK OFF, ITALY MUST WIN *"
+   ],
+   "win_message": "ITALY MUST WIN",
+   "teams": [
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "SPAIN 2012"
+    },
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "ITALY 2012"
+    }
+   ],
+   "yours": 1,
+   "score": [
+    2,
+    0
+   ],
+   "minute": 45,
+   "extra_time": true,
+   "penalties": true,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 1,
+   "subs": [
+    3,
+    5
+   ],
+   "win": "win"
+  }
+ ]
+}

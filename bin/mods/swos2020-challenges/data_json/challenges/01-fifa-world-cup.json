@@ -1,0 +1,513 @@
+{
+ "format": "openswos-challenges",
+ "version": 2,
+ "category": "FIFA WORLD CUP",
+ "challenges": [
+  {
+   "id": "swos2020-101",
+   "name": "ENGLAND 2-2 W.GERMANY",
+   "category": "FIFA WORLD CUP",
+   "difficulty": 2,
+   "about": "2-2, EXTRA TIME, KICK OFF, ENGLAND MUST WIN",
+   "description": [
+    "- ENGLAND 2-2 W.GERMANY (1966 FIFA WORLD CUP FINAL) -",
+    "IT IS 2-2 AND THE FINAL IS GOING INTO EXTRA TIME.",
+    "CAN YOU REPEAT HISTORY AND",
+    "BEAT WEST GERMANY IN THE FINAL?",
+    "* 2-2, EXTRA TIME, KICK OFF, ENGLAND MUST WIN *"
+   ],
+   "win_message": "ENGLAND MUST WIN",
+   "teams": [
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "ENGLAND 1966"
+    },
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "W. GERMANY 1966"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    2,
+    2
+   ],
+   "minute": 90,
+   "extra_time": true,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 0,
+   "kick_off": 1,
+   "subs": [
+    0,
+    0
+   ],
+   "win": "win"
+  },
+  {
+   "id": "swos2020-102",
+   "name": "BRAZIL 3-1 ITALY",
+   "category": "FIFA WORLD CUP",
+   "difficulty": 4,
+   "about": "3-1, 71ST, KICK OFF, ITALY MUST WIN",
+   "description": [
+    "- BRAZIL 3-1 ITALY (1970 FIFA WORLD CUP FINAL) -",
+    "JAIRZINHO JUST SCORED 3-1 FOR BRAZIL IN THE 71ST MINUTE.",
+    "CAN YOU CHANGE HISTORY AND",
+    "BEAT BRAZIL IN THE FINAL?",
+    "* 3-1, 71ST, KICK OFF, ITALY MUST WIN *"
+   ],
+   "win_message": "ITALY MUST WIN",
+   "teams": [
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "BRAZIL 1970"
+    },
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "ITALY 1970"
+    }
+   ],
+   "yours": 1,
+   "score": [
+    3,
+    1
+   ],
+   "minute": 71,
+   "extra_time": true,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 1,
+   "subs": [
+    2,
+    5
+   ],
+   "win": "win"
+  },
+  {
+   "id": "swos2020-103",
+   "name": "HOLLAND 1-2 W.GERMANY",
+   "category": "FIFA WORLD CUP",
+   "difficulty": 3,
+   "about": "1-2, 2ND HALF, KICK OFF, HOLLAND MUST WIN",
+   "description": [
+    "- HOLLAND 1-2 W.GERMANY (1974 FIFA WORLD CUP FINAL) -",
+    "WEST GERMANY IS LEADING 1-2 AT HALF-TIME.",
+    "CAN YOU CHANGE HISTORY AND",
+    "BEAT WEST GERMANY IN THE FINAL?",
+    "* 1-2, 2ND HALF, KICK OFF, HOLLAND MUST WIN *"
+   ],
+   "win_message": "HOLLAND MUST WIN",
+   "teams": [
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "HOLLAND 1974"
+    },
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "W. GERMANY 1974"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    1,
+    2
+   ],
+   "minute": 45,
+   "extra_time": true,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 1,
+   "subs": [
+    2,
+    5
+   ],
+   "win": "win"
+  },
+  {
+   "id": "swos2020-104",
+   "name": "ARGENTINA 1-1 HOLLAND",
+   "category": "FIFA WORLD CUP",
+   "difficulty": 2,
+   "about": "1-1, EXTRA TIME, KICK OFF, ARGENTINA MUST WIN",
+   "description": [
+    "- ARGENTINA 1-1 HOLLAND (1978 FIFA WORLD CUP FINAL) -",
+    "IT IS 1-1 AND THE FINAL IS GOING INTO EXTRA TIME.",
+    "CAN YOU REPEAT HISTORY AND",
+    "BEAT HOLLAND IN THE FINAL?",
+    "* 1-1, EXTRA TIME, KICK OFF, ARGENTINA MUST WIN *"
+   ],
+   "win_message": "ARGENTINA MUST WIN",
+   "teams": [
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "ARGENTINA 1978"
+    },
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "HOLLAND 1978"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    1,
+    1
+   ],
+   "minute": 90,
+   "extra_time": true,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 0,
+   "kick_off": 1,
+   "subs": [
+    2,
+    5
+   ],
+   "win": "win"
+  },
+  {
+   "id": "swos2020-105",
+   "name": "ITALY 2-0 W.GERMANY",
+   "category": "FIFA WORLD CUP",
+   "difficulty": 4,
+   "about": "2-0, 69TH MIN, KICK OFF, W.GERMANY MUST WIN",
+   "description": [
+    "- ITALY 2-0 W.GERMANY (1982 FIFA WORLD CUP FINAL) -",
+    "MARCO TARDELLI JUST SCORED 2-0 FOR ITALY IN THE 69TH MINUTE.",
+    "CAN YOU CHANGE HISTORY AND",
+    "BEAT ITALY IN THE FINAL?",
+    "* 2-0, 69TH MIN, KICK OFF, W.GERMANY MUST WIN *"
+   ],
+   "win_message": "W.GERMANY MUST WIN",
+   "teams": [
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "ITALY 1982"
+    },
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "W. GERMANY 1982"
+    }
+   ],
+   "yours": 1,
+   "score": [
+    2,
+    0
+   ],
+   "minute": 69,
+   "extra_time": true,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 0,
+   "kick_off": 1,
+   "subs": [
+    2,
+    5
+   ],
+   "win": "win"
+  },
+  {
+   "id": "swos2020-106",
+   "name": "ARGENTINA 2-0 W.GERMANY",
+   "category": "FIFA WORLD CUP",
+   "difficulty": 3,
+   "about": "2-0, 56TH MIN, KICK OFF, W.GERMANY MUST WIN",
+   "description": [
+    "- ARGENTINA 2-0 W.GERMANY (1986 FIFA WORLD CUP FINAL) -",
+    "JORGE VALDANO JUST SCORED 2-0 FOR ARGENTINA",
+    "IN THE 56TH MINUTE.",
+    "CAN YOU CHANGE HISTORY AND BEAT ARGENTINA IN THE FINAL?",
+    "* 2-0, 56TH MIN, KICK OFF, W.GERMANY MUST WIN *"
+   ],
+   "win_message": "W.GERMANY MUST WIN",
+   "teams": [
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "ARGENTINA 1986"
+    },
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "W. GERMANY 1986"
+    }
+   ],
+   "yours": 1,
+   "score": [
+    2,
+    0
+   ],
+   "minute": 56,
+   "extra_time": true,
+   "penalties": true,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 1,
+   "subs": [
+    2,
+    5
+   ],
+   "win": "win"
+  },
+  {
+   "id": "swos2020-107",
+   "name": "W.GERMANY 1-0 ARGENTINA",
+   "category": "FIFA WORLD CUP",
+   "difficulty": 4,
+   "about": "1-0, 85TH MIN, KICK OFF, ARGENTINA MUST WIN",
+   "description": [
+    "- W.GERMANY 1-0 ARGENTINA (1990 FIFA WORLD CUP FINAL) -",
+    "ANDREAS BREHME JUST SCORED 1-0 FOR WEST GERMANY",
+    "IN THE 85TH MINUTE. CAN YOU CHANGE HISTORY AND",
+    "BEAT WEST GERMANY IN THE FINAL?",
+    "* 1-0, 85TH MIN, KICK OFF, ARGENTINA MUST WIN *"
+   ],
+   "win_message": "ARGENTINA MUST WIN",
+   "teams": [
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "W. GERMANY 1990"
+    },
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "ARGENTINA 1990"
+    }
+   ],
+   "yours": 1,
+   "score": [
+    1,
+    0
+   ],
+   "minute": 85,
+   "extra_time": true,
+   "penalties": true,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 1,
+   "subs": [
+    0,
+    0
+   ],
+   "sent_off": [
+    [],
+    [
+     13
+    ]
+   ],
+   "win": "win"
+  },
+  {
+   "id": "swos2020-108",
+   "name": "BRAZIL 0-0 ITALY",
+   "category": "FIFA WORLD CUP",
+   "difficulty": 1,
+   "about": "0-0, A.E.T., PENALTY SHOOTOUT, BRAZIL MUST WIN",
+   "description": [
+    "- BRAZIL 0-0 ITALY (1994 FIFA WORLD CUP FINAL) -",
+    "IT IS 0-0 AFTER EXTRA TIME AND",
+    "BOTH TEAMS ARE GOING INTO A PENALTY SHOOTOUT.",
+    "CAN YOU REPEAT HISTORY AND BEAT ITALY IN THE FINAL?",
+    "* 0-0, A.E.T., PENALTY SHOOTOUT, BRAZIL MUST WIN *"
+   ],
+   "win_message": "BRAZIL MUST WIN",
+   "teams": [
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "BRAZIL 1994"
+    },
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "ITALY 1994"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    0,
+    0
+   ],
+   "minute": 120,
+   "extra_time": true,
+   "penalties": true,
+   "length": 0,
+   "playing_up": 0,
+   "kick_off": 1,
+   "subs": [
+    0,
+    0
+   ],
+   "win": "win",
+   "shootout": true
+  },
+  {
+   "id": "swos2020-109",
+   "name": "BRAZIL 0-2 FRANCE",
+   "category": "FIFA WORLD CUP",
+   "difficulty": 3,
+   "about": "0-2, 2ND HALF, KICK OFF, BRAZIL MUST WIN",
+   "description": [
+    "- BRAZIL 0-2 FRANCE (1998 FIFA WORLD CUP FINAL) -",
+    "FRANCE IS LEADING 0-2 AT HALF-TIME.",
+    "CAN YOU CHANGE HISTORY AND",
+    "BEAT FRANCE IN THE FINAL?",
+    "* 0-2, 2ND HALF, KICK OFF, BRAZIL MUST WIN *"
+   ],
+   "win_message": "BRAZIL MUST WIN",
+   "teams": [
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "BRAZIL 1998"
+    },
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "FRANCE 1998"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    0,
+    2
+   ],
+   "minute": 45,
+   "extra_time": true,
+   "penalties": true,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    3,
+    5
+   ],
+   "win": "win"
+  },
+  {
+   "id": "swos2020-110",
+   "name": "GERMANY 0-2 BRAZIL",
+   "category": "FIFA WORLD CUP",
+   "difficulty": 5,
+   "about": "0-2, 79TH MIN, KICK OFF, GERMANY MUST WIN",
+   "description": [
+    "- GERMANY 0-2 BRAZIL (2002 FIFA WORLD CUP FINAL) -",
+    "RONALDO JUST SCORED 0-2 FOR BRAZIL IN THE 79TH MINUTE.",
+    "CAN YOU CHANGE HISTORY AND",
+    "BEAT BRAZIL IN THE FINAL?",
+    "* 0-2, 79TH MIN, KICK OFF, GERMANY MUST WIN *"
+   ],
+   "win_message": "GERMANY MUST WIN",
+   "teams": [
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "GERMANY 2002"
+    },
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "BRAZIL 2002"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    0,
+    2
+   ],
+   "minute": 79,
+   "extra_time": true,
+   "penalties": true,
+   "length": 0,
+   "playing_up": 0,
+   "kick_off": 0,
+   "subs": [
+    3,
+    5
+   ],
+   "win": "win"
+  },
+  {
+   "id": "swos2020-111",
+   "name": "ITALY 1-1 FRANCE",
+   "category": "FIFA WORLD CUP",
+   "difficulty": 1,
+   "about": "1-1, A.E.T., PENALTY SHOOTOUT, ITALY MUST WIN",
+   "description": [
+    "- ITALY 1-1 FRANCE (2006 FIFA WORLD CUP FINAL) -",
+    "IT IS 1-1 AFTER EXTRA TIME AND",
+    "BOTH TEAMS ARE GOING INTO A PENALTY SHOOTOUT.",
+    "CAN YOU REPEAT HISTORY AND BEAT FRANCE IN THE FINAL?",
+    "* 1-1, A.E.T., PENALTY SHOOTOUT, ITALY MUST WIN *"
+   ],
+   "win_message": "ITALY MUST WIN",
+   "teams": [
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "ITALY 2006"
+    },
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "FRANCE 2006"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    1,
+    1
+   ],
+   "minute": 120,
+   "extra_time": true,
+   "penalties": true,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    0,
+    0
+   ],
+   "sent_off": [
+    [],
+    [
+     10
+    ]
+   ],
+   "win": "win",
+   "shootout": true
+  },
+  {
+   "id": "swos2020-112",
+   "name": "HOLLAND 0-0 SPAIN",
+   "category": "FIFA WORLD CUP",
+   "difficulty": 2,
+   "about": "0-0, EXTRA TIME, KICK OFF, SPAIN MUST WIN",
+   "description": [
+    "- HOLLAND 0-0 SPAIN (2010 FIFA WORLD CUP FINAL) -",
+    "IT IS 0-0 AND THE FINAL IS GOING INTO EXTRA TIME.",
+    "CAN YOU REPEAT HISTORY AND",
+    "BEAT HOLLAND IN THE FINAL?",
+    "* 0-0, EXTRA TIME, KICK OFF, SPAIN MUST WIN *"
+   ],
+   "win_message": "SPAIN MUST WIN",
+   "teams": [
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "HOLLAND 2010"
+    },
+    {
+     "file": "teams/FIFAEURO1966-2012.EDT",
+     "name": "SPAIN 2010"
+    }
+   ],
+   "yours": 1,
+   "score": [
+    0,
+    0
+   ],
+   "minute": 90,
+   "extra_time": true,
+   "penalties": true,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 1,
+   "subs": [
+    3,
+    5
+   ],
+   "win": "win"
+  }
+ ]
+}

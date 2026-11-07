@@ -1,0 +1,704 @@
+{
+ "format": "openswos-challenges",
+ "version": 2,
+ "category": "SWOS MASTERS",
+ "challenges": [
+  {
+   "id": "swos2020-701",
+   "name": "ONCE LOBOS 0-0 REAL MADRID",
+   "category": "SWOS MASTERS",
+   "difficulty": 5,
+   "about": "0-0, MATCH START, KICK OFF, ONCE LOBOS MUST WIN",
+   "description": [
+    "- ONCE LOBOS 0-0 REAL MADRID (ORIGINAL 96/97) -",
+    "ONCE LOBOS IS FACING REAL MADRID.",
+    "CAN YOU DEFEAT LOS BLANCOS AND",
+    "MAKE THE PEOPLE OF CHALCHUAPA PROUD?",
+    "* 0-0, MATCH START, KICK OFF, ONCE LOBOS MUST WIN *"
+   ],
+   "win_message": "ONCE LOBOS MUST WIN",
+   "teams": [
+    {
+     "file": "teams/SWOSMASTERS.EDT",
+     "name": "ONCE LOBOS"
+    },
+    {
+     "file": "teams/SWOSMASTERS.EDT",
+     "name": "REAL MADRID"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    0,
+    0
+   ],
+   "minute": 0,
+   "extra_time": true,
+   "penalties": true,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": -1,
+   "subs": [
+    3,
+    5
+   ],
+   "title": "LA BESTIA NEGRA",
+   "locked": true,
+   "win": "draw"
+  },
+  {
+   "id": "swos2020-702",
+   "name": "ONCE LOBOS 0-1 NEWCASTLE UNITED",
+   "category": "SWOS MASTERS",
+   "difficulty": 5,
+   "about": "0-1, 69TH MIN, CORNER KICK, ONCE LOBOS MUST WIN",
+   "description": [
+    "- ONCE LOBOS 0-1 NEWCASTLE UNITED (ORIGINAL 96/97) -",
+    "NEWCASTLE UNITED IS LEADING 0-1 AND",
+    "ONCE LOBOS HAS A CORNER KICK TO DEFEND IN THE 69TH MINUTE.",
+    "CAN YOU TURN THE TABLES AROUND AND BEAT THE MAGPIES?",
+    "* 0-1, 69TH MIN, CORNER KICK, ONCE LOBOS MUST WIN *"
+   ],
+   "win_message": "ONCE LOBOS MUST WIN",
+   "teams": [
+    {
+     "file": "teams/SWOSMASTERS.EDT",
+     "name": "ONCE LOBOS"
+    },
+    {
+     "file": "teams/SWOSMASTERS.EDT",
+     "name": "NEWCASTLE UNITED"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    0,
+    1
+   ],
+   "minute": 69,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 1,
+   "subs": [
+    3,
+    5
+   ],
+   "title": "MAGPIE HUNT",
+   "locked": true,
+   "win": "win",
+   "restart": {
+    "kind": "corner",
+    "wing": -1,
+    "team": 1
+   }
+  },
+  {
+   "id": "swos2020-703",
+   "name": "ONCE LOBOS 0-2 MANCHESTER UTD",
+   "category": "SWOS MASTERS",
+   "difficulty": 5,
+   "about": "0-2, 48TH MIN, FREE KICK, ONCE LOBOS MUST WIN",
+   "description": [
+    "- ONCE LOBOS 0-2 MANCHESTER UTD (ORIGINAL 96/97) -",
+    "MANCHESTER UNITED IS LEADING 0-2 AND SUFFERED FROM",
+    "BRUTAL TACKLES. KEANE COMPLAINED AND GOT SENT OFF.",
+    "WILL THE MANCUNIANS FALL TO BITS NOW?",
+    "* 0-2, 48TH MIN, FREE KICK, ONCE LOBOS MUST WIN *"
+   ],
+   "win_message": "ONCE LOBOS MUST WIN",
+   "teams": [
+    {
+     "file": "teams/SWOSMASTERS.EDT",
+     "name": "ONCE LOBOS"
+    },
+    {
+     "file": "teams/SWOSMASTERS.EDT",
+     "name": "MANCHESTER UTD"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    0,
+    2
+   ],
+   "minute": 48,
+   "extra_time": true,
+   "penalties": true,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 1,
+   "subs": [
+    3,
+    5
+   ],
+   "title": "RED DEVIL TAMING",
+   "sent_off": [
+    [],
+    [
+     4
+    ]
+   ],
+   "injured": [
+    [],
+    [
+     [
+      5,
+      2
+     ],
+     [
+      6,
+      1
+     ],
+     [
+      7,
+      6
+     ],
+     [
+      10,
+      7
+     ]
+    ]
+   ],
+   "locked": true,
+   "win": "win",
+   "restart": {
+    "kind": "free_kick",
+    "spot": -1,
+    "team": 1
+   }
+  },
+  {
+   "id": "swos2020-704",
+   "name": "ONCE LOBOS 0-3 BARCELONA",
+   "category": "SWOS MASTERS",
+   "difficulty": 5,
+   "about": "0-3, 32ND MIN, FREE KICK, ONCE LOBOS MUST WIN",
+   "description": [
+    "- ONCE LOBOS 0-3 BARCELONA (ORIGINAL 96/97) -",
+    "AFTER RONALDO SCORED A QUICK HATTRICK HE GOT INJURED BADLY.",
+    "PEP GUARDIOLA GOT SENT OFF FOR INSULTING THE REF.",
+    "WILL THIS BE THE TURNING POINT IN THE GAME?",
+    "* 0-3, 32ND MIN, FREE KICK, ONCE LOBOS MUST WIN *"
+   ],
+   "win_message": "ONCE LOBOS MUST WIN",
+   "teams": [
+    {
+     "file": "teams/SWOSMASTERS.EDT",
+     "name": "ONCE LOBOS"
+    },
+    {
+     "file": "teams/SWOSMASTERS.EDT",
+     "name": "BARCELONA"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    0,
+    3
+   ],
+   "minute": 32,
+   "extra_time": true,
+   "penalties": true,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    3,
+    5
+   ],
+   "title": "MENOSQUE UN CLUB",
+   "sent_off": [
+    [],
+    [
+     4
+    ]
+   ],
+   "injured": [
+    [],
+    [
+     [
+      9,
+      7
+     ]
+    ]
+   ],
+   "locked": true,
+   "win": "win",
+   "restart": {
+    "kind": "free_kick",
+    "spot": 1,
+    "deep": true,
+    "team": 0
+   }
+  },
+  {
+   "id": "swos2020-705",
+   "name": "ONCE LOBOS 0-3 AJAX",
+   "category": "SWOS MASTERS",
+   "difficulty": 5,
+   "about": "0-3, 2ND HALF, KICK OFF, ONCE LOBOS MUST AT LEAST DRAW",
+   "description": [
+    "- ONCE LOBOS 0-3 AJAX (ORIGINAL 96/97) -",
+    "ONCE LOBOS IS FACING AJAX AND ARE 0-3 DOWN AT HALF-TIME.",
+    "LOBOS PLAYED ROUGH AND SOME AJAX PLAYERS GOT INJURED.",
+    "TRY TO TIE THE GAME OR CAN YOU EVEN WIN IT?",
+    "* 0-3, 2ND HALF, KICK OFF, ONCE LOBOS MUST AT LEAST DRAW *"
+   ],
+   "win_message": "ONCE LOBOS MUST AT LEAST DRAW",
+   "teams": [
+    {
+     "file": "teams/SWOSMASTERS.EDT",
+     "name": "ONCE LOBOS"
+    },
+    {
+     "file": "teams/SWOSMASTERS.EDT",
+     "name": "AJAX"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    0,
+    3
+   ],
+   "minute": 45,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": -1,
+   "subs": [
+    3,
+    5
+   ],
+   "title": "CRUYFF'S NIGHTMARE",
+   "injured": [
+    [],
+    [
+     [
+      3,
+      1
+     ],
+     [
+      4,
+      2
+     ],
+     [
+      9,
+      5
+     ],
+     [
+      11,
+      6
+     ]
+    ]
+   ],
+   "locked": true,
+   "win": "draw"
+  },
+  {
+   "id": "swos2020-706",
+   "name": "ONCE LOBOS 0-4 AC MILAN",
+   "category": "SWOS MASTERS",
+   "difficulty": 5,
+   "about": "0-4, 10TH MIN, FREE KICK, ONCE LOBOS MUST WIN",
+   "description": [
+    "- ONCE LOBOS 0-4 AC MILAN (ORIGINAL 96/97) -",
+    "MILAN SHOWED NO MERCY AND ARE 4-0 UP BY THE 10TH MIN.",
+    "BUT THEN, WEAH LOST IT AND PUNCHED THE REF.",
+    "WILL THIS BE THE TURNING POINT FOR A MIRACLE?",
+    "* 0-4, 10TH MIN, FREE KICK, ONCE LOBOS MUST WIN *"
+   ],
+   "win_message": "ONCE LOBOS MUST WIN",
+   "teams": [
+    {
+     "file": "teams/SWOSMASTERS.EDT",
+     "name": "ONCE LOBOS"
+    },
+    {
+     "file": "teams/SWOSMASTERS.EDT",
+     "name": "AC MILAN"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    0,
+    4
+   ],
+   "minute": 10,
+   "extra_time": true,
+   "penalties": true,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    3,
+    5
+   ],
+   "title": "ROSSONERI BLACKOUT",
+   "sent_off": [
+    [],
+    [
+     9
+    ]
+   ],
+   "locked": true,
+   "win": "win",
+   "restart": {
+    "kind": "free_kick",
+    "spot": -1,
+    "team": 0
+   }
+  },
+  {
+   "id": "swos2020-707",
+   "name": "BERMUDA 0-0 GERMANY",
+   "category": "SWOS MASTERS",
+   "difficulty": 5,
+   "about": "0-0, MATCH START, KICK OFF, BERMUDA MUST WIN",
+   "description": [
+    "- BERMUDA 0-0 GERMANY (ORIGINAL 96/97) -",
+    "BERMUDA IS FACING GERMANY.",
+    "CAN YOU DEFEAT DIE MANNSCHAFT AND",
+    "MAKE THE PEOPLE OF BERMUDA PROUD?",
+    "* 0-0, MATCH START, KICK OFF, BERMUDA MUST WIN *"
+   ],
+   "win_message": "BERMUDA MUST WIN",
+   "teams": [
+    {
+     "file": "teams/SWOSMASTERS.EDT",
+     "name": "BERMUDA"
+    },
+    {
+     "file": "teams/SWOSMASTERS.EDT",
+     "name": "GERMANY"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    0,
+    0
+   ],
+   "minute": 0,
+   "extra_time": true,
+   "penalties": true,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": -1,
+   "subs": [
+    3,
+    5
+   ],
+   "title": "KAPUTT",
+   "locked": true,
+   "win": "win"
+  },
+  {
+   "id": "swos2020-708",
+   "name": "BERMUDA 0-1 BRAZIL",
+   "category": "SWOS MASTERS",
+   "difficulty": 5,
+   "about": "0-1, 69TH MIN, CORNER KICK, BERMUDA MUST WIN",
+   "description": [
+    "- BERMUDA 0-1 BRAZIL (ORIGINAL 96/97) -",
+    "BRAZIL IS LEADING 0-1 AND BERMUDA HAS A CORNER KICK",
+    "TO DEFEND IN THE 69TH MINUTE.",
+    "CAN YOU TURN THE TABLES AROUND AND BEAT SELECAO?",
+    "* 0-1, 69TH MIN, CORNER KICK, BERMUDA MUST WIN *"
+   ],
+   "win_message": "BERMUDA MUST WIN",
+   "teams": [
+    {
+     "file": "teams/SWOSMASTERS.EDT",
+     "name": "BERMUDA"
+    },
+    {
+     "file": "teams/SWOSMASTERS.EDT",
+     "name": "BRAZIL"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    0,
+    1
+   ],
+   "minute": 69,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 1,
+   "subs": [
+    3,
+    5
+   ],
+   "title": "NO SAMBA",
+   "locked": true,
+   "win": "win",
+   "restart": {
+    "kind": "corner",
+    "wing": -1,
+    "team": 1
+   }
+  },
+  {
+   "id": "swos2020-709",
+   "name": "BERMUDA 0-2 CROATIA",
+   "category": "SWOS MASTERS",
+   "difficulty": 5,
+   "about": "0-2, 48TH MIN, FREE KICK, BERMUDA MUST WIN",
+   "description": [
+    "- BERMUDA 0-2 CROATIA (ORIGINAL 96/97) -",
+    "CROATIA SCORED TWICE BUT PAID THE PRICE WITH",
+    "SOME SERIOUS INJURIES. SUKER CALLED THE DOCTOR.",
+    "WILL CROATIA'S SHIP SINK IN THE BERMUDA TRIANGLE?",
+    "* 0-2, 48TH MIN, FREE KICK, BERMUDA MUST WIN *"
+   ],
+   "win_message": "BERMUDA MUST WIN",
+   "teams": [
+    {
+     "file": "teams/SWOSMASTERS.EDT",
+     "name": "BERMUDA"
+    },
+    {
+     "file": "teams/SWOSMASTERS.EDT",
+     "name": "CROATIA"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    0,
+    2
+   ],
+   "minute": 48,
+   "extra_time": true,
+   "penalties": true,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 1,
+   "subs": [
+    3,
+    5
+   ],
+   "title": "DAVOR SUGAR",
+   "injured": [
+    [],
+    [
+     [
+      3,
+      1
+     ],
+     [
+      4,
+      3
+     ],
+     [
+      9,
+      7
+     ],
+     [
+      10,
+      4
+     ]
+    ]
+   ],
+   "locked": true,
+   "win": "win",
+   "restart": {
+    "kind": "free_kick",
+    "spot": -1,
+    "team": 1
+   }
+  },
+  {
+   "id": "swos2020-710",
+   "name": "BERMUDA 0-3 ENGLAND",
+   "category": "SWOS MASTERS",
+   "difficulty": 5,
+   "about": "0-3, 32ND MIN, FREE KICK, BERMUDA MUST WIN",
+   "description": [
+    "- BERMUDA 0-3 ENGLAND (ORIGINAL 96/97) -",
+    "ALAN SHEARER GOT INJURED AFTER SCORING A HATTRICK.",
+    "GAZZA KICKED THE REF IN THE BALLS AND GOT SENT OFF.",
+    "WILL THE THREE LIONS TURN INTO KITTENS NOW?",
+    "* 0-3, 32ND MIN, FREE KICK, BERMUDA MUST WIN *"
+   ],
+   "win_message": "BERMUDA MUST WIN",
+   "teams": [
+    {
+     "file": "teams/SWOSMASTERS.EDT",
+     "name": "BERMUDA"
+    },
+    {
+     "file": "teams/SWOSMASTERS.EDT",
+     "name": "ENGLAND"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    0,
+    3
+   ],
+   "minute": 32,
+   "extra_time": true,
+   "penalties": true,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    3,
+    5
+   ],
+   "title": "THREE KITTENS",
+   "sent_off": [
+    [],
+    [
+     8
+    ]
+   ],
+   "injured": [
+    [],
+    [
+     [
+      9,
+      7
+     ]
+    ]
+   ],
+   "locked": true,
+   "win": "win",
+   "restart": {
+    "kind": "free_kick",
+    "spot": 1,
+    "deep": true,
+    "team": 0
+   }
+  },
+  {
+   "id": "swos2020-711",
+   "name": "BERMUDA 0-3 HOLLAND",
+   "category": "SWOS MASTERS",
+   "difficulty": 5,
+   "about": "0-3, 2ND HALF, KICK OFF, BERMUDA MUST WIN",
+   "description": [
+    "- BERMUDA 0-3 HOLLAND (ORIGINAL 96/97) -",
+    "BERMUDA IS FACING HOLLAND AND ARE 0-3 DOWN AT HALF-TIME.",
+    "A FEW DUTCH PLAYERS ARE STRUGGLING WITH INJURIES.",
+    "BOGARDE GOT AN EARLY BATH. IS THIS YOUR CHANCE?",
+    "* 0-3, 2ND HALF, KICK OFF, BERMUDA MUST WIN *"
+   ],
+   "win_message": "BERMUDA MUST WIN",
+   "teams": [
+    {
+     "file": "teams/SWOSMASTERS.EDT",
+     "name": "BERMUDA"
+    },
+    {
+     "file": "teams/SWOSMASTERS.EDT",
+     "name": "HOLLAND"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    0,
+    3
+   ],
+   "minute": 45,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": -1,
+   "subs": [
+    3,
+    5
+   ],
+   "title": "ORANJE ONDER",
+   "sent_off": [
+    [],
+    [
+     5
+    ]
+   ],
+   "injured": [
+    [],
+    [
+     [
+      8,
+      1
+     ],
+     [
+      9,
+      1
+     ],
+     [
+      10,
+      1
+     ],
+     [
+      11,
+      1
+     ]
+    ]
+   ],
+   "locked": true,
+   "win": "win"
+  },
+  {
+   "id": "swos2020-712",
+   "name": "BERMUDA 0-4 ITALY",
+   "category": "SWOS MASTERS",
+   "difficulty": 5,
+   "about": "0-4, 10TH MIN, FREE KICK, BERMUDA MUST WIN",
+   "description": [
+    "- BERMUDA 0-4 ITALY (ORIGINAL 96/97) -",
+    "ITALY SCORED 4 QUICK GOALS BEFORE ZOLA AND",
+    "RAVANELLI GOT SENT OFF FOR TAUNTING BERMUDA PLAYERS.",
+    "NOW THEY ARE PARKING THE BUS. TRY TO WIN ANYWAY.",
+    "* 0-4, 10TH MIN, FREE KICK, BERMUDA MUST WIN *"
+   ],
+   "win_message": "BERMUDA MUST WIN",
+   "teams": [
+    {
+     "file": "teams/SWOSMASTERS.EDT",
+     "name": "BERMUDA"
+    },
+    {
+     "file": "teams/SWOSMASTERS.EDT",
+     "name": "ITALY"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    0,
+    4
+   ],
+   "minute": 10,
+   "extra_time": true,
+   "penalties": true,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    3,
+    5
+   ],
+   "title": "TUTTO BRUTTO",
+   "sent_off": [
+    [],
+    [
+     10,
+     11
+    ]
+   ],
+   "locked": true,
+   "win": "win",
+   "restart": {
+    "kind": "free_kick",
+    "spot": -1,
+    "team": 0
+   }
+  }
+ ]
+}

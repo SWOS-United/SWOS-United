@@ -1,0 +1,743 @@
+{
+ "format": "openswos-challenges",
+ "version": 2,
+ "category": "ISS 64",
+ "challenges": [
+  {
+   "id": "swos2020-401",
+   "name": "GERMANY 0-1 CZECH",
+   "category": "ISS 64",
+   "difficulty": 3,
+   "about": "0-1, 65TH MIN, FREE KICK, GERMANY MUST WIN",
+   "description": [
+    "- GERMANY 0-1 CZECH (EURO 96) -",
+    "EURO CUP AT STAKE.",
+    "GERMANY GOAL DOWN. CZECH ON DEFENSIVE.",
+    "GERMANY WITH FREE KICK.",
+    "* 0-1, 65TH MIN, FREE KICK, GERMANY MUST WIN *"
+   ],
+   "win_message": "GERMANY MUST WIN",
+   "teams": [
+    {
+     "file": "teams/ISS64.EDT",
+     "name": "GERMANY"
+    },
+    {
+     "file": "teams/ISS64.EDT",
+     "name": "CZECH REPUBLIC"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    0,
+    1
+   ],
+   "minute": 65,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    3,
+    5
+   ],
+   "win": "win",
+   "restart": {
+    "kind": "free_kick",
+    "spot": -1,
+    "team": 0
+   }
+  },
+  {
+   "id": "swos2020-402",
+   "name": "FRANCE 1-1 SPAIN",
+   "category": "ISS 64",
+   "difficulty": 3,
+   "about": "1-1, 85TH MIN, FREE KICK, FRANCE MUST WIN",
+   "description": [
+    "- FRANCE 1-1 SPAIN (EURO 96) -",
+    "FRANCE OVERTAKEN BY SPAIN TO TIE SCORE",
+    "AT LAST MINUTES. NO TIME FOR TEARS.",
+    "SCORE THIS FREE KICK.",
+    "* 1-1, 85TH MIN, FREE KICK, FRANCE MUST WIN *"
+   ],
+   "win_message": "FRANCE MUST WIN",
+   "teams": [
+    {
+     "file": "teams/ISS64.EDT",
+     "name": "FRANCE"
+    },
+    {
+     "file": "teams/ISS64.EDT",
+     "name": "SPAIN"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    1,
+    1
+   ],
+   "minute": 85,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    3,
+    5
+   ],
+   "win": "win",
+   "restart": {
+    "kind": "free_kick",
+    "spot": -1,
+    "team": 0
+   }
+  },
+  {
+   "id": "swos2020-403",
+   "name": "ITALY 1-2 CZECH",
+   "category": "ISS 64",
+   "difficulty": 4,
+   "about": "1-2, 80TH MIN, FREE KICK, ITALY MUST WIN",
+   "description": [
+    "- ITALY 1-2 CZECH (EURO 96) -",
+    "ITALY PLAYED WITH THE MAIN FORCE IN RESERVE.",
+    "STRATEGY WAS WRONG.",
+    "DO THEY END DEFEATED BY CZECH?",
+    "* 1-2, 80TH MIN, FREE KICK, ITALY MUST WIN *"
+   ],
+   "win_message": "ITALY MUST WIN",
+   "teams": [
+    {
+     "file": "teams/ISS64.EDT",
+     "name": "ITALY"
+    },
+    {
+     "file": "teams/ISS64.EDT",
+     "name": "CZECH REPUBLIC"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    1,
+    2
+   ],
+   "minute": 80,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    3,
+    5
+   ],
+   "win": "win",
+   "restart": {
+    "kind": "free_kick",
+    "spot": -1,
+    "team": 0
+   }
+  },
+  {
+   "id": "swos2020-404",
+   "name": "ENGLAND 1-1 GERMANY",
+   "category": "ISS 64",
+   "difficulty": 2,
+   "about": "1-1, 80TH MIN, CORNER KICK, ENGLAND MUST WIN",
+   "description": [
+    "- ENGLAND 1-1 GERMANY (EURO 96) -",
+    "ENGLAND PLAYS IN THEIR HOME GROUND.",
+    "THIS CORNER KICK WILL SHOW YOU THAT",
+    "ENGLAND IS THE BIRTHPLACE OF FOOTBALL.",
+    "* 1-1, 80TH MIN, CORNER KICK, ENGLAND MUST WIN *"
+   ],
+   "win_message": "ENGLAND MUST WIN",
+   "teams": [
+    {
+     "file": "teams/ISS64.EDT",
+     "name": "ENGLAND"
+    },
+    {
+     "file": "teams/ISS64.EDT",
+     "name": "GERMANY"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    1,
+    1
+   ],
+   "minute": 80,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    3,
+    5
+   ],
+   "win": "win",
+   "restart": {
+    "kind": "corner",
+    "wing": -1,
+    "team": 0
+   }
+  },
+  {
+   "id": "swos2020-405",
+   "name": "SCOTLAND 0-2 ENGLAND",
+   "category": "ISS 64",
+   "difficulty": 4,
+   "about": "0-2, 70TH MIN, FREE KICK, SCOTLAND MUST WIN",
+   "description": [
+    "- SCOTLAND 0-2 ENGLAND (EURO 96) -",
+    "BATTLE OF BRITAIN.",
+    "ENGLAND LEAD BY 2.",
+    "SCOTLAND GO ON COUNTERATTACK.",
+    "* 0-2, 70TH MIN, FREE KICK, SCOTLAND MUST WIN *"
+   ],
+   "win_message": "SCOTLAND MUST WIN",
+   "teams": [
+    {
+     "file": "teams/ISS64.EDT",
+     "name": "SCOTLAND"
+    },
+    {
+     "file": "teams/ISS64.EDT",
+     "name": "ENGLAND"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    0,
+    2
+   ],
+   "minute": 70,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    3,
+    5
+   ],
+   "win": "win",
+   "restart": {
+    "kind": "free_kick",
+    "spot": -1,
+    "team": 0
+   }
+  },
+  {
+   "id": "swos2020-406",
+   "name": "CROATIA 1-0 DENMARK",
+   "category": "ISS 64",
+   "difficulty": 1,
+   "about": "1-0, 65TH MIN, CORNER KICK, CROATIA MUST WIN",
+   "description": [
+    "- CROATIA 1-0 DENMARK (EURO 96) -",
+    "CROATIA LEADING THE DANES BY",
+    "THEIR AIR SUPERIORITY.",
+    "STOP THE CORNER KICK, HEAD FOR POINTS.",
+    "* 1-0, 65TH MIN, CORNER KICK, CROATIA MUST WIN *"
+   ],
+   "win_message": "CROATIA MUST WIN",
+   "teams": [
+    {
+     "file": "teams/ISS64.EDT",
+     "name": "CROATIA"
+    },
+    {
+     "file": "teams/ISS64.EDT",
+     "name": "DENMARK"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    1,
+    0
+   ],
+   "minute": 65,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 1,
+   "subs": [
+    3,
+    5
+   ],
+   "win": "win",
+   "restart": {
+    "kind": "corner",
+    "wing": -1,
+    "team": 1
+   }
+  },
+  {
+   "id": "swos2020-407",
+   "name": "CZECH 0-0 FRANCE",
+   "category": "ISS 64",
+   "difficulty": 3,
+   "about": "0-0, 85TH MIN, THROW IN, CZECH MUST WIN",
+   "description": [
+    "- CZECH 0-0 FRANCE (EURO 96) -",
+    "FRANCE FAVOURITES TO WIN",
+    "BUT",
+    "CZECH UNDERDOGS CAN STILL SCORE.",
+    "* 0-0, 85TH MIN, THROW IN, CZECH MUST WIN *"
+   ],
+   "win_message": "CZECH MUST WIN",
+   "teams": [
+    {
+     "file": "teams/ISS64.EDT",
+     "name": "CZECH REPUBLIC"
+    },
+    {
+     "file": "teams/ISS64.EDT",
+     "name": "FRANCE"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    0,
+    0
+   ],
+   "minute": 85,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    3,
+    5
+   ],
+   "win": "win",
+   "restart": {
+    "kind": "throw_in",
+    "wing": -1,
+    "team": 0
+   }
+  },
+  {
+   "id": "swos2020-408",
+   "name": "AUSTRIA 1-0 SWEDEN",
+   "category": "ISS 64",
+   "difficulty": 1,
+   "about": "1-0, 65TH MIN, FREE KICK, AUSTRIA MUST WIN",
+   "description": [
+    "- AUSTRIA 1-0 SWEDEN (1998 WORLD CUP QUALIFIER) -",
+    "SWEDEN GO ON THE COUNTERATTACK.",
+    "DO NOT LET THEM",
+    "SCORE A SINGLE POINT.",
+    "* 1-0, 65TH MIN, FREE KICK, AUSTRIA MUST WIN *"
+   ],
+   "win_message": "AUSTRIA MUST WIN",
+   "teams": [
+    {
+     "file": "teams/ISS64.EDT",
+     "name": "AUSTRIA"
+    },
+    {
+     "file": "teams/ISS64.EDT",
+     "name": "SWEDEN"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    1,
+    0
+   ],
+   "minute": 65,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 1,
+   "subs": [
+    3,
+    5
+   ],
+   "win": "win",
+   "restart": {
+    "kind": "free_kick",
+    "spot": -1,
+    "team": 1
+   }
+  },
+  {
+   "id": "swos2020-409",
+   "name": "WALES 1-1 HOLLAND",
+   "category": "ISS 64",
+   "difficulty": 2,
+   "about": "1-1, 70TH MIN, CORNER KICK, WALES MUST WIN",
+   "description": [
+    "- WALES 1-1 HOLLAND (1998 WORLD CUP QUALIFIER) -",
+    "WALES WERE LEADING BUT HOLLAND TIED THE GAME.",
+    "YOU MUST PREVENT THEM",
+    "FROM SCORING VIA A CORNER KICK.",
+    "* 1-1, 70TH MIN, CORNER KICK, WALES MUST WIN *"
+   ],
+   "win_message": "WALES MUST WIN",
+   "teams": [
+    {
+     "file": "teams/ISS64.EDT",
+     "name": "WALES"
+    },
+    {
+     "file": "teams/ISS64.EDT",
+     "name": "HOLLAND"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    1,
+    1
+   ],
+   "minute": 70,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 1,
+   "subs": [
+    3,
+    5
+   ],
+   "win": "win",
+   "restart": {
+    "kind": "corner",
+    "wing": -1,
+    "team": 1
+   }
+  },
+  {
+   "id": "swos2020-410",
+   "name": "JAPAN 1-2 MEXICO",
+   "category": "ISS 64",
+   "difficulty": 3,
+   "about": "1-2, 55TH MIN, FREE KICK, JAPAN MUST WIN",
+   "description": [
+    "- JAPAN 1-2 MEXICO (1996 KIRIN CUP SOCCER) -",
+    "JAPAN ARE LOSING TO MEXICO.",
+    "NOW THEY ARE FIGHTING BACK. WILL THIS FREE KICK",
+    "BE THE CHANCE THEY ARE LOOKING FOR?",
+    "* 1-2, 55TH MIN, FREE KICK, JAPAN MUST WIN *"
+   ],
+   "win_message": "JAPAN MUST WIN",
+   "teams": [
+    {
+     "file": "teams/ISS64.EDT",
+     "name": "JAPAN"
+    },
+    {
+     "file": "teams/ISS64.EDT",
+     "name": "MEXICO"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    1,
+    2
+   ],
+   "minute": 55,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    3,
+    5
+   ],
+   "win": "win",
+   "restart": {
+    "kind": "free_kick",
+    "spot": -1,
+    "team": 0
+   }
+  },
+  {
+   "id": "swos2020-411",
+   "name": "NIGERIA 2-2 ARGENTINA",
+   "category": "ISS 64",
+   "difficulty": 3,
+   "about": "2-2, 85TH MIN, FREE KICK, NIGERIA MUST WIN",
+   "description": [
+    "- NIGERIA 2-2 ARGENTINA (1996 SUMMER OLYMPICS) -",
+    "ARGENTINA STRONG BUT NIGERIA PLAY AS EQUALS.",
+    "SCORE BY FREE KICK.",
+    "SEE THE POWER OF AFRICAN SOCCER.",
+    "* 2-2, 85TH MIN, FREE KICK, NIGERIA MUST WIN *"
+   ],
+   "win_message": "NIGERIA MUST WIN",
+   "teams": [
+    {
+     "file": "teams/ISS64.EDT",
+     "name": "NIGERIA"
+    },
+    {
+     "file": "teams/ISS64.EDT",
+     "name": "ARGENTINA"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    2,
+    2
+   ],
+   "minute": 85,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    3,
+    5
+   ],
+   "win": "win",
+   "restart": {
+    "kind": "free_kick",
+    "spot": -1,
+    "team": 0
+   }
+  },
+  {
+   "id": "swos2020-412",
+   "name": "URUGUAY 1-2 COLOMBIA",
+   "category": "ISS 64",
+   "difficulty": 3,
+   "about": "1-2, 65TH MIN, FREE KICK, URUGUAY MUST WIN",
+   "description": [
+    "- URUGUAY 1-2 COLOMBIA (1998 WORLD CUP QUALIFIER) -",
+    "URUGUAY TRAILING TO COLOMBIA,",
+    "BUT THIS FREE KICK WILL SHOW THAT",
+    "THEY ARE NOT CHAMPIONS OF S.AMERICA FOR NOTHING.",
+    "* 1-2, 65TH MIN, FREE KICK, URUGUAY MUST WIN *"
+   ],
+   "win_message": "URUGUAY MUST WIN",
+   "teams": [
+    {
+     "file": "teams/ISS64.EDT",
+     "name": "URUGUAY"
+    },
+    {
+     "file": "teams/ISS64.EDT",
+     "name": "COLOMBIA"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    1,
+    2
+   ],
+   "minute": 65,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    3,
+    5
+   ],
+   "win": "win",
+   "restart": {
+    "kind": "free_kick",
+    "spot": -1,
+    "team": 0
+   }
+  },
+  {
+   "id": "swos2020-413",
+   "name": "PORTUGAL 0-0 TURKEY",
+   "category": "ISS 64",
+   "difficulty": 3,
+   "about": "0-0, 85TH MIN, CORNER KICK, PORTUGAL MUST WIN",
+   "description": [
+    "- PORTUGAL 0-0 TURKEY (EURO 96) -",
+    "PORTUGAL DOMINATE THIS MATCH BUT",
+    "ARE UNABLE TO SCORE A GOAL.",
+    "NOW IS THEIR CHANCE WITH THIS SET PLAY.",
+    "* 0-0, 85TH MIN, CORNER KICK, PORTUGAL MUST WIN *"
+   ],
+   "win_message": "PORTUGAL MUST WIN",
+   "teams": [
+    {
+     "file": "teams/ISS64.EDT",
+     "name": "PORTUGAL"
+    },
+    {
+     "file": "teams/ISS64.EDT",
+     "name": "TURKEY"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    0,
+    0
+   ],
+   "minute": 85,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    3,
+    5
+   ],
+   "win": "win",
+   "restart": {
+    "kind": "corner",
+    "wing": -1,
+    "team": 0
+   }
+  },
+  {
+   "id": "swos2020-414",
+   "name": "HOLLAND 1-4 ENGLAND",
+   "category": "ISS 64",
+   "difficulty": 5,
+   "about": "1-4, 70TH MIN, THROW IN, HOLLAND MUST WIN",
+   "description": [
+    "- HOLLAND 1-4 ENGLAND (EURO 96) -",
+    "ENGLAND ARE THRASHING HOLLAND.",
+    "CAN HOLLAND FIGHT BACK AND WIN?",
+    "",
+    "* 1-4, 70TH MIN, THROW IN, HOLLAND MUST WIN *"
+   ],
+   "win_message": "HOLLAND MUST WIN",
+   "teams": [
+    {
+     "file": "teams/ISS64.EDT",
+     "name": "HOLLAND"
+    },
+    {
+     "file": "teams/ISS64.EDT",
+     "name": "ENGLAND"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    1,
+    4
+   ],
+   "minute": 70,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    3,
+    5
+   ],
+   "win": "win",
+   "restart": {
+    "kind": "throw_in",
+    "wing": -1,
+    "team": 0
+   }
+  },
+  {
+   "id": "swos2020-415",
+   "name": "ROMANIA 0-1 BULGARIA",
+   "category": "ISS 64",
+   "difficulty": 3,
+   "about": "0-1, 65TH MIN, FREE KICK, ROMANIA MUST WIN",
+   "description": [
+    "- ROMANIA 0-1 BULGARIA (EURO 96) -",
+    "BULGARIA SCORED A DREAM GOAL WITH",
+    "A TREMENDOUS LONG SHOT.",
+    "FREE KICK TO GOAL IS YOUR ONLY CHANCE TO WIN.",
+    "* 0-1, 65TH MIN, FREE KICK, ROMANIA MUST WIN *"
+   ],
+   "win_message": "ROMANIA MUST WIN",
+   "teams": [
+    {
+     "file": "teams/ISS64.EDT",
+     "name": "ROMANIA"
+    },
+    {
+     "file": "teams/ISS64.EDT",
+     "name": "BULGARIA"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    0,
+    1
+   ],
+   "minute": 65,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    3,
+    5
+   ],
+   "win": "win",
+   "restart": {
+    "kind": "free_kick",
+    "spot": -1,
+    "team": 0
+   }
+  },
+  {
+   "id": "swos2020-416",
+   "name": "U.S.A. 0-2 BRAZIL",
+   "category": "ISS 64",
+   "difficulty": 4,
+   "about": "0-2, 55TH MIN, CORNER KICK, U.S.A. MUST WIN",
+   "description": [
+    "- U.S.A. 0-2 BRAZIL (1996 GOLD CUP) -",
+    "U.S.A. OVERWHELMED BY BRAZIL.",
+    "GRAB THE CHANCE WITH A SET PLAY.",
+    "",
+    "* 0-2, 55TH MIN, CORNER KICK, U.S.A. MUST WIN *"
+   ],
+   "win_message": "U.S.A. MUST WIN",
+   "teams": [
+    {
+     "file": "teams/ISS64.EDT",
+     "name": "UNITED STATES"
+    },
+    {
+     "file": "teams/ISS64.EDT",
+     "name": "BRAZIL"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    0,
+    2
+   ],
+   "minute": 55,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    3,
+    5
+   ],
+   "win": "win",
+   "restart": {
+    "kind": "corner",
+    "wing": -1,
+    "team": 0
+   }
+  }
+ ]
+}

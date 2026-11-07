@@ -1,0 +1,14 @@
+{
+ "uuid": "18169483-758c-5824-a436-c6582ad6dd70",
+ "id": "swos2020-challenges",
+ "name": "SWOS 2020 Challenges",
+ "version": "1.0",
+ "author": "SWOS 2020 (its challenge mode: github.com/starwindz/swos-2020)",
+ "about": "SWOS 2020's challenge mode: 92 scenarios in 8 categories, from the 1966 World Cup final on. Converted from its challenges.ini.",
+ "targets": [
+  "sdl",
+  "amiga"
+ ],
+ "changes": "modes",
+ "default": true
+}

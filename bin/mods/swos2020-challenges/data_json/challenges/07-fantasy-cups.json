@@ -1,0 +1,339 @@
+{
+ "format": "openswos-challenges",
+ "version": 2,
+ "category": "FANTASY CUPS",
+ "challenges": [
+  {
+   "id": "swos2020-a801",
+   "name": "1.RIGHT CORNER KICK DOWN",
+   "category": "FANTASY CUPS",
+   "difficulty": 1,
+   "about": "1-1, 80MIN, KICK OFF, BIG BANG TEAM MUST WIN",
+   "description": [
+    "- 1.RIGHT CORNER KICK DOWN -",
+    "",
+    "",
+    "",
+    "* 1-1, 80MIN, KICK OFF, BIG BANG TEAM MUST WIN *"
+   ],
+   "win_message": "BIG BANG TEAM MUST WIN",
+   "teams": [
+    {
+     "file": "teams/MP.EDT",
+     "name": "BIG BANG TEAM"
+    },
+    {
+     "file": "teams/MP.EDT",
+     "name": "CHICAGO BULLS"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    1,
+    1
+   ],
+   "minute": 80,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    2,
+    5
+   ],
+   "locked": true,
+   "win": "win",
+   "restart": {
+    "kind": "corner",
+    "wing": 0,
+    "team": 0
+   }
+  },
+  {
+   "id": "swos2020-a802",
+   "name": "2.RIGHT CORNER KICK UP",
+   "category": "FANTASY CUPS",
+   "difficulty": 1,
+   "about": "1-1, 80MIN, KICK OFF, BIG BANG TEAM MUST WIN",
+   "description": [
+    "- RIGHT CORNER KICK UP -",
+    "",
+    "",
+    "",
+    "* 1-1, 80MIN, KICK OFF, BIG BANG TEAM MUST WIN *"
+   ],
+   "win_message": "BIG BANG TEAM MUST WIN",
+   "teams": [
+    {
+     "file": "teams/MP.EDT",
+     "name": "BIG BANG TEAM"
+    },
+    {
+     "file": "teams/MP.EDT",
+     "name": "CHICAGO BULLS"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    1,
+    1
+   ],
+   "minute": 80,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 0,
+   "kick_off": 0,
+   "subs": [
+    2,
+    5
+   ],
+   "locked": true,
+   "win": "win",
+   "restart": {
+    "kind": "corner",
+    "wing": 1,
+    "team": 0
+   }
+  },
+  {
+   "id": "swos2020-a803",
+   "name": "3.RIGHT THROW IN DOWN",
+   "category": "FANTASY CUPS",
+   "difficulty": 1,
+   "about": "1-1, 80MIN, KICK OFF, BIG BANG TEAM MUST WIN",
+   "description": [
+    "- 3.RIGHT THROW IN DOWN -",
+    "",
+    "",
+    "",
+    "* 1-1, 80MIN, KICK OFF, BIG BANG TEAM MUST WIN *"
+   ],
+   "win_message": "BIG BANG TEAM MUST WIN",
+   "teams": [
+    {
+     "file": "teams/MP.EDT",
+     "name": "BIG BANG TEAM"
+    },
+    {
+     "file": "teams/MP.EDT",
+     "name": "CHICAGO BULLS"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    1,
+    1
+   ],
+   "minute": 80,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    2,
+    5
+   ],
+   "locked": true,
+   "win": "win",
+   "restart": {
+    "kind": "throw_in",
+    "wing": 0,
+    "team": 0
+   }
+  },
+  {
+   "id": "swos2020-a804",
+   "name": "4.RIGHT THROW IN UP",
+   "category": "FANTASY CUPS",
+   "difficulty": 1,
+   "about": "1-1, 80MIN, KICK OFF, BIG BANG TEAM MUST WIN",
+   "description": [
+    "- 4.RIGHT THROW IN UP -",
+    "",
+    "",
+    "",
+    "* 1-1, 80MIN, KICK OFF, BIG BANG TEAM MUST WIN *"
+   ],
+   "win_message": "BIG BANG TEAM MUST WIN",
+   "teams": [
+    {
+     "file": "teams/MP.EDT",
+     "name": "BIG BANG TEAM"
+    },
+    {
+     "file": "teams/MP.EDT",
+     "name": "CHICAGO BULLS"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    1,
+    1
+   ],
+   "minute": 80,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 0,
+   "kick_off": 0,
+   "subs": [
+    2,
+    5
+   ],
+   "locked": true,
+   "win": "win",
+   "restart": {
+    "kind": "throw_in",
+    "wing": 1,
+    "team": 0
+   }
+  },
+  {
+   "id": "swos2020-a805",
+   "name": "BIG BANG 1-1 CHICAGO",
+   "category": "FANTASY CUPS",
+   "difficulty": 2,
+   "about": "1-1, 87MIN, KICK OFF, BIG BANG TEAM MUST WIN",
+   "description": [
+    "- BIG BANG TEAM 1-1 CHICAGO BULLS -",
+    "AFTER A BRAWL, 4 PLAYERS FROM BOTH TEAMS",
+    "WERE SENT OFF. WHAT WILL HAPPEN NEXT?",
+    "WILL THE BIG BANG TEAM WIN?",
+    "* 1-1, 87MIN, KICK OFF, BIG BANG TEAM MUST WIN *"
+   ],
+   "win_message": "BIG BANG TEAM MUST WIN",
+   "teams": [
+    {
+     "file": "teams/MP.EDT",
+     "name": "BIG BANG TEAM"
+    },
+    {
+     "file": "teams/MP.EDT",
+     "name": "CHICAGO BULLS"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    1,
+    1
+   ],
+   "minute": 87,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    2,
+    5
+   ],
+   "sent_off": [
+    [
+     9,
+     10
+    ],
+    [
+     3,
+     7
+    ]
+   ],
+   "locked": true,
+   "win": "win"
+  },
+  {
+   "id": "swos2020-a806",
+   "name": "RETRO 2-2 TIME",
+   "category": "FANTASY CUPS",
+   "difficulty": 4,
+   "about": "2-2, 88MIN, FREE KICK, RETRO KICKERS MUST WIN",
+   "description": [
+    "- RETRO KICKERS 2-2 TIME TRAVELLERS -",
+    "RETRO KICKERS TAKE A FREE KICK NEAR THE GOAL LINE.",
+    "THIS MAY BE YOUR ONLY CHANCE.",
+    "TIME IS RUNNING OUT.",
+    "* 2-2, 88MIN, FREE KICK, RETRO KICKERS MUST WIN *"
+   ],
+   "win_message": "RETRO KICKERS MUST WIN",
+   "teams": [
+    {
+     "file": "teams/MP.EDT",
+     "name": "RETRO KICKERS"
+    },
+    {
+     "file": "teams/MP.EDT",
+     "name": "TIME TRAVELLERS"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    2,
+    2
+   ],
+   "minute": 88,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    2,
+    5
+   ],
+   "win": "win",
+   "restart": {
+    "kind": "free_kick",
+    "x": 284,
+    "y": 680,
+    "team": 0
+   }
+  },
+  {
+   "id": "swos2020-a807",
+   "name": "VILLAIN 2-3 XBOX",
+   "category": "FANTASY CUPS",
+   "difficulty": 3,
+   "about": "2-3, 85MIN, PENALTY KICK, VILLAIN TEAM MUST WIN",
+   "description": [
+    "- VILLAIN TEAM 2-3 XBOX MASTERS -",
+    "THE GAME IS DOWN 2-3.",
+    "TO WIN, YOU MUST SUCCEED IN THE PENALTY KICK AND THEN",
+    "IMMEDIATELY SCORE THE GOAL. PROVE YOUR SKILL AND LUCK.",
+    "* 2-3, 85MIN, PENALTY KICK, VILLAIN TEAM MUST WIN *"
+   ],
+   "win_message": "VILLAIN TEAM MUST WIN",
+   "teams": [
+    {
+     "file": "teams/MP.EDT",
+     "name": "VILLAIN TEAM"
+    },
+    {
+     "file": "teams/MP.EDT",
+     "name": "XBOX MASTERS"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    2,
+    3
+   ],
+   "minute": 85,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    2,
+    5
+   ],
+   "win": "win",
+   "restart": {
+    "kind": "penalty",
+    "team": 0
+   }
+  }
+ ]
+}

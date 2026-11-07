@@ -1,0 +1,397 @@
+{
+ "format": "openswos-challenges",
+ "version": 2,
+ "category": "EUROPEAN CUPS",
+ "challenges": [
+  {
+   "id": "swos2020-501",
+   "name": "REAL MADRID 1-0 JUVENTUS",
+   "category": "EUROPEAN CUPS",
+   "difficulty": 4,
+   "about": "1-0, 68TH MIN, FREE KICK, JUVENTUS MUST WIN (ET/PEN)",
+   "description": [
+    "- REAL MADRID 1-0 JUVENTUS (1998 CHAMPIONS LEAGUE FINAL) -",
+    "MIJATOVIC JUST SCORED 0-1 FOR REAL MADRID AND",
+    "JUVENTUS IS ABOUT TO TAKE A FREE KICK IN THE",
+    "68TH MINUTE. CAN THEY TURN AROUND AND WIN THE GAME?",
+    "* 1-0, 68TH MIN, FREE KICK, JUVENTUS MUST WIN (ET/PEN) *"
+   ],
+   "win_message": "JUVENTUS MUST WIN",
+   "teams": [
+    {
+     "file": "teams/1998CLFINAL.EDT",
+     "name": "REAL MADRID"
+    },
+    {
+     "file": "teams/1998CLFINAL.EDT",
+     "name": "JUVENTUS"
+    }
+   ],
+   "yours": 1,
+   "score": [
+    1,
+    0
+   ],
+   "minute": 68,
+   "extra_time": true,
+   "penalties": true,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 1,
+   "subs": [
+    2,
+    5
+   ],
+   "locked": true,
+   "win": "win",
+   "restart": {
+    "kind": "free_kick",
+    "spot": -1,
+    "team": 1
+   }
+  },
+  {
+   "id": "swos2020-502",
+   "name": "MAN UTD 2-1 BAYERN",
+   "category": "EUROPEAN CUPS",
+   "difficulty": 4,
+   "about": "2-1, 89TH MIN, KICK OFF, BAYERN MUST WIN",
+   "description": [
+    "- MAN UTD 2-1 BAYERN (1999 CHAMPIONS LEAGUE FINAL) -",
+    "MANCHESTER UNITED JUST SCORED 2-1 BEFORE THE FINAL WHISTLE.",
+    "CAN YOU CHANGE HISTORY AND",
+    "BEAT MANCHESTER UNITED IN THE FINAL?",
+    "* 2-1, 89TH MIN, KICK OFF, BAYERN MUST WIN *"
+   ],
+   "win_message": "BAYERN MUST WIN",
+   "teams": [
+    {
+     "file": "teams/1999CLFINAL.EDT",
+     "name": "MAN UTD 1999"
+    },
+    {
+     "file": "teams/1999CLFINAL.EDT",
+     "name": "BAYERN 1999"
+    }
+   ],
+   "yours": 1,
+   "score": [
+    2,
+    1
+   ],
+   "minute": 89,
+   "extra_time": true,
+   "penalties": true,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 1,
+   "subs": [
+    3,
+    5
+   ],
+   "win": "win",
+   "extra_time_rule": "golden_goal"
+  },
+  {
+   "id": "swos2020-503",
+   "name": "MILAN 3-0 LIVERPOOL",
+   "category": "EUROPEAN CUPS",
+   "difficulty": 4,
+   "about": "3-0, 47TH MIN, CORNER KICK, LIVERPOOL MUST WIN (ET/PEN)",
+   "description": [
+    "- MILAN 3-0 LIVERPOOL (2005 CHAMPIONS LEAGUE FINAL) -",
+    "MILAN IS LEADING 3-0 AND",
+    "LIVERPOOL HAS A CORNER KICK IN THE 47TH MINUTE.",
+    "IN THE 2ND HALF LIVERPOOL WILL LAUNCH A COMEBACK.",
+    "* 3-0, 47TH MIN, CORNER KICK, LIVERPOOL MUST WIN (ET/PEN) *"
+   ],
+   "win_message": "LIVERPOOL MUST WIN",
+   "teams": [
+    {
+     "file": "teams/2005CLFINAL.EDT",
+     "name": "MILAN 2005"
+    },
+    {
+     "file": "teams/2005CLFINAL.EDT",
+     "name": "LIVERPOOL 2005"
+    }
+   ],
+   "yours": 1,
+   "score": [
+    3,
+    0
+   ],
+   "minute": 47,
+   "extra_time": true,
+   "penalties": true,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 1,
+   "subs": [
+    2,
+    5
+   ],
+   "win": "win",
+   "restart": {
+    "kind": "corner",
+    "wing": 0,
+    "team": 1
+   }
+  },
+  {
+   "id": "swos2020-504",
+   "name": "BARCELONA 0-0 PARIS SG",
+   "category": "EUROPEAN CUPS",
+   "difficulty": 5,
+   "about": "1ST LEG 0-4, 2ND LEG, KICK-OFF, BARCELONA MUST WIN",
+   "description": [
+    "- BARCELONA 0-0 PARIS SG (16/17 CHAMPS LEAGUE R.16 2ND LEG) -",
+    "BARCELONA ARE TRAILING A 0-4 DEFEAT FROM THE 1ST LEG",
+    "AT THE HANDS OF PARIS SG. BARCELONA PLAYED THE SECOND LEG",
+    "AT HOME AND WITH ONE OF THE GREATEST COMEBACKS.",
+    "* 1ST LEG 0-4, 2ND LEG, KICK-OFF, BARCELONA MUST WIN *"
+   ],
+   "win_message": "BARCELONA MUST WIN",
+   "teams": [
+    {
+     "file": "teams/SWOS1617BP.EDT",
+     "name": "BARCELONA"
+    },
+    {
+     "file": "teams/SWOS1617BP.EDT",
+     "name": "PARIS SG"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    0,
+    0
+   ],
+   "minute": 0,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    2,
+    5
+   ],
+   "first_leg": [
+    0,
+    4
+   ],
+   "win": "win"
+  },
+  {
+   "id": "swos2020-a505",
+   "name": "REAL MADRID 0-0 REAL MADRID",
+   "category": "EUROPEAN CUPS",
+   "difficulty": 5,
+   "about": "0-0, MATCH START, FREE KICK, REAL MADRID MUST WIN",
+   "description": [
+    "- REAL MADRID 0-0 ONCE LOBOS -",
+    "CPU KEEPER LEVEL 1",
+    "",
+    "",
+    "* 0-0, MATCH START, FREE KICK, REAL MADRID MUST WIN *"
+   ],
+   "win_message": "REAL MADRID MUST WIN",
+   "teams": [
+    {
+     "file": "teams/SWOSMASTERS.EDT",
+     "name": "REAL MADRID"
+    },
+    {
+     "file": "teams/SWOSMASTERS.EDT",
+     "name": "REAL MADRID"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    0,
+    0
+   ],
+   "minute": 0,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    2,
+    5
+   ],
+   "title": "KEEPER LEVEL 1",
+   "win": "win"
+  },
+  {
+   "id": "swos2020-a506",
+   "name": "REAL MADRID 0-0 REAL MADRID",
+   "category": "EUROPEAN CUPS",
+   "difficulty": 5,
+   "about": "0-0, MATCH START, FREE KICK, REAL MADRID MUST WIN",
+   "description": [
+    "- REAL MADRID 0-0 ONCE LOBOS -",
+    "CPU KEEPER LEVEL 2",
+    "",
+    "",
+    "* 0-0, MATCH START, FREE KICK, REAL MADRID MUST WIN *"
+   ],
+   "win_message": "REAL MADRID MUST WIN",
+   "teams": [
+    {
+     "file": "teams/SWOSMASTERS.EDT",
+     "name": "REAL MADRID"
+    },
+    {
+     "file": "teams/SWOSMASTERS.EDT",
+     "name": "REAL MADRID"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    0,
+    0
+   ],
+   "minute": 0,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    2,
+    5
+   ],
+   "title": "KEEPER LEVEL 2",
+   "win": "win"
+  },
+  {
+   "id": "swos2020-a507",
+   "name": "REAL MADRID 0-0 REAL MADRID",
+   "category": "EUROPEAN CUPS",
+   "difficulty": 5,
+   "about": "0-0, MATCH START, FREE KICK, REAL MADRID MUST WIN",
+   "description": [
+    "- REAL MADRID 0-0 ONCE LOBOS -",
+    "CPU KEEPER LEVEL 3",
+    "",
+    "",
+    "* 0-0, MATCH START, FREE KICK, REAL MADRID MUST WIN *"
+   ],
+   "win_message": "REAL MADRID MUST WIN",
+   "teams": [
+    {
+     "file": "teams/SWOSMASTERS.EDT",
+     "name": "REAL MADRID"
+    },
+    {
+     "file": "teams/SWOSMASTERS.EDT",
+     "name": "REAL MADRID"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    0,
+    0
+   ],
+   "minute": 0,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    2,
+    5
+   ],
+   "title": "KEEPER LEVEL 3",
+   "win": "win"
+  },
+  {
+   "id": "swos2020-a508",
+   "name": "REAL MADRID 0-0 REAL MADRID",
+   "category": "EUROPEAN CUPS",
+   "difficulty": 5,
+   "about": "0-0, MATCH START, FREE KICK, REAL MADRID MUST WIN",
+   "description": [
+    "- REAL MADRID 0-0 ONCE LOBOS -",
+    "CPU KEEPER LEVEL 4",
+    "",
+    "",
+    "* 0-0, MATCH START, FREE KICK, REAL MADRID MUST WIN *"
+   ],
+   "win_message": "REAL MADRID MUST WIN",
+   "teams": [
+    {
+     "file": "teams/SWOSMASTERS.EDT",
+     "name": "REAL MADRID"
+    },
+    {
+     "file": "teams/SWOSMASTERS.EDT",
+     "name": "REAL MADRID"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    0,
+    0
+   ],
+   "minute": 0,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    2,
+    5
+   ],
+   "title": "KEEPER LEVEL 4",
+   "win": "win"
+  },
+  {
+   "id": "swos2020-a509",
+   "name": "REAL MADRID 0-0 REAL MADRID",
+   "category": "EUROPEAN CUPS",
+   "difficulty": 5,
+   "about": "0-0, MATCH START, FREE KICK, REAL MADRID MUST WIN",
+   "description": [
+    "- REAL MADRID 0-0 ONCE LOBOS -",
+    "CPU KEEPER LEVEL 5",
+    "",
+    "",
+    "* 0-0, MATCH START, FREE KICK, REAL MADRID MUST WIN *"
+   ],
+   "win_message": "REAL MADRID MUST WIN",
+   "teams": [
+    {
+     "file": "teams/SWOSMASTERS.EDT",
+     "name": "REAL MADRID"
+    },
+    {
+     "file": "teams/SWOSMASTERS.EDT",
+     "name": "REAL MADRID"
+    }
+   ],
+   "yours": 0,
+   "score": [
+    0,
+    0
+   ],
+   "minute": 0,
+   "extra_time": false,
+   "penalties": false,
+   "length": 0,
+   "playing_up": 1,
+   "kick_off": 0,
+   "subs": [
+    2,
+    5
+   ],
+   "title": "KEEPER LEVEL 5",
+   "win": "win"
+  }
+ ]
+}
