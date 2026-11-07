@@ -15,6 +15,8 @@ void        United_DrawStyleIcon(int32_t icon, int32_t x, int32_t y);
 void        United_DrawPageArrow(int32_t down, int32_t x, int32_t y);
 /* SWOS 2020's difficulty stars (its starsMap), n of them at (x, y) (src/united_challenges.c). */
 void        United_DrawStars(int32_t n, int32_t x, int32_t y);
+/* A rating's stars, in halves (1 = half a star .. 10 = five): SWOS Galore's */
+void        United_DrawRating(int32_t halves, int32_t x, int32_t y);
 /* SWOS United's screens (registered by Account_Init). */
 void        UnitedRankings_Register(void);
 void        UnitedLeagues_Register(void);

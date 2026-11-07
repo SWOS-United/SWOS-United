@@ -105,6 +105,13 @@ rebase), `git cherry-pick <commit>` one fix, or nothing at all. `upstream` is fe
   category CUSTOM, its full name (`record_name`). `SWOS_SCN_IMPORT_TEST=<file.SCN>` or
   `=online:<server file name>` (with `--menu=swos2020/selectCategoryMenu`, `SWOS_HARNESS_TURBO=1`)
   imports one and prints its fields.
+- **SWOS GALORE** (`src/united_galore.c`, mod `galore2020`, on by default; MODES -> SWOS GALORE):
+  SWOS 2020's menu and its chart -- ALL TIME and MONTHLY (a year back), seven a page with the
+  average rating in stars; a pick downloaded (online-records `galore.download`: the server's
+  folders are case-sensitive, the name as it spells it) and shown in the viewer, its scene alone
+  (OpenSWOS's `ModApi_ViewHighlights`, copied to the save folder as GALORE.HIL). RATE and SHARE
+  HIGHLIGHTS say they come with SWOS United's own server (they would write to sensiblesoccer.de).
+  `SWOS_GALORE_TEST=<rank>` (with `--menu=swos2020/swosGaloreMenu`) fetches, downloads and plays one.
 - **SWOS 2020's speedrun screens** (`src/united_speedrun.c`, mod `speedrun2020`, on by default):
   MODES / COMPETE -> SPEEDRUNS opens SWOS 2020's SPEEDRUN (eight targets), a target's difficulty
   (SELECT TEAMS or the five preconfigured pairs -- OpenSWOS's, from 96/97's database, one per

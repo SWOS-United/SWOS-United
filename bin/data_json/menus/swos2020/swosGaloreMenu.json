@@ -1,0 +1,221 @@
+{
+  "name": "swosGaloreMenu",
+  "source": {
+    "project": "swos-2020",
+    "file": "src/menus/swosGalore.mnu",
+    "commit": "df38d20"
+  },
+  "menu_flags": {
+    "dos_redraw": true
+  },
+  "onInit": null,
+  "onReturn": null,
+  "onDraw": "swosGaloreMenu_OnDraw",
+  "defaultEntry": 2,
+  "exports": {},
+  "items": [
+    {
+      "kind": "entry",
+      "name": "title",
+      "coords": {
+        "x": 92,
+        "y": 0,
+        "w": 125,
+        "h": 15
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "SWOS GALORE"
+        },
+        {
+          "op": "colors",
+          "frame_color": 1,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "allTimeChart",
+      "coords": {
+        "x": 84,
+        "y": 38,
+        "w": 140,
+        "h": 15
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "ALL TIME CHART"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 11
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": -1,
+          "down": 2
+        },
+        {
+          "op": "onselect_fire",
+          "func": "selectAllTimeChart"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "monthlyChart",
+      "coords": {
+        "x": 84,
+        "y": 68,
+        "w": 140,
+        "h": 15
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "MONTHLY CHART"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 11
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": 1,
+          "down": 3
+        },
+        {
+          "op": "onselect_fire",
+          "func": "selectMonthlyChart"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "latestUploads",
+      "coords": {
+        "x": 84,
+        "y": 98,
+        "w": 140,
+        "h": 15
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "RATE HIGHLIGHTS"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 14
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": 2,
+          "down": 4
+        },
+        {
+          "op": "onselect_fire",
+          "func": "selectLatestUploads"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "shareHighlights",
+      "coords": {
+        "x": 84,
+        "y": 128,
+        "w": 140,
+        "h": 15
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "SHARE HIGHLIGHTS"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 14
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": 3,
+          "down": 6
+        },
+        {
+          "op": "onselect_fire",
+          "func": "selectShareHighlights"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "desc",
+      "coords": {
+        "x": 84,
+        "y": 158,
+        "w": 140,
+        "h": 20
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "exit",
+      "coords": {
+        "x": 92,
+        "y": 185,
+        "w": 125,
+        "h": 15
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "str": "_aExit"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 12
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": 4,
+          "down": -1
+        },
+        {
+          "op": "onselect_fire",
+          "func": "SetExitMenuFlag"
+        }
+      ]
+    }
+  ]
+}

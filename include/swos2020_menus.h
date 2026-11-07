@@ -55,9 +55,18 @@
     X(customChallengesSortByMenu, "swos2020/customChallengesSortByMenu", CustomChallengesSortByMenu, 7) \
     X(customChallengesNewOrLoadMenu, "swos2020/customChallengesNewOrLoadMenu", CustomChallengesNewOrLoadMenu, 6) \
     X(customChallengesEditMenu, "swos2020/customChallengesEditMenu", CustomChallengesEditMenu, 53) \
+    X(swosGaloreMenu, "swos2020/swosGaloreMenu", SwosGaloreMenu, 7) \
+    X(chartHighlightsMenu, "swos2020/chartHighlightsMenu", ChartHighlightsMenu, 52) \
 
-/* Every handler name the imported menus reference (436), sorted. */
+/* Every handler name the imported menus reference (452), sorted. */
 #define SWOS2020_MENU_CALLBACKS(X) \
+    X(ChartHighlightsMenu_OnDraw) \
+    X(ChartHighlightsMenu_OnInit) \
+    X(ChartHighlightsMenu_OnReturn) \
+    X(ChartHighlights_Filename_onSelect) \
+    X(ChartHighlights_ScrollDown_onSelect) \
+    X(ChartHighlights_ScrollUp_onSelect) \
+    X(ChartHighlights_menuExit_onSelect) \
     X(LeftBasicColor_Dec_onSelect) \
     X(LeftBasicColor_Inc_onSelect) \
     X(LeftReset_onSelect) \
@@ -187,6 +196,7 @@
     X(difficulty_Inc_onSelect) \
     X(difficulty_onSelect) \
     X(drawGoButtonAndStarsGraphics) \
+    X(drawStarIconsForChartHighlights) \
     X(draw_mp_game_style_icon_sets) \
     X(exitNewsMenu_OnSelect) \
     X(exitRankingMenu_OnSelect) \
@@ -341,6 +351,7 @@
     X(newsMenu_OnInit) \
     X(newsMenu_OnReturn) \
     X(newsOnDiscordNewsMenu_OnSelect) \
+    X(newsOnDiscordSWOSGalore_OnSelect) \
     X(news_ScrollDown_onSelect) \
     X(news_ScrollUp_onSelect) \
     X(oneGoal_OnSelect) \
@@ -403,6 +414,7 @@
     X(scenarioOnlineStatsMenu_exit_OnSelect) \
     X(scenarioOnlineStatsMenu_scrollDown_onSelect) \
     X(scenarioOnlineStatsMenu_scrollUp_onSelect) \
+    X(selectAllTimeChart) \
     X(selectAmigaRankingsMenu) \
     X(selectCategoryMenu_OnBackground) \
     X(selectCategoryMenu_OnDraw) \
@@ -425,6 +437,7 @@
     X(selectGgpoFrameDelayDec) \
     X(selectGgpoFrameDelayInc) \
     X(selectInputChatMsg) \
+    X(selectLatestUploads) \
     X(selectLeagueAndTournament) \
     X(selectLegOpt1) \
     X(selectLiveCastUrl) \
@@ -433,6 +446,7 @@
     X(selectMatchInfo) \
     X(selectMaxSubs1) \
     X(selectMinSubs1) \
+    X(selectMonthlyChart) \
     X(selectMyCustomTeam1) \
     X(selectMyCustomTeam2) \
     X(selectMyCustomTeam3) \
@@ -447,6 +461,7 @@
     X(selectScenarioActionMenu_OnDraw) \
     X(selectScenarioActionMenu_OnInit) \
     X(selectScenarioActionMenu_onSelect) \
+    X(selectShareHighlights) \
     X(selectSpeedrunDifficultyCardExit_OnSelect) \
     X(selectSpeedrunDifficultyCardMenu_OnDraw) \
     X(selectSpeedrunDifficultyCardMenu_OnInit) \
@@ -473,6 +488,7 @@
     X(speedrunMode_Dec_onSelect) \
     X(speedrunMode_Inc_onSelect) \
     X(speedrunMode_onSelect) \
+    X(swosGaloreMenu_OnDraw) \
     X(tackleGoal_OnSelect) \
     X(tenGoals_OnSelect) \
     X(threeGoals_OnSelect) \
@@ -493,6 +509,8 @@
     X(viewMyRecordsMenuOnInit) \
     X(viewMyRecordsReset_OnSelect) \
     X(viewMyRecordsSync_OnSelect) \
+    X(yearMonth_Dec_onSelect) \
+    X(yearMonth_Inc_onSelect) \
     X(yellowCard_OnSelect) \
 
 /* ---- logInMenu -- src/menus/logIn.mnu ---- */
@@ -3019,5 +3037,109 @@ enum {
     CustomChallengesEditMenu_onbackground = 52,
 };
 #define CustomChallengesEditMenu_numEntries 53
+
+/* ---- swosGaloreMenu -- src/menus/swosGalore.mnu ---- */
+enum {
+    SwosGaloreMenu_title = 0,
+    SwosGaloreMenu_allTimeChart = 1,
+    SwosGaloreMenu_monthlyChart = 2,
+    SwosGaloreMenu_latestUploads = 3,
+    SwosGaloreMenu_shareHighlights = 4,
+    SwosGaloreMenu_desc = 5,
+    SwosGaloreMenu_exit = 6,
+};
+#define SwosGaloreMenu_numEntries 7
+
+/* ---- chartHighlightsMenu -- src/menus/chartHighlights.mnu ---- */
+enum {
+    ChartHighlightsMenu_header = 0,
+    ChartHighlightsMenu_yearMonth = 1,
+    ChartHighlightsMenu_yearMonth_Dec = 2,
+    ChartHighlightsMenu_yearMonth_Inc = 3,
+    ChartHighlightsMenu_ranking_00 = 4,
+    ChartHighlightsMenu_ranking_01 = 5,
+    ChartHighlightsMenu_ranking_02 = 6,
+    ChartHighlightsMenu_ranking_03 = 7,
+    ChartHighlightsMenu_ranking_04 = 8,
+    ChartHighlightsMenu_ranking_05 = 9,
+    ChartHighlightsMenu_ranking_06 = 10,
+    ChartHighlightsMenu_ranking_07 = 11,
+    ChartHighlightsMenu_datetime_00 = 12,
+    ChartHighlightsMenu_datetime_01 = 13,
+    ChartHighlightsMenu_datetime_02 = 14,
+    ChartHighlightsMenu_datetime_03 = 15,
+    ChartHighlightsMenu_datetime_04 = 16,
+    ChartHighlightsMenu_datetime_05 = 17,
+    ChartHighlightsMenu_datetime_06 = 18,
+    ChartHighlightsMenu_datetime_07 = 19,
+    ChartHighlightsMenu_username_00 = 20,
+    ChartHighlightsMenu_username_01 = 21,
+    ChartHighlightsMenu_username_02 = 22,
+    ChartHighlightsMenu_username_03 = 23,
+    ChartHighlightsMenu_username_04 = 24,
+    ChartHighlightsMenu_username_05 = 25,
+    ChartHighlightsMenu_username_06 = 26,
+    ChartHighlightsMenu_username_07 = 27,
+    ChartHighlightsMenu_filename_00 = 28,
+    ChartHighlightsMenu_filename_01 = 29,
+    ChartHighlightsMenu_filename_02 = 30,
+    ChartHighlightsMenu_filename_03 = 31,
+    ChartHighlightsMenu_filename_04 = 32,
+    ChartHighlightsMenu_filename_05 = 33,
+    ChartHighlightsMenu_filename_06 = 34,
+    ChartHighlightsMenu_filename_07 = 35,
+    ChartHighlightsMenu_avgRate_00 = 36,
+    ChartHighlightsMenu_avgRate_01 = 37,
+    ChartHighlightsMenu_avgRate_02 = 38,
+    ChartHighlightsMenu_avgRate_03 = 39,
+    ChartHighlightsMenu_avgRate_04 = 40,
+    ChartHighlightsMenu_avgRate_05 = 41,
+    ChartHighlightsMenu_avgRate_06 = 42,
+    ChartHighlightsMenu_avgRate_07 = 43,
+    ChartHighlightsMenu_scrollUp = 44,
+    ChartHighlightsMenu_scrollDown = 45,
+    ChartHighlightsMenu_page = 46,
+    ChartHighlightsMenu_longDesc = 47,
+    ChartHighlightsMenu_menuHint = 48,
+    ChartHighlightsMenu_newsOnDiscord = 49,
+    ChartHighlightsMenu_menuExit = 50,
+    ChartHighlightsMenu_dummy = 51,
+};
+#define ChartHighlightsMenu_numEntries 52
+#define ChartHighlightsMenu_kCH_ADJUSTY (3)
+#define ChartHighlightsMenu_kCH_MaxRows (8)
+#define ChartHighlightsMenu_kCH_ButtonY0 (44)
+#define ChartHighlightsMenu_kCH_ButtonHeight (14)
+#define ChartHighlightsMenu_kCH_ButtonStep (16)
+#define ChartHighlightsMenu_kCH_RankingPosX (0)
+#define ChartHighlightsMenu_kCH_RankingPosY (44)
+#define ChartHighlightsMenu_kCH_RankingStep (16)
+#define ChartHighlightsMenu_kCH_RankingWidth (32)
+#define ChartHighlightsMenu_kCH_RankingHeight (14)
+#define ChartHighlightsMenu_kCH_RankingBaseColor (14)
+#define ChartHighlightsMenu_kCH_DatetimePosX (34)
+#define ChartHighlightsMenu_kCH_DatetimePosY (44)
+#define ChartHighlightsMenu_kCH_DatetimeStep (16)
+#define ChartHighlightsMenu_kCH_DatetimeWidth (52)
+#define ChartHighlightsMenu_kCH_DatetimeHeight (14)
+#define ChartHighlightsMenu_kCH_DatetimeBaseColor (11)
+#define ChartHighlightsMenu_kCH_UsernamePosX (88)
+#define ChartHighlightsMenu_kCH_UsernamePosY (44)
+#define ChartHighlightsMenu_kCH_UsernameStep (16)
+#define ChartHighlightsMenu_kCH_UsernameWidth (74)
+#define ChartHighlightsMenu_kCH_UsernameHeight (14)
+#define ChartHighlightsMenu_kCH_UsernameBaseColor (7)
+#define ChartHighlightsMenu_kCH_FilenamePosX (164)
+#define ChartHighlightsMenu_kCH_FilenamePosY (44)
+#define ChartHighlightsMenu_kCH_FilenameStep (16)
+#define ChartHighlightsMenu_kCH_FilenameWidth (110)
+#define ChartHighlightsMenu_kCH_FilenameHeight (14)
+#define ChartHighlightsMenu_kCH_FilenameBaseColor (3)
+#define ChartHighlightsMenu_kCH_AvgRatePosX (276)
+#define ChartHighlightsMenu_kCH_AvgRatePosY (44)
+#define ChartHighlightsMenu_kCH_AvgRateStep (16)
+#define ChartHighlightsMenu_kCH_AvgRateWidth (34)
+#define ChartHighlightsMenu_kCH_AvgRateHeight (14)
+#define ChartHighlightsMenu_kCH_AvgRateBaseColor (3)
 
 #endif /* SWOS2020_MENUS_H */

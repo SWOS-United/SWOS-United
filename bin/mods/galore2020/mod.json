@@ -1,0 +1,13 @@
+{
+ "uuid": "7b287571-59a7-5bb7-a0db-dd4533e56d48",
+ "id": "galore2020",
+ "name": "SWOS Galore",
+ "version": "1.0",
+ "author": "SWOS United (the screens: SWOS 2020's, github.com/starwindz/swos-2020)",
+ "about": "SWOS 2020's shared goal highlights: the all-time and monthly charts, each highlight watched in the viewer. Read from sensiblesoccer.de; rating and sharing come with SWOS United's own server.",
+ "targets": [
+  "sdl"
+ ],
+ "changes": "cosmetic",
+ "default": true
+}

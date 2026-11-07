@@ -73,6 +73,8 @@ MULTIPLAYER_MENUS = [
     # custom challenges: CREATE / SHARE / PLAY, the shared list, its sorting -- src/united_challenges.c
     "customChallengesMain", "customChallengesSelectSCN", "customChallengesSortBy",
     "customChallengesNewOrLoad", "customChallengesEdit",
+    # SWOS Galore: its menu and the highlights charts -- src/united_galore.c   (replays/replaysMenu.cpp)
+    "swosGalore", "chartHighlights",
 ]
 
 # SWOS 2020's skip opcodes, by NUMBER (menuCodes.h: kLeftSkip = 17 ... kDownSkip = 20),

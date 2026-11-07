@@ -177,6 +177,11 @@ static void draw_stars(int32_t n, int32_t ox, int32_t oy)
     draw_map(k_stars, ox, oy, 0, 10 * (1 + 2 * (n - 1)), 36, 10);
 }
 void United_DrawStars(int32_t n, int32_t x, int32_t y) { draw_stars(n, x, y); }
+void United_DrawRating(int32_t halves, int32_t x, int32_t y)    /* (SWOS 2020's getStarIconIndex) */
+{
+    if (halves >= 1 && halves <= 10)
+        draw_map(k_stars, x, y, 0, 10 * (halves - 1), 36, 10);
+}
 
 /* ---- the challenges, from OpenSWOS's challenges mod ---- */
 

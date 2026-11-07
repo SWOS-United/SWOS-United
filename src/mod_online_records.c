@@ -21,6 +21,8 @@
  *   custom.list           {"by_name"}: the shared custom challenges' files (SWOS 2020's .SCN)
  *   custom.info           {}: their texts (nickname, time, start, et/pen, win, level)
  *   custom.download       {"file"}: the file, saved as the challenges mod's download.scn
+ *   galore.chart          {"month"}: SWOS Galore's chart, all time ("") or a month ("2026-10")
+ *   galore.download       {"user","file"}: a highlight, saved as the galore save folder's view.HIL
  *
  * The network is SWOS-API's client (third_party/swos-api: include/united_records.h, the requests
  * and their answers); this file is the game's side -- who, a worker thread and its queue (a call
@@ -71,7 +73,7 @@ static void who(char *out, uint32_t cap, int32_t mustBeLoggedIn)
 
 /* ---- the worker and its queue ---- */
 
-enum { J_TALLY = 1, J_WON, J_SPEEDRUN, J_BOARD, J_MINE, J_NEWS, J_SCNLIST, J_SCNINFO, J_SCNFILE };
+enum { J_TALLY = 1, J_WON, J_SPEEDRUN, J_BOARD, J_MINE, J_NEWS, J_SCNLIST, J_SCNINFO, J_SCNFILE, J_GALORE, J_HIL };
 typedef struct {
     int32_t        kind;
     char           user[64];
@@ -81,7 +83,7 @@ typedef struct {
 } Job;
 
 /* The boards' answers (under s_lock): each the last one asked for, by what was asked. */
-enum { F_BOARD, F_MINE, F_NEWS, F_SCNLIST, F_SCNINFO, F_SCNFILE, kFetches };
+enum { F_BOARD, F_MINE, F_NEWS, F_SCNLIST, F_SCNINFO, F_SCNFILE, F_GALORE, F_HIL, kFetches };
 typedef struct { char key[96]; int32_t state; char *text; uint32_t size; } Fetch;   /* state: 1 asking,
                                                                               * 2 here, 3 failed */
 static Fetch s_fetch[kFetches];
@@ -154,6 +156,31 @@ static void run_job(Job *j)
         SDL_UnlockMutex(s_lock);
         if (!ok)
             free(text);
+    } else if (j->kind == J_GALORE) {
+        const uint32_t cap = 1 << 18;
+        char *text = (char *)malloc(cap);
+        const int32_t ok = text && UnitedRecords_GaloreChart(j->category, text, cap);
+        SDL_LockMutex(s_lock);
+        free(s_fetch[F_GALORE].text);
+        s_fetch[F_GALORE].text = ok ? text : NULL;
+        s_fetch[F_GALORE].state = ok ? 2 : 3;
+        SDL_UnlockMutex(s_lock);
+        if (!ok)
+            free(text);
+    } else if (j->kind == J_HIL) {
+        unsigned char *data = NULL;
+        uint32_t size = 0;
+        const int32_t ok = UnitedRecords_GaloreDownload(j->user, j->name, &data, &size);
+        SDL_LockMutex(s_lock);
+        free(s_fetch[F_HIL].text);
+        s_fetch[F_HIL].text = ok ? (char *)data : NULL;
+        s_fetch[F_HIL].size = ok ? size : 0;
+        s_fetch[F_HIL].state = ok ? 2 : 3;
+        SDL_UnlockMutex(s_lock);
+        if (!ok)
+            free(data);
+        fprintf(stderr, "[online-records] highlight %s/%s: %s (%u bytes)\n", j->user, j->name,
+                ok ? "downloaded" : "NOT downloaded", (unsigned)size);
     } else if (j->kind == J_SCNFILE) {
         unsigned char *data = NULL;
         uint32_t size = 0;
@@ -298,6 +325,46 @@ static int32_t service(const char *method, const char *args, char *out, uint32_t
         if (!strcmp(method, "custom.info"))
             return fetch(F_SCNINFO, J_SCNINFO, "info", &j, json_bool(args, "$.fresh"), out, cap);
         return fetch(F_SCNLIST, J_SCNLIST, byName ? "name" : "date", &j, json_bool(args, "$.fresh"), out, cap);
+    }
+    if (!strcmp(method, "galore.chart")) {
+        Job j;
+        char key[32];
+        memset(&j, 0, sizeof j);
+        json_str(args, "$.month", j.category, 8);
+        snprintf(key, sizeof key, "chart/%s", j.category);
+        return fetch(F_GALORE, J_GALORE, key, &j, json_bool(args, "$.fresh"), out, cap);
+    }
+    if (!strcmp(method, "galore.download")) {
+        Job j;
+        char key[96];
+        memset(&j, 0, sizeof j);
+        json_str(args, "$.user", j.user, (int32_t)sizeof j.user);
+        json_str(args, "$.file", j.name, (int32_t)sizeof j.name);
+        if (!j.user[0] || !j.name[0] || strchr(j.name, '/') || strchr(j.user, '/') || strstr(j.name, "..") ||
+            strstr(j.user, ".."))
+            return -1;
+        snprintf(key, sizeof key, "%s/%s", j.user, j.name);
+        SDL_LockMutex(s_lock);
+        Fetch *f = &s_fetch[F_HIL];
+        if (strcmp(f->key, key) != 0 || f->state == 0) {
+            snprintf(f->key, sizeof f->key, "%s", key);
+            f->state = 1;
+            SDL_UnlockMutex(s_lock);
+            j.kind = J_HIL;
+            push(&j);
+            return 1;
+        }
+        int32_t rc = f->state == 1 ? 1 : f->state == 3 ? -1 : 0;
+        if (rc == 0)
+            rc = ModApi_SaveFile("galore", "view.HIL", f->text, f->size) == 0 ? 0 : -1;
+        if (rc != 1) {
+            f->state = 0;
+            f->key[0] = 0;
+        }
+        SDL_UnlockMutex(s_lock);
+        if (rc == 0 && out && cap)
+            snprintf(out, cap, "view.HIL");
+        return rc;
     }
     if (!strcmp(method, "custom.download")) {
         Job j;
