@@ -88,9 +88,14 @@ rebase), `git cherry-pick <commit>` one fix, or nothing at all. `upstream` is fe
   their passwords are in `.test-accounts` at the checkout's root, `user:password` a line,
   gitignored -- never in git, a log or a commit message.
 
-- `third_party/swos-api` -- private submodule, github.com/SWOS-United/SWOS-API: the website's
-  API (SWOS 2020's php_manager) and the game's C++ client for it. Its secrets are never in git
-  (its README): `swos_api_config.php` on the server, build defines for the client.
+- `third_party/swos-api` -- submodule, github.com/SWOS-United/SWOS-API (private for now): **the
+  home of SWOS United's online API, both sides** -- the website's `/api/*` endpoints and the
+  game's client for them (the lead developer, 2026-11-07). New endpoints and client code go
+  THERE, never in this repository's `src/`, which only calls the client. The API is documented
+  in its issues (log-in `POST /api/auth/key`, `api_key` with every call; users, rankings,
+  seasons, tournaments, matches). Started afresh 2026-11-07 (46ae08c): SWOS 2020's old API, its
+  `php_manager`, is SWOS 2020's and stays in its own repository. Secrets never in git: ignored
+  files with a `.sample` beside each (its README).
 - `.gitmodules` lists it beside OpenSWOS's submodules: a merge that brings a new upstream
   submodule keeps both entries.
 
