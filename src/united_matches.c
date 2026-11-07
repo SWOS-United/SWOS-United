@@ -30,11 +30,13 @@
  * api/open-matches ("league_matches", each with its duel_ranking_id), reported the same way;
  * the tournament system makes and closes those, and books their Elo.
  */
-#include "united_api.h"
 #include "online_account.h"
 #include "project_identity.h"
 
 #if PROJECT_ACCOUNTS && defined(SWOS_SDL_BUILD) && defined(SWOS_HTTPS) && defined(SWOS_NETPLAY)
+
+#include "united_api.h"     /* (SWOS-API's client: third_party/swos-api) */
+#include "united_ui.h"
 
 #include <stdio.h>
 #include <stdlib.h>

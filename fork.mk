@@ -21,3 +21,22 @@ $(OBJDIR)/mbedtls/%.o: $(MBEDTLS_DIR)/library/%.c $(OBJDIR)/.build-flags
 	$(CC) $(FORK_CFLAGS) -c $< -o $@
 endif
 endif
+
+# SWOS-API's client (third_party/swos-api/client, a submodule): SWOS United's online API, the
+# game's side -- the sites' addresses and answers, the log-in and its session, the HTTPS
+# transport, the challenges' and speedruns' records (SWOS-API's client/README.md). Every SDL
+# build: the screens read its JSON / XML helpers even without HTTPS (its files guard what needs
+# it). New API code goes THERE, never in src/ (.claude/UNITED.md).
+SWOSAPI_DIR  := third_party/swos-api/client
+SWOSAPI_SRCS := $(wildcard $(SWOSAPI_DIR)/src/*.c)
+ifeq ($(SWOSAPI_SRCS),)
+$(error $(SWOSAPI_DIR) is empty: git submodule update --init third_party/swos-api)
+endif
+SWOSAPI_OBJS := $(patsubst $(SWOSAPI_DIR)/src/%.c,$(OBJDIR)/swos-api/%.o,$(SWOSAPI_SRCS))
+OBJECTS      += $(SWOSAPI_OBJS)
+DEPS         += $(SWOSAPI_OBJS:.o=.d)
+CFLAGS       += -I$(SWOSAPI_DIR)/include
+
+$(OBJDIR)/swos-api/%.o: $(SWOSAPI_DIR)/src/%.c $(OBJDIR)/.build-flags
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -c $< -o $@

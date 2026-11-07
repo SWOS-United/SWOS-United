@@ -1,0 +1,13 @@
+{
+ "uuid": "1c4ede8a-31d0-4c43-b78b-0bf3d867fdfe",
+ "id": "online-records",
+ "name": "Online Records",
+ "version": "1.0",
+ "author": "SWOS United (SWOS 2020's challenge and speedrun records)",
+ "about": "Your challenges and speedruns on sensiblesoccer.de, as in SWOS 2020: what you have beaten, how many players have, your world rank.",
+ "targets": [
+  "sdl"
+ ],
+ "changes": "cosmetic",
+ "default": true
+}

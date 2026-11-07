@@ -67,6 +67,11 @@
  * Ranked and league results still go to sensiblesoccer.de (the account ids are the same). */
 #define PROJECT_ACCOUNT_API     "https://swos.swosunited.com/api/"
 
+/* The challenges' and speedruns' records online (src/mod_online_records.c): where SWOS 2020's
+ * galoreapi_v15.php and swosapi_v3.php are -- SWOS-API (third_party/swos-api) once it is
+ * deployed; today SWOS 2020's own folder on sensiblesoccer.de. No trailing slash. */
+#define PROJECT_RECORDS_API     "https://sensiblesoccer.de/swos2020"
+
 /* SWOS 2020's online-menu entries for features this project will not have -- the log-in's NEWS,
  * MULTIPLAYER SETTINGS' commentary and chat rows, JOIN AMIGA SUPER LEAGUE, JOIN DISCORD, HELP
  * DESK (src/online_menus.c): 1 hides them, 0 keeps them for a fork that builds them. */

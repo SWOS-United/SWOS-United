@@ -10,9 +10,11 @@
  * page under a header row -- place, name, nation, played, won, drawn, lost, SRN and its last
  * change -- the logged-in player's row picked out.
  */
-#include "united_api.h"
 
 #if defined(SWOS_SDL_BUILD) && defined(SWOS_HTTPS)
+
+#include "united_api.h"     /* (SWOS-API's client: third_party/swos-api) */
+#include "united_ui.h"
 
 #include <stdio.h>
 #include <stdlib.h>
