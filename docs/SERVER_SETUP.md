@@ -63,8 +63,14 @@ The repository is public, so plain HTTPS needs no key and cannot push -- read-on
 key in `/home/swos/.ssh/`, the `Host github-swos-united` alias in `/home/swos/.ssh/config`, and
 clone `git@github-swos-united:SWOS-United/SWOS-United.git`.)
 
-**Do not initialise the submodules** (no `--recursive`, no `git submodule update --init`): the
-server needs none of them, and `third_party/swos-api` is private.
+**Do not initialise the submodules by hand** (no `--recursive`): the matchmaker needs none of
+them, and the recordings player's build (`scripts/build_playback.sh`) fetches the ones it needs --
+the rules library and `fork.submodules`' (`third_party/swos-api`, public, over https).
+
+**The recordings player needs the game's data** (its graphics and sounds, never in git): put an
+assets folder made by OpenSWOS Setup / `swosdata` on the server and set `SWOS_ASSETS` to it for the
+player's build -- without it `build_playback.sh` refuses to build (a player built without the data
+hangs at load: it did, 2026-11-07).
 
 ## 5. Build the server
 

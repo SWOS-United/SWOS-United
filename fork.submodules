@@ -1,0 +1,3 @@
+# SWOS United's own submodules its build needs (OpenSWOS docs/FORKING.md): fetched by
+# scripts/build_playback.sh, since a server's git pull fetches none.
+third_party/swos-api

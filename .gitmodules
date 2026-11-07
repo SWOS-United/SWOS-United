@@ -10,7 +10,7 @@
 	url = https://github.com/benbaker76/swosgfx.git
 [submodule "third_party/swos-api"]
 	path = third_party/swos-api
-	url = git@github.com:SWOS-United/SWOS-API.git
+	url = https://github.com/SWOS-United/SWOS-API.git
 [submodule "third_party/swos-competition-engine"]
 	path = third_party/swos-competition-engine
 	url = https://github.com/aminta/swos-competition-engine
