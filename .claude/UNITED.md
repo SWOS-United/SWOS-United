@@ -86,6 +86,18 @@ rebase), `git cherry-pick <commit>` one fix, or nothing at all. `upstream` is fe
   completions, a row a win). `SWOS_CHALLENGES2020_TEST=<category>[/<id>]` with
   `--menu=swos2020/<screen>` opens one straight (the check: there is no scripting of menu keys).
   Not drawn yet: the uniforms, red cards and injuries on a challenge's page.
+- **SWOS 2020's custom challenges** (in `src/united_challenges.c`; SELECT CATEGORY's CUSTOM
+  CHALLENGES): CREATE (OpenSWOS's challenges mod's own editor for now), SHARE (not yet: SWOS
+  2020 uploads to its server with no log-in -- the owner's call), PLAY -- the 274-odd challenges
+  SWOS 2020's players shared on sensiblesoccer.de, its SelectSCN list (home, score, away, creator,
+  level stars; COMPLETION; five sortings). One picked is downloaded (online-records
+  `custom.download`), unpacked (`src/united_scn.c`: a .SCN is a 7z of challenge.ini and two .TEAM;
+  the LZMA SDK's decoder, `third_party/lzma`, public domain) and made one of the player's fetched
+  challenges -- its teams an `.EDT` and the challenge in `shared.json`, the challenges mod's save
+  folder (OpenSWOS cea125ac) -- then opened on its page. Known online as SWOS 2020 knew it:
+  category CUSTOM, its full name (`record_name`). `SWOS_SCN_IMPORT_TEST=<file.SCN>` or
+  `=online:<server file name>` (with `--menu=swos2020/selectCategoryMenu`, `SWOS_HARNESS_TURBO=1`)
+  imports one and prints its fields.
 - **SWOS 2020's speedrun screens** (`src/united_speedrun.c`, mod `speedrun2020`, on by default):
   MODES / COMPETE -> SPEEDRUNS opens SWOS 2020's SPEEDRUN (eight targets), a target's difficulty
   (SELECT TEAMS or the five preconfigured pairs -- OpenSWOS's, from 96/97's database, one per

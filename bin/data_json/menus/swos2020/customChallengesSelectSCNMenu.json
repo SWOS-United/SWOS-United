@@ -1,0 +1,2196 @@
+{
+  "name": "customChallengesSelectSCNMenu",
+  "source": {
+    "project": "swos-2020",
+    "file": "src/menus/customChallengesSelectSCN.mnu",
+    "commit": "df38d20"
+  },
+  "menu_flags": {
+    "dos_redraw": true
+  },
+  "onInit": "customChallengesSelectSCNMenu_OnInit",
+  "onReturn": "customChallengesSelectSCNMenu_OnReturn",
+  "onDraw": "customChallengesSelectSCNMenu_OnDraw",
+  "defaultEntry": 89,
+  "exports": {},
+  "items": [
+    {
+      "kind": "entry",
+      "name": "header",
+      "coords": {
+        "x": 62,
+        "y": 0,
+        "w": 180,
+        "h": 16
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "SELECT SCENARIO"
+        },
+        {
+          "op": "colors",
+          "frame_color": 1,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "team1_00",
+      "coords": {
+        "x": -1,
+        "y": 24,
+        "w": 93,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x4000",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "team1_01",
+      "coords": {
+        "x": -1,
+        "y": 32,
+        "w": 93,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x4000",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "team1_02",
+      "coords": {
+        "x": -1,
+        "y": 40,
+        "w": 93,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x4000",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "team1_03",
+      "coords": {
+        "x": -1,
+        "y": 48,
+        "w": 93,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x4000",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "team1_04",
+      "coords": {
+        "x": -1,
+        "y": 56,
+        "w": 93,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x4000",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "team1_05",
+      "coords": {
+        "x": -1,
+        "y": 64,
+        "w": 93,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x4000",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "team1_06",
+      "coords": {
+        "x": -1,
+        "y": 72,
+        "w": 93,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x4000",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "team1_07",
+      "coords": {
+        "x": -1,
+        "y": 80,
+        "w": 93,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x4000",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "team1_08",
+      "coords": {
+        "x": -1,
+        "y": 88,
+        "w": 93,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x4000",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "team1_09",
+      "coords": {
+        "x": -1,
+        "y": 96,
+        "w": 93,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x4000",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "team1_10",
+      "coords": {
+        "x": -1,
+        "y": 104,
+        "w": 93,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x4000",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "team1_11",
+      "coords": {
+        "x": -1,
+        "y": 112,
+        "w": 93,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x4000",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "team1_12",
+      "coords": {
+        "x": -1,
+        "y": 120,
+        "w": 93,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x4000",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "team1_13",
+      "coords": {
+        "x": -1,
+        "y": 128,
+        "w": 93,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x4000",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "team1_14",
+      "coords": {
+        "x": -1,
+        "y": 136,
+        "w": 93,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x4000",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "team1_15",
+      "coords": {
+        "x": -1,
+        "y": 144,
+        "w": 93,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x4000",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "teamScore_00",
+      "coords": {
+        "x": 93,
+        "y": 24,
+        "w": 20,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "teamScore_01",
+      "coords": {
+        "x": 93,
+        "y": 32,
+        "w": 20,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "teamScore_02",
+      "coords": {
+        "x": 93,
+        "y": 40,
+        "w": 20,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "teamScore_03",
+      "coords": {
+        "x": 93,
+        "y": 48,
+        "w": 20,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "teamScore_04",
+      "coords": {
+        "x": 93,
+        "y": 56,
+        "w": 20,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "teamScore_05",
+      "coords": {
+        "x": 93,
+        "y": 64,
+        "w": 20,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "teamScore_06",
+      "coords": {
+        "x": 93,
+        "y": 72,
+        "w": 20,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "teamScore_07",
+      "coords": {
+        "x": 93,
+        "y": 80,
+        "w": 20,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "teamScore_08",
+      "coords": {
+        "x": 93,
+        "y": 88,
+        "w": 20,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "teamScore_09",
+      "coords": {
+        "x": 93,
+        "y": 96,
+        "w": 20,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "teamScore_10",
+      "coords": {
+        "x": 93,
+        "y": 104,
+        "w": 20,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "teamScore_11",
+      "coords": {
+        "x": 93,
+        "y": 112,
+        "w": 20,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "teamScore_12",
+      "coords": {
+        "x": 93,
+        "y": 120,
+        "w": 20,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "teamScore_13",
+      "coords": {
+        "x": 93,
+        "y": 128,
+        "w": 20,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "teamScore_14",
+      "coords": {
+        "x": 93,
+        "y": 136,
+        "w": 20,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "teamScore_15",
+      "coords": {
+        "x": 93,
+        "y": 144,
+        "w": 20,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "team2_00",
+      "coords": {
+        "x": 114,
+        "y": 24,
+        "w": 93,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x8000",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "team2_01",
+      "coords": {
+        "x": 114,
+        "y": 32,
+        "w": 93,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x8000",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "team2_02",
+      "coords": {
+        "x": 114,
+        "y": 40,
+        "w": 93,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x8000",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "team2_03",
+      "coords": {
+        "x": 114,
+        "y": 48,
+        "w": 93,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x8000",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "team2_04",
+      "coords": {
+        "x": 114,
+        "y": 56,
+        "w": 93,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x8000",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "team2_05",
+      "coords": {
+        "x": 114,
+        "y": 64,
+        "w": 93,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x8000",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "team2_06",
+      "coords": {
+        "x": 114,
+        "y": 72,
+        "w": 93,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x8000",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "team2_07",
+      "coords": {
+        "x": 114,
+        "y": 80,
+        "w": 93,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x8000",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "team2_08",
+      "coords": {
+        "x": 114,
+        "y": 88,
+        "w": 93,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x8000",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "team2_09",
+      "coords": {
+        "x": 114,
+        "y": 96,
+        "w": 93,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x8000",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "team2_10",
+      "coords": {
+        "x": 114,
+        "y": 104,
+        "w": 93,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x8000",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "team2_11",
+      "coords": {
+        "x": 114,
+        "y": 112,
+        "w": 93,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x8000",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "team2_12",
+      "coords": {
+        "x": 114,
+        "y": 120,
+        "w": 93,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x8000",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "team2_13",
+      "coords": {
+        "x": 114,
+        "y": 128,
+        "w": 93,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x8000",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "team2_14",
+      "coords": {
+        "x": 114,
+        "y": 136,
+        "w": 93,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x8000",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "team2_15",
+      "coords": {
+        "x": 114,
+        "y": 144,
+        "w": 93,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x8000",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "share_00",
+      "coords": {
+        "x": 208,
+        "y": 24,
+        "w": 62,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "share_01",
+      "coords": {
+        "x": 208,
+        "y": 32,
+        "w": 62,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "share_02",
+      "coords": {
+        "x": 208,
+        "y": 40,
+        "w": 62,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "share_03",
+      "coords": {
+        "x": 208,
+        "y": 48,
+        "w": 62,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "share_04",
+      "coords": {
+        "x": 208,
+        "y": 56,
+        "w": 62,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "share_05",
+      "coords": {
+        "x": 208,
+        "y": 64,
+        "w": 62,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "share_06",
+      "coords": {
+        "x": 208,
+        "y": 72,
+        "w": 62,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "share_07",
+      "coords": {
+        "x": 208,
+        "y": 80,
+        "w": 62,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "share_08",
+      "coords": {
+        "x": 208,
+        "y": 88,
+        "w": 62,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "share_09",
+      "coords": {
+        "x": 208,
+        "y": 96,
+        "w": 62,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "share_10",
+      "coords": {
+        "x": 208,
+        "y": 104,
+        "w": 62,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "share_11",
+      "coords": {
+        "x": 208,
+        "y": 112,
+        "w": 62,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "share_12",
+      "coords": {
+        "x": 208,
+        "y": 120,
+        "w": 62,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "share_13",
+      "coords": {
+        "x": 208,
+        "y": 128,
+        "w": 62,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "share_14",
+      "coords": {
+        "x": 208,
+        "y": 136,
+        "w": 62,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "share_15",
+      "coords": {
+        "x": 208,
+        "y": 144,
+        "w": 62,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_select_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "level_00",
+      "coords": {
+        "x": 271,
+        "y": 24,
+        "w": 33,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "level_01",
+      "coords": {
+        "x": 271,
+        "y": 32,
+        "w": 33,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "level_02",
+      "coords": {
+        "x": 271,
+        "y": 40,
+        "w": 33,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "level_03",
+      "coords": {
+        "x": 271,
+        "y": 48,
+        "w": 33,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "level_04",
+      "coords": {
+        "x": 271,
+        "y": 56,
+        "w": 33,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "level_05",
+      "coords": {
+        "x": 271,
+        "y": 64,
+        "w": 33,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "level_06",
+      "coords": {
+        "x": 271,
+        "y": 72,
+        "w": 33,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "level_07",
+      "coords": {
+        "x": 271,
+        "y": 80,
+        "w": 33,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "level_08",
+      "coords": {
+        "x": 271,
+        "y": 88,
+        "w": 33,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "level_09",
+      "coords": {
+        "x": 271,
+        "y": 96,
+        "w": 33,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "level_10",
+      "coords": {
+        "x": 271,
+        "y": 104,
+        "w": 33,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "level_11",
+      "coords": {
+        "x": 271,
+        "y": 112,
+        "w": 33,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "level_12",
+      "coords": {
+        "x": 271,
+        "y": 120,
+        "w": 33,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "level_13",
+      "coords": {
+        "x": 271,
+        "y": 128,
+        "w": 33,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "level_14",
+      "coords": {
+        "x": 271,
+        "y": 136,
+        "w": 33,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "level_15",
+      "coords": {
+        "x": 271,
+        "y": 144,
+        "w": 33,
+        "h": 7
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "scrollUp",
+      "coords": {
+        "x": 0,
+        "y": 0,
+        "w": 9,
+        "h": 13
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": " "
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": -1,
+          "down": 82
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_scrollUp_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "scrollDown",
+      "coords": {
+        "x": 0,
+        "y": 0,
+        "w": 9,
+        "h": 13
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": " "
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": 81,
+          "down": 89
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_scrollDown_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "pageInfo",
+      "coords": {
+        "x": 0,
+        "y": 0,
+        "w": 9,
+        "h": 13
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x4000",
+          "literal": "(00 / 00)"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "dataInfo1",
+      "coords": {
+        "x": -8,
+        "y": 0,
+        "w": 320,
+        "h": 13
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "dataInfo2",
+      "coords": {
+        "x": -8,
+        "y": 0,
+        "w": 320,
+        "h": 13
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "dataInfo3",
+      "coords": {
+        "x": -8,
+        "y": 0,
+        "w": 320,
+        "h": 13
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "completion",
+      "coords": {
+        "x": -8,
+        "y": 188,
+        "w": 86,
+        "h": 12
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "COMPLETION"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": 88,
+          "up": -1,
+          "down": -1
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_completion_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "sortedBy",
+      "coords": {
+        "x": 79,
+        "y": 188,
+        "w": 146,
+        "h": 12
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "SORTED BY DATE"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 13
+        },
+        {
+          "op": "nav",
+          "left": 87,
+          "right": 89,
+          "up": -1,
+          "down": -1
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_sortedBy_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "exit",
+      "coords": {
+        "x": 226,
+        "y": 188,
+        "w": 86,
+        "h": 12
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "EXIT"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 12
+        },
+        {
+          "op": "nav",
+          "left": 88,
+          "right": -1,
+          "up": 82,
+          "down": -1
+        },
+        {
+          "op": "onselect_fire",
+          "func": "customChallengesSelectSCNMenu_exit_OnSelect"
+        }
+      ]
+    }
+  ]
+}

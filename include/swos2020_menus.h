@@ -50,8 +50,11 @@
     X(selectSpeedrunDifficultyCardMenu, "swos2020/selectSpeedrunDifficultyCardMenu", SelectSpeedrunDifficultyCardMenu, 5) \
     X(leaderboardMenu, "swos2020/leaderboardMenu", LeaderboardMenu, 69) \
     X(viewMyRecordsMenu, "swos2020/viewMyRecordsMenu", ViewMyRecordsMenu, 40) \
+    X(customChallengesMainMenu, "swos2020/customChallengesMainMenu", CustomChallengesMainMenu, 7) \
+    X(customChallengesSelectSCNMenu, "swos2020/customChallengesSelectSCNMenu", CustomChallengesSelectSCNMenu, 90) \
+    X(customChallengesSortByMenu, "swos2020/customChallengesSortByMenu", CustomChallengesSortByMenu, 7) \
 
-/* Every handler name the imported menus reference (371), sorted. */
+/* Every handler name the imported menus reference (394), sorted. */
 #define SWOS2020_MENU_CALLBACKS(X) \
     X(LeftBasicColor_Dec_onSelect) \
     X(LeftBasicColor_Inc_onSelect) \
@@ -113,6 +116,29 @@
     X(cupMatchView_scrollDown_onSelect) \
     X(cupMatchView_scrollUp_onSelect) \
     X(currentRecord_OnSelect) \
+    X(customChallengesMainMenu_OnDraw) \
+    X(customChallengesMainMenu_OnInit) \
+    X(customChallengesMainMenu_create_onSelect) \
+    X(customChallengesMainMenu_exit_onSelect) \
+    X(customChallengesMainMenu_onBackground) \
+    X(customChallengesMainMenu_play_onSelect) \
+    X(customChallengesMainMenu_share_onSelect) \
+    X(customChallengesSelectSCNMenu_OnDraw) \
+    X(customChallengesSelectSCNMenu_OnInit) \
+    X(customChallengesSelectSCNMenu_OnReturn) \
+    X(customChallengesSelectSCNMenu_completion_OnSelect) \
+    X(customChallengesSelectSCNMenu_exit_OnSelect) \
+    X(customChallengesSelectSCNMenu_scrollDown_onSelect) \
+    X(customChallengesSelectSCNMenu_scrollUp_onSelect) \
+    X(customChallengesSelectSCNMenu_select_onSelect) \
+    X(customChallengesSelectSCNMenu_sortedBy_OnSelect) \
+    X(customChallengesSortByMenu_exit_onSelect) \
+    X(customChallengesSortByMenu_onDraw) \
+    X(customChallengesSortByMenu_sortByCreatorAndLevel_onSelect) \
+    X(customChallengesSortByMenu_sortByCreatorAndTeam_onSelect) \
+    X(customChallengesSortByMenu_sortByDate_onSelect) \
+    X(customChallengesSortByMenu_sortByLevel_onSelect) \
+    X(customChallengesSortByMenu_sortByTeam_onSelect) \
     X(difficulty_Dec_onSelect) \
     X(difficulty_Inc_onSelect) \
     X(difficulty_onSelect) \
@@ -2761,5 +2787,124 @@ enum {
 #define ViewMyRecordsMenu_kVMR_RankWidth (35)
 #define ViewMyRecordsMenu_kVMR_RankHeight (14)
 #define ViewMyRecordsMenu_kVMR_RankBaseColor (7)
+
+/* ---- customChallengesMainMenu -- src/menus/customChallengesMain.mnu ---- */
+enum {
+    CustomChallengesMainMenu_header = 0,
+    CustomChallengesMainMenu_create = 1,
+    CustomChallengesMainMenu_share = 2,
+    CustomChallengesMainMenu_play = 3,
+    CustomChallengesMainMenu_desc = 4,
+    CustomChallengesMainMenu_exit = 5,
+    CustomChallengesMainMenu_dummy = 6,
+};
+#define CustomChallengesMainMenu_numEntries 7
+
+/* ---- customChallengesSelectSCNMenu -- src/menus/customChallengesSelectSCN.mnu ---- */
+enum {
+    CustomChallengesSelectSCNMenu_header = 0,
+    CustomChallengesSelectSCNMenu_team1_00 = 1,
+    CustomChallengesSelectSCNMenu_team1_01 = 2,
+    CustomChallengesSelectSCNMenu_team1_02 = 3,
+    CustomChallengesSelectSCNMenu_team1_03 = 4,
+    CustomChallengesSelectSCNMenu_team1_04 = 5,
+    CustomChallengesSelectSCNMenu_team1_05 = 6,
+    CustomChallengesSelectSCNMenu_team1_06 = 7,
+    CustomChallengesSelectSCNMenu_team1_07 = 8,
+    CustomChallengesSelectSCNMenu_team1_08 = 9,
+    CustomChallengesSelectSCNMenu_team1_09 = 10,
+    CustomChallengesSelectSCNMenu_team1_10 = 11,
+    CustomChallengesSelectSCNMenu_team1_11 = 12,
+    CustomChallengesSelectSCNMenu_team1_12 = 13,
+    CustomChallengesSelectSCNMenu_team1_13 = 14,
+    CustomChallengesSelectSCNMenu_team1_14 = 15,
+    CustomChallengesSelectSCNMenu_team1_15 = 16,
+    CustomChallengesSelectSCNMenu_teamScore_00 = 17,
+    CustomChallengesSelectSCNMenu_teamScore_01 = 18,
+    CustomChallengesSelectSCNMenu_teamScore_02 = 19,
+    CustomChallengesSelectSCNMenu_teamScore_03 = 20,
+    CustomChallengesSelectSCNMenu_teamScore_04 = 21,
+    CustomChallengesSelectSCNMenu_teamScore_05 = 22,
+    CustomChallengesSelectSCNMenu_teamScore_06 = 23,
+    CustomChallengesSelectSCNMenu_teamScore_07 = 24,
+    CustomChallengesSelectSCNMenu_teamScore_08 = 25,
+    CustomChallengesSelectSCNMenu_teamScore_09 = 26,
+    CustomChallengesSelectSCNMenu_teamScore_10 = 27,
+    CustomChallengesSelectSCNMenu_teamScore_11 = 28,
+    CustomChallengesSelectSCNMenu_teamScore_12 = 29,
+    CustomChallengesSelectSCNMenu_teamScore_13 = 30,
+    CustomChallengesSelectSCNMenu_teamScore_14 = 31,
+    CustomChallengesSelectSCNMenu_teamScore_15 = 32,
+    CustomChallengesSelectSCNMenu_team2_00 = 33,
+    CustomChallengesSelectSCNMenu_team2_01 = 34,
+    CustomChallengesSelectSCNMenu_team2_02 = 35,
+    CustomChallengesSelectSCNMenu_team2_03 = 36,
+    CustomChallengesSelectSCNMenu_team2_04 = 37,
+    CustomChallengesSelectSCNMenu_team2_05 = 38,
+    CustomChallengesSelectSCNMenu_team2_06 = 39,
+    CustomChallengesSelectSCNMenu_team2_07 = 40,
+    CustomChallengesSelectSCNMenu_team2_08 = 41,
+    CustomChallengesSelectSCNMenu_team2_09 = 42,
+    CustomChallengesSelectSCNMenu_team2_10 = 43,
+    CustomChallengesSelectSCNMenu_team2_11 = 44,
+    CustomChallengesSelectSCNMenu_team2_12 = 45,
+    CustomChallengesSelectSCNMenu_team2_13 = 46,
+    CustomChallengesSelectSCNMenu_team2_14 = 47,
+    CustomChallengesSelectSCNMenu_team2_15 = 48,
+    CustomChallengesSelectSCNMenu_share_00 = 49,
+    CustomChallengesSelectSCNMenu_share_01 = 50,
+    CustomChallengesSelectSCNMenu_share_02 = 51,
+    CustomChallengesSelectSCNMenu_share_03 = 52,
+    CustomChallengesSelectSCNMenu_share_04 = 53,
+    CustomChallengesSelectSCNMenu_share_05 = 54,
+    CustomChallengesSelectSCNMenu_share_06 = 55,
+    CustomChallengesSelectSCNMenu_share_07 = 56,
+    CustomChallengesSelectSCNMenu_share_08 = 57,
+    CustomChallengesSelectSCNMenu_share_09 = 58,
+    CustomChallengesSelectSCNMenu_share_10 = 59,
+    CustomChallengesSelectSCNMenu_share_11 = 60,
+    CustomChallengesSelectSCNMenu_share_12 = 61,
+    CustomChallengesSelectSCNMenu_share_13 = 62,
+    CustomChallengesSelectSCNMenu_share_14 = 63,
+    CustomChallengesSelectSCNMenu_share_15 = 64,
+    CustomChallengesSelectSCNMenu_level_00 = 65,
+    CustomChallengesSelectSCNMenu_level_01 = 66,
+    CustomChallengesSelectSCNMenu_level_02 = 67,
+    CustomChallengesSelectSCNMenu_level_03 = 68,
+    CustomChallengesSelectSCNMenu_level_04 = 69,
+    CustomChallengesSelectSCNMenu_level_05 = 70,
+    CustomChallengesSelectSCNMenu_level_06 = 71,
+    CustomChallengesSelectSCNMenu_level_07 = 72,
+    CustomChallengesSelectSCNMenu_level_08 = 73,
+    CustomChallengesSelectSCNMenu_level_09 = 74,
+    CustomChallengesSelectSCNMenu_level_10 = 75,
+    CustomChallengesSelectSCNMenu_level_11 = 76,
+    CustomChallengesSelectSCNMenu_level_12 = 77,
+    CustomChallengesSelectSCNMenu_level_13 = 78,
+    CustomChallengesSelectSCNMenu_level_14 = 79,
+    CustomChallengesSelectSCNMenu_level_15 = 80,
+    CustomChallengesSelectSCNMenu_scrollUp = 81,
+    CustomChallengesSelectSCNMenu_scrollDown = 82,
+    CustomChallengesSelectSCNMenu_pageInfo = 83,
+    CustomChallengesSelectSCNMenu_dataInfo1 = 84,
+    CustomChallengesSelectSCNMenu_dataInfo2 = 85,
+    CustomChallengesSelectSCNMenu_dataInfo3 = 86,
+    CustomChallengesSelectSCNMenu_completion = 87,
+    CustomChallengesSelectSCNMenu_sortedBy = 88,
+    CustomChallengesSelectSCNMenu_exit = 89,
+};
+#define CustomChallengesSelectSCNMenu_numEntries 90
+
+/* ---- customChallengesSortByMenu -- src/menus/customChallengesSortBy.mnu ---- */
+enum {
+    CustomChallengesSortByMenu_header = 0,
+    CustomChallengesSortByMenu_sortByDate = 1,
+    CustomChallengesSortByMenu_sortByTeam = 2,
+    CustomChallengesSortByMenu_sortByCreatorAndTeam = 3,
+    CustomChallengesSortByMenu_sortByCreatorAndLevel = 4,
+    CustomChallengesSortByMenu_sortByLevel = 5,
+    CustomChallengesSortByMenu_exit = 6,
+};
+#define CustomChallengesSortByMenu_numEntries 7
 
 #endif /* SWOS2020_MENUS_H */

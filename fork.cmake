@@ -7,3 +7,8 @@ if(NOT SWOSAPI_SOURCES)
 endif()
 list(APPEND FORK_SOURCES ${SWOSAPI_SOURCES})
 list(APPEND FORK_INCLUDES ${REPO}/third_party/swos-api/client/include)
+
+# The LZMA SDK's 7z decoder (third_party/lzma): SWOS 2020's custom challenges (.SCN).
+file(GLOB LZMA_SOURCES CONFIGURE_DEPENDS ${REPO}/third_party/lzma/*.c)
+list(APPEND FORK_SOURCES ${LZMA_SOURCES})
+list(APPEND FORK_INCLUDES ${REPO}/third_party/lzma)

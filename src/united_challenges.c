@@ -22,8 +22,10 @@
 #include "menu_system.h"
 #include "swos2020_menus.h"
 #include "text_render.h"
+#include "united_scn.h"
 #include "united_ui.h"
 
+#include <SDL.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -420,16 +422,10 @@ static void cat8_onSelect(void)             /* act4: MORE */
         s_catPage = (s_catPage + 1) % pages;
 }
 
-static void catX_onSelect(void)             /* CUSTOM CHALLENGES: the player's own */
+static void catX_onSelect(void)             /* CUSTOM CHALLENGES: SWOS 2020's CREATE / SHARE / PLAY */
 {
-    snprintf(s_cat, sizeof s_cat, "CUSTOM");
-    fetch_list();
-    if (!s_numItems) {
-        ModApi_ShowError("NO CUSTOM CHALLENGES YET");
-        return;
-    }
-    s_page = 0;
-    show("swos2020/scenarioModeMainMenu");
+    show("swos2020/customChallengesMainMenu");
+    fetch_categories();
 }
 
 static void selectCategoryMenu_exit_onSelect(void) { SetExitMenuFlag(); }
@@ -933,6 +929,353 @@ static void scenarioCompletionMenu_exit_OnSelect(void) { SetExitMenuFlag(); }
 static void scenarioCompletionMenu_scrollUp_onSelect(void) { if (s_tablePage > 0) s_tablePage--; }
 static void scenarioCompletionMenu_scrollDown_onSelect(void) { s_tablePage++; }
 
+/* ---- CUSTOM CHALLENGES (SWOS 2020's customChallengesMain, SelectSCN, SortBy) ----
+ * PLAY: the custom challenges SWOS 2020's players shared on sensiblesoccer.de (.SCN files), from
+ * the online-records mod (custom.list / info / download); one picked is downloaded, made one of
+ * the player's fetched challenges (src/united_scn.c) and opened on its page. CREATE: the
+ * challenges mod's own editor for now. SHARE: not yet -- SWOS 2020 uploads to its server, with no
+ * log-in. */
+
+static void customChallengesMainMenu_OnInit(void) { SetCurrentEntry(CustomChallengesMainMenu_play); }
+static void customChallengesMainMenu_OnDraw(void)
+{
+    const int32_t sel = selected_ordinal();
+    set_text(entry_at(CustomChallengesMainMenu_desc),
+             sel == CustomChallengesMainMenu_create ? "CREATE CUSTOM SCENARIOS"
+             : sel == CustomChallengesMainMenu_share ? "SHARE YOUR OWN CREATED SCENARIOS ONLINE"
+             : sel == CustomChallengesMainMenu_play ? "PLAY ONLINE SCENARIOS" : "EXIT CUSTOM CHALLENGES");
+}
+static void customChallengesMainMenu_onBackground(void) {}
+static void customChallengesMainMenu_create_onSelect(void)
+{
+    char out[16];
+    call("new", "{}", out, sizeof out);
+}
+static void customChallengesMainMenu_share_onSelect(void)
+{
+    ModApi_ShowError("SHARING ONLINE IS NOT IN THIS VERSION YET");
+}
+static void customChallengesMainMenu_exit_onSelect(void) { SetExitMenuFlag(); }
+
+enum { kScnRows = 15, kScnMax = 600 };
+typedef struct { char file[96], team1[40], score[12], team2[40], creator[32], name[96]; int32_t level, done; } ScnRow;
+static ScnRow *s_scn;
+static int32_t s_numScn, s_scnState, s_infoState, s_scnPage, s_scnSort;   /* sort: 0 date .. 4 level */
+static char  s_scnList[1 << 16], s_scnInfo[1 << 18];
+static char  s_scnHeader[48], s_scnPageText[24], s_scnData[3][80], s_scnStatus[64];
+
+/* "TEAM1 3-0 TEAM2 BY CREATOR.SCN" (SWOS 2020's names: '/' kept as '_') */
+static void scn_parse(const char *file, ScnRow *r)
+{
+    char stem[96];
+    memset(r, 0, sizeof *r);
+    snprintf(r->file, sizeof r->file, "%s", file);
+    snprintf(stem, sizeof stem, "%s", file);
+    char *dot = strstr(stem, ".SCN");
+    if (dot)
+        *dot = 0;
+    for (char *c = stem; *c; c++)
+        if (*c == '_')
+            *c = '/';
+    snprintf(r->name, sizeof r->name, "%s", stem);
+    char *by = NULL;
+    for (char *p = strstr(stem, " BY "); p; p = strstr(p + 1, " BY "))
+        by = p;
+    if (by) {
+        snprintf(r->creator, sizeof r->creator, "%s", by + 4);
+        *by = 0;
+    }
+    /* the score: the last " a-b " */
+    char *score = NULL;
+    for (char *p = stem; *p; p++)
+        if (p[0] == ' ' && p[1] >= '0' && p[1] <= '9') {
+            char *q = p + 1;
+            while (*q >= '0' && *q <= '9')
+                q++;
+            if (*q == '-' && q[1] >= '0' && q[1] <= '9') {
+                char *z = q + 1;
+                while (*z >= '0' && *z <= '9')
+                    z++;
+                if (*z == ' ' || !*z)
+                    score = p;
+            }
+        }
+    if (score) {
+        char *end = strchr(score + 1, ' ');
+        snprintf(r->team1, sizeof r->team1, "%.*s", (int)(score - stem), stem);
+        snprintf(r->score, sizeof r->score, "%.*s", (int)(end ? end - score - 1 : (long)strlen(score + 1)), score + 1);
+        snprintf(r->team2, sizeof r->team2, "%s", end ? end + 1 : "");
+    } else {
+        snprintf(r->team1, sizeof r->team1, "%s", stem);
+    }
+}
+
+/* an info line for the row's name: its fields */
+static int32_t scn_info(const char *name, char f[7][96])
+{
+    for (const char *line = s_scnInfo; line && *line;) {
+        const char *next = strchr(line, '\n');
+        const char *tab = strchr(line, '\t');
+        if (tab && (!next || tab < next) && (size_t)(tab - line) == strlen(name) && !strncmp(line, name, strlen(name))) {
+            const char *p = line;
+            for (int32_t k = 0; k < 7; k++) {
+                const char *e = p;
+                while (*e && *e != '\t' && *e != '\n')
+                    e++;
+                snprintf(f[k], 96, "%.*s", (int)(e - p), p);
+                p = *e == '\t' ? e + 1 : e;
+            }
+            return 1;
+        }
+        line = next ? next + 1 : NULL;
+    }
+    return 0;
+}
+
+static int by_team(const void *a, const void *b) { return strcmp(((const ScnRow *)a)->team1, ((const ScnRow *)b)->team1); }
+static int by_creator_team(const void *a, const void *b)
+{
+    const ScnRow *x = (const ScnRow *)a, *y = (const ScnRow *)b;
+    const int c = strcmp(x->creator, y->creator);
+    return c ? c : strcmp(x->team1, y->team1);
+}
+static int by_creator_level(const void *a, const void *b)
+{
+    const ScnRow *x = (const ScnRow *)a, *y = (const ScnRow *)b;
+    const int c = strcmp(x->creator, y->creator);
+    return c ? c : x->level - y->level;
+}
+static int by_level(const void *a, const void *b)
+{
+    const ScnRow *x = (const ScnRow *)a, *y = (const ScnRow *)b;
+    return x->level != y->level ? x->level - y->level : strcmp(x->team1, y->team1);
+}
+
+/* the rows, from the list (and the levels from the info, the ticks from the player's online wins) */
+static void scn_build(void)
+{
+    static char mine[1 << 15];
+    const int32_t haveMine = ModApi_CallService("online-records", "challenges.completed", "{}", mine, sizeof mine) == 0;
+    if (!s_scn && (s_scn = (ScnRow *)malloc(sizeof(ScnRow) * kScnMax)) == NULL)
+        return;
+    s_numScn = 0;
+    for (const char *line = s_scnList; line && *line && s_numScn < kScnMax;) {
+        const char *next = strchr(line, '\n');
+        char file[96];
+        snprintf(file, sizeof file, "%.*s", (int)(next ? next - line : (long)strlen(line)), line);
+        if (strstr(file, ".SCN")) {
+            ScnRow *r = &s_scn[s_numScn++];
+            char f[7][96];
+            scn_parse(file, r);
+            r->level = scn_info(r->name, f) ? atoi(f[6]) : 0;
+            if (haveMine) {
+                char key[128];
+                snprintf(key, sizeof key, "CUSTOM\t%s\n", r->name);
+                r->done = strstr(mine, key) != NULL;
+            }
+        }
+        line = next ? next + 1 : NULL;
+    }
+    if (s_scnSort == 1)
+        qsort(s_scn, (size_t)s_numScn, sizeof *s_scn, by_team);
+    else if (s_scnSort == 2)
+        qsort(s_scn, (size_t)s_numScn, sizeof *s_scn, by_creator_team);
+    else if (s_scnSort == 3)
+        qsort(s_scn, (size_t)s_numScn, sizeof *s_scn, by_creator_level);
+    else if (s_scnSort == 4)
+        qsort(s_scn, (size_t)s_numScn, sizeof *s_scn, by_level);
+}
+
+static void scn_level_AfterDraw(MenuEntry *e)
+{
+    const int32_t i = (int32_t)e->ordinal - CustomChallengesSelectSCNMenu_level_01, idx = s_scnPage * kScnRows + i;
+    if (i >= 0 && i < kScnRows && idx < s_numScn && s_scn[idx].level > 0)
+        draw_stars(s_scn[idx].level, e->x, e->y - 1);
+}
+
+static void scn_team_AfterDraw(MenuEntry *e)
+{
+    const int32_t i = (int32_t)e->ordinal - CustomChallengesSelectSCNMenu_team1_01, idx = s_scnPage * kScnRows + i;
+    if (i >= 0 && i < kScnRows && idx < s_numScn && s_scn[idx].done)
+        draw_map(k_check, e->x - 8 + 1, e->y - 3, 0, 0, 12, 13);
+}
+
+static void scn_arrow_AfterDraw(MenuEntry *e)
+{
+    United_DrawPageArrow(e->ordinal == CustomChallengesSelectSCNMenu_scrollDown, e->x + 2, e->y + 1);
+}
+
+static void customChallengesSelectSCNMenu_OnInit(void)
+{
+    s_scnState = s_infoState = 1;
+    s_scnPage = 0;
+    s_scnStatus[0] = 0;
+}
+static void customChallengesSelectSCNMenu_OnReturn(void) {}
+
+static void customChallengesSelectSCNMenu_OnDraw(void)
+{
+    static char cells[kScnRows][4][48];
+    const int32_t shift = (int32_t)entry_at(CustomChallengesSelectSCNMenu_exit)->x - 226;
+    if (s_scnState == 1 || s_infoState == 1) {
+        if (s_infoState == 1)
+            s_infoState = ModApi_CallService("online-records", "custom.info", "{}", s_scnInfo, sizeof s_scnInfo);
+        if (s_scnState == 1)
+            s_scnState = ModApi_CallService("online-records", "custom.list", "{}", s_scnList, sizeof s_scnList);
+        if (s_scnState == 0 && s_infoState != 1)
+            scn_build();
+    }
+    snprintf(s_scnHeader, sizeof s_scnHeader, "PLAY ONLINE SCENARIOS (%d)", (int)(s_scnState == 0 ? s_numScn : 0));
+    set_text(entry_at(CustomChallengesSelectSCNMenu_header), s_scnHeader);
+    centre(entry_at(CustomChallengesSelectSCNMenu_header), "PLAY ONLINE SCENARIOS (000)", 40, shift);
+
+    static const char *const heads[4] = { "HOME TEAM", "", "AWAY TEAM", "CREATOR" };
+    static const int32_t col0[4] = { CustomChallengesSelectSCNMenu_team1_00, CustomChallengesSelectSCNMenu_teamScore_00,
+                                     CustomChallengesSelectSCNMenu_team2_00, CustomChallengesSelectSCNMenu_share_00 };
+    for (int32_t c = 0; c < 4; c++) {
+        set_text(entry_at(col0[c]), heads[c]);
+        set_back(entry_at(col0[c]), kLightBrownWithYellowFrame);
+    }
+    entry_at(CustomChallengesSelectSCNMenu_level_00)->isInvisible = 1;
+
+    const int32_t sel = selected_ordinal();
+    int32_t selRow = -1;
+    for (int32_t c = 0; c < 4; c++)
+        if (sel >= col0[c] + 1 && sel <= col0[c] + kScnRows)
+            selRow = sel - col0[c] - 1;
+    for (int32_t i = 0; i < kScnRows; i++) {
+        const int32_t idx = s_scnPage * kScnRows + i;
+        const ScnRow *r = s_scnState == 0 && idx < s_numScn ? &s_scn[idx] : NULL;
+        snprintf(cells[i][0], 48, "%s", r ? r->team1 : "");
+        snprintf(cells[i][1], 48, "%s", r ? r->score : "");
+        snprintf(cells[i][2], 48, "%s", r ? r->team2 : "");
+        snprintf(cells[i][3], 48, "%s", r ? r->creator : "");
+        for (int32_t c = 0; c < 4; c++) {
+            MenuEntry *e = entry_at(col0[c] + 1 + i);
+            shorten(cells[i][c], e, (int32_t)e->dwWidth - 4);
+            set_text(e, cells[i][c]);
+            set_back(e, i == selRow ? kRed : kGray);
+        }
+        entry_at(CustomChallengesSelectSCNMenu_level_01 + i)->afterDrawCb = scn_level_AfterDraw;
+        entry_at(CustomChallengesSelectSCNMenu_team1_01 + i)->afterDrawCb = scn_team_AfterDraw;
+    }
+
+    /* the page and its arrows right of the table, the picked one's texts under it */
+    const int32_t pages = s_numScn && s_scnState == 0 ? (s_numScn + kScnRows - 1) / kScnRows : 1;
+    if (s_scnPage >= pages)
+        s_scnPage = pages - 1;
+    {
+        MenuEntry *l1 = entry_at(CustomChallengesSelectSCNMenu_level_01), *l15 = entry_at(CustomChallengesSelectSCNMenu_level_15);
+        MenuEntry *u = entry_at(CustomChallengesSelectSCNMenu_scrollUp), *d = entry_at(CustomChallengesSelectSCNMenu_scrollDown);
+        MenuEntry *pg = entry_at(CustomChallengesSelectSCNMenu_pageInfo);
+        u->x = d->x = (uint16_t)(l15->x + l15->dwWidth + 1);
+        u->y = l1->y;
+        d->y = (uint16_t)(l15->y - 6);
+        u->afterDrawCb = d->afterDrawCb = scn_arrow_AfterDraw;
+        snprintf(s_scnPageText, sizeof s_scnPageText, "(%d / %d)", (int)s_scnPage + 1, (int)pages);
+        pg->x = (uint16_t)(l15->x - 10);
+        pg->y = (uint16_t)(l15->y + l15->dwHeight + 2);
+        set_text(pg, s_scnPageText);
+        for (int32_t k = 0; k < 3; k++) {
+            MenuEntry *e = entry_at(CustomChallengesSelectSCNMenu_dataInfo1 + k);
+            e->y = (uint16_t)(l15->y + l15->dwHeight + 12 + 9 * k);
+            e->content = ENTRY_STRING;
+            set_text(e, s_scnData[k]);
+        }
+    }
+    {
+        char f[7][96];
+        const int32_t idx = s_scnPage * kScnRows + selRow;
+        s_scnData[0][0] = s_scnData[1][0] = s_scnData[2][0] = 0;
+        if (s_scnStatus[0])
+            snprintf(s_scnData[1], sizeof s_scnData[1], "%s", s_scnStatus);
+        else if (s_scnState == 1)
+            snprintf(s_scnData[1], sizeof s_scnData[1], "CHECKING ONLINE SCENARIO INFORMATION...");
+        else if (s_scnState < 0)
+            snprintf(s_scnData[1], sizeof s_scnData[1], "SENSIBLESOCCER.DE CANNOT BE REACHED");
+        else if (selRow >= 0 && idx < s_numScn && scn_info(s_scn[idx].name, f)) {
+            snprintf(s_scnData[0], sizeof s_scnData[0], "%s", f[1]);
+            snprintf(s_scnData[1], sizeof s_scnData[1], "%s, %s", f[2], f[3]);
+            snprintf(s_scnData[2], sizeof s_scnData[2], "%s", f[5]);
+        }
+        set_color(entry_at(CustomChallengesSelectSCNMenu_dataInfo1), kYellowText);
+    }
+    {
+        static const char *const sorts[5] = { "SORTED BY DATE", "SORTED BY TEAM", "SORTED BY CREATOR / TEAM",
+                                              "SORTED BY CREATOR / LEVEL", "SORTED BY LEVEL" };
+        set_text(entry_at(CustomChallengesSelectSCNMenu_sortedBy), sorts[s_scnSort]);
+    }
+}
+
+static void customChallengesSelectSCNMenu_select_onSelect(void)
+{
+    const int32_t sel = selected_ordinal();
+    int32_t row = -1;
+    static const int32_t col0[4] = { CustomChallengesSelectSCNMenu_team1_00, CustomChallengesSelectSCNMenu_teamScore_00,
+                                     CustomChallengesSelectSCNMenu_team2_00, CustomChallengesSelectSCNMenu_share_00 };
+    for (int32_t c = 0; c < 4; c++)
+        if (sel >= col0[c] + 1 && sel <= col0[c] + kScnRows)
+            row = sel - col0[c] - 1;
+    const int32_t idx = s_scnPage * kScnRows + row;
+    if (row < 0 || s_scnState != 0 || idx >= s_numScn)
+        return;
+    /* the download: SWOS 2020 waited for it too (its hourglass) -- a second or two */
+    char args[160], e[140], out[32];
+    snprintf(args, sizeof args, "{\"file\":\"%s\"}", ModApi_JsonEscape(s_scn[idx].file, e, sizeof e));
+    int32_t rc = 1;
+    for (int32_t waited = 0; rc == 1 && waited < 15000; waited += 20) {
+        rc = ModApi_CallService("online-records", "custom.download", args, out, sizeof out);
+        if (rc == 1)
+            SDL_Delay(20);
+    }
+    if (rc != 0) {
+        snprintf(s_scnStatus, sizeof s_scnStatus, "THE SCENARIO COULD NOT BE DOWNLOADED");
+        return;
+    }
+    uint32_t size = 0;
+    unsigned char *data = (unsigned char *)ModApi_LoadFile("challenges", "download.scn", &size);
+    char id[48] = "";
+    const int32_t ok = data && UnitedScn_Import(data, size, id, sizeof id);
+    free(data);
+    if (!ok) {
+        snprintf(s_scnStatus, sizeof s_scnStatus, "THE SCENARIO COULD NOT BE READ");
+        return;
+    }
+    s_scnStatus[0] = 0;
+    call("reload", "{}", out, sizeof out);
+    snprintf(s_sel, sizeof s_sel, "%s", id);
+    snprintf(s_cat, sizeof s_cat, "CUSTOM");
+    s_actHeader[0] = 0;
+    show("swos2020/selectScenarioActionMenu");
+}
+
+static void customChallengesSelectSCNMenu_scrollUp_onSelect(void) { if (s_scnPage > 0) s_scnPage--; }
+static void customChallengesSelectSCNMenu_scrollDown_onSelect(void) { s_scnPage++; }
+static void customChallengesSelectSCNMenu_completion_OnSelect(void)
+{
+    snprintf(s_cat, sizeof s_cat, "CUSTOM");
+    s_numItems = s_numScn;
+    show("swos2020/scenarioCompletionMenu");
+}
+static void customChallengesSelectSCNMenu_sortedBy_OnSelect(void)
+{
+    show("swos2020/customChallengesSortByMenu");
+    if (s_scnState == 0)
+        scn_build();
+    s_scnPage = 0;
+}
+static void customChallengesSelectSCNMenu_exit_OnSelect(void) { SetExitMenuFlag(); }
+static void customChallengesMainMenu_play_onSelect(void) { show("swos2020/customChallengesSelectSCNMenu"); }
+
+static void customChallengesSortByMenu_onDraw(void) {}
+static void sort_by(int32_t k) { s_scnSort = k; SetExitMenuFlag(); }
+static void customChallengesSortByMenu_sortByDate_onSelect(void) { sort_by(0); }
+static void customChallengesSortByMenu_sortByTeam_onSelect(void) { sort_by(1); }
+static void customChallengesSortByMenu_sortByCreatorAndTeam_onSelect(void) { sort_by(2); }
+static void customChallengesSortByMenu_sortByCreatorAndLevel_onSelect(void) { sort_by(3); }
+static void customChallengesSortByMenu_sortByLevel_onSelect(void) { sort_by(4); }
+static void customChallengesSortByMenu_exit_onSelect(void) { SetExitMenuFlag(); }
+
 /* ---- the mod ---- */
 
 #define HANDLER(fn) { #fn, (void *)fn, SYM_FUNC }
@@ -956,6 +1299,19 @@ static const MenuSymbol k_handlers[] = {
     HANDLER(scenarioCompletionMenu_OnInit), HANDLER(scenarioCompletionMenu_OnDraw),
     HANDLER(scenarioCompletionMenu_OnReturn), HANDLER(scenarioCompletionMenu_exit_OnSelect),
     HANDLER(scenarioCompletionMenu_scrollUp_onSelect), HANDLER(scenarioCompletionMenu_scrollDown_onSelect),
+    HANDLER(customChallengesMainMenu_OnInit), HANDLER(customChallengesMainMenu_OnDraw),
+    HANDLER(customChallengesMainMenu_onBackground), HANDLER(customChallengesMainMenu_create_onSelect),
+    HANDLER(customChallengesMainMenu_share_onSelect), HANDLER(customChallengesMainMenu_play_onSelect),
+    HANDLER(customChallengesMainMenu_exit_onSelect),
+    HANDLER(customChallengesSelectSCNMenu_OnInit), HANDLER(customChallengesSelectSCNMenu_OnDraw),
+    HANDLER(customChallengesSelectSCNMenu_OnReturn), HANDLER(customChallengesSelectSCNMenu_select_onSelect),
+    HANDLER(customChallengesSelectSCNMenu_scrollUp_onSelect), HANDLER(customChallengesSelectSCNMenu_scrollDown_onSelect),
+    HANDLER(customChallengesSelectSCNMenu_completion_OnSelect), HANDLER(customChallengesSelectSCNMenu_sortedBy_OnSelect),
+    HANDLER(customChallengesSelectSCNMenu_exit_OnSelect),
+    HANDLER(customChallengesSortByMenu_onDraw), HANDLER(customChallengesSortByMenu_sortByDate_onSelect),
+    HANDLER(customChallengesSortByMenu_sortByTeam_onSelect), HANDLER(customChallengesSortByMenu_sortByCreatorAndTeam_onSelect),
+    HANDLER(customChallengesSortByMenu_sortByCreatorAndLevel_onSelect), HANDLER(customChallengesSortByMenu_sortByLevel_onSelect),
+    HANDLER(customChallengesSortByMenu_exit_onSelect),
 };
 #undef HANDLER
 
@@ -973,6 +1329,52 @@ static int32_t screens(const char *method, const char *args, char *out, uint32_t
     return 0;
 }
 
+/* SWOS_SCN_IMPORT_TEST=<file.SCN>: at the first menu frame, the file imported (src/united_scn.c),
+ * the challenges read again and the challenge's fields printed (SCN TEST ...), then exit. */
+static void scn_import_test(void)
+{
+    static int32_t done;
+    const char *path = getenv("SWOS_SCN_IMPORT_TEST");
+    if (done || !path)
+        return;
+    done = 1;
+    FILE *f = strncmp(path, "online:", 7) ? fopen(path, "rb") : NULL;
+    unsigned char *data = NULL;
+    long n = 0;
+    if (!strncmp(path, "online:", 7)) {     /* (a shared one, downloaded as PLAY does) */
+        char args[200], e[160], out[32];
+        int32_t rc = 1;
+        snprintf(args, sizeof args, "{\"file\":\"%s\"}", ModApi_JsonEscape(path + 7, e, sizeof e));
+        for (int32_t waited = 0; rc == 1 && waited < 20000; waited += 20) {
+            rc = ModApi_CallService("online-records", "custom.download", args, out, sizeof out);
+            if (rc == 1)
+                SDL_Delay(20);
+        }
+        uint32_t size = 0;
+        data = rc == 0 ? (unsigned char *)ModApi_LoadFile("challenges", "download.scn", &size) : NULL;
+        n = (long)size;
+    }
+    if (f) {
+        fseek(f, 0, SEEK_END);
+        n = ftell(f);
+        fseek(f, 0, SEEK_SET);
+        data = n > 0 ? (unsigned char *)malloc((size_t)n) : NULL;
+        if (data && fread(data, 1, (size_t)n, f) != (size_t)n)
+            n = 0;
+        fclose(f);
+    }
+    char id[48] = "", args[96], out[4096] = "";
+    const int32_t ok = data && n > 0 && UnitedScn_Import(data, (uint32_t)n, id, sizeof id);
+    free(data);
+    call("reload", "{}", out, sizeof out);
+    snprintf(args, sizeof args, "{\"id\":\"%s\"}", id);
+    const int32_t got = ok && call("info", args, out, sizeof out) == 0;
+    printf("SCN TEST %s: %s %s\n%s", path, ok ? "imported" : "NOT imported", id, got ? out : "(no info)\n");
+    printf("SCN TEST %s\n", ok && got ? "PASS" : "FAIL");
+    fflush(stdout);
+    exit(ok && got ? 0 : 1);
+}
+
 static void challenges2020_init(void)
 {
     MenuJson_RegisterSymbols(k_handlers, (int)(sizeof k_handlers / sizeof k_handlers[0]));
@@ -982,6 +1384,7 @@ static void challenges2020_init(void)
 const ModDef ModDef_challenges2020 = {
     .slug = SLUG,
     .init = challenges2020_init,
+    .menuDrawn = scn_import_test,
 };
 
 #else

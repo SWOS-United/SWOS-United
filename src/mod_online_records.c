@@ -18,6 +18,9 @@
  *   speedrun.mine         {"style"}: the player's records at that style
  *   speedrun.news         {}: the latest runs
  *                         (SWOS 2020's game_style numbers; the lines are united_records.h's)
+ *   custom.list           {"by_name"}: the shared custom challenges' files (SWOS 2020's .SCN)
+ *   custom.info           {}: their texts (nickname, time, start, et/pen, win, level)
+ *   custom.download       {"file"}: the file, saved as the challenges mod's download.scn
  *
  * The network is SWOS-API's client (third_party/swos-api: include/united_records.h, the requests
  * and their answers); this file is the game's side -- who, a worker thread and its queue (a call
@@ -61,7 +64,7 @@ static void who(char *out, uint32_t cap, int32_t mustBeLoggedIn)
 
 /* ---- the worker and its queue ---- */
 
-enum { J_TALLY = 1, J_WON, J_SPEEDRUN, J_BOARD, J_MINE, J_NEWS };
+enum { J_TALLY = 1, J_WON, J_SPEEDRUN, J_BOARD, J_MINE, J_NEWS, J_SCNLIST, J_SCNINFO, J_SCNFILE };
 typedef struct {
     int32_t        kind;
     char           user[64];
@@ -71,8 +74,9 @@ typedef struct {
 } Job;
 
 /* The boards' answers (under s_lock): each the last one asked for, by what was asked. */
-enum { F_BOARD, F_MINE, F_NEWS, kFetches };
-typedef struct { char key[96]; int32_t state; char *text; } Fetch;   /* state: 1 asking, 2 here, 3 failed */
+enum { F_BOARD, F_MINE, F_NEWS, F_SCNLIST, F_SCNINFO, F_SCNFILE, kFetches };
+typedef struct { char key[96]; int32_t state; char *text; uint32_t size; } Fetch;   /* state: 1 asking,
+                                                                              * 2 here, 3 failed */
 static Fetch s_fetch[kFetches];
 
 enum { kQueue = 16 };
@@ -130,6 +134,33 @@ static void run_job(Job *j)
         SDL_UnlockMutex(s_lock);
         if (!ok)
             free(text);
+    } else if (j->kind == J_SCNLIST || j->kind == J_SCNINFO) {
+        const int32_t slot = j->kind == J_SCNLIST ? F_SCNLIST : F_SCNINFO;
+        const uint32_t cap = 1 << 18;
+        char *text = (char *)malloc(cap);
+        const int32_t ok = text && (j->kind == J_SCNLIST ? UnitedRecords_ScnList(j->target, text, cap)
+                                                         : UnitedRecords_ScnInfo(text, cap));
+        SDL_LockMutex(s_lock);
+        free(s_fetch[slot].text);
+        s_fetch[slot].text = ok ? text : NULL;
+        s_fetch[slot].state = ok ? 2 : 3;
+        SDL_UnlockMutex(s_lock);
+        if (!ok)
+            free(text);
+    } else if (j->kind == J_SCNFILE) {
+        unsigned char *data = NULL;
+        uint32_t size = 0;
+        const int32_t ok = UnitedRecords_ScnDownload(j->name, &data, &size);
+        SDL_LockMutex(s_lock);
+        free(s_fetch[F_SCNFILE].text);
+        s_fetch[F_SCNFILE].text = ok ? (char *)data : NULL;
+        s_fetch[F_SCNFILE].size = ok ? size : 0;
+        s_fetch[F_SCNFILE].state = ok ? 2 : 3;
+        SDL_UnlockMutex(s_lock);
+        if (!ok)
+            free(data);
+        fprintf(stderr, "[online-records] %s: %s (%u bytes)\n", j->name, ok ? "downloaded" : "NOT downloaded",
+                (unsigned)size);
     } else if (j->kind == J_SPEEDRUN) {
         char line[64];
         j->run.user = j->user;
@@ -252,6 +283,47 @@ static int32_t fetch(int32_t slot, int32_t kind, const char *key, const Job *job
 static int32_t service(const char *method, const char *args, char *out, uint32_t cap)
 {
     char me[64];
+    if (!strcmp(method, "custom.list") || !strcmp(method, "custom.info")) {
+        Job j;
+        memset(&j, 0, sizeof j);
+        const int32_t byName = json_bool(args, "$.by_name");
+        j.target = byName;
+        if (!strcmp(method, "custom.info"))
+            return fetch(F_SCNINFO, J_SCNINFO, "info", &j, json_bool(args, "$.fresh"), out, cap);
+        return fetch(F_SCNLIST, J_SCNLIST, byName ? "name" : "date", &j, json_bool(args, "$.fresh"), out, cap);
+    }
+    if (!strcmp(method, "custom.download")) {
+        Job j;
+        char key[96];
+        memset(&j, 0, sizeof j);
+        json_str(args, "$.file", j.name, (int32_t)sizeof j.name);
+        if (!j.name[0] || strchr(j.name, '/') || strchr(j.name, '\\') || strstr(j.name, ".."))
+            return -1;
+        snprintf(key, sizeof key, "%s", j.name);
+        SDL_LockMutex(s_lock);
+        Fetch *f = &s_fetch[F_SCNFILE];
+        if (strcmp(f->key, key) != 0 || f->state == 0) {
+            snprintf(f->key, sizeof f->key, "%s", key);
+            f->state = 1;
+            SDL_UnlockMutex(s_lock);
+            j.kind = J_SCNFILE;
+            push(&j);
+            return 1;
+        }
+        int32_t rc = f->state == 1 ? 1 : f->state == 3 ? -1 : 0;
+        if (rc == 0) {          /* (here: saved from this thread, for the challenges' screens) */
+            rc = ModApi_SaveFile("challenges", "download.scn", f->text, f->size) == 0 ? 0 : -1;
+            f->state = 0;       /* (asked again: fetched again) */
+            f->key[0] = 0;
+        } else if (rc == -1) {
+            f->state = 0;
+            f->key[0] = 0;
+        }
+        SDL_UnlockMutex(s_lock);
+        if (rc == 0 && out && cap)
+            snprintf(out, cap, "download.scn");
+        return rc;
+    }
     if (!strcmp(method, "speedrun.board") || !strcmp(method, "speedrun.mine") || !strcmp(method, "speedrun.news")) {
         Job j;
         char key[96];

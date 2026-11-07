@@ -70,6 +70,8 @@ MULTIPLAYER_MENUS = [
     # player's records (the latest runs, "news", are the log-in group's) -- src/united_speedrun.c
     "speedrunMain", "selectSpeedrunDifficulty", "selectSpeedrunDifficultyCard", "leaderboard",
     "viewMyRecords",
+    # custom challenges: CREATE / SHARE / PLAY, the shared list, its sorting -- src/united_challenges.c
+    "customChallengesMain", "customChallengesSelectSCN", "customChallengesSortBy",
 ]
 
 # SWOS 2020's skip opcodes, by NUMBER (menuCodes.h: kLeftSkip = 17 ... kDownSkip = 20),

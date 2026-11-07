@@ -40,3 +40,16 @@ CFLAGS       += -I$(SWOSAPI_DIR)/include
 $(OBJDIR)/swos-api/%.o: $(SWOSAPI_DIR)/src/%.c $(OBJDIR)/.build-flags
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
+
+# The LZMA SDK's 7z decoder (third_party/lzma, public domain): SWOS 2020's shared custom challenges
+# are 7z archives (.SCN; src/united_scn.c). Every SDL build.
+LZMA_DIR  := third_party/lzma
+LZMA_SRCS := $(wildcard $(LZMA_DIR)/*.c)
+LZMA_OBJS := $(patsubst $(LZMA_DIR)/%.c,$(OBJDIR)/lzma/%.o,$(LZMA_SRCS))
+OBJECTS   += $(LZMA_OBJS)
+DEPS      += $(LZMA_OBJS:.o=.d)
+CFLAGS    += -I$(LZMA_DIR)
+
+$(OBJDIR)/lzma/%.o: $(LZMA_DIR)/%.c $(OBJDIR)/.build-flags
+	@mkdir -p $(dir $@)
+	$(CC) $(ARCHFLAGS) -O2 -g -MMD -MP -w -c $< -o $@
