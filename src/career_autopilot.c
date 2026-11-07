@@ -438,8 +438,13 @@ static void start(void)
                 }
             say("[golden] bench: %d loads done\n", atoi(bench));
             /* the career as loaded, written back: it must equal the file it came from */
-            if (SaveJson_WriteCareer((uint8_t *)"REWRITE.CAR") != 0)
-                say("[golden] bench: cannot write REWRITE.CAR\n");
+            {   /* SWOS_SAVE_BENCH=<n>: the write n times (the writer's timings) */
+                const char *sb = getenv("SWOS_SAVE_BENCH");
+                int32_t writes = (sb && atoi(sb) > 0) ? atoi(sb) : 1;
+                for (int32_t w = 0; w < writes; w++)
+                    if (SaveJson_WriteCareer((uint8_t *)"REWRITE.CAR") != 0)
+                        say("[golden] bench: cannot write REWRITE.CAR\n");
+            }
             exit(0);
         }
     }
@@ -652,16 +657,20 @@ void CareerAutopilot_Tick(void)
         _shortFire = 1;
     }
     else if (menu->onInit == PlayMatchMenuInit) {
-        /* A national coach's screen is laid out differently and player 1's fire does not
-         * reach VIEW RESULT there: select it and fire the menu (a club's stays as it was). */
+        /* A national coach's screen is laid out differently: its VIEW RESULT (the entry
+         * PlayMatchSelected) is not the one selected at first, so select it and fire it now
+         * -- the menu's press (_shortFire) AND player 1's (_pl1Fire): PlayMatchSelected goes
+         * on only when it sees a player's fire, and this runs after the frame's controls
+         * were read (menu_system.c), so _shortFire alone left a national career on this
+         * screen for good (petarku's BRASIL, 2026-11-07). A club's stays as it was. */
         extern uint16_t _isNationalSelector;
         extern void PlayMatchSelected(void);
         int32_t i;
         if (_isNationalSelector != 0 && (i = entry_with((MenuEntryFn)PlayMatchSelected)) >= 0) {
             SetCurrentEntry((uint16_t)i);
             _shortFire = 1;
-        } else
-            _pl1Fire = 1;
+        }
+        _pl1Fire = 1;
     }
     else
         _shortFire = 1;
