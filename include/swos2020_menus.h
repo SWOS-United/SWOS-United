@@ -53,8 +53,10 @@
     X(customChallengesMainMenu, "swos2020/customChallengesMainMenu", CustomChallengesMainMenu, 7) \
     X(customChallengesSelectSCNMenu, "swos2020/customChallengesSelectSCNMenu", CustomChallengesSelectSCNMenu, 90) \
     X(customChallengesSortByMenu, "swos2020/customChallengesSortByMenu", CustomChallengesSortByMenu, 7) \
+    X(customChallengesNewOrLoadMenu, "swos2020/customChallengesNewOrLoadMenu", CustomChallengesNewOrLoadMenu, 6) \
+    X(customChallengesEditMenu, "swos2020/customChallengesEditMenu", CustomChallengesEditMenu, 53) \
 
-/* Every handler name the imported menus reference (394), sorted. */
+/* Every handler name the imported menus reference (436), sorted. */
 #define SWOS2020_MENU_CALLBACKS(X) \
     X(LeftBasicColor_Dec_onSelect) \
     X(LeftBasicColor_Inc_onSelect) \
@@ -116,6 +118,42 @@
     X(cupMatchView_scrollDown_onSelect) \
     X(cupMatchView_scrollUp_onSelect) \
     X(currentRecord_OnSelect) \
+    X(customChallengesEditMenu_attackGoal_onSelect) \
+    X(customChallengesEditMenu_changePitchSet_onSelect) \
+    X(customChallengesEditMenu_changePitchType_onSelect) \
+    X(customChallengesEditMenu_customUniforms_onSelect) \
+    X(customChallengesEditMenu_delete_onSelect) \
+    X(customChallengesEditMenu_difficulty_onSelect) \
+    X(customChallengesEditMenu_directPen_onSelect) \
+    X(customChallengesEditMenu_et_onSelect) \
+    X(customChallengesEditMenu_exit_onSelect) \
+    X(customChallengesEditMenu_legTeam1Score_onSelect) \
+    X(customChallengesEditMenu_legTeam2Score_onSelect) \
+    X(customChallengesEditMenu_legTeamScoreReset_onSelect) \
+    X(customChallengesEditMenu_minus10_onSelect) \
+    X(customChallengesEditMenu_minus1_onSelect) \
+    X(customChallengesEditMenu_onBackground) \
+    X(customChallengesEditMenu_onDraw) \
+    X(customChallengesEditMenu_onInit) \
+    X(customChallengesEditMenu_pen_onSelect) \
+    X(customChallengesEditMenu_plus10_onSelect) \
+    X(customChallengesEditMenu_plus1_onSelect) \
+    X(customChallengesEditMenu_reset0_onSelect) \
+    X(customChallengesEditMenu_save_onSelect) \
+    X(customChallengesEditMenu_scenarioNickname_onSelect) \
+    X(customChallengesEditMenu_secondLeg_onSelect) \
+    X(customChallengesEditMenu_sentOffInjurySetting_onSelect) \
+    X(customChallengesEditMenu_startingEvent_onSelect) \
+    X(customChallengesEditMenu_startingTeam_onSelect) \
+    X(customChallengesEditMenu_subsMax_onSelect) \
+    X(customChallengesEditMenu_subsMin_onSelect) \
+    X(customChallengesEditMenu_team1Score_onSelect) \
+    X(customChallengesEditMenu_team1_onSelect) \
+    X(customChallengesEditMenu_team2Score_onSelect) \
+    X(customChallengesEditMenu_team2_onSelect) \
+    X(customChallengesEditMenu_teamScoreReset_onSelect) \
+    X(customChallengesEditMenu_test_onSelect) \
+    X(customChallengesEditMenu_winCondition_onSelect) \
     X(customChallengesMainMenu_OnDraw) \
     X(customChallengesMainMenu_OnInit) \
     X(customChallengesMainMenu_create_onSelect) \
@@ -123,6 +161,12 @@
     X(customChallengesMainMenu_onBackground) \
     X(customChallengesMainMenu_play_onSelect) \
     X(customChallengesMainMenu_share_onSelect) \
+    X(customChallengesNewOrLoadMenu_OnDraw) \
+    X(customChallengesNewOrLoadMenu_OnInit) \
+    X(customChallengesNewOrLoadMenu_exit_onSelect) \
+    X(customChallengesNewOrLoadMenu_load_onSelect) \
+    X(customChallengesNewOrLoadMenu_new_onSelect) \
+    X(customChallengesNewOrLoadMenu_onBackground) \
     X(customChallengesSelectSCNMenu_OnDraw) \
     X(customChallengesSelectSCNMenu_OnInit) \
     X(customChallengesSelectSCNMenu_OnReturn) \
@@ -2906,5 +2950,74 @@ enum {
     CustomChallengesSortByMenu_exit = 6,
 };
 #define CustomChallengesSortByMenu_numEntries 7
+
+/* ---- customChallengesNewOrLoadMenu -- src/menus/customChallengesNewOrLoad.mnu ---- */
+enum {
+    CustomChallengesNewOrLoadMenu_header = 0,
+    CustomChallengesNewOrLoadMenu_new_ = 1,
+    CustomChallengesNewOrLoadMenu_load = 2,
+    CustomChallengesNewOrLoadMenu_desc = 3,
+    CustomChallengesNewOrLoadMenu_exit = 4,
+    CustomChallengesNewOrLoadMenu_dummy = 5,
+};
+#define CustomChallengesNewOrLoadMenu_numEntries 6
+
+/* ---- customChallengesEditMenu -- src/menus/customChallengesEdit.mnu ---- */
+enum {
+    CustomChallengesEditMenu_header = 0,
+    CustomChallengesEditMenu_team1 = 1,
+    CustomChallengesEditMenu_teamScore = 2,
+    CustomChallengesEditMenu_team2 = 3,
+    CustomChallengesEditMenu_scenarioNickname = 4,
+    CustomChallengesEditMenu_initialScoreLabel = 5,
+    CustomChallengesEditMenu_team1Score = 6,
+    CustomChallengesEditMenu_team_Score = 7,
+    CustomChallengesEditMenu_team2Score = 8,
+    CustomChallengesEditMenu_teamScoreReset = 9,
+    CustomChallengesEditMenu_customUniformsLabel = 10,
+    CustomChallengesEditMenu_customUniforms = 11,
+    CustomChallengesEditMenu_initialTimeLabel = 12,
+    CustomChallengesEditMenu_initialTime = 13,
+    CustomChallengesEditMenu_minus10 = 14,
+    CustomChallengesEditMenu_minus1 = 15,
+    CustomChallengesEditMenu_reset0 = 16,
+    CustomChallengesEditMenu_plus1 = 17,
+    CustomChallengesEditMenu_plus10 = 18,
+    CustomChallengesEditMenu_legLabel = 19,
+    CustomChallengesEditMenu_secondLeg = 20,
+    CustomChallengesEditMenu_legTeam1Score = 21,
+    CustomChallengesEditMenu_legTeam_Score = 22,
+    CustomChallengesEditMenu_legTeam2Score = 23,
+    CustomChallengesEditMenu_legTeamScoreReset = 24,
+    CustomChallengesEditMenu_etPenLabel = 25,
+    CustomChallengesEditMenu_et = 26,
+    CustomChallengesEditMenu_pen = 27,
+    CustomChallengesEditMenu_directPen = 28,
+    CustomChallengesEditMenu_subsLabel = 29,
+    CustomChallengesEditMenu_subsMin = 30,
+    CustomChallengesEditMenu_subsFrom = 31,
+    CustomChallengesEditMenu_subsMax = 32,
+    CustomChallengesEditMenu_sentOffInjurySetting = 33,
+    CustomChallengesEditMenu_attackGoalLabel = 34,
+    CustomChallengesEditMenu_attackGoal = 35,
+    CustomChallengesEditMenu_changePitchTypeLabel = 36,
+    CustomChallengesEditMenu_changePitchType = 37,
+    CustomChallengesEditMenu_startingEventLabel = 38,
+    CustomChallengesEditMenu_startingTeam = 39,
+    CustomChallengesEditMenu_startingEvent = 40,
+    CustomChallengesEditMenu_winConditionLabel = 41,
+    CustomChallengesEditMenu_winTeam = 42,
+    CustomChallengesEditMenu_winCondition = 43,
+    CustomChallengesEditMenu_difficultyLabel = 44,
+    CustomChallengesEditMenu_difficulty = 45,
+    CustomChallengesEditMenu_changePitchSetLabel = 46,
+    CustomChallengesEditMenu_changePitchSet = 47,
+    CustomChallengesEditMenu_test = 48,
+    CustomChallengesEditMenu_save = 49,
+    CustomChallengesEditMenu_delete_ = 50,
+    CustomChallengesEditMenu_exit = 51,
+    CustomChallengesEditMenu_onbackground = 52,
+};
+#define CustomChallengesEditMenu_numEntries 53
 
 #endif /* SWOS2020_MENUS_H */

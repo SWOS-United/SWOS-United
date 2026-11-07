@@ -87,7 +87,11 @@ rebase), `git cherry-pick <commit>` one fix, or nothing at all. `upstream` is fe
   `--menu=swos2020/<screen>` opens one straight (the check: there is no scripting of menu keys).
   Not drawn yet: the uniforms, red cards and injuries on a challenge's page.
 - **SWOS 2020's custom challenges** (in `src/united_challenges.c`; SELECT CATEGORY's CUSTOM
-  CHALLENGES): CREATE (OpenSWOS's challenges mod's own editor for now), SHARE (not yet: SWOS
+  CHALLENGES): CREATE (SWOS 2020's NEW / LOAD and its design screen -- teams, nickname, score,
+  minute, second leg, ET / pens / a shoot-out alone, subs, attack direction, pitch, the starting
+  team and event, win condition, difficulty; TEST plays it once, SAVE keeps it as one of the
+  player's own through the challenges service's save, DELETE; no uniforms, cards / injuries or
+  pitch set yet; `SWOS_EDIT_TEST=show|save` checks it), SHARE (not yet: SWOS
   2020 uploads to its server with no log-in -- the owner's call), PLAY -- the 274-odd challenges
   SWOS 2020's players shared on sensiblesoccer.de, its SelectSCN list (home, score, away, creator,
   level stars; COMPLETION; five sortings). One picked is downloaded (online-records

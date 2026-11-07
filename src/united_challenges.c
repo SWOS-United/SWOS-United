@@ -18,6 +18,7 @@
 #if defined(SWOS_SDL_BUILD)
 
 #include "display.h"            /* FRONTBUFFER_ROW_STRIDE_BYTES */
+#include "input_text.h"
 #include "menu_load_json.h"
 #include "menu_system.h"
 #include "swos2020_menus.h"
@@ -946,11 +947,7 @@ static void customChallengesMainMenu_OnDraw(void)
              : sel == CustomChallengesMainMenu_play ? "PLAY ONLINE SCENARIOS" : "EXIT CUSTOM CHALLENGES");
 }
 static void customChallengesMainMenu_onBackground(void) {}
-static void customChallengesMainMenu_create_onSelect(void)
-{
-    char out[16];
-    call("new", "{}", out, sizeof out);
-}
+static void customChallengesMainMenu_create_onSelect(void) { show("swos2020/customChallengesNewOrLoadMenu"); }
 static void customChallengesMainMenu_share_onSelect(void)
 {
     ModApi_ShowError("SHARING ONLINE IS NOT IN THIS VERSION YET");
@@ -961,6 +958,7 @@ enum { kScnRows = 15, kScnMax = 600 };
 typedef struct { char file[96], team1[40], score[12], team2[40], creator[32], name[96]; int32_t level, done; } ScnRow;
 static ScnRow *s_scn;
 static int32_t s_numScn, s_scnState, s_infoState, s_scnPage, s_scnSort;   /* sort: 0 date .. 4 level */
+static int32_t s_scnLoad;              /* 1: CREATE -> LOAD, the player's own (OpenSWOS's challenges) */
 static char  s_scnList[1 << 16], s_scnInfo[1 << 18];
 static char  s_scnHeader[48], s_scnPageText[24], s_scnData[3][80], s_scnStatus[64];
 
@@ -1105,8 +1103,48 @@ static void scn_arrow_AfterDraw(MenuEntry *e)
     United_DrawPageArrow(e->ordinal == CustomChallengesSelectSCNMenu_scrollDown, e->x + 2, e->y + 1);
 }
 
+static void edit_load(const char *id);
+
+/* LOAD's rows: the player's own challenges (custom 1 in the challenges service's list) */
+static void scn_build_own(void)
+{
+    static char list[16384], info[4096];
+    char save[32];
+    snprintf(save, sizeof save, "%s", s_cat);
+    snprintf(s_cat, sizeof s_cat, "CUSTOM");
+    fetch_list();
+    snprintf(s_cat, sizeof s_cat, "%s", save);
+    if (!s_scn && (s_scn = (ScnRow *)malloc(sizeof(ScnRow) * kScnMax)) == NULL)
+        return;
+    s_numScn = 0;
+    (void)list;
+    for (int32_t i = 0; i < s_numItems && s_numScn < kScnMax; i++) {
+        char v[64];
+        if (!fetch_info(s_items[i].id, info, sizeof info) || info_num(info, "custom") != 1)
+            continue;
+        ScnRow *r = &s_scn[s_numScn++];
+        memset(r, 0, sizeof *r);
+        snprintf(r->file, sizeof r->file, "%s", s_items[i].id);
+        snprintf(r->team1, sizeof r->team1, "%s", info_get(info, "team0", v, sizeof v));
+        snprintf(r->team2, sizeof r->team2, "%s", info_get(info, "team1", v, sizeof v));
+        snprintf(r->score, sizeof r->score, "%d-%d", info_num(info, "score0"), info_num(info, "score1"));
+        snprintf(r->creator, sizeof r->creator, "%s", info_get(info, "title", v, sizeof v));
+        snprintf(r->name, sizeof r->name, "%s", info_get(info, "name", v, sizeof v));
+        r->level = info_num(info, "difficulty");
+        r->done = s_items[i].state == 1;
+    }
+}
+
 static void customChallengesSelectSCNMenu_OnInit(void)
 {
+    if (s_scnLoad) {
+        scn_build_own();
+        s_scnState = 0;
+        s_infoState = 0;
+        s_scnPage = 0;
+        s_scnStatus[0] = 0;
+        return;
+    }
     s_scnState = s_infoState = 1;
     s_scnPage = 0;
     s_scnStatus[0] = 0;
@@ -1125,15 +1163,19 @@ static void customChallengesSelectSCNMenu_OnDraw(void)
         if (s_scnState == 0 && s_infoState != 1)
             scn_build();
     }
-    snprintf(s_scnHeader, sizeof s_scnHeader, "PLAY ONLINE SCENARIOS (%d)", (int)(s_scnState == 0 ? s_numScn : 0));
+    snprintf(s_scnHeader, sizeof s_scnHeader, "%s (%d)", s_scnLoad ? "CREATE YOUR OWN SCENARIOS" : "PLAY ONLINE SCENARIOS",
+             (int)(s_scnState == 0 ? s_numScn : 0));
     set_text(entry_at(CustomChallengesSelectSCNMenu_header), s_scnHeader);
-    centre(entry_at(CustomChallengesSelectSCNMenu_header), "PLAY ONLINE SCENARIOS (000)", 40, shift);
+    centre(entry_at(CustomChallengesSelectSCNMenu_header), s_scnLoad ? "CREATE YOUR OWN SCENARIOS (000)"
+                                                                     : "PLAY ONLINE SCENARIOS (000)", 40, shift);
+    entry_at(CustomChallengesSelectSCNMenu_completion)->isInvisible = s_scnLoad;
+    entry_at(CustomChallengesSelectSCNMenu_sortedBy)->isInvisible = s_scnLoad;
 
     static const char *const heads[4] = { "HOME TEAM", "", "AWAY TEAM", "CREATOR" };
     static const int32_t col0[4] = { CustomChallengesSelectSCNMenu_team1_00, CustomChallengesSelectSCNMenu_teamScore_00,
                                      CustomChallengesSelectSCNMenu_team2_00, CustomChallengesSelectSCNMenu_share_00 };
     for (int32_t c = 0; c < 4; c++) {
-        set_text(entry_at(col0[c]), heads[c]);
+        set_text(entry_at(col0[c]), c == 3 && s_scnLoad ? "NICKNAME" : heads[c]);
         set_back(entry_at(col0[c]), kLightBrownWithYellowFrame);
     }
     entry_at(CustomChallengesSelectSCNMenu_level_00)->isInvisible = 1;
@@ -1193,7 +1235,9 @@ static void customChallengesSelectSCNMenu_OnDraw(void)
             snprintf(s_scnData[1], sizeof s_scnData[1], "CHECKING ONLINE SCENARIO INFORMATION...");
         else if (s_scnState < 0)
             snprintf(s_scnData[1], sizeof s_scnData[1], "SENSIBLESOCCER.DE CANNOT BE REACHED");
-        else if (selRow >= 0 && idx < s_numScn && scn_info(s_scn[idx].name, f)) {
+        else if (s_scnLoad && !s_numScn)
+            snprintf(s_scnData[1], sizeof s_scnData[1], "NO SCENARIOS OF YOURS YET: NEW MAKES ONE");
+        else if (!s_scnLoad && selRow >= 0 && idx < s_numScn && scn_info(s_scn[idx].name, f)) {
             snprintf(s_scnData[0], sizeof s_scnData[0], "%s", f[1]);
             snprintf(s_scnData[1], sizeof s_scnData[1], "%s, %s", f[2], f[3]);
             snprintf(s_scnData[2], sizeof s_scnData[2], "%s", f[5]);
@@ -1219,6 +1263,11 @@ static void customChallengesSelectSCNMenu_select_onSelect(void)
     const int32_t idx = s_scnPage * kScnRows + row;
     if (row < 0 || s_scnState != 0 || idx >= s_numScn)
         return;
+    if (s_scnLoad) {                        /* (LOAD: into the design screen) */
+        edit_load(s_scn[idx].file);
+        scn_build_own();
+        return;
+    }
     /* the download: SWOS 2020 waited for it too (its hourglass) -- a second or two */
     char args[160], e[140], out[32];
     snprintf(args, sizeof args, "{\"file\":\"%s\"}", ModApi_JsonEscape(s_scn[idx].file, e, sizeof e));
@@ -1265,7 +1314,11 @@ static void customChallengesSelectSCNMenu_sortedBy_OnSelect(void)
     s_scnPage = 0;
 }
 static void customChallengesSelectSCNMenu_exit_OnSelect(void) { SetExitMenuFlag(); }
-static void customChallengesMainMenu_play_onSelect(void) { show("swos2020/customChallengesSelectSCNMenu"); }
+static void customChallengesMainMenu_play_onSelect(void)
+{
+    s_scnLoad = 0;
+    show("swos2020/customChallengesSelectSCNMenu");
+}
 
 static void customChallengesSortByMenu_onDraw(void) {}
 static void sort_by(int32_t k) { s_scnSort = k; SetExitMenuFlag(); }
@@ -1275,6 +1328,488 @@ static void customChallengesSortByMenu_sortByCreatorAndTeam_onSelect(void) { sor
 static void customChallengesSortByMenu_sortByCreatorAndLevel_onSelect(void) { sort_by(3); }
 static void customChallengesSortByMenu_sortByLevel_onSelect(void) { sort_by(4); }
 static void customChallengesSortByMenu_exit_onSelect(void) { SetExitMenuFlag(); }
+
+/* ---- CREATE: SWOS 2020's NEW / LOAD and its design screen (customChallengesNewOrLoad, Edit) ----
+ * A challenge of the player's own, made on SWOS 2020's screen and kept by OpenSWOS's challenges
+ * mod (its service's save / try / delete: custom.json, the format's every field). Its teams are
+ * the database's, chosen on the friendly's team screen (ModApi_ChooseTeams: yours is the one you
+ * play). Not on it: the uniforms, cards and injuries, the pitch set (SWOS 2020's own screens). */
+
+enum { kScoreLimit = 9 };
+enum { EV_KICK_OFF, EV_FREE_KICK, EV_FREE_KICK_HOME, EV_CORNER, EV_THROW_IN, EV_GOAL_KICK, EV_COUNT };
+enum { WN_WIN, WN_DRAW, WN_GOLDEN, WN_SILVER };
+
+typedef struct {
+    char     id[40], nickname[32], uuid[2][40], name[2][24];
+    uint16_t number[2];
+    int32_t  yours, score[2], minute, secondLeg, leg[2], et, pen, shootout, subsMin, subsMax;
+    int32_t  attack;            /* team 1 attacks: 0 DOWN, 1 UP, 2 RANDOM */
+    int32_t  pitch;             /* -1 RANDOM, 0..6 */
+    int32_t  starter;           /* 0 team 1, 1 team 2, -1 RANDOM */
+    int32_t  event, win, difficulty;
+} Edit;
+
+static Edit s_ed;
+static char s_edText[24][48];
+
+static void customChallengesNewOrLoadMenu_OnInit(void) { SetCurrentEntry(CustomChallengesNewOrLoadMenu_new_); }
+static void customChallengesNewOrLoadMenu_OnDraw(void)
+{
+    const int32_t sel = selected_ordinal();
+    set_text(entry_at(CustomChallengesNewOrLoadMenu_desc),
+             sel == CustomChallengesNewOrLoadMenu_new_ ? "CREATE A NEW SCENARIO"
+             : sel == CustomChallengesNewOrLoadMenu_load ? "LOAD ONE OF YOURS TO CHANGE IT" : "");
+}
+static void customChallengesNewOrLoadMenu_onBackground(void) {}
+static void customChallengesNewOrLoadMenu_exit_onSelect(void) { SetExitMenuFlag(); }
+
+static int32_t edit_teams(void)        /* the friendly's team screen: both teams, yours the one you play */
+{
+    if (!ModApi_ChooseTeams())
+        return 0;
+    for (int32_t t = 0; t < 2; t++) {
+        if (!ModApi_ChosenTeamUuid(t, s_ed.uuid[t], (int32_t)sizeof s_ed.uuid[t])) {
+            ModApi_ShowError("THAT TEAM HAS NO ID: CHOOSE ANOTHER");
+            return 0;
+        }
+        s_ed.number[t] = ModApi_ChosenTeamNumber(t);
+        snprintf(s_ed.name[t], sizeof s_ed.name[t], "%s", ModApi_ChosenName(t));
+    }
+    s_ed.yours = ModApi_ChosenIsPlayer(1) && !ModApi_ChosenIsPlayer(0) ? 1 : 0;
+    return 1;
+}
+
+static void customChallengesNewOrLoadMenu_new_onSelect(void)
+{
+    memset(&s_ed, 0, sizeof s_ed);
+    if (!edit_teams())
+        return;
+    s_ed.subsMin = 3;                       /* (SWOS 2020's new scenario) */
+    s_ed.subsMax = 5;
+    s_ed.pitch = -1;
+    s_ed.difficulty = 1;
+    show("swos2020/customChallengesEditMenu");
+}
+
+static void customChallengesNewOrLoadMenu_load_onSelect(void)
+{
+    s_scnLoad = 1;
+    show("swos2020/customChallengesSelectSCNMenu");
+    s_scnLoad = 0;
+}
+
+static void edit_load(const char *id)
+{
+    char v[64];
+    memset(&s_ed, 0, sizeof s_ed);
+    if (!fetch_info(id, s_info, sizeof s_info))
+        return;
+    const char *in = s_info;
+    snprintf(s_ed.id, sizeof s_ed.id, "%s", id);
+    snprintf(s_ed.nickname, sizeof s_ed.nickname, "%s", info_get(in, "title", v, sizeof v));
+    for (int32_t t = 0; t < 2; t++) {
+        char key[16];
+        snprintf(key, sizeof key, "uuid%d", (int)t);
+        snprintf(s_ed.uuid[t], sizeof s_ed.uuid[t], "%s", info_get(in, key, v, sizeof v));
+        snprintf(key, sizeof key, "number%d", (int)t);
+        s_ed.number[t] = (uint16_t)info_num(in, key);
+        snprintf(key, sizeof key, "team%d", (int)t);
+        snprintf(s_ed.name[t], sizeof s_ed.name[t], "%s", info_get(in, key, v, sizeof v));
+        snprintf(key, sizeof key, "score%d", (int)t);
+        s_ed.score[t] = info_num(in, key);
+        snprintf(key, sizeof key, "first_leg%d", (int)t);
+        s_ed.leg[t] = info_num(in, key);
+    }
+    s_ed.yours = info_num(in, "yours");
+    s_ed.minute = info_num(in, "minute");
+    s_ed.secondLeg = info_num(in, "second_leg");
+    s_ed.et = info_num(in, "extra_time");
+    s_ed.pen = info_num(in, "penalties");
+    s_ed.shootout = info_num(in, "shootout");
+    s_ed.subsMin = info_num(in, "subs_set") ? info_num(in, "subs_min") : 3;
+    s_ed.subsMax = info_num(in, "subs_set") ? info_num(in, "subs_max") : 5;
+    {
+        const int32_t up = info_num(in, "playing_up");     /* (the team attacking the top goal) */
+        s_ed.attack = up == 1 ? 0 : up == 0 ? 1 : 2;
+    }
+    s_ed.pitch = info_num(in, "pitch_type");
+    s_ed.starter = info_num(in, "kick_off");
+    {
+        const int32_t kind = info_num(in, "restart");
+        s_ed.event = kind == 1 ? EV_CORNER : kind == 2 ? (info_num(in, "restart_deep") ? EV_FREE_KICK_HOME : EV_FREE_KICK)
+                   : kind == 4 ? EV_THROW_IN : kind == 5 ? EV_GOAL_KICK : EV_KICK_OFF;
+        if (kind)
+            s_ed.starter = info_num(in, "restart_team");
+    }
+    {
+        const int32_t rule = info_num(in, "extra_time_rule"), win = info_num(in, "win");
+        s_ed.win = rule == 1 ? WN_GOLDEN : rule == 2 ? WN_SILVER : win == 1 ? WN_DRAW : WN_WIN;
+    }
+    s_ed.difficulty = info_num(in, "difficulty");
+    if (s_ed.difficulty < 1)
+        s_ed.difficulty = 1;
+    show("swos2020/customChallengesEditMenu");
+}
+
+/* SWOS 2020's rules between the fields (its setTotalScoresToSame, isKickOffInitialTime) */
+static int32_t kick_off_minute(int32_t m) { return m == 0 || m == 45 || m == 90 || m == 105; }
+static void edit_rules(int32_t changedTeam)
+{
+    if (s_ed.minute == 0)
+        s_ed.score[0] = s_ed.score[1] = 0;
+    if (kick_off_minute(s_ed.minute) && !s_ed.shootout)
+        s_ed.event = EV_KICK_OFF;
+    if (s_ed.minute >= 90 && s_ed.minute != 120)
+        s_ed.et = 1;
+    /* a golden or silver goal, a shoot-out alone: the tie must be level at the start */
+    if (s_ed.win == WN_GOLDEN || s_ed.win == WN_SILVER || s_ed.shootout) {
+        if (s_ed.secondLeg) {
+            const int32_t a = s_ed.score[0] + s_ed.leg[0], b = s_ed.score[1] + s_ed.leg[1];
+            if (a > b)
+                s_ed.leg[1] += a - b;
+            else if (b > a)
+                s_ed.leg[0] += b - a;
+            if (s_ed.leg[0] > kScoreLimit || s_ed.leg[1] > kScoreLimit)
+                s_ed.score[0] = s_ed.score[1] = s_ed.leg[0] = s_ed.leg[1] = 0;
+        } else {
+            s_ed.score[1 - changedTeam] = s_ed.score[changedTeam];
+        }
+    }
+}
+
+static void minute_text(int32_t m, char *out, uint32_t cap)
+{
+    if (m == 0)
+        snprintf(out, cap, "MATCH START");
+    else if (m == 45)
+        snprintf(out, cap, "2ND HALF");
+    else if (m == 90)
+        snprintf(out, cap, "EXTRA TIME");
+    else if (m == 120)
+        snprintf(out, cap, "A.E.T.");
+    else {
+        const int32_t teen = m % 100 >= 11 && m % 100 <= 13;
+        snprintf(out, cap, "%d%s MINUTE", (int)m, teen ? "TH" : m % 10 == 1 ? "ST" : m % 10 == 2 ? "ND" : m % 10 == 3 ? "RD" : "TH");
+    }
+}
+
+/* SWOS_EDIT_TEST=show|save: the design screen filled with a challenge (England v Germany, 1-1
+ * at 80, golden goal, a corner) -- shown (--menu=swos2020/customChallengesEditMenu), or saved
+ * through the challenges service and printed (EDIT TEST ...), then exit. */
+static void edit_test_fill(void)
+{
+    memset(&s_ed, 0, sizeof s_ed);
+    snprintf(s_ed.uuid[0], sizeof s_ed.uuid[0], "fad1a2cf-b275-5972-a3fa-35bda74afa6f");
+    snprintf(s_ed.uuid[1], sizeof s_ed.uuid[1], "2bb28358-8981-5501-bee3-0916d4b736cc");
+    s_ed.number[0] = 0x500b;
+    s_ed.number[1] = 0x5011;
+    snprintf(s_ed.name[0], sizeof s_ed.name[0], "ENGLAND");
+    snprintf(s_ed.name[1], sizeof s_ed.name[1], "GERMANY");
+    snprintf(s_ed.nickname, sizeof s_ed.nickname, "EDITOR TEST");
+    s_ed.score[0] = s_ed.score[1] = 1;
+    s_ed.minute = 80;
+    s_ed.subsMin = 3;
+    s_ed.subsMax = 5;
+    s_ed.pitch = -1;
+    s_ed.win = WN_GOLDEN;
+    s_ed.et = 1;
+    s_ed.event = EV_CORNER;
+    s_ed.difficulty = 3;
+}
+
+static void customChallengesEditMenu_onInit(void)
+{
+    const char *t = getenv("SWOS_EDIT_TEST");
+    if (t && !strcmp(t, "show") && !s_ed.name[0][0])
+        edit_test_fill();
+}
+static void customChallengesEditMenu_onBackground(void) {}
+
+static void ed_set(int32_t ordinal, int32_t slot, const char *fmt, const char *a)
+{
+    snprintf(s_edText[slot], sizeof s_edText[slot], fmt, a);
+    set_text(entry_at(ordinal), s_edText[slot]);
+}
+
+static void edit_stars_AfterDraw(MenuEntry *e)
+{
+    draw_stars(s_ed.difficulty, e->x + ((int32_t)e->dwWidth - stars_width(s_ed.difficulty)) / 2, e->y);
+}
+
+static void customChallengesEditMenu_onDraw(void)
+{
+    static const char *const events[EV_COUNT] = { "KICK OFF", "FREE KICK (OPPO. SIDE)", "FREE KICK (HOME SIDE)", "CORNER KICK",
+                                                  "THROW IN", "GOAL KICK" };
+    static const char *const wins[4] = { "WIN BY ANY SCORE", "AT LEAST DRAW", "GOLDEN GOAL", "SILVER GOAL" };
+    static const char *const pitches[8] = { "RANDOM", "FROZEN", "MUDDY", "WET", "SOFT", "NORMAL", "DRY", "HARD" };
+    char v[48];
+    ed_set(CustomChallengesEditMenu_header, 0, "%s", s_ed.id[0] ? "DESIGN SCENARIO" : "NEW SCENARIO");
+    ed_set(CustomChallengesEditMenu_team1, 1, "%s ", s_ed.name[0]);
+    ed_set(CustomChallengesEditMenu_team2, 2, " %s", s_ed.name[1]);
+    set_back(entry_at(CustomChallengesEditMenu_team1), s_ed.yours == 0 ? kPurple : kRed);
+    set_back(entry_at(CustomChallengesEditMenu_team2), s_ed.yours == 1 ? kPurple : kRed);
+    snprintf(v, sizeof v, "%d-%d", (int)s_ed.score[0], (int)s_ed.score[1]);
+    ed_set(CustomChallengesEditMenu_teamScore, 3, "%s", v);
+    {   /* the nickname: typed in place (InputText edits the entry's own text) */
+        MenuEntry *e = entry_at(CustomChallengesEditMenu_scenarioNickname);
+        if (!s_ed.nickname[0])
+            snprintf(s_edText[4], sizeof s_edText[4], "%s", "(NICKNAME: FIRE TO TYPE ONE)");
+        else
+            snprintf(s_edText[4], sizeof s_edText[4], "%s", s_ed.nickname);
+        set_text(e, s_edText[4]);
+    }
+    snprintf(v, sizeof v, "%d", (int)s_ed.score[0]);
+    ed_set(CustomChallengesEditMenu_team1Score, 5, "%s", v);
+    snprintf(v, sizeof v, "%d", (int)s_ed.score[1]);
+    ed_set(CustomChallengesEditMenu_team2Score, 6, "%s", v);
+    entry_at(CustomChallengesEditMenu_customUniforms)->isInvisible = 1;
+    entry_at(CustomChallengesEditMenu_customUniformsLabel)->isInvisible = 1;
+    minute_text(s_ed.shootout ? 120 : s_ed.minute, v, sizeof v);
+    ed_set(CustomChallengesEditMenu_initialTime, 7, "%s", v);
+    ed_set(CustomChallengesEditMenu_secondLeg, 8, "%s", s_ed.secondLeg ? "YES" : "NO");
+    snprintf(v, sizeof v, "%d", (int)s_ed.leg[0]);
+    ed_set(CustomChallengesEditMenu_legTeam1Score, 9, "%s", v);
+    snprintf(v, sizeof v, "%d", (int)s_ed.leg[1]);
+    ed_set(CustomChallengesEditMenu_legTeam2Score, 10, "%s", v);
+    ed_set(CustomChallengesEditMenu_et, 11, "%s", s_ed.et ? "ET" : "NO ET");
+    ed_set(CustomChallengesEditMenu_pen, 12, "%s", s_ed.pen ? "PEN" : "NO PEN");
+    ed_set(CustomChallengesEditMenu_directPen, 13, "%s", s_ed.shootout ? "DIRECT PENALTY SHOOTOUT" : "NO DIRECT PENALTY SHOOTOUT");
+    snprintf(v, sizeof v, "%d", (int)s_ed.subsMin);
+    ed_set(CustomChallengesEditMenu_subsMin, 14, "%s", v);
+    snprintf(v, sizeof v, "%d", (int)s_ed.subsMax);
+    ed_set(CustomChallengesEditMenu_subsMax, 15, "%s", v);
+    entry_at(CustomChallengesEditMenu_sentOffInjurySetting)->isInvisible = 1;
+    ed_set(CustomChallengesEditMenu_attackGoal, 16, "%s", s_ed.attack == 0 ? "DOWN" : s_ed.attack == 1 ? "UP" : "RANDOM");
+    ed_set(CustomChallengesEditMenu_changePitchType, 17, "%s", pitches[s_ed.pitch + 1 >= 0 && s_ed.pitch + 1 < 8 ? s_ed.pitch + 1 : 0]);
+    ed_set(CustomChallengesEditMenu_startingTeam, 18, "%s", s_ed.starter == 0 ? s_ed.name[0] : s_ed.starter == 1 ? s_ed.name[1] : "RANDOM");
+    ed_set(CustomChallengesEditMenu_startingEvent, 19, "%s", s_ed.shootout ? "PENALTY SHOOTOUT" : events[s_ed.event]);
+    ed_set(CustomChallengesEditMenu_winTeam, 20, "%s", s_ed.name[s_ed.yours]);
+    ed_set(CustomChallengesEditMenu_winCondition, 21, "%s", wins[s_ed.win]);
+    set_text(entry_at(CustomChallengesEditMenu_difficulty), "");
+    entry_at(CustomChallengesEditMenu_difficulty)->afterDrawCb = edit_stars_AfterDraw;
+    entry_at(CustomChallengesEditMenu_changePitchSet)->isInvisible = 1;
+    entry_at(CustomChallengesEditMenu_changePitchSetLabel)->isInvisible = 1;
+    entry_at(CustomChallengesEditMenu_delete_)->isInvisible = !s_ed.id[0];
+}
+
+static void ed_teams(void)
+{
+    Edit keep = s_ed;
+    if (!edit_teams())
+        s_ed = keep;
+}
+static void customChallengesEditMenu_team1_onSelect(void) { ed_teams(); }
+static void customChallengesEditMenu_team2_onSelect(void) { ed_teams(); }
+static void customChallengesEditMenu_scenarioNickname_onSelect(void)
+{
+    MenuEntry *e = entry_at(CustomChallengesEditMenu_scenarioNickname);
+    if (!s_ed.nickname[0])
+        s_edText[4][0] = 0;
+    InputText(sizeof s_ed.nickname, (uint8_t *)e);
+    snprintf(s_ed.nickname, sizeof s_ed.nickname, "%s", (const char *)e->fg);
+}
+static void bump_score(int32_t *v, int32_t team)
+{
+    if (s_ed.minute == 0 || s_ed.shootout || ++*v > kScoreLimit)
+        *v = 0;
+    edit_rules(team);
+}
+static void customChallengesEditMenu_team1Score_onSelect(void) { bump_score(&s_ed.score[0], 0); }
+static void customChallengesEditMenu_team2Score_onSelect(void) { bump_score(&s_ed.score[1], 1); }
+static void customChallengesEditMenu_teamScoreReset_onSelect(void) { s_ed.score[0] = s_ed.score[1] = 0; edit_rules(0); }
+static void minute_by(int32_t d)
+{
+    if (s_ed.shootout)
+        return;
+    s_ed.minute = d == 0 ? 0 : s_ed.minute + d;
+    if (s_ed.minute < 0)
+        s_ed.minute = 0;
+    if (s_ed.minute > 119)
+        s_ed.minute = 119;
+    if (s_ed.win == WN_SILVER && s_ed.minute >= 105)
+        s_ed.minute = 104;
+    edit_rules(0);
+}
+static void customChallengesEditMenu_minus10_onSelect(void) { minute_by(-10); }
+static void customChallengesEditMenu_minus1_onSelect(void) { minute_by(-1); }
+static void customChallengesEditMenu_reset0_onSelect(void) { minute_by(0); }
+static void customChallengesEditMenu_plus1_onSelect(void) { minute_by(1); }
+static void customChallengesEditMenu_plus10_onSelect(void) { minute_by(10); }
+static void customChallengesEditMenu_secondLeg_onSelect(void)
+{
+    s_ed.secondLeg = !s_ed.secondLeg;
+    if (!s_ed.secondLeg)
+        s_ed.leg[0] = s_ed.leg[1] = 0;
+    edit_rules(0);
+}
+static void bump_leg(int32_t t)
+{
+    if (!s_ed.secondLeg)
+        return;
+    if (++s_ed.leg[t] > kScoreLimit)
+        s_ed.leg[t] = 0;
+    edit_rules(t);
+}
+static void customChallengesEditMenu_legTeam1Score_onSelect(void) { bump_leg(0); }
+static void customChallengesEditMenu_legTeam2Score_onSelect(void) { bump_leg(1); }
+static void customChallengesEditMenu_legTeamScoreReset_onSelect(void) { s_ed.leg[0] = s_ed.leg[1] = 0; edit_rules(0); }
+static void customChallengesEditMenu_et_onSelect(void)
+{
+    if (s_ed.shootout || s_ed.minute >= 90 || s_ed.win == WN_GOLDEN || s_ed.win == WN_SILVER)
+        return;
+    s_ed.et = !s_ed.et;
+    if (!s_ed.et)
+        s_ed.pen = 0;
+}
+static void customChallengesEditMenu_pen_onSelect(void)
+{
+    if (s_ed.pen)
+        s_ed.pen = 0;
+    else if (s_ed.et)
+        s_ed.pen = 1;
+}
+static void customChallengesEditMenu_directPen_onSelect(void)
+{
+    s_ed.shootout = !s_ed.shootout;
+    if (s_ed.shootout) {        /* (SWOS 2020's: at 120, won by the shoot-out, nothing else) */
+        s_ed.minute = 120;
+        s_ed.win = WN_WIN;
+        s_ed.et = s_ed.pen = 0;
+        s_ed.event = EV_KICK_OFF;
+        s_ed.subsMin = 0;
+        s_ed.subsMax = 5;
+    } else {
+        s_ed.minute = 0;
+        s_ed.subsMin = 2;
+        s_ed.subsMax = 5;
+    }
+    edit_rules(0);
+}
+static void customChallengesEditMenu_subsMin_onSelect(void)
+{
+    if (s_ed.shootout)
+        return;
+    if (++s_ed.subsMin > s_ed.subsMax)
+        s_ed.subsMin = 0;
+}
+static void customChallengesEditMenu_subsMax_onSelect(void)
+{
+    if (s_ed.shootout)
+        return;
+    if (++s_ed.subsMax > 5)
+        s_ed.subsMin = s_ed.subsMax = 0;
+}
+static void customChallengesEditMenu_sentOffInjurySetting_onSelect(void) {}
+static void customChallengesEditMenu_customUniforms_onSelect(void) {}
+static void customChallengesEditMenu_changePitchSet_onSelect(void) {}
+static void customChallengesEditMenu_attackGoal_onSelect(void)
+{
+    if (!s_ed.shootout)
+        s_ed.attack = (s_ed.attack + 1) % 3;
+}
+static void customChallengesEditMenu_changePitchType_onSelect(void) { s_ed.pitch = s_ed.pitch >= 6 ? -1 : s_ed.pitch + 1; }
+static void customChallengesEditMenu_startingTeam_onSelect(void) { s_ed.starter = s_ed.starter == 0 ? 1 : s_ed.starter == 1 ? -1 : 0; }
+static void customChallengesEditMenu_startingEvent_onSelect(void)
+{
+    if (s_ed.shootout || kick_off_minute(s_ed.minute))
+        return;
+    s_ed.event = (s_ed.event + 1) % EV_COUNT;
+}
+static void customChallengesEditMenu_winCondition_onSelect(void)
+{
+    if (s_ed.shootout)
+        return;
+    s_ed.win = (s_ed.win + 1) % 4;
+    if (s_ed.win == WN_GOLDEN || s_ed.win == WN_SILVER)
+        s_ed.et = 1;
+    if (s_ed.win == WN_SILVER && s_ed.minute >= 105)
+        s_ed.minute = 104;
+    edit_rules(0);
+}
+static void customChallengesEditMenu_difficulty_onSelect(void)
+{
+    if (++s_ed.difficulty > 5)
+        s_ed.difficulty = 1;
+}
+
+/* the challenge as the pack format's object */
+static void edit_json(char *out, uint32_t cap)
+{
+    char user[40], full[96], shortName[32], winMsg[48], e[6][160];
+    extern const char *United_UserName(void);
+    const char *u = United_UserName() ? United_UserName() : "";
+    snprintf(user, sizeof user, "%s", u[0] ? u : "PLAYER");
+    for (char *c = user; *c; c++)
+        if (*c >= 'a' && *c <= 'z')
+            *c = (char)(*c - 32);
+    snprintf(full, sizeof full, "%s %d-%d %s BY %s", s_ed.name[0], (int)s_ed.score[0], (int)s_ed.score[1], s_ed.name[1], user);
+    snprintf(shortName, sizeof shortName, "%.31s", full);
+    snprintf(winMsg, sizeof winMsg, "%s MUST %s", s_ed.name[s_ed.yours], s_ed.win == WN_DRAW ? "AT LEAST DRAW" : "WIN");
+    const int32_t playingUp = s_ed.attack == 0 ? 1 : s_ed.attack == 1 ? 0 : -1;
+    int n = snprintf(out, cap,
+        "{\"id\":\"%s\",\"name\":\"%s\",\"record_name\":\"%s\",\"category\":\"CUSTOM\",\"title\":\"%s\","
+        "\"about\":\"YOUR OWN CHALLENGE\",\"difficulty\":%d,\"win_message\":\"%s\","
+        "\"teams\":[{\"uuid\":\"%s\",\"team\":\"%04x\",\"name\":\"%s\"},{\"uuid\":\"%s\",\"team\":\"%04x\",\"name\":\"%s\"}],"
+        "\"yours\":%d,\"score\":[%d,%d],\"minute\":%d,\"extra_time\":%s,\"penalties\":%s,\"shootout\":%s,"
+        "\"subs\":[%d,%d],\"playing_up\":%d,\"kick_off\":%d,\"win\":\"%s\"",
+        s_ed.id, ModApi_JsonEscape(shortName, e[0], sizeof e[0]), ModApi_JsonEscape(full, e[1], sizeof e[1]),
+        ModApi_JsonEscape(s_ed.nickname, e[2], sizeof e[2]), (int)s_ed.difficulty, ModApi_JsonEscape(winMsg, e[3], sizeof e[3]),
+        s_ed.uuid[0], (unsigned)s_ed.number[0], ModApi_JsonEscape(s_ed.name[0], e[4], sizeof e[4]),
+        s_ed.uuid[1], (unsigned)s_ed.number[1], ModApi_JsonEscape(s_ed.name[1], e[5], sizeof e[5]),
+        (int)s_ed.yours, (int)s_ed.score[0], (int)s_ed.score[1], (int)(s_ed.shootout ? 120 : s_ed.minute),
+        s_ed.et ? "true" : "false", s_ed.pen ? "true" : "false", s_ed.shootout ? "true" : "false",
+        (int)s_ed.subsMin, (int)s_ed.subsMax, (int)playingUp, (int)s_ed.starter, s_ed.win == WN_DRAW ? "draw" : "win");
+    if (s_ed.win == WN_GOLDEN || s_ed.win == WN_SILVER)
+        n += snprintf(out + n, cap - (size_t)n, ",\"extra_time_rule\":\"%s\"", s_ed.win == WN_GOLDEN ? "golden_goal" : "silver_goal");
+    if (s_ed.secondLeg)
+        n += snprintf(out + n, cap - (size_t)n, ",\"first_leg\":[%d,%d]", (int)s_ed.leg[0], (int)s_ed.leg[1]);
+    if (s_ed.pitch >= 0)
+        n += snprintf(out + n, cap - (size_t)n, ",\"pitch_type\":%d", (int)s_ed.pitch);
+    if (!s_ed.shootout && s_ed.event != EV_KICK_OFF) {
+        static const char *const kinds[EV_COUNT] = { "kick_off", "free_kick", "free_kick", "corner", "throw_in", "goal_kick" };
+        n += snprintf(out + n, cap - (size_t)n, ",\"restart\":{\"kind\":\"%s\",\"team\":%d,\"wing\":-1%s%s}", kinds[s_ed.event],
+                      (int)s_ed.starter, s_ed.event == EV_FREE_KICK || s_ed.event == EV_FREE_KICK_HOME ? ",\"spot\":-1" : "",
+                      s_ed.event == EV_FREE_KICK_HOME ? ",\"deep\":true" : "");
+    }
+    snprintf(out + n, cap - (size_t)n, "}");
+}
+
+static void customChallengesEditMenu_test_onSelect(void)
+{
+    static char args[4096], obj[3800], out[32];
+    edit_json(obj, sizeof obj);
+    snprintf(args, sizeof args, "{\"challenge\":%s}", obj);
+    if (call("try", args, out, sizeof out) != 0)
+        ModApi_ShowError("THIS SCENARIO CANNOT BE PLAYED");
+}
+static void customChallengesEditMenu_save_onSelect(void)
+{
+    static char args[4096], obj[3800], out[64];
+    edit_json(obj, sizeof obj);
+    snprintf(args, sizeof args, "{\"challenge\":%s}", obj);
+    if (call("save", args, out, sizeof out) != 0) {
+        ModApi_ShowError("THE SCENARIO COULD NOT BE SAVED");
+        return;
+    }
+    char *nl = strchr(out, '\n');
+    if (nl)
+        *nl = 0;
+    snprintf(s_ed.id, sizeof s_ed.id, "%s", out);
+    if (!getenv("SWOS_EDIT_TEST"))
+        ModApi_ShowError("SAVED");
+}
+static void customChallengesEditMenu_delete_onSelect(void)
+{
+    char args[96], e[64], out[16];
+    if (!s_ed.id[0])
+        return;
+    snprintf(args, sizeof args, "{\"id\":\"%s\"}", ModApi_JsonEscape(s_ed.id, e, sizeof e));
+    if (call("delete", args, out, sizeof out) == 0) {
+        ModApi_ShowError("DELETED");
+        SetExitMenuFlag();
+    }
+}
+static void customChallengesEditMenu_exit_onSelect(void) { SetExitMenuFlag(); }
 
 /* ---- the mod ---- */
 
@@ -1312,6 +1847,7 @@ static const MenuSymbol k_handlers[] = {
     HANDLER(customChallengesSortByMenu_sortByTeam_onSelect), HANDLER(customChallengesSortByMenu_sortByCreatorAndTeam_onSelect),
     HANDLER(customChallengesSortByMenu_sortByCreatorAndLevel_onSelect), HANDLER(customChallengesSortByMenu_sortByLevel_onSelect),
     HANDLER(customChallengesSortByMenu_exit_onSelect),
+    HANDLER(customChallengesNewOrLoadMenu_OnInit), HANDLER(customChallengesNewOrLoadMenu_OnDraw), HANDLER(customChallengesNewOrLoadMenu_onBackground), HANDLER(customChallengesNewOrLoadMenu_exit_onSelect), HANDLER(customChallengesNewOrLoadMenu_new_onSelect), HANDLER(customChallengesNewOrLoadMenu_load_onSelect), HANDLER(customChallengesEditMenu_onInit), HANDLER(customChallengesEditMenu_onDraw), HANDLER(customChallengesEditMenu_onBackground), HANDLER(customChallengesEditMenu_team1_onSelect), HANDLER(customChallengesEditMenu_team2_onSelect), HANDLER(customChallengesEditMenu_scenarioNickname_onSelect), HANDLER(customChallengesEditMenu_team1Score_onSelect), HANDLER(customChallengesEditMenu_team2Score_onSelect), HANDLER(customChallengesEditMenu_teamScoreReset_onSelect), HANDLER(customChallengesEditMenu_minus10_onSelect), HANDLER(customChallengesEditMenu_minus1_onSelect), HANDLER(customChallengesEditMenu_reset0_onSelect), HANDLER(customChallengesEditMenu_plus1_onSelect), HANDLER(customChallengesEditMenu_plus10_onSelect), HANDLER(customChallengesEditMenu_secondLeg_onSelect), HANDLER(customChallengesEditMenu_legTeam1Score_onSelect), HANDLER(customChallengesEditMenu_legTeam2Score_onSelect), HANDLER(customChallengesEditMenu_legTeamScoreReset_onSelect), HANDLER(customChallengesEditMenu_et_onSelect), HANDLER(customChallengesEditMenu_pen_onSelect), HANDLER(customChallengesEditMenu_directPen_onSelect), HANDLER(customChallengesEditMenu_subsMin_onSelect), HANDLER(customChallengesEditMenu_subsMax_onSelect), HANDLER(customChallengesEditMenu_sentOffInjurySetting_onSelect), HANDLER(customChallengesEditMenu_customUniforms_onSelect), HANDLER(customChallengesEditMenu_changePitchSet_onSelect), HANDLER(customChallengesEditMenu_attackGoal_onSelect), HANDLER(customChallengesEditMenu_changePitchType_onSelect), HANDLER(customChallengesEditMenu_startingTeam_onSelect), HANDLER(customChallengesEditMenu_startingEvent_onSelect), HANDLER(customChallengesEditMenu_winCondition_onSelect), HANDLER(customChallengesEditMenu_difficulty_onSelect), HANDLER(customChallengesEditMenu_test_onSelect), HANDLER(customChallengesEditMenu_save_onSelect), HANDLER(customChallengesEditMenu_delete_onSelect), HANDLER(customChallengesEditMenu_exit_onSelect),
 };
 #undef HANDLER
 
@@ -1331,9 +1867,29 @@ static int32_t screens(const char *method, const char *args, char *out, uint32_t
 
 /* SWOS_SCN_IMPORT_TEST=<file.SCN>: at the first menu frame, the file imported (src/united_scn.c),
  * the challenges read again and the challenge's fields printed (SCN TEST ...), then exit. */
+static void customChallengesEditMenu_save_onSelect(void);
+static void edit_save_test(void)
+{
+    static int32_t done;
+    const char *t = getenv("SWOS_EDIT_TEST");
+    char out[4096], args[96];
+    if (done || !t || strcmp(t, "save"))
+        return;
+    done = 1;
+    edit_test_fill();
+    customChallengesEditMenu_save_onSelect();
+    snprintf(args, sizeof args, "{\"id\":\"%s\"}", s_ed.id);
+    const int32_t got = s_ed.id[0] && call("info", args, out, sizeof out) == 0;
+    printf("EDIT TEST saved %s\n%s", s_ed.id, got ? out : "(no info)\n");
+    printf("EDIT TEST %s\n", got ? "PASS" : "FAIL");
+    fflush(stdout);
+    exit(got ? 0 : 1);
+}
+
 static void scn_import_test(void)
 {
     static int32_t done;
+    edit_save_test();
     const char *path = getenv("SWOS_SCN_IMPORT_TEST");
     if (done || !path)
         return;
