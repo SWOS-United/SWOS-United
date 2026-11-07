@@ -14,6 +14,10 @@
  *   challenges.won        the win, sent
  *   speedrun.finished     the run into the player's record, sent
  *   speedrun.line         "WORLD RANK 3   BEST 2.21 NAME" for the result screen
+ *   speedrun.board        {"style","target"}: the target's leaderboard, its five difficulties
+ *   speedrun.mine         {"style"}: the player's records at that style
+ *   speedrun.news         {}: the latest runs
+ *                         (SWOS 2020's game_style numbers; the lines are united_records.h's)
  *
  * The network is SWOS-API's client (third_party/swos-api: include/united_records.h, the requests
  * and their answers); this file is the game's side -- who, a worker thread and its queue (a call
@@ -57,13 +61,19 @@ static void who(char *out, uint32_t cap, int32_t mustBeLoggedIn)
 
 /* ---- the worker and its queue ---- */
 
-enum { J_TALLY = 1, J_WON, J_SPEEDRUN };
+enum { J_TALLY = 1, J_WON, J_SPEEDRUN, J_BOARD, J_MINE, J_NEWS };
 typedef struct {
     int32_t        kind;
     char           user[64];
     char           name[96], category[96];  /* won */
     UnitedSpeedrun run;                     /* (run.user points at user) */
+    int32_t        style, target;           /* board, mine */
 } Job;
+
+/* The boards' answers (under s_lock): each the last one asked for, by what was asked. */
+enum { F_BOARD, F_MINE, F_NEWS, kFetches };
+typedef struct { char key[96]; int32_t state; char *text; } Fetch;   /* state: 1 asking, 2 here, 3 failed */
+static Fetch s_fetch[kFetches];
 
 enum { kQueue = 16 };
 static Job         s_queue[kQueue];
@@ -106,6 +116,20 @@ static void run_job(Job *j)
     } else if (j->kind == J_WON) {
         if (UnitedRecords_ChallengeWon(j->user, j->name, j->category))
             fprintf(stderr, "[online-records] challenge won, sent: %s (%s)\n", j->name, j->category);
+    } else if (j->kind == J_BOARD || j->kind == J_MINE || j->kind == J_NEWS) {
+        const int32_t slot = j->kind == J_BOARD ? F_BOARD : j->kind == J_MINE ? F_MINE : F_NEWS;
+        const uint32_t cap = 65536;
+        char *text = (char *)malloc(cap);
+        const int32_t ok = text && (j->kind == J_BOARD ? UnitedRecords_SpeedrunBoard(j->style, j->target, text, cap)
+                                    : j->kind == J_MINE ? UnitedRecords_SpeedrunMine(j->user, j->style, text, cap)
+                                    : UnitedRecords_SpeedrunNews(text, cap));
+        SDL_LockMutex(s_lock);
+        free(s_fetch[slot].text);
+        s_fetch[slot].text = ok ? text : NULL;
+        s_fetch[slot].state = ok ? 2 : 3;
+        SDL_UnlockMutex(s_lock);
+        if (!ok)
+            free(text);
     } else if (j->kind == J_SPEEDRUN) {
         char line[64];
         j->run.user = j->user;
@@ -203,9 +227,51 @@ static int32_t challenges_read(const char *method, const char *args, char *out, 
     return rc;
 }
 
+/* A board: asked once for what is asked (the key), answered from then on; "fresh" asks again. */
+static int32_t fetch(int32_t slot, int32_t kind, const char *key, const Job *job, int32_t fresh, char *out,
+                     uint32_t cap)
+{
+    SDL_LockMutex(s_lock);
+    Fetch *f = &s_fetch[slot];
+    if (fresh || strcmp(f->key, key) != 0 || f->state == 0) {
+        Job j = *job;
+        j.kind = kind;
+        snprintf(f->key, sizeof f->key, "%s", key);
+        f->state = 1;
+        SDL_UnlockMutex(s_lock);
+        push(&j);
+        return 1;
+    }
+    const int32_t rc = f->state == 1 ? 1 : f->state == 3 ? -1 : 0;
+    if (rc == 0 && out && cap)
+        snprintf(out, cap, "%s", f->text ? f->text : "");
+    SDL_UnlockMutex(s_lock);
+    return rc;
+}
+
 static int32_t service(const char *method, const char *args, char *out, uint32_t cap)
 {
     char me[64];
+    if (!strcmp(method, "speedrun.board") || !strcmp(method, "speedrun.mine") || !strcmp(method, "speedrun.news")) {
+        Job j;
+        char key[96];
+        memset(&j, 0, sizeof j);
+        j.style = (int32_t)json_num(args, "$.style");
+        j.target = (int32_t)json_num(args, "$.target");
+        const int32_t fresh = json_bool(args, "$.fresh");
+        if (!strcmp(method, "speedrun.news"))
+            return fetch(F_NEWS, J_NEWS, "news", &j, fresh, out, cap);
+        if (!strcmp(method, "speedrun.board")) {
+            snprintf(key, sizeof key, "%d/%d", (int)j.style, (int)j.target);
+            return fetch(F_BOARD, J_BOARD, key, &j, fresh, out, cap);
+        }
+        who(me, sizeof me, 0);
+        if (!me[0])
+            return -1;          /* (whose records: nobody's) */
+        snprintf(j.user, sizeof j.user, "%s", me);
+        snprintf(key, sizeof key, "%s/%d", me, (int)j.style);
+        return fetch(F_MINE, J_MINE, key, &j, fresh, out, cap);
+    }
     if (!strcmp(method, "challenges.completed") || !strcmp(method, "challenges.stats") ||
         !strcmp(method, "challenges.wins") || !strcmp(method, "challenges.winners") ||
         !strcmp(method, "challenges.ranking"))
@@ -242,7 +308,12 @@ static int32_t service(const char *method, const char *args, char *out, uint32_t
         json_str(args, "$.style", style, (int32_t)sizeof style);
         j.run.style = UnitedRecords_Style(style);
         j.run.mode = (int32_t)json_num(args, "$.target");
-        j.run.difficulty = UnitedRecords_Difficulty(json_num(args, "$.yours"), json_num(args, "$.theirs"));
+        {   /* SWOS 2020's preconfigured teams' difficulty, else the teams' skill points' */
+            long preset = -1;
+            mjson_get_long(args, (int)strlen(args), "$.difficulty", &preset);
+            j.run.difficulty = preset >= 0 && preset <= 4 ? (int32_t)preset
+                             : UnitedRecords_Difficulty(json_num(args, "$.yours"), json_num(args, "$.theirs"));
+        }
         j.run.done = json_bool(args, "$.done");
         j.run.frames = (int32_t)json_num(args, "$.frames");
         j.run.ms = (int32_t)json_num(args, "$.ms");

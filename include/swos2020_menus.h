@@ -45,8 +45,13 @@
     X(selectScenarioActionMenu, "swos2020/selectScenarioActionMenu", SelectScenarioActionMenu, 15) \
     X(scenarioOnlineStatsMenu, "swos2020/scenarioOnlineStatsMenu", ScenarioOnlineStatsMenu, 39) \
     X(scenarioCompletionMenu, "swos2020/scenarioCompletionMenu", ScenarioCompletionMenu, 39) \
+    X(speedrunMainMenu, "swos2020/speedrunMainMenu", SpeedrunMainMenu, 14) \
+    X(selectSpeedrunDifficultyMenu, "swos2020/selectSpeedrunDifficultyMenu", SelectSpeedrunDifficultyMenu, 17) \
+    X(selectSpeedrunDifficultyCardMenu, "swos2020/selectSpeedrunDifficultyCardMenu", SelectSpeedrunDifficultyCardMenu, 5) \
+    X(leaderboardMenu, "swos2020/leaderboardMenu", LeaderboardMenu, 69) \
+    X(viewMyRecordsMenu, "swos2020/viewMyRecordsMenu", ViewMyRecordsMenu, 40) \
 
-/* Every handler name the imported menus reference (312), sorted. */
+/* Every handler name the imported menus reference (371), sorted. */
 #define SWOS2020_MENU_CALLBACKS(X) \
     X(LeftBasicColor_Dec_onSelect) \
     X(LeftBasicColor_Inc_onSelect) \
@@ -86,7 +91,13 @@
     X(aboutMPMenu_OnDraw) \
     X(act1_onSelect) \
     X(act2_onSelect) \
+    X(advanced_OnSelect) \
+    X(amateur_OnSelect) \
+    X(animateBalls) \
+    X(beginner_OnSelect) \
     X(bestNewsMenu_OnSelect) \
+    X(bestRecordInLeaderboard_OnSelect) \
+    X(bestRecord_OnSelect) \
     X(cat2_onSelect) \
     X(cat3_onSelect) \
     X(cat4_onSelect) \
@@ -101,16 +112,33 @@
     X(cupMatchView_onReturn) \
     X(cupMatchView_scrollDown_onSelect) \
     X(cupMatchView_scrollUp_onSelect) \
+    X(currentRecord_OnSelect) \
+    X(difficulty_Dec_onSelect) \
+    X(difficulty_Inc_onSelect) \
+    X(difficulty_onSelect) \
     X(drawGoButtonAndStarsGraphics) \
     X(draw_mp_game_style_icon_sets) \
     X(exitNewsMenu_OnSelect) \
     X(exitRankingMenu_OnSelect) \
+    X(gameMode_Dec_onSelect) \
+    X(gameMode_Inc_onSelect) \
+    X(gameMode_onSelect) \
+    X(gameStyle_Dec_onSelect) \
+    X(gameStyle_Inc_onSelect) \
+    X(gameStyle_onSelect) \
+    X(headerGoal_OnSelect) \
     X(hostGameMessageMenu_OnDraw) \
     X(hostGameMessageMenu_OnInit) \
     X(hostGameMessageMenu_button1_OnSelect) \
     X(hostGameMessageMenu_button2_OnSelect) \
     X(hostGameMessageMenu_button3_OnSelect) \
     X(hostGameMessageMenu_exit_OnSelect) \
+    X(leaderboardExit_OnSelect) \
+    X(leaderboardMenuOnDraw) \
+    X(leaderboardMenuOnInit) \
+    X(leaderboardMenuOnReturn) \
+    X(leaderboard_ScrollDown_onSelect) \
+    X(leaderboard_ScrollUp_onSelect) \
     X(leagueInfo1_button1_onSelect) \
     X(leagueInfo1_button2_onSelect) \
     X(leagueInfo1_button3_onSelect) \
@@ -171,6 +199,9 @@
     X(mLogTickerMenu_scrollDown_onSelect) \
     X(mLogTickerMenu_scrollUp_onSelect) \
     X(mLogTickerMenu_stats_onSelect) \
+    X(makeRecordFrame_OnSelect) \
+    X(master_OnSelect) \
+    X(matchGoal_OnSelect) \
     X(matchInfoMenu_OnDraw) \
     X(matchInfoMenu_OnInit) \
     X(matchMakingMenu_OnDraw) \
@@ -232,12 +263,17 @@
     X(myRankedStatsMenu_OnDraw) \
     X(myRankedStatsMenu_OnInit) \
     X(myRankedStatsMenu_exit_OnSelect) \
+    X(myRecords_OnSelect) \
+    X(newsDiffCard_OnSelect) \
+    X(newsDiff_OnSelect) \
+    X(newsMain_OnSelect) \
     X(newsMenu_OnDraw) \
     X(newsMenu_OnInit) \
     X(newsMenu_OnReturn) \
     X(newsOnDiscordNewsMenu_OnSelect) \
     X(news_ScrollDown_onSelect) \
     X(news_ScrollUp_onSelect) \
+    X(oneGoal_OnSelect) \
     X(oooInfoMenu_AwayUser_OnSelect) \
     X(oooInfoMenu_HomeUser_OnSelect) \
     X(oooInfoMenu_OnDraw) \
@@ -249,7 +285,9 @@
     X(passwordInput_OnSelect) \
     X(playerInfoMenu_OnDraw) \
     X(playerInfoMenu_OnInit) \
+    X(pro_OnSelect) \
     X(rankNewsMenu_OnSelect) \
+    X(rank_OnSelect) \
     X(rankingMenu_OnDraw) \
     X(rankingMenu_OnInit) \
     X(rankingMenu_OnReturn) \
@@ -258,6 +296,7 @@
     X(ranking_username_onSelect) \
     X(rankingsMenu_OnDraw) \
     X(rankingsMenu_OnInit) \
+    X(redCard_OnSelect) \
     X(registerUserMenuNews2_OnSelect) \
     X(registerUserMenuNews3_OnSelect) \
     X(registerUserMenuNews_OnSelect) \
@@ -338,6 +377,14 @@
     X(selectScenarioActionMenu_OnDraw) \
     X(selectScenarioActionMenu_OnInit) \
     X(selectScenarioActionMenu_onSelect) \
+    X(selectSpeedrunDifficultyCardExit_OnSelect) \
+    X(selectSpeedrunDifficultyCardMenu_OnDraw) \
+    X(selectSpeedrunDifficultyCardMenu_OnInit) \
+    X(selectSpeedrunDifficultyExit_OnSelect) \
+    X(selectSpeedrunDifficultyMenuOnDraw) \
+    X(selectSpeedrunDifficultyMenuOnInit) \
+    X(selectSpeedrunTeamsCard_OnSelect) \
+    X(selectSpeedrunTeams_OnSelect) \
     X(selectSwitchCardsInjuries) \
     X(selectSwitchKickoffSync) \
     X(selectSwitchShortPresses) \
@@ -349,6 +396,16 @@
     X(selectUniformMenu_OkOnSelect) \
     X(selectXBLARankingsMenu) \
     X(showPassword_OnSelect) \
+    X(speedrunMainExit_OnSelect) \
+    X(speedrunMainMenuOnDraw) \
+    X(speedrunMainMenuOnInit) \
+    X(speedrunMainMenuOnReturn) \
+    X(speedrunMode_Dec_onSelect) \
+    X(speedrunMode_Inc_onSelect) \
+    X(speedrunMode_onSelect) \
+    X(tackleGoal_OnSelect) \
+    X(tenGoals_OnSelect) \
+    X(threeGoals_OnSelect) \
     X(tournaInfoMenu_AwayUser_OnSelect) \
     X(tournaInfoMenu_HomeUser_OnSelect) \
     X(tournaInfoMenu_OnDraw) \
@@ -360,6 +417,13 @@
     X(tournaInfo_scrollUp2_onSelect) \
     X(tournaInfo_scrollUp_onSelect) \
     X(usernameInput_OnSelect) \
+    X(viewMyRecordsExit_OnSelect) \
+    X(viewMyRecordsLeaderboard_OnSelect) \
+    X(viewMyRecordsMenuOnDraw) \
+    X(viewMyRecordsMenuOnInit) \
+    X(viewMyRecordsReset_OnSelect) \
+    X(viewMyRecordsSync_OnSelect) \
+    X(yellowCard_OnSelect) \
 
 /* ---- logInMenu -- src/menus/logIn.mnu ---- */
 enum {
@@ -2457,5 +2521,245 @@ enum {
     ScenarioCompletionMenu_exit = 38,
 };
 #define ScenarioCompletionMenu_numEntries 39
+
+/* ---- speedrunMainMenu -- src/menus/speedrunMain.mnu ---- */
+enum {
+    SpeedrunMainMenu_speedrunMainHeader = 0,
+    SpeedrunMainMenu_oneGoal = 1,
+    SpeedrunMainMenu_headerGoal = 2,
+    SpeedrunMainMenu_threeGoals = 3,
+    SpeedrunMainMenu_tackleGoal = 4,
+    SpeedrunMainMenu_tenGoals = 5,
+    SpeedrunMainMenu_yellowCard = 6,
+    SpeedrunMainMenu_matchGoal = 7,
+    SpeedrunMainMenu_redCard = 8,
+    SpeedrunMainMenu_myRecords = 9,
+    SpeedrunMainMenu_news = 10,
+    SpeedrunMainMenu_HelpMsg = 11,
+    SpeedrunMainMenu_exit = 12,
+    SpeedrunMainMenu_dummy = 13,
+};
+#define SpeedrunMainMenu_numEntries 14
+
+/* ---- selectSpeedrunDifficultyMenu -- src/menus/selectSpeedrunDifficulty.mnu ---- */
+enum {
+    SelectSpeedrunDifficultyMenu_selectSpeedrunDifficultyHeader = 0,
+    SelectSpeedrunDifficultyMenu_subTitleLeft = 1,
+    SelectSpeedrunDifficultyMenu_selectSpeedrunTeams = 2,
+    SelectSpeedrunDifficultyMenu_msg0 = 3,
+    SelectSpeedrunDifficultyMenu_msg1 = 4,
+    SelectSpeedrunDifficultyMenu_msg2 = 5,
+    SelectSpeedrunDifficultyMenu_msg3 = 6,
+    SelectSpeedrunDifficultyMenu_msg4 = 7,
+    SelectSpeedrunDifficultyMenu_msg5 = 8,
+    SelectSpeedrunDifficultyMenu_subTitleRight = 9,
+    SelectSpeedrunDifficultyMenu_beginner = 10,
+    SelectSpeedrunDifficultyMenu_amateur = 11,
+    SelectSpeedrunDifficultyMenu_advanced = 12,
+    SelectSpeedrunDifficultyMenu_pro = 13,
+    SelectSpeedrunDifficultyMenu_master = 14,
+    SelectSpeedrunDifficultyMenu_news = 15,
+    SelectSpeedrunDifficultyMenu_exit = 16,
+};
+#define SelectSpeedrunDifficultyMenu_numEntries 17
+
+/* ---- selectSpeedrunDifficultyCardMenu -- src/menus/selectSpeedrunDifficultyCard.mnu ---- */
+enum {
+    SelectSpeedrunDifficultyCardMenu_selectSpeedrunDifficultyHeader = 0,
+    SelectSpeedrunDifficultyCardMenu_subTitleLeft = 1,
+    SelectSpeedrunDifficultyCardMenu_selectSpeedrunTeams = 2,
+    SelectSpeedrunDifficultyCardMenu_news = 3,
+    SelectSpeedrunDifficultyCardMenu_exit = 4,
+};
+#define SelectSpeedrunDifficultyCardMenu_numEntries 5
+
+/* ---- leaderboardMenu -- src/menus/leaderboard.mnu ---- */
+enum {
+    LeaderboardMenu_gameStyle = 0,
+    LeaderboardMenu_gameStyle_Dec = 1,
+    LeaderboardMenu_gameStyle_Inc = 2,
+    LeaderboardMenu_gameMode = 3,
+    LeaderboardMenu_gameMode_Dec = 4,
+    LeaderboardMenu_gameMode_Inc = 5,
+    LeaderboardMenu_difficulty = 6,
+    LeaderboardMenu_difficulty_Dec = 7,
+    LeaderboardMenu_difficulty_Inc = 8,
+    LeaderboardMenu_ranking_00 = 9,
+    LeaderboardMenu_ranking_01 = 10,
+    LeaderboardMenu_ranking_02 = 11,
+    LeaderboardMenu_ranking_03 = 12,
+    LeaderboardMenu_ranking_04 = 13,
+    LeaderboardMenu_ranking_05 = 14,
+    LeaderboardMenu_ranking_06 = 15,
+    LeaderboardMenu_ranking_07 = 16,
+    LeaderboardMenu_ranking_08 = 17,
+    LeaderboardMenu_ranking_09 = 18,
+    LeaderboardMenu_ranking_10 = 19,
+    LeaderboardMenu_date_00 = 20,
+    LeaderboardMenu_date_01 = 21,
+    LeaderboardMenu_date_02 = 22,
+    LeaderboardMenu_date_03 = 23,
+    LeaderboardMenu_date_04 = 24,
+    LeaderboardMenu_date_05 = 25,
+    LeaderboardMenu_date_06 = 26,
+    LeaderboardMenu_date_07 = 27,
+    LeaderboardMenu_date_08 = 28,
+    LeaderboardMenu_date_09 = 29,
+    LeaderboardMenu_date_10 = 30,
+    LeaderboardMenu_username_00 = 31,
+    LeaderboardMenu_username_01 = 32,
+    LeaderboardMenu_username_02 = 33,
+    LeaderboardMenu_username_03 = 34,
+    LeaderboardMenu_username_04 = 35,
+    LeaderboardMenu_username_05 = 36,
+    LeaderboardMenu_username_06 = 37,
+    LeaderboardMenu_username_07 = 38,
+    LeaderboardMenu_username_08 = 39,
+    LeaderboardMenu_username_09 = 40,
+    LeaderboardMenu_username_10 = 41,
+    LeaderboardMenu_played_00 = 42,
+    LeaderboardMenu_played_01 = 43,
+    LeaderboardMenu_played_02 = 44,
+    LeaderboardMenu_played_03 = 45,
+    LeaderboardMenu_played_04 = 46,
+    LeaderboardMenu_played_05 = 47,
+    LeaderboardMenu_played_06 = 48,
+    LeaderboardMenu_played_07 = 49,
+    LeaderboardMenu_played_08 = 50,
+    LeaderboardMenu_played_09 = 51,
+    LeaderboardMenu_played_10 = 52,
+    LeaderboardMenu_best_00 = 53,
+    LeaderboardMenu_best_01 = 54,
+    LeaderboardMenu_best_02 = 55,
+    LeaderboardMenu_best_03 = 56,
+    LeaderboardMenu_best_04 = 57,
+    LeaderboardMenu_best_05 = 58,
+    LeaderboardMenu_best_06 = 59,
+    LeaderboardMenu_best_07 = 60,
+    LeaderboardMenu_best_08 = 61,
+    LeaderboardMenu_best_09 = 62,
+    LeaderboardMenu_best_10 = 63,
+    LeaderboardMenu_leaderboard_ScrollUp = 64,
+    LeaderboardMenu_leaderboard_ScrollDown = 65,
+    LeaderboardMenu_leaderboard_Page = 66,
+    LeaderboardMenu_exit = 67,
+    LeaderboardMenu_makeRecordFrame = 68,
+};
+#define LeaderboardMenu_numEntries 69
+#define LeaderboardMenu_kVMR_MaxRowsMyRecords (11)
+#define LeaderboardMenu_kVMR_ButtonY0 (50)
+#define LeaderboardMenu_kVMR_ButtonHeight (10)
+#define LeaderboardMenu_kVMR_ButtonStep (12)
+#define LeaderboardMenu_kVMR_RankingPosX (16)
+#define LeaderboardMenu_kVMR_RankingPosY (50)
+#define LeaderboardMenu_kVMR_RankingStep (12)
+#define LeaderboardMenu_kVMR_RankingWidth (32)
+#define LeaderboardMenu_kVMR_RankingHeight (10)
+#define LeaderboardMenu_kVMR_RankingBaseColor (7)
+#define LeaderboardMenu_kVMR_DatePosX (50)
+#define LeaderboardMenu_kVMR_DatePosY (50)
+#define LeaderboardMenu_kVMR_DateStep (12)
+#define LeaderboardMenu_kVMR_DateWidth (52)
+#define LeaderboardMenu_kVMR_DateHeight (10)
+#define LeaderboardMenu_kVMR_DateBaseColor (7)
+#define LeaderboardMenu_kVMR_UsernamePosX (104)
+#define LeaderboardMenu_kVMR_UsernamePosY (50)
+#define LeaderboardMenu_kVMR_UsernameStep (12)
+#define LeaderboardMenu_kVMR_UsernameWidth (90)
+#define LeaderboardMenu_kVMR_UsernameHeight (10)
+#define LeaderboardMenu_kVMR_UsernameBaseColor (7)
+#define LeaderboardMenu_kVMR_PlayedPosX (196)
+#define LeaderboardMenu_kVMR_PlayedPosY (50)
+#define LeaderboardMenu_kVMR_PlayedStep (12)
+#define LeaderboardMenu_kVMR_PlayedWidth (40)
+#define LeaderboardMenu_kVMR_PlayedHeight (10)
+#define LeaderboardMenu_kVMR_PlayedBaseColor (7)
+#define LeaderboardMenu_kVMR_BestPosX (238)
+#define LeaderboardMenu_kVMR_BestPosY (50)
+#define LeaderboardMenu_kVMR_BestStep (12)
+#define LeaderboardMenu_kVMR_BestWidth (60)
+#define LeaderboardMenu_kVMR_BestHeight (10)
+#define LeaderboardMenu_kVMR_BestBaseColor (7)
+#define LeaderboardMenu_kVMR_TEMP_X (-3)
+#define LeaderboardMenu_kVMR_TEMP_Y (-2)
+
+/* ---- viewMyRecordsMenu -- src/menus/viewMyRecords.mnu ---- */
+enum {
+    ViewMyRecordsMenu_viewMyRecordsMenuHeader = 0,
+    ViewMyRecordsMenu_recordMode = 1,
+    ViewMyRecordsMenu_speedrunMode_Dec = 2,
+    ViewMyRecordsMenu_speedrunMode = 3,
+    ViewMyRecordsMenu_speedrunMode_Inc = 4,
+    ViewMyRecordsMenu_difficulty_00 = 5,
+    ViewMyRecordsMenu_difficulty_01 = 6,
+    ViewMyRecordsMenu_difficulty_02 = 7,
+    ViewMyRecordsMenu_difficulty_03 = 8,
+    ViewMyRecordsMenu_difficulty_04 = 9,
+    ViewMyRecordsMenu_difficulty_05 = 10,
+    ViewMyRecordsMenu_played_00 = 11,
+    ViewMyRecordsMenu_played_01 = 12,
+    ViewMyRecordsMenu_played_02 = 13,
+    ViewMyRecordsMenu_played_03 = 14,
+    ViewMyRecordsMenu_played_04 = 15,
+    ViewMyRecordsMenu_played_05 = 16,
+    ViewMyRecordsMenu_best_00 = 17,
+    ViewMyRecordsMenu_best_01 = 18,
+    ViewMyRecordsMenu_best_02 = 19,
+    ViewMyRecordsMenu_best_03 = 20,
+    ViewMyRecordsMenu_best_04 = 21,
+    ViewMyRecordsMenu_best_05 = 22,
+    ViewMyRecordsMenu_current_00 = 23,
+    ViewMyRecordsMenu_current_01 = 24,
+    ViewMyRecordsMenu_current_02 = 25,
+    ViewMyRecordsMenu_current_03 = 26,
+    ViewMyRecordsMenu_current_04 = 27,
+    ViewMyRecordsMenu_current_05 = 28,
+    ViewMyRecordsMenu_rank_00 = 29,
+    ViewMyRecordsMenu_rank_01 = 30,
+    ViewMyRecordsMenu_rank_02 = 31,
+    ViewMyRecordsMenu_rank_03 = 32,
+    ViewMyRecordsMenu_rank_04 = 33,
+    ViewMyRecordsMenu_rank_05 = 34,
+    ViewMyRecordsMenu_HelpMsg = 35,
+    ViewMyRecordsMenu_exit = 36,
+    ViewMyRecordsMenu_sync = 37,
+    ViewMyRecordsMenu_reset = 38,
+    ViewMyRecordsMenu_leaderboard = 39,
+};
+#define ViewMyRecordsMenu_numEntries 40
+#define ViewMyRecordsMenu_kVMR_MaxRowsMyRecords (6)
+#define ViewMyRecordsMenu_kVMR_ButtomY0 (66)
+#define ViewMyRecordsMenu_kVMR_ButtomHeight (14)
+#define ViewMyRecordsMenu_kVMR_ButtomStep (18)
+#define ViewMyRecordsMenu_kVMR_DifficultyPosX (34)
+#define ViewMyRecordsMenu_kVMR_DifficultyPosY (66)
+#define ViewMyRecordsMenu_kVMR_DifficultyStep (18)
+#define ViewMyRecordsMenu_kVMR_DifficultyWidth (65)
+#define ViewMyRecordsMenu_kVMR_DifficultyHeight (14)
+#define ViewMyRecordsMenu_kVMR_DifficultyBaseColor (7)
+#define ViewMyRecordsMenu_kVMR_PlayedPosX (101)
+#define ViewMyRecordsMenu_kVMR_PlayedPosY (66)
+#define ViewMyRecordsMenu_kVMR_PlayedStep (18)
+#define ViewMyRecordsMenu_kVMR_PlayedWidth (32)
+#define ViewMyRecordsMenu_kVMR_PlayedHeight (14)
+#define ViewMyRecordsMenu_kVMR_PlayedBaseColor (7)
+#define ViewMyRecordsMenu_kVMR_RecordPosX (135)
+#define ViewMyRecordsMenu_kVMR_RecordPosY (66)
+#define ViewMyRecordsMenu_kVMR_RecordStep (18)
+#define ViewMyRecordsMenu_kVMR_RecordWidth (55)
+#define ViewMyRecordsMenu_kVMR_RecordHeight (14)
+#define ViewMyRecordsMenu_kVMR_RecordBaseColor (7)
+#define ViewMyRecordsMenu_kVMR_CurrentPosX (192)
+#define ViewMyRecordsMenu_kVMR_CurrentPosY (66)
+#define ViewMyRecordsMenu_kVMR_CurrentStep (18)
+#define ViewMyRecordsMenu_kVMR_CurrentWidth (55)
+#define ViewMyRecordsMenu_kVMR_CurrentHeight (14)
+#define ViewMyRecordsMenu_kVMR_CurrentBaseColor (7)
+#define ViewMyRecordsMenu_kVMR_RankPosX (249)
+#define ViewMyRecordsMenu_kVMR_RankPosY (66)
+#define ViewMyRecordsMenu_kVMR_RankStep (18)
+#define ViewMyRecordsMenu_kVMR_RankWidth (35)
+#define ViewMyRecordsMenu_kVMR_RankHeight (14)
+#define ViewMyRecordsMenu_kVMR_RankBaseColor (7)
 
 #endif /* SWOS2020_MENUS_H */

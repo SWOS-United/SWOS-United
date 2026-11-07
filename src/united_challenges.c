@@ -173,6 +173,7 @@ static void draw_stars(int32_t n, int32_t ox, int32_t oy)
         n = 5;
     draw_map(k_stars, ox, oy, 0, 10 * (1 + 2 * (n - 1)), 36, 10);
 }
+void United_DrawStars(int32_t n, int32_t x, int32_t y) { draw_stars(n, x, y); }
 
 /* ---- the challenges, from OpenSWOS's challenges mod ---- */
 

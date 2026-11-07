@@ -1,0 +1,1009 @@
+{
+  "name": "viewMyRecordsMenu",
+  "source": {
+    "project": "swos-2020",
+    "file": "src/menus/viewMyRecords.mnu",
+    "commit": "df38d20"
+  },
+  "menu_flags": {
+    "dos_redraw": true
+  },
+  "onInit": "viewMyRecordsMenuOnInit",
+  "onReturn": null,
+  "onDraw": "viewMyRecordsMenuOnDraw",
+  "defaultEntry": 3,
+  "exports": {
+    "kVMR_MaxRowsMyRecords": 6,
+    "kVMR_ButtomY0": 66,
+    "kVMR_ButtomHeight": 14,
+    "kVMR_ButtomStep": 18,
+    "kVMR_DifficultyPosX": 34,
+    "kVMR_DifficultyPosY": 66,
+    "kVMR_DifficultyStep": 18,
+    "kVMR_DifficultyWidth": 65,
+    "kVMR_DifficultyHeight": 14,
+    "kVMR_DifficultyBaseColor": 7,
+    "kVMR_PlayedPosX": 101,
+    "kVMR_PlayedPosY": 66,
+    "kVMR_PlayedStep": 18,
+    "kVMR_PlayedWidth": 32,
+    "kVMR_PlayedHeight": 14,
+    "kVMR_PlayedBaseColor": 7,
+    "kVMR_RecordPosX": 135,
+    "kVMR_RecordPosY": 66,
+    "kVMR_RecordStep": 18,
+    "kVMR_RecordWidth": 55,
+    "kVMR_RecordHeight": 14,
+    "kVMR_RecordBaseColor": 7,
+    "kVMR_CurrentPosX": 192,
+    "kVMR_CurrentPosY": 66,
+    "kVMR_CurrentStep": 18,
+    "kVMR_CurrentWidth": 55,
+    "kVMR_CurrentHeight": 14,
+    "kVMR_CurrentBaseColor": 7,
+    "kVMR_RankPosX": 249,
+    "kVMR_RankPosY": 66,
+    "kVMR_RankStep": 18,
+    "kVMR_RankWidth": 35,
+    "kVMR_RankHeight": 14,
+    "kVMR_RankBaseColor": 7
+  },
+  "items": [
+    {
+      "kind": "entry",
+      "name": "viewMyRecordsMenuHeader",
+      "coords": {
+        "x": 72,
+        "y": 0,
+        "w": 160,
+        "h": 16
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 1,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "recordMode",
+      "coords": {
+        "x": 102,
+        "y": 25,
+        "w": 100,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "speedrunMode_Dec",
+      "coords": {
+        "x": 84,
+        "y": 46,
+        "w": 15,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        },
+        {
+          "op": "onselect_fire",
+          "func": "speedrunMode_Dec_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "speedrunMode",
+      "coords": {
+        "x": 102,
+        "y": 44,
+        "w": 100,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 14
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": -1,
+          "down": 36
+        },
+        {
+          "op": "onselect_fire",
+          "func": "speedrunMode_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "speedrunMode_Inc",
+      "coords": {
+        "x": 205,
+        "y": 46,
+        "w": 15,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        },
+        {
+          "op": "onselect_fire",
+          "func": "speedrunMode_Inc_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "difficulty_00",
+      "coords": {
+        "x": 26,
+        "y": 66,
+        "w": 65,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "difficulty_01",
+      "coords": {
+        "x": 26,
+        "y": 84,
+        "w": 65,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "difficulty_02",
+      "coords": {
+        "x": 26,
+        "y": 102,
+        "w": 65,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "difficulty_03",
+      "coords": {
+        "x": 26,
+        "y": 120,
+        "w": 65,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "difficulty_04",
+      "coords": {
+        "x": 26,
+        "y": 138,
+        "w": 65,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "difficulty_05",
+      "coords": {
+        "x": 26,
+        "y": 156,
+        "w": 65,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "played_00",
+      "coords": {
+        "x": 93,
+        "y": 66,
+        "w": 32,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "played_01",
+      "coords": {
+        "x": 93,
+        "y": 84,
+        "w": 32,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "played_02",
+      "coords": {
+        "x": 93,
+        "y": 102,
+        "w": 32,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "played_03",
+      "coords": {
+        "x": 93,
+        "y": 120,
+        "w": 32,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "played_04",
+      "coords": {
+        "x": 93,
+        "y": 138,
+        "w": 32,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "played_05",
+      "coords": {
+        "x": 93,
+        "y": 156,
+        "w": 32,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "best_00",
+      "coords": {
+        "x": 127,
+        "y": 66,
+        "w": 55,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "bestRecord_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "best_01",
+      "coords": {
+        "x": 127,
+        "y": 84,
+        "w": 55,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "bestRecord_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "best_02",
+      "coords": {
+        "x": 127,
+        "y": 102,
+        "w": 55,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "bestRecord_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "best_03",
+      "coords": {
+        "x": 127,
+        "y": 120,
+        "w": 55,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "bestRecord_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "best_04",
+      "coords": {
+        "x": 127,
+        "y": 138,
+        "w": 55,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "bestRecord_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "best_05",
+      "coords": {
+        "x": 127,
+        "y": 156,
+        "w": 55,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "bestRecord_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "current_00",
+      "coords": {
+        "x": 184,
+        "y": 66,
+        "w": 55,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "currentRecord_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "current_01",
+      "coords": {
+        "x": 184,
+        "y": 84,
+        "w": 55,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "currentRecord_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "current_02",
+      "coords": {
+        "x": 184,
+        "y": 102,
+        "w": 55,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "currentRecord_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "current_03",
+      "coords": {
+        "x": 184,
+        "y": 120,
+        "w": 55,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "currentRecord_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "current_04",
+      "coords": {
+        "x": 184,
+        "y": 138,
+        "w": 55,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "currentRecord_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "current_05",
+      "coords": {
+        "x": 184,
+        "y": 156,
+        "w": 55,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "currentRecord_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "rank_00",
+      "coords": {
+        "x": 241,
+        "y": 66,
+        "w": 35,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "rank_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "rank_01",
+      "coords": {
+        "x": 241,
+        "y": 84,
+        "w": 35,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "rank_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "rank_02",
+      "coords": {
+        "x": 241,
+        "y": 102,
+        "w": 35,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "rank_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "rank_03",
+      "coords": {
+        "x": 241,
+        "y": 120,
+        "w": 35,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "rank_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "rank_04",
+      "coords": {
+        "x": 241,
+        "y": 138,
+        "w": 35,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "rank_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "rank_05",
+      "coords": {
+        "x": 241,
+        "y": 156,
+        "w": 35,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "rank_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "HelpMsg",
+      "coords": {
+        "x": 102,
+        "y": 167,
+        "w": 101,
+        "h": 10
+      },
+      "commands": []
+    },
+    {
+      "kind": "entry",
+      "name": "exit",
+      "coords": {
+        "x": 132,
+        "y": 185,
+        "w": 40,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "str": "_aExit"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 12
+        },
+        {
+          "op": "nav",
+          "left": 39,
+          "right": 37,
+          "up": 3,
+          "down": -1
+        },
+        {
+          "op": "onselect_fire",
+          "func": "viewMyRecordsExit_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "sync",
+      "coords": {
+        "x": 191,
+        "y": 185,
+        "w": 45,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "UPDATE"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 11
+        },
+        {
+          "op": "nav",
+          "left": 36,
+          "right": 38,
+          "up": -1,
+          "down": -1
+        },
+        {
+          "op": "onselect_fire",
+          "func": "viewMyRecordsSync_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "reset",
+      "coords": {
+        "x": 238,
+        "y": 185,
+        "w": 38,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "RESET"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 11
+        },
+        {
+          "op": "nav",
+          "left": 37,
+          "right": -1,
+          "up": -1,
+          "down": -1
+        },
+        {
+          "op": "onselect_fire",
+          "func": "viewMyRecordsReset_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "leaderboard",
+      "coords": {
+        "x": 26,
+        "y": 185,
+        "w": 87,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "LEADERBOARD"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 11
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": 36,
+          "up": -1,
+          "down": -1
+        },
+        {
+          "op": "onselect_fire",
+          "func": "viewMyRecordsLeaderboard_OnSelect"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+ "uuid": "1af1f653-9087-5e4d-ad83-4937c77398f8",
+ "id": "speedrun2020",
+ "name": "SWOS 2020 speedrun screens",
+ "version": "1.0",
+ "author": "SWOS United (the screens: SWOS 2020's, github.com/starwindz/swos-2020)",
+ "about": "Speedruns as SWOS 2020 showed them: the eight targets, a target's difficulty (your teams or SWOS 2020's five preconfigured pairs), the online leaderboards, your records and the latest runs.",
+ "targets": [
+  "sdl"
+ ],
+ "changes": "cosmetic",
+ "default": true
+}

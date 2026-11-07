@@ -13,6 +13,8 @@
 void        United_DrawStyleIcon(int32_t icon, int32_t x, int32_t y);
 /* SWOS 2020's red page arrow (drawScrollButtons), 12x12 at (x, y): up, or down. SDL builds. */
 void        United_DrawPageArrow(int32_t down, int32_t x, int32_t y);
+/* SWOS 2020's difficulty stars (its starsMap), n of them at (x, y) (src/united_challenges.c). */
+void        United_DrawStars(int32_t n, int32_t x, int32_t y);
 /* SWOS United's screens (registered by Account_Init). */
 void        UnitedRankings_Register(void);
 void        UnitedLeagues_Register(void);

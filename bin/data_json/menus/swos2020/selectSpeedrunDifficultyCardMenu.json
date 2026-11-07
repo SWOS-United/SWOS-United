@@ -1,0 +1,155 @@
+{
+  "name": "selectSpeedrunDifficultyCardMenu",
+  "source": {
+    "project": "swos-2020",
+    "file": "src/menus/selectSpeedrunDifficultyCard.mnu",
+    "commit": "df38d20"
+  },
+  "menu_flags": {
+    "dos_redraw": true
+  },
+  "onInit": "selectSpeedrunDifficultyCardMenu_OnInit",
+  "onReturn": null,
+  "onDraw": "selectSpeedrunDifficultyCardMenu_OnDraw",
+  "defaultEntry": 2,
+  "exports": {},
+  "items": [
+    {
+      "kind": "entry",
+      "name": "selectSpeedrunDifficultyHeader",
+      "coords": {
+        "x": 72,
+        "y": 0,
+        "w": 160,
+        "h": 16
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 1,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "subTitleLeft",
+      "coords": {
+        "x": 102,
+        "y": 44,
+        "w": 100,
+        "h": 15
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "FREE TEAM CHOICE"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "selectSpeedrunTeams",
+      "coords": {
+        "x": 102,
+        "y": 65,
+        "w": 100,
+        "h": 16
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "SELECT TEAMS"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 14
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": -1,
+          "down": 3
+        },
+        {
+          "op": "onselect_fire",
+          "func": "selectSpeedrunTeamsCard_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "news",
+      "coords": {
+        "x": 102,
+        "y": 125,
+        "w": 100,
+        "h": 16
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "LEADERBOARD"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 11
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": 2,
+          "down": 4
+        },
+        {
+          "op": "onselect_fire",
+          "func": "newsDiffCard_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "exit",
+      "coords": {
+        "x": 112,
+        "y": 185,
+        "w": 80,
+        "h": 15
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "str": "_aExit"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 12
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": 3,
+          "down": -1
+        },
+        {
+          "op": "onselect_fire",
+          "func": "selectSpeedrunDifficultyCardExit_OnSelect"
+        }
+      ]
+    }
+  ]
+}

@@ -86,6 +86,16 @@ rebase), `git cherry-pick <commit>` one fix, or nothing at all. `upstream` is fe
   completions, a row a win). `SWOS_CHALLENGES2020_TEST=<category>[/<id>]` with
   `--menu=swos2020/<screen>` opens one straight (the check: there is no scripting of menu keys).
   Not drawn yet: the uniforms, red cards and injuries on a challenge's page.
+- **SWOS 2020's speedrun screens** (`src/united_speedrun.c`, mod `speedrun2020`, on by default):
+  MODES / COMPETE -> SPEEDRUNS opens SWOS 2020's SPEEDRUN (eight targets), a target's difficulty
+  (SELECT TEAMS or the five preconfigured pairs -- OpenSWOS's, from 96/97's database, one per
+  SWOS 2020 band: its were the PC game's TEAM.072 clubs; YELLOW / RED CARD teams only), the
+  LEADERBOARD (style, target, difficulty, ten places a page), VIEW MY RECORDS (logged in: the
+  player's rows at the style; UPDATE fetches again; RESET hidden, SWOS 2020 deleted the rows) and
+  LATEST RUNS (the log-in group's newsMenu, now drawn). Runs through OpenSWOS's `speedrun`
+  service; the boards through online-records (`speedrun.board / mine / news`: SWOS 2020's
+  swosapi_v3, read-only). TACKLE is SWOS 2020's rule since OpenSWOS 35e741dd (a goal with your
+  tackle the last thing before it), and a preset run sends its difficulty.
 - **Secrets**: `include/united_secrets.h` (gitignored; `include/united_secrets.sample.h` is the
   template, the file itself is in SWOS-API-secrets.zip). Without it a build cannot host a
   ranked match.

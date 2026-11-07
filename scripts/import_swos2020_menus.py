@@ -66,6 +66,10 @@ MULTIPLAYER_MENUS = [
     # category's completion -- src/united_challenges.c              (game.cpp)
     "selectCategory", "scenarioModeMain", "selectScenarioAction", "scenarioOnlineStats",
     "scenarioCompletion",
+    # speedrun: the targets, a target's difficulty (and the cards'), the leaderboard, the
+    # player's records (the latest runs, "news", are the log-in group's) -- src/united_speedrun.c
+    "speedrunMain", "selectSpeedrunDifficulty", "selectSpeedrunDifficultyCard", "leaderboard",
+    "viewMyRecords",
 ]
 
 # SWOS 2020's skip opcodes, by NUMBER (menuCodes.h: kLeftSkip = 17 ... kDownSkip = 20),

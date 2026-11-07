@@ -1,0 +1,1629 @@
+{
+  "name": "leaderboardMenu",
+  "source": {
+    "project": "swos-2020",
+    "file": "src/menus/leaderboard.mnu",
+    "commit": "df38d20"
+  },
+  "menu_flags": {
+    "dos_redraw": true
+  },
+  "onInit": "leaderboardMenuOnInit",
+  "onReturn": "leaderboardMenuOnReturn",
+  "onDraw": "leaderboardMenuOnDraw",
+  "defaultEntry": 67,
+  "exports": {
+    "kVMR_MaxRowsMyRecords": 11,
+    "kVMR_ButtonY0": 50,
+    "kVMR_ButtonHeight": 10,
+    "kVMR_ButtonStep": 12,
+    "kVMR_RankingPosX": 16,
+    "kVMR_RankingPosY": 50,
+    "kVMR_RankingStep": 12,
+    "kVMR_RankingWidth": 32,
+    "kVMR_RankingHeight": 10,
+    "kVMR_RankingBaseColor": 7,
+    "kVMR_DatePosX": 50,
+    "kVMR_DatePosY": 50,
+    "kVMR_DateStep": 12,
+    "kVMR_DateWidth": 52,
+    "kVMR_DateHeight": 10,
+    "kVMR_DateBaseColor": 7,
+    "kVMR_UsernamePosX": 104,
+    "kVMR_UsernamePosY": 50,
+    "kVMR_UsernameStep": 12,
+    "kVMR_UsernameWidth": 90,
+    "kVMR_UsernameHeight": 10,
+    "kVMR_UsernameBaseColor": 7,
+    "kVMR_PlayedPosX": 196,
+    "kVMR_PlayedPosY": 50,
+    "kVMR_PlayedStep": 12,
+    "kVMR_PlayedWidth": 40,
+    "kVMR_PlayedHeight": 10,
+    "kVMR_PlayedBaseColor": 7,
+    "kVMR_BestPosX": 238,
+    "kVMR_BestPosY": 50,
+    "kVMR_BestStep": 12,
+    "kVMR_BestWidth": 60,
+    "kVMR_BestHeight": 10,
+    "kVMR_BestBaseColor": 7,
+    "kVMR_TEMP_X": -3,
+    "kVMR_TEMP_Y": -2
+  },
+  "items": [
+    {
+      "kind": "entry",
+      "name": "gameStyle",
+      "coords": {
+        "x": 92,
+        "y": 0,
+        "w": 120,
+        "h": 16
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 1,
+          "background_color": 7
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": -1,
+          "down": 3
+        },
+        {
+          "op": "onselect_fire",
+          "func": "gameStyle_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "gameStyle_Dec",
+      "coords": {
+        "x": 76,
+        "y": 3,
+        "w": 15,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        },
+        {
+          "op": "onselect_fire",
+          "func": "gameStyle_Dec_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "gameStyle_Inc",
+      "coords": {
+        "x": 213,
+        "y": 3,
+        "w": 15,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        },
+        {
+          "op": "onselect_fire",
+          "func": "gameStyle_Inc_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "gameMode",
+      "coords": {
+        "x": 102,
+        "y": 19,
+        "w": 100,
+        "h": 12
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 14
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": 0,
+          "down": 6
+        },
+        {
+          "op": "onselect_fire",
+          "func": "gameMode_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "gameMode_Dec",
+      "coords": {
+        "x": 86,
+        "y": 20,
+        "w": 15,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        },
+        {
+          "op": "onselect_fire",
+          "func": "gameMode_Dec_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "gameMode_Inc",
+      "coords": {
+        "x": 203,
+        "y": 20,
+        "w": 15,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        },
+        {
+          "op": "onselect_fire",
+          "func": "gameMode_Inc_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "difficulty",
+      "coords": {
+        "x": 102,
+        "y": 34,
+        "w": 100,
+        "h": 12
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 14
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": 3,
+          "down": -1
+        },
+        {
+          "op": "onselect_fire",
+          "func": "difficulty_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "difficulty_Dec",
+      "coords": {
+        "x": 86,
+        "y": 35,
+        "w": 15,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": 6,
+          "up": -1,
+          "down": 54
+        },
+        {
+          "op": "onselect_fire",
+          "func": "difficulty_Dec_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "difficulty_Inc",
+      "coords": {
+        "x": 203,
+        "y": 35,
+        "w": 15,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        },
+        {
+          "op": "nav",
+          "left": 6,
+          "right": -1,
+          "up": -1,
+          "down": 54
+        },
+        {
+          "op": "onselect_fire",
+          "func": "difficulty_Inc_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "ranking_00",
+      "coords": {
+        "x": 8,
+        "y": 50,
+        "w": 32,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "ranking_01",
+      "coords": {
+        "x": 8,
+        "y": 62,
+        "w": 32,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "ranking_02",
+      "coords": {
+        "x": 8,
+        "y": 74,
+        "w": 32,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "ranking_03",
+      "coords": {
+        "x": 8,
+        "y": 86,
+        "w": 32,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "ranking_04",
+      "coords": {
+        "x": 8,
+        "y": 98,
+        "w": 32,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "ranking_05",
+      "coords": {
+        "x": 8,
+        "y": 110,
+        "w": 32,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "ranking_06",
+      "coords": {
+        "x": 8,
+        "y": 122,
+        "w": 32,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "ranking_07",
+      "coords": {
+        "x": 8,
+        "y": 134,
+        "w": 32,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "ranking_08",
+      "coords": {
+        "x": 8,
+        "y": 146,
+        "w": 32,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "ranking_09",
+      "coords": {
+        "x": 8,
+        "y": 158,
+        "w": 32,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "ranking_10",
+      "coords": {
+        "x": 8,
+        "y": 170,
+        "w": 32,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "date_00",
+      "coords": {
+        "x": 42,
+        "y": 50,
+        "w": 52,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "00.00.00"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "date_01",
+      "coords": {
+        "x": 42,
+        "y": 62,
+        "w": 52,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "00.00.00"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "date_02",
+      "coords": {
+        "x": 42,
+        "y": 74,
+        "w": 52,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "00.00.00"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "date_03",
+      "coords": {
+        "x": 42,
+        "y": 86,
+        "w": 52,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "00.00.00"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "date_04",
+      "coords": {
+        "x": 42,
+        "y": 98,
+        "w": 52,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "00.00.00"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "date_05",
+      "coords": {
+        "x": 42,
+        "y": 110,
+        "w": 52,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "00.00.00"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "date_06",
+      "coords": {
+        "x": 42,
+        "y": 122,
+        "w": 52,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "00.00.00"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "date_07",
+      "coords": {
+        "x": 42,
+        "y": 134,
+        "w": 52,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "00.00.00"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "date_08",
+      "coords": {
+        "x": 42,
+        "y": 146,
+        "w": 52,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "00.00.00"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "date_09",
+      "coords": {
+        "x": 42,
+        "y": 158,
+        "w": 52,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "00.00.00"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "date_10",
+      "coords": {
+        "x": 42,
+        "y": 170,
+        "w": 52,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "00.00.00"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "username_00",
+      "coords": {
+        "x": 96,
+        "y": 50,
+        "w": 90,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "username_01",
+      "coords": {
+        "x": 96,
+        "y": 62,
+        "w": 90,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "username_02",
+      "coords": {
+        "x": 96,
+        "y": 74,
+        "w": 90,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "username_03",
+      "coords": {
+        "x": 96,
+        "y": 86,
+        "w": 90,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "username_04",
+      "coords": {
+        "x": 96,
+        "y": 98,
+        "w": 90,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "username_05",
+      "coords": {
+        "x": 96,
+        "y": 110,
+        "w": 90,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "username_06",
+      "coords": {
+        "x": 96,
+        "y": 122,
+        "w": 90,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "username_07",
+      "coords": {
+        "x": 96,
+        "y": 134,
+        "w": 90,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "username_08",
+      "coords": {
+        "x": 96,
+        "y": 146,
+        "w": 90,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "username_09",
+      "coords": {
+        "x": 96,
+        "y": 158,
+        "w": 90,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "username_10",
+      "coords": {
+        "x": 96,
+        "y": 170,
+        "w": 90,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "played_00",
+      "coords": {
+        "x": 188,
+        "y": 50,
+        "w": 40,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "000000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "played_01",
+      "coords": {
+        "x": 188,
+        "y": 62,
+        "w": 40,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "000000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "played_02",
+      "coords": {
+        "x": 188,
+        "y": 74,
+        "w": 40,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "000000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "played_03",
+      "coords": {
+        "x": 188,
+        "y": 86,
+        "w": 40,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "000000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "played_04",
+      "coords": {
+        "x": 188,
+        "y": 98,
+        "w": 40,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "000000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "played_05",
+      "coords": {
+        "x": 188,
+        "y": 110,
+        "w": 40,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "000000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "played_06",
+      "coords": {
+        "x": 188,
+        "y": 122,
+        "w": 40,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "000000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "played_07",
+      "coords": {
+        "x": 188,
+        "y": 134,
+        "w": 40,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "000000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "played_08",
+      "coords": {
+        "x": 188,
+        "y": 146,
+        "w": 40,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "000000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "played_09",
+      "coords": {
+        "x": 188,
+        "y": 158,
+        "w": 40,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "000000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "played_10",
+      "coords": {
+        "x": 188,
+        "y": 170,
+        "w": 40,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "000000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "best_00",
+      "coords": {
+        "x": 230,
+        "y": 50,
+        "w": 60,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "bestRecordInLeaderboard_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "best_01",
+      "coords": {
+        "x": 230,
+        "y": 62,
+        "w": 60,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "bestRecordInLeaderboard_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "best_02",
+      "coords": {
+        "x": 230,
+        "y": 74,
+        "w": 60,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "bestRecordInLeaderboard_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "best_03",
+      "coords": {
+        "x": 230,
+        "y": 86,
+        "w": 60,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "bestRecordInLeaderboard_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "best_04",
+      "coords": {
+        "x": 230,
+        "y": 98,
+        "w": 60,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "bestRecordInLeaderboard_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "best_05",
+      "coords": {
+        "x": 230,
+        "y": 110,
+        "w": 60,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "bestRecordInLeaderboard_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "best_06",
+      "coords": {
+        "x": 230,
+        "y": 122,
+        "w": 60,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "bestRecordInLeaderboard_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "best_07",
+      "coords": {
+        "x": 230,
+        "y": 134,
+        "w": 60,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "bestRecordInLeaderboard_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "best_08",
+      "coords": {
+        "x": 230,
+        "y": 146,
+        "w": 60,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "bestRecordInLeaderboard_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "best_09",
+      "coords": {
+        "x": 230,
+        "y": 158,
+        "w": 60,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "bestRecordInLeaderboard_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "best_10",
+      "coords": {
+        "x": 230,
+        "y": 170,
+        "w": 60,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "bestRecordInLeaderboard_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "leaderboard_ScrollUp",
+      "coords": {
+        "x": 291,
+        "y": 62,
+        "w": 9,
+        "h": 13
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        },
+        {
+          "op": "onselect_fire",
+          "func": "leaderboard_ScrollUp_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "leaderboard_ScrollDown",
+      "coords": {
+        "x": 291,
+        "y": 167,
+        "w": 9,
+        "h": 13
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        },
+        {
+          "op": "onselect_fire",
+          "func": "leaderboard_ScrollDown_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "leaderboard_Page",
+      "coords": {
+        "x": 261,
+        "y": 180,
+        "w": 8,
+        "h": 12
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "exit",
+      "coords": {
+        "x": 122,
+        "y": 185,
+        "w": 60,
+        "h": 15
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "str": "_aExit"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 12
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": 63,
+          "down": -1
+        },
+        {
+          "op": "onselect_fire",
+          "func": "leaderboardExit_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "makeRecordFrame",
+      "coords": {
+        "x": -8,
+        "y": 185,
+        "w": 128,
+        "h": 15
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "   MAKE RECORD FRAME   "
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 3
+        },
+        {
+          "op": "onselect_fire",
+          "func": "makeRecordFrame_OnSelect"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,434 @@
+{
+  "name": "speedrunMainMenu",
+  "source": {
+    "project": "swos-2020",
+    "file": "src/menus/speedrunMain.mnu",
+    "commit": "df38d20"
+  },
+  "menu_flags": {
+    "dos_redraw": true
+  },
+  "onInit": "speedrunMainMenuOnInit",
+  "onReturn": "speedrunMainMenuOnReturn",
+  "onDraw": "speedrunMainMenuOnDraw",
+  "defaultEntry": 12,
+  "exports": {},
+  "items": [
+    {
+      "kind": "entry",
+      "name": "speedrunMainHeader",
+      "coords": {
+        "x": 102,
+        "y": 0,
+        "w": 100,
+        "h": 16
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 1,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "oneGoal",
+      "coords": {
+        "x": 32,
+        "y": 32,
+        "w": 100,
+        "h": 16
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "1 GOAL"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 14
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": 2,
+          "up": -1,
+          "down": 3
+        },
+        {
+          "op": "onselect_fire",
+          "func": "oneGoal_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "headerGoal",
+      "coords": {
+        "x": 172,
+        "y": 32,
+        "w": 100,
+        "h": 16
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "HEADER"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 14
+        },
+        {
+          "op": "nav",
+          "left": 1,
+          "right": -1,
+          "up": -1,
+          "down": 4
+        },
+        {
+          "op": "onselect_fire",
+          "func": "headerGoal_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "threeGoals",
+      "coords": {
+        "x": 32,
+        "y": 59,
+        "w": 100,
+        "h": 16
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "3 GOALS"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 14
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": 4,
+          "up": 1,
+          "down": 5
+        },
+        {
+          "op": "onselect_fire",
+          "func": "threeGoals_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "tackleGoal",
+      "coords": {
+        "x": 172,
+        "y": 59,
+        "w": 100,
+        "h": 16
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "TACKLE"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 14
+        },
+        {
+          "op": "nav",
+          "left": 3,
+          "right": -1,
+          "up": 2,
+          "down": 6
+        },
+        {
+          "op": "onselect_fire",
+          "func": "tackleGoal_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "tenGoals",
+      "coords": {
+        "x": 32,
+        "y": 86,
+        "w": 100,
+        "h": 16
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "10 GOALS"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 14
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": 6,
+          "up": 3,
+          "down": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "tenGoals_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "yellowCard",
+      "coords": {
+        "x": 172,
+        "y": 86,
+        "w": 100,
+        "h": 16
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "YELLOW CARD"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 14
+        },
+        {
+          "op": "nav",
+          "left": 5,
+          "right": -1,
+          "up": 4,
+          "down": 8
+        },
+        {
+          "op": "onselect_fire",
+          "func": "yellowCard_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "matchGoal",
+      "coords": {
+        "x": 32,
+        "y": 113,
+        "w": 100,
+        "h": 16
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "MATCH"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 14
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": 8,
+          "up": 5,
+          "down": 9
+        },
+        {
+          "op": "onselect_fire",
+          "func": "matchGoal_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "redCard",
+      "coords": {
+        "x": 172,
+        "y": 113,
+        "w": 100,
+        "h": 16
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "RED CARD"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 14
+        },
+        {
+          "op": "nav",
+          "left": 7,
+          "right": -1,
+          "up": 6,
+          "down": 10
+        },
+        {
+          "op": "onselect_fire",
+          "func": "redCard_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "myRecords",
+      "coords": {
+        "x": 44,
+        "y": 144,
+        "w": 76,
+        "h": 16
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "MY RECORDS"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 13
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": 10,
+          "up": 7,
+          "down": 12
+        },
+        {
+          "op": "onselect_fire",
+          "func": "myRecords_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "news",
+      "coords": {
+        "x": 172,
+        "y": 144,
+        "w": 100,
+        "h": 16
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "LATEST RUNS"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 11
+        },
+        {
+          "op": "nav",
+          "left": 9,
+          "right": -1,
+          "up": 8,
+          "down": 12
+        },
+        {
+          "op": "onselect_fire",
+          "func": "newsMain_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "HelpMsg",
+      "coords": {
+        "x": 102,
+        "y": 167,
+        "w": 101,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "exit",
+      "coords": {
+        "x": 122,
+        "y": 185,
+        "w": 60,
+        "h": 15
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "str": "_aExit"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 12
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": 9,
+          "down": -1
+        },
+        {
+          "op": "onselect_fire",
+          "func": "speedrunMainExit_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "dummy",
+      "coords": {
+        "x": -8,
+        "y": -8,
+        "w": 1,
+        "h": 15
+      },
+      "commands": [
+        {
+          "op": "fg_func",
+          "func": "animateBalls"
+        }
+      ]
+    }
+  ]
+}
