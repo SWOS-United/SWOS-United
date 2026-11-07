@@ -5,7 +5,12 @@
  * docs/MODS.md §33). Without it they play offline, as in OpenSWOS.
  *
  *   challenges.completed  the player's beaten challenges: "<category>\t<name>" lines
- *   challenges.stats      "BEATEN BY 12 PLAYERS" -- how many players have beaten it
+ *   challenges.stats      {"name","category"}: "BEATEN BY 12 PLAYERS" -- how many players have
+ *   challenges.wins       {"name","category"}: how many times the player has beaten it ("3")
+ *   challenges.winners    {"name","category"}: "<player>\t<wins>" lines, most first (SWOS
+ *                         2020's VIEW ONLINE STATS)
+ *   challenges.ranking    {"category"}: "<player>\t<beaten>" lines, most first (its SCENARIO
+ *                         COMPLETION)
  *   challenges.won        the win, sent
  *   speedrun.finished     the run into the player's record, sent
  *   speedrun.line         "WORLD RANK 3   BEST 2.21 NAME" for the result screen
@@ -96,8 +101,8 @@ static void run_job(Job *j)
         s_tally = t;
         s_tallyState = ok ? 2 : 3;
         SDL_UnlockMutex(s_lock);
-        fprintf(stderr, "[online-records] challenges: %s (%d beaten by someone)\n", ok ? "here" : "not fetched",
-                (int)t.numCounts);
+        fprintf(stderr, "[online-records] challenges: %s (%d player-challenge rows)\n", ok ? "here" : "not fetched",
+                (int)t.numRows);
     } else if (j->kind == J_WON) {
         if (UnitedRecords_ChallengeWon(j->user, j->name, j->category))
             fprintf(stderr, "[online-records] challenge won, sent: %s (%s)\n", j->name, j->category);
@@ -155,8 +160,9 @@ static int32_t json_bool(const char *args, const char *path)
 static int32_t challenges_read(const char *method, const char *args, char *out, uint32_t cap)
 {
     char me[64];
+    const int32_t personal = !strcmp(method, "challenges.completed") || !strcmp(method, "challenges.wins");
     who(me, sizeof me, 0);
-    if (!me[0])
+    if (personal && !me[0])
         return -1;
     SDL_LockMutex(s_lock);
     if (s_tallyState == 0 || strcmp(s_tallyUser, me) != 0) {
@@ -172,14 +178,21 @@ static int32_t challenges_read(const char *method, const char *args, char *out, 
     }
     const int32_t rc = s_tallyState == 1 ? 1 : s_tallyState == 3 ? -1 : 0;
     if (rc == 0 && out && cap) {
+        char name[96], category[96], key[200];
+        json_str(args, "$.name", name, (int32_t)sizeof name);
+        json_str(args, "$.category", category, (int32_t)sizeof category);
+        snprintf(key, sizeof key, "%s\t%s", category, name);
+        out[0] = 0;
         if (!strcmp(method, "challenges.completed")) {
-            snprintf(out, cap, "%s", s_tally.mine ? s_tally.mine : "");
+            UnitedRecords_TallyMine(&s_tally, out, cap);
+        } else if (!strcmp(method, "challenges.wins")) {
+            snprintf(out, cap, "%d", (int)UnitedRecords_TallyWins(&s_tally, key, NULL));
+        } else if (!strcmp(method, "challenges.winners")) {
+            UnitedRecords_TallyWinners(&s_tally, key, out, cap);
+        } else if (!strcmp(method, "challenges.ranking")) {
+            UnitedRecords_TallyRanking(&s_tally, category, out, cap);
         } else {
-            char name[96], category[96], key[200];
-            json_str(args, "$.name", name, (int32_t)sizeof name);
-            json_str(args, "$.category", category, (int32_t)sizeof category);
-            snprintf(key, sizeof key, "%s\t%s", category, name);
-            const int32_t n = UnitedRecords_TallyCount(&s_tally, key);
+            const int32_t n = UnitedRecords_TallyPlayers(&s_tally, key);
             if (n == 0)
                 snprintf(out, cap, "NOBODY HAS BEATEN IT YET");
             else
@@ -193,7 +206,9 @@ static int32_t challenges_read(const char *method, const char *args, char *out, 
 static int32_t service(const char *method, const char *args, char *out, uint32_t cap)
 {
     char me[64];
-    if (!strcmp(method, "challenges.completed") || !strcmp(method, "challenges.stats"))
+    if (!strcmp(method, "challenges.completed") || !strcmp(method, "challenges.stats") ||
+        !strcmp(method, "challenges.wins") || !strcmp(method, "challenges.winners") ||
+        !strcmp(method, "challenges.ranking"))
         return challenges_read(method, args, out, cap);
     if (!strcmp(method, "challenges.won")) {
         who(me, sizeof me, 1);
@@ -268,15 +283,24 @@ static void records_test(void)
     done = 1;
     UnitedChallengeTally before, after;
     const int32_t a = UnitedRecords_ChallengeTally(me, &before);
-    const int32_t n0 = a ? UnitedRecords_TallyCount(&before, key) : -1;
-    const int32_t had = a && before.mine && strstr(before.mine, key) != NULL;
+    const int32_t n0 = a ? UnitedRecords_TallyPlayers(&before, key) : -1;
+    const int32_t w0 = a ? UnitedRecords_TallyWins(&before, key, NULL) : -1;
     const int32_t sent = UnitedRecords_ChallengeWon(me, "HOLD ON", "CLASSICS");
     const int32_t b = UnitedRecords_ChallengeTally(me, &after);
-    const int32_t n1 = b ? UnitedRecords_TallyCount(&after, key) : -1;
-    const int32_t has = b && after.mine && strstr(after.mine, key) != NULL;
-    printf("RECORDS TEST challenges as %s: tally %s, HOLD ON beaten by %d before (%s), win %s, after: %d (%s)\n", me,
-           a ? "fetched" : "FAILED", (int)n0, had ? "mine" : "not mine", sent ? "sent" : "NOT SENT", (int)n1,
-           has ? "mine" : "NOT MINE");
+    const int32_t n1 = b ? UnitedRecords_TallyPlayers(&after, key) : -1;
+    const int32_t w1 = b ? UnitedRecords_TallyWins(&after, key, NULL) : -1;
+    const int32_t has = b && w1 == w0 + 1;
+    {
+        static char top[4096];
+        UnitedRecords_TallyRanking(&after, "CLASSICS", top, sizeof top);
+        char *nl = strchr(top, '\n');
+        if (nl)
+            *nl = 0;
+        printf("RECORDS TEST CLASSICS' first: %s\n", top);
+    }
+    printf("RECORDS TEST challenges as %s: tally %s, HOLD ON beaten by %d players before (mine %d times), win %s, "
+           "after: %d players (mine %d times: %s)\n", me, a ? "fetched" : "FAILED", (int)n0, (int)w0,
+           sent ? "sent" : "NOT SENT", (int)n1, (int)w1, has ? "one more" : "NOT ONE MORE");
     UnitedRecords_FreeTally(&before);
     UnitedRecords_FreeTally(&after);
     UnitedSpeedrun run;

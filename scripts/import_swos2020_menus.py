@@ -62,6 +62,10 @@ MULTIPLAYER_MENUS = [
     "myRankedStats", "myFriendlyStats",
     # the pre-match uniform selector, from the PLAY MATCH screen    (game.cpp)
     "selectUniform",
+    # challenge mode: categories, a category's challenges, one, its online stats and the
+    # category's completion -- src/united_challenges.c              (game.cpp)
+    "selectCategory", "scenarioModeMain", "selectScenarioAction", "scenarioOnlineStats",
+    "scenarioCompletion",
 ]
 
 # SWOS 2020's skip opcodes, by NUMBER (menuCodes.h: kLeftSkip = 17 ... kDownSkip = 20),

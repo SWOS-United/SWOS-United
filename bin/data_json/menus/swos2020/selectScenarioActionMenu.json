@@ -1,0 +1,326 @@
+{
+  "name": "selectScenarioActionMenu",
+  "source": {
+    "project": "swos-2020",
+    "file": "src/menus/selectScenarioAction.mnu",
+    "commit": "df38d20"
+  },
+  "menu_flags": {
+    "dos_redraw": true
+  },
+  "onInit": "selectScenarioActionMenu_OnInit",
+  "onReturn": null,
+  "onDraw": "selectScenarioActionMenu_OnDraw",
+  "defaultEntry": 14,
+  "exports": {},
+  "items": [
+    {
+      "kind": "entry",
+      "name": "header",
+      "coords": {
+        "x": 72,
+        "y": 0,
+        "w": 160,
+        "h": 16
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "-"
+        },
+        {
+          "op": "colors",
+          "frame_color": 1,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "leftTeam",
+      "coords": {
+        "x": -8,
+        "y": 26,
+        "w": 131,
+        "h": 16
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x4010",
+          "literal": "ITALY"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "centerScore",
+      "coords": {
+        "x": 123,
+        "y": 26,
+        "w": 58,
+        "h": 16
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x10",
+          "literal": "1-2"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "rightTeam",
+      "coords": {
+        "x": 181,
+        "y": 26,
+        "w": 131,
+        "h": 16
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x8010",
+          "literal": "CROATIA"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "initialTime",
+      "coords": {
+        "x": -8,
+        "y": 44,
+        "w": 320,
+        "h": 16
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "89TH"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "cpuInjurySpeed1",
+      "coords": {
+        "x": -8,
+        "y": 12,
+        "w": 320,
+        "h": 16
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x8000",
+          "literal": ""
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "cpuInjurySpeed2",
+      "coords": {
+        "x": -8,
+        "y": 12,
+        "w": 320,
+        "h": 16
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x4000",
+          "literal": ""
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "startingEvent",
+      "coords": {
+        "x": -8,
+        "y": 62,
+        "w": 320,
+        "h": 16
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "CORNER KICK BY ITALY"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "etPen",
+      "coords": {
+        "x": -8,
+        "y": 80,
+        "w": 320,
+        "h": 16
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "EXTRA TIME, PENALTY SHOOTOUT"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "winMsg",
+      "coords": {
+        "x": -8,
+        "y": 98,
+        "w": 320,
+        "h": 16
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "ITALY MUST WIN WITH GOLDEN GOAL"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "diffStarts",
+      "coords": {
+        "x": -8,
+        "y": 116,
+        "w": 320,
+        "h": 16
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "beatMsg",
+      "coords": {
+        "x": -8,
+        "y": 134,
+        "w": 320,
+        "h": 16
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "YOU BEAT THIS SCENARIO 2 TIMES"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "act1",
+      "coords": {
+        "x": 32,
+        "y": 158,
+        "w": 100,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "PLAY SCENARIO"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 14
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": 13,
+          "up": -1,
+          "down": 14
+        },
+        {
+          "op": "onselect_fire",
+          "func": "act1_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "act2",
+      "coords": {
+        "x": 172,
+        "y": 158,
+        "w": 100,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "VIEW ONLINE STATS"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 14
+        },
+        {
+          "op": "nav",
+          "left": 12,
+          "right": -1,
+          "up": -1,
+          "down": 14
+        },
+        {
+          "op": "onselect_fire",
+          "func": "act2_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "exit",
+      "coords": {
+        "x": 112,
+        "y": 185,
+        "w": 80,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "str": "_aExit"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 12
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": 12,
+          "down": -1
+        },
+        {
+          "op": "onselect_fire",
+          "func": "selectScenarioActionMenu_onSelect"
+        }
+      ]
+    }
+  ]
+}

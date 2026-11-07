@@ -1,0 +1,13 @@
+{
+ "uuid": "d0fb5923-7430-583b-9357-3c9d9fdee1a9",
+ "id": "challenges2020",
+ "name": "SWOS 2020 challenge screens",
+ "version": "1.0",
+ "author": "SWOS United (the screens: SWOS 2020's, github.com/starwindz/swos-2020)",
+ "about": "Challenges as SWOS 2020 showed them: SELECT CATEGORY, the challenges twelve to a page with their stars and descriptions, each one's page, and the online stats and completion.",
+ "targets": [
+  "sdl"
+ ],
+ "changes": "cosmetic",
+ "default": true
+}

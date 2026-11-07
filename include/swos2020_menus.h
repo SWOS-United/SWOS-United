@@ -40,8 +40,13 @@
     X(myRankedStatsMenu, "swos2020/myRankedStatsMenu", MyRankedStatsMenu, 107) \
     X(myFriendlyStatsMenu, "swos2020/myFriendlyStatsMenu", MyFriendlyStatsMenu, 107) \
     X(selectUniformMenu, "swos2020/selectUniformMenu", SelectUniformMenu, 39) \
+    X(selectCategoryMenu, "swos2020/selectCategoryMenu", SelectCategoryMenu, 12) \
+    X(scenarioModeMainMenu, "swos2020/scenarioModeMainMenu", ScenarioModeMainMenu, 24) \
+    X(selectScenarioActionMenu, "swos2020/selectScenarioActionMenu", SelectScenarioActionMenu, 15) \
+    X(scenarioOnlineStatsMenu, "swos2020/scenarioOnlineStatsMenu", ScenarioOnlineStatsMenu, 39) \
+    X(scenarioCompletionMenu, "swos2020/scenarioCompletionMenu", ScenarioCompletionMenu, 39) \
 
-/* Every handler name the imported menus reference (262), sorted. */
+/* Every handler name the imported menus reference (312), sorted. */
 #define SWOS2020_MENU_CALLBACKS(X) \
     X(LeftBasicColor_Dec_onSelect) \
     X(LeftBasicColor_Inc_onSelect) \
@@ -79,7 +84,17 @@
     X(RightSwitch_onSelect) \
     X(SetExitMenuFlag) \
     X(aboutMPMenu_OnDraw) \
+    X(act1_onSelect) \
+    X(act2_onSelect) \
     X(bestNewsMenu_OnSelect) \
+    X(cat2_onSelect) \
+    X(cat3_onSelect) \
+    X(cat4_onSelect) \
+    X(cat5_onSelect) \
+    X(cat6_onSelect) \
+    X(cat7_onSelect) \
+    X(cat8_onSelect) \
+    X(catX_onSelect) \
     X(cupMatchView_exit_onSelect) \
     X(cupMatchView_onDraw) \
     X(cupMatchView_onInit) \
@@ -247,7 +262,44 @@
     X(registerUserMenuNews3_OnSelect) \
     X(registerUserMenuNews_OnSelect) \
     X(rememberLogInInfo_OnSelect) \
+    X(s00_OnSelect) \
+    X(s01_OnSelect) \
+    X(s02_OnSelect) \
+    X(s10_OnSelect) \
+    X(s11_OnSelect) \
+    X(s12_OnSelect) \
+    X(s20_OnSelect) \
+    X(s21_OnSelect) \
+    X(s22_OnSelect) \
+    X(s30_OnSelect) \
+    X(s31_OnSelect) \
+    X(s32_OnSelect) \
+    X(scenCompletion_OnSelect) \
+    X(scenarioCompletionMenu_OnDraw) \
+    X(scenarioCompletionMenu_OnInit) \
+    X(scenarioCompletionMenu_OnReturn) \
+    X(scenarioCompletionMenu_exit_OnSelect) \
+    X(scenarioCompletionMenu_scrollDown_onSelect) \
+    X(scenarioCompletionMenu_scrollUp_onSelect) \
+    X(scenarioModeMainMenu_OnBackground) \
+    X(scenarioModeMainMenu_OnDraw) \
+    X(scenarioModeMainMenu_OnExit) \
+    X(scenarioModeMainMenu_OnInit) \
+    X(scenarioModeMainMenu_OnReturn) \
+    X(scenarioModeMain_scrollDown_onSelect) \
+    X(scenarioModeMain_scrollUp_onSelect) \
+    X(scenarioOnlineStatsMenu_OnDraw) \
+    X(scenarioOnlineStatsMenu_OnInit) \
+    X(scenarioOnlineStatsMenu_OnReturn) \
+    X(scenarioOnlineStatsMenu_exit_OnSelect) \
+    X(scenarioOnlineStatsMenu_scrollDown_onSelect) \
+    X(scenarioOnlineStatsMenu_scrollUp_onSelect) \
     X(selectAmigaRankingsMenu) \
+    X(selectCategoryMenu_OnBackground) \
+    X(selectCategoryMenu_OnDraw) \
+    X(selectCategoryMenu_OnInit) \
+    X(selectCategoryMenu_OnReturn) \
+    X(selectCategoryMenu_exit_onSelect) \
     X(selectEtPen1) \
     X(selectExitOpenLobby) \
     X(selectFriendly) \
@@ -283,6 +335,9 @@
     X(selectPlayer) \
     X(selectRanked) \
     X(selectRankedModeOption1) \
+    X(selectScenarioActionMenu_OnDraw) \
+    X(selectScenarioActionMenu_OnInit) \
+    X(selectScenarioActionMenu_onSelect) \
     X(selectSwitchCardsInjuries) \
     X(selectSwitchKickoffSync) \
     X(selectSwitchShortPresses) \
@@ -2248,5 +2303,159 @@ enum {
     SelectUniformMenu_HelpMsg = 38,
 };
 #define SelectUniformMenu_numEntries 39
+
+/* ---- selectCategoryMenu -- src/menus/selectCategory.mnu ---- */
+enum {
+    SelectCategoryMenu_header = 0,
+    SelectCategoryMenu_act11 = 1,
+    SelectCategoryMenu_act12 = 2,
+    SelectCategoryMenu_act21 = 3,
+    SelectCategoryMenu_act22 = 4,
+    SelectCategoryMenu_act31 = 5,
+    SelectCategoryMenu_act32 = 6,
+    SelectCategoryMenu_act4 = 7,
+    SelectCategoryMenu_exit = 8,
+    SelectCategoryMenu_sepaLine = 9,
+    SelectCategoryMenu_actX = 10,
+    SelectCategoryMenu_dummy = 11,
+};
+#define SelectCategoryMenu_numEntries 12
+
+/* ---- scenarioModeMainMenu -- src/menus/scenarioModeMain.mnu ---- */
+enum {
+    ScenarioModeMainMenu_header = 0,
+    ScenarioModeMainMenu_s00 = 1,
+    ScenarioModeMainMenu_s01 = 2,
+    ScenarioModeMainMenu_s02 = 3,
+    ScenarioModeMainMenu_s10 = 4,
+    ScenarioModeMainMenu_s11 = 5,
+    ScenarioModeMainMenu_s12 = 6,
+    ScenarioModeMainMenu_s20 = 7,
+    ScenarioModeMainMenu_s21 = 8,
+    ScenarioModeMainMenu_s22 = 9,
+    ScenarioModeMainMenu_s30 = 10,
+    ScenarioModeMainMenu_s31 = 11,
+    ScenarioModeMainMenu_s32 = 12,
+    ScenarioModeMainMenu_description1 = 13,
+    ScenarioModeMainMenu_description2 = 14,
+    ScenarioModeMainMenu_description3 = 15,
+    ScenarioModeMainMenu_description4 = 16,
+    ScenarioModeMainMenu_description5 = 17,
+    ScenarioModeMainMenu_scrollUp = 18,
+    ScenarioModeMainMenu_scrollDown = 19,
+    ScenarioModeMainMenu_pageInfo = 20,
+    ScenarioModeMainMenu_scenCompletion = 21,
+    ScenarioModeMainMenu_exit = 22,
+    ScenarioModeMainMenu_dummy = 23,
+};
+#define ScenarioModeMainMenu_numEntries 24
+
+/* ---- selectScenarioActionMenu -- src/menus/selectScenarioAction.mnu ---- */
+enum {
+    SelectScenarioActionMenu_header = 0,
+    SelectScenarioActionMenu_leftTeam = 1,
+    SelectScenarioActionMenu_centerScore = 2,
+    SelectScenarioActionMenu_rightTeam = 3,
+    SelectScenarioActionMenu_initialTime = 4,
+    SelectScenarioActionMenu_cpuInjurySpeed1 = 5,
+    SelectScenarioActionMenu_cpuInjurySpeed2 = 6,
+    SelectScenarioActionMenu_startingEvent = 7,
+    SelectScenarioActionMenu_etPen = 8,
+    SelectScenarioActionMenu_winMsg = 9,
+    SelectScenarioActionMenu_diffStarts = 10,
+    SelectScenarioActionMenu_beatMsg = 11,
+    SelectScenarioActionMenu_act1 = 12,
+    SelectScenarioActionMenu_act2 = 13,
+    SelectScenarioActionMenu_exit = 14,
+};
+#define SelectScenarioActionMenu_numEntries 15
+
+/* ---- scenarioOnlineStatsMenu -- src/menus/scenarioOnlineStats.mnu ---- */
+enum {
+    ScenarioOnlineStatsMenu_header = 0,
+    ScenarioOnlineStatsMenu_username = 1,
+    ScenarioOnlineStatsMenu_username_000 = 2,
+    ScenarioOnlineStatsMenu_username_001 = 3,
+    ScenarioOnlineStatsMenu_username_002 = 4,
+    ScenarioOnlineStatsMenu_username_003 = 5,
+    ScenarioOnlineStatsMenu_username_004 = 6,
+    ScenarioOnlineStatsMenu_username_005 = 7,
+    ScenarioOnlineStatsMenu_username_006 = 8,
+    ScenarioOnlineStatsMenu_username_007 = 9,
+    ScenarioOnlineStatsMenu_username_008 = 10,
+    ScenarioOnlineStatsMenu_username_009 = 11,
+    ScenarioOnlineStatsMenu_username_010 = 12,
+    ScenarioOnlineStatsMenu_username_011 = 13,
+    ScenarioOnlineStatsMenu_username_012 = 14,
+    ScenarioOnlineStatsMenu_username_013 = 15,
+    ScenarioOnlineStatsMenu_username_014 = 16,
+    ScenarioOnlineStatsMenu_username_015 = 17,
+    ScenarioOnlineStatsMenu_win_000 = 18,
+    ScenarioOnlineStatsMenu_win_001 = 19,
+    ScenarioOnlineStatsMenu_win_002 = 20,
+    ScenarioOnlineStatsMenu_win_003 = 21,
+    ScenarioOnlineStatsMenu_win_004 = 22,
+    ScenarioOnlineStatsMenu_win_005 = 23,
+    ScenarioOnlineStatsMenu_win_006 = 24,
+    ScenarioOnlineStatsMenu_win_007 = 25,
+    ScenarioOnlineStatsMenu_win_008 = 26,
+    ScenarioOnlineStatsMenu_win_009 = 27,
+    ScenarioOnlineStatsMenu_win_010 = 28,
+    ScenarioOnlineStatsMenu_win_011 = 29,
+    ScenarioOnlineStatsMenu_win_012 = 30,
+    ScenarioOnlineStatsMenu_win_013 = 31,
+    ScenarioOnlineStatsMenu_win_014 = 32,
+    ScenarioOnlineStatsMenu_win_015 = 33,
+    ScenarioOnlineStatsMenu_scrollUp = 34,
+    ScenarioOnlineStatsMenu_scrollDown = 35,
+    ScenarioOnlineStatsMenu_pageInfo = 36,
+    ScenarioOnlineStatsMenu_dataInfo = 37,
+    ScenarioOnlineStatsMenu_exit = 38,
+};
+#define ScenarioOnlineStatsMenu_numEntries 39
+
+/* ---- scenarioCompletionMenu -- src/menus/scenarioCompletion.mnu ---- */
+enum {
+    ScenarioCompletionMenu_header = 0,
+    ScenarioCompletionMenu_username = 1,
+    ScenarioCompletionMenu_username_000 = 2,
+    ScenarioCompletionMenu_username_001 = 3,
+    ScenarioCompletionMenu_username_002 = 4,
+    ScenarioCompletionMenu_username_003 = 5,
+    ScenarioCompletionMenu_username_004 = 6,
+    ScenarioCompletionMenu_username_005 = 7,
+    ScenarioCompletionMenu_username_006 = 8,
+    ScenarioCompletionMenu_username_007 = 9,
+    ScenarioCompletionMenu_username_008 = 10,
+    ScenarioCompletionMenu_username_009 = 11,
+    ScenarioCompletionMenu_username_010 = 12,
+    ScenarioCompletionMenu_username_011 = 13,
+    ScenarioCompletionMenu_username_012 = 14,
+    ScenarioCompletionMenu_username_013 = 15,
+    ScenarioCompletionMenu_username_014 = 16,
+    ScenarioCompletionMenu_username_015 = 17,
+    ScenarioCompletionMenu_compcount_000 = 18,
+    ScenarioCompletionMenu_compcount_001 = 19,
+    ScenarioCompletionMenu_compcount_002 = 20,
+    ScenarioCompletionMenu_compcount_003 = 21,
+    ScenarioCompletionMenu_compcount_004 = 22,
+    ScenarioCompletionMenu_compcount_005 = 23,
+    ScenarioCompletionMenu_compcount_006 = 24,
+    ScenarioCompletionMenu_compcount_007 = 25,
+    ScenarioCompletionMenu_compcount_008 = 26,
+    ScenarioCompletionMenu_compcount_009 = 27,
+    ScenarioCompletionMenu_compcount_010 = 28,
+    ScenarioCompletionMenu_compcount_011 = 29,
+    ScenarioCompletionMenu_compcount_012 = 30,
+    ScenarioCompletionMenu_compcount_013 = 31,
+    ScenarioCompletionMenu_compcount_014 = 32,
+    ScenarioCompletionMenu_compcount_015 = 33,
+    ScenarioCompletionMenu_scrollUp = 34,
+    ScenarioCompletionMenu_scrollDown = 35,
+    ScenarioCompletionMenu_pageInfo = 36,
+    ScenarioCompletionMenu_dataInfo = 37,
+    ScenarioCompletionMenu_exit = 38,
+};
+#define ScenarioCompletionMenu_numEntries 39
 
 #endif /* SWOS2020_MENUS_H */

@@ -76,6 +76,16 @@ rebase), `git cherry-pick <commit>` one fix, or nothing at all. `upstream` is fe
   it by hand. OpenSWOS's challenges mod plays it (format v2, docs/MODS.md §18); its LOCKED
   categories stay closed, as in SWOS 2020. Online, a win is sent by the online-records mod, by
   SWOS 2020's scenario name and category.
+- **SWOS 2020's challenge screens** (`src/united_challenges.c`, mod `challenges2020`, on by
+  default): MODES / COMPETE -> CHALLENGES opens SWOS 2020's SELECT CATEGORY (six a page, MORE,
+  CUSTOM CHALLENGES), a category's challenges twelve a page with stars, tick / lock and the
+  five description lines, a challenge's page (PLAY SCENARIO, VIEW ONLINE STATS) and SCENARIO
+  COMPLETION -- its menus imported (`import_swos2020_menus.py`, the "challenge mode" group),
+  the challenges read and played through OpenSWOS's `challenges` service. Online lines come from
+  online-records (`challenges.wins / winners / ranking`: one download of SWOS 2020's
+  completions, a row a win). `SWOS_CHALLENGES2020_TEST=<category>[/<id>]` with
+  `--menu=swos2020/<screen>` opens one straight (the check: there is no scripting of menu keys).
+  Not drawn yet: the uniforms, red cards and injuries on a challenge's page.
 - **Secrets**: `include/united_secrets.h` (gitignored; `include/united_secrets.sample.h` is the
   template, the file itself is in SWOS-API-secrets.zip). Without it a build cannot host a
   ranked match.

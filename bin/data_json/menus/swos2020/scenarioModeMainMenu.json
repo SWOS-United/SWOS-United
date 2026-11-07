@@ -1,0 +1,676 @@
+{
+  "name": "scenarioModeMainMenu",
+  "source": {
+    "project": "swos-2020",
+    "file": "src/menus/scenarioModeMain.mnu",
+    "commit": "df38d20"
+  },
+  "menu_flags": {
+    "dos_redraw": true
+  },
+  "onInit": "scenarioModeMainMenu_OnInit",
+  "onReturn": "scenarioModeMainMenu_OnReturn",
+  "onDraw": "scenarioModeMainMenu_OnDraw",
+  "defaultEntry": 22,
+  "exports": {},
+  "items": [
+    {
+      "kind": "entry",
+      "name": "header",
+      "coords": {
+        "x": 0,
+        "y": 0,
+        "w": 160,
+        "h": 16
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "CHALLENGES"
+        },
+        {
+          "op": "colors",
+          "frame_color": 1,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "s00",
+      "coords": {
+        "x": -8,
+        "y": 23,
+        "w": 104,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "-"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 14
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": 2,
+          "up": -1,
+          "down": 4
+        },
+        {
+          "op": "onselect_fire",
+          "func": "s00_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "s01",
+      "coords": {
+        "x": 100,
+        "y": 23,
+        "w": 104,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "-"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 14
+        },
+        {
+          "op": "nav",
+          "left": 1,
+          "right": 3,
+          "up": -1,
+          "down": 5
+        },
+        {
+          "op": "onselect_fire",
+          "func": "s01_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "s02",
+      "coords": {
+        "x": 208,
+        "y": 23,
+        "w": 104,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "-"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 14
+        },
+        {
+          "op": "nav",
+          "left": 2,
+          "right": -1,
+          "up": 18,
+          "down": 6
+        },
+        {
+          "op": "onselect_fire",
+          "func": "s02_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "s10",
+      "coords": {
+        "x": -8,
+        "y": 53,
+        "w": 104,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "-"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 14
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": 5,
+          "up": 1,
+          "down": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "s10_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "s11",
+      "coords": {
+        "x": 100,
+        "y": 53,
+        "w": 104,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "-"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 14
+        },
+        {
+          "op": "nav",
+          "left": 4,
+          "right": 6,
+          "up": 2,
+          "down": 8
+        },
+        {
+          "op": "onselect_fire",
+          "func": "s11_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "s12",
+      "coords": {
+        "x": 208,
+        "y": 53,
+        "w": 104,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "-"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 14
+        },
+        {
+          "op": "nav",
+          "left": 5,
+          "right": -1,
+          "up": 3,
+          "down": 9
+        },
+        {
+          "op": "onselect_fire",
+          "func": "s12_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "s20",
+      "coords": {
+        "x": -8,
+        "y": 83,
+        "w": 104,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "-"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 14
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": 8,
+          "up": 4,
+          "down": 10
+        },
+        {
+          "op": "onselect_fire",
+          "func": "s20_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "s21",
+      "coords": {
+        "x": 100,
+        "y": 83,
+        "w": 104,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "-"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 14
+        },
+        {
+          "op": "nav",
+          "left": 7,
+          "right": 9,
+          "up": 5,
+          "down": 11
+        },
+        {
+          "op": "onselect_fire",
+          "func": "s21_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "s22",
+      "coords": {
+        "x": 208,
+        "y": 83,
+        "w": 104,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "-"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 14
+        },
+        {
+          "op": "nav",
+          "left": 8,
+          "right": -1,
+          "up": 6,
+          "down": 12
+        },
+        {
+          "op": "onselect_fire",
+          "func": "s22_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "s30",
+      "coords": {
+        "x": -8,
+        "y": 113,
+        "w": 104,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "-"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 14
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": 11,
+          "up": 7,
+          "down": 22
+        },
+        {
+          "op": "onselect_fire",
+          "func": "s30_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "s31",
+      "coords": {
+        "x": 100,
+        "y": 113,
+        "w": 104,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "-"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 14
+        },
+        {
+          "op": "nav",
+          "left": 10,
+          "right": 12,
+          "up": 8,
+          "down": 22
+        },
+        {
+          "op": "onselect_fire",
+          "func": "s31_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "s32",
+      "coords": {
+        "x": 208,
+        "y": 113,
+        "w": 104,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "-"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 14
+        },
+        {
+          "op": "nav",
+          "left": 11,
+          "right": -1,
+          "up": 9,
+          "down": 19
+        },
+        {
+          "op": "onselect_fire",
+          "func": "s32_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "description1",
+      "coords": {
+        "x": -8,
+        "y": 140,
+        "w": 320,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "description2",
+      "coords": {
+        "x": -8,
+        "y": 149,
+        "w": 320,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "description3",
+      "coords": {
+        "x": -8,
+        "y": 158,
+        "w": 320,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "description4",
+      "coords": {
+        "x": -8,
+        "y": 167,
+        "w": 320,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "description5",
+      "coords": {
+        "x": -8,
+        "y": 176,
+        "w": 320,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "scrollUp",
+      "coords": {
+        "x": 303,
+        "y": 9,
+        "w": 9,
+        "h": 13
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": " "
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": -1,
+          "down": 3
+        },
+        {
+          "op": "onselect_fire",
+          "func": "scenarioModeMain_scrollUp_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "scrollDown",
+      "coords": {
+        "x": 303,
+        "y": 128,
+        "w": 9,
+        "h": 13
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": " "
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": 12,
+          "down": 22
+        },
+        {
+          "op": "onselect_fire",
+          "func": "scenarioModeMain_scrollDown_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "pageInfo",
+      "coords": {
+        "x": 295,
+        "y": 9,
+        "w": 9,
+        "h": 13
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x4000",
+          "literal": "(00 / 00)"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "scenCompletion",
+      "coords": {
+        "x": 17,
+        "y": 190,
+        "w": 120,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "SCENARIO COMPLETION"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 12
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": 22,
+          "up": 11,
+          "down": -1
+        },
+        {
+          "op": "onselect_fire",
+          "func": "scenCompletion_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "exit",
+      "coords": {
+        "x": 167,
+        "y": 190,
+        "w": 120,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "str": "_aExit"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 12
+        },
+        {
+          "op": "nav",
+          "left": 21,
+          "right": -1,
+          "up": 11,
+          "down": -1
+        },
+        {
+          "op": "onselect_fire",
+          "func": "scenarioModeMainMenu_OnExit"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "dummy",
+      "coords": {
+        "x": -8,
+        "y": -8,
+        "w": 1,
+        "h": 1
+      },
+      "commands": [
+        {
+          "op": "fg_func",
+          "func": "scenarioModeMainMenu_OnBackground"
+        }
+      ]
+    }
+  ]
+}
