@@ -93,6 +93,9 @@
  * listed, neither on OPTIONS -> MODS (nor in its "N ON") nor on the setup's Mods screen. Slugs,
  * separated by commas or spaces. OpenSWOS: none -- every one of its mods can be turned off. A
  * fork lists the mods its game is built on. A downloaded (DLC) mod is never static. */
-#define PROJECT_STATIC_MODS     ""
+/* SWOS United: every SWOS 2020 mod is part of the game (the owner and Playaveli, 2026-11-07) --
+ * its main menu, its challenge and speedrun screens, SWOS Galore, the news ticker, and the
+ * records read from SWOS 2020's servers. */
+#define PROJECT_STATIC_MODS     "menus2020, challenges2020, swos2020-challenges, speedrun2020, galore2020, ticker, online-records"
 
 #endif /* PROJECT_IDENTITY_H */
