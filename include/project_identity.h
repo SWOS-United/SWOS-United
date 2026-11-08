@@ -114,6 +114,6 @@
  * says -- still listed, and a player may turn them off ([mods] disabled), unlike a static one.
  * Slugs, separated by commas or spaces. OpenSWOS: none (each mod.json's "default" decides). A
  * fork lists the ones its look is built on (SWOS United: dosmenus). */
-#define PROJECT_DEFAULT_MODS    ""
+#define PROJECT_DEFAULT_MODS    "dosmenus"
 
 #endif /* PROJECT_IDENTITY_H */
