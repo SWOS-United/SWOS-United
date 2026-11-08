@@ -1,8 +1,8 @@
 /*
  * match_scoreboard.c -- SWOS 2020's scoreboard (include/match_scoreboard.h). Its showTeamIcons and
  * the clock and score of its UpdateTime hook (src/video/render.cpp, src/game.cpp), scores mode 4:
- * a 72x8 darkened box at (8, 6), the minute right-aligned at 30, the kits (its uniform0-3 by shirt
- * type, from the in-match palette indices of each side's kit) at 31 and 71, the score centred at 57,
+ * a 72x8 darkened box at (8, 6), the minute right-aligned short of 30, the kits (its uniform0-3 by shirt
+ * type, from the in-match palette indices of each side's kit) at 31 and 71, the score centred near 57,
  * in the game's small white font.
  */
 #include "match_scoreboard.h"
@@ -161,10 +161,13 @@ void MatchScoreboard_Draw(uint32_t *argb, int32_t pitch, int32_t originX, int32_
                 *p = 0xFF000000u | (((v >> 16 & 0xFF) / 2) << 16) | (((v >> 8 & 0xFF) / 2) << 8) | ((v & 0xFF) / 2);
             }
         }
+    /* SWOS 2020's printStringEx measures a string one pixel wider per character than it draws it
+     * (getStringLength counts width + 1, the drawing advances width), so its right-aligned minute
+     * ends a pixel per character short of 30 and its centred score sits half that left of 57. */
     snprintf(buf, sizeof buf, "%d'", minute);
-    text(argb, pitch, BOX_X + 2 + 21 - 1 - text_width(buf) + 1, BOX_Y + 2, buf, white, shadow);
+    text(argb, pitch, 30 - (int32_t)strlen(buf) - text_width(buf), BOX_Y + 2, buf, white, shadow);
     snprintf(buf, sizeof buf, "%d-%d", (int)_statsTeam1Goals, (int)_statsTeam2Goals);
-    text(argb, pitch, BOX_X + 2 + 47 - text_width(buf) / 2, BOX_Y + 2, buf, white, shadow);
+    text(argb, pitch, (114 - (int32_t)strlen(buf) - text_width(buf)) / 2, BOX_Y + 2, buf, white, shadow);
     kit(argb, pitch, BOX_X + 23, BOX_Y + 1, &_topTeamInGame);        /* (team 1, the top team) */
     kit(argb, pitch, BOX_X + 63, BOX_Y + 1, &_bottomTeamInGame);
 }
