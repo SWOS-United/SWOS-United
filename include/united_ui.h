@@ -32,6 +32,10 @@ void        UnitedMatches_BrowseTournaments(const char *player, const OpenLeg *l
  * from `mode` -- "ALL LOG IN", "FRIENDLY MATCHES", "RANKED MATCHES". */
 int32_t     United_Banned(const char *name, const char *mode);
 
+/* The star rating an SRN earns, 36x10 at (x, y) on the menu's screen (the lobby's, SWOS 2020's):
+ * src/online_menus_fork.inc. */
+void        OnlineMenus_DrawStars(int32_t srn, int32_t x, int32_t y);
+
 /* SWOS United's screens (registered by Account_Init). */
 void        UnitedRankings_Register(void);
 void        UnitedLeagues_Register(void);

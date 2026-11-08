@@ -3,7 +3,7 @@
  * ranking menus (imported, data_json/menus/swos2020/), with their handlers here -- the log-in's
  * RANKINGS and the matchmaking screen's open the first, AMIGA or PC DOS the second, the online
  * ranking from sensiblesoccer.de (view=ranking&id=5 the Amiga's, 13 the PC's, 8 the XBOX's -- SWOS 2020's downloadRankingFile) or,
- * with [netplay] account_site = swosunited, from swos.swosunited.com (api/rankings/users, the same
+ * with [mod.menus2020] account_site = swosunited, from swos.swosunited.com (api/rankings/users, the same
  * ids; its active players, as the old site lists them -- and no SRN change, which it does not keep).
  *
  * SWOS 2020's showRankingsMenu / getRanking / rankingMenu_OnDraw (src/mpgame.cpp): 18 players a

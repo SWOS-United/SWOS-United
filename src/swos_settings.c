@@ -204,8 +204,6 @@ static int handler(void *user, const char *section,
             snprintf(opts->matchmaker, sizeof opts->matchmaker, "%s", value);
         else if (eqi(name, "name"))
             snprintf(opts->netplay_name, sizeof opts->netplay_name, "%s", value);
-        else if (eqi(name, "account_site"))
-            snprintf(opts->account_site, sizeof opts->account_site, "%s", value);
         else if (eqi(name, "remember_login")) {
             int b;
             if (parse_bool(value, &b))
@@ -216,11 +214,6 @@ static int handler(void *user, const char *section,
             int b;
             if (parse_bool(value, &b))
                 opts->live_cast = b;
-        }
-        else if (eqi(name, "accept_sound")) {
-            int b;
-            if (parse_bool(value, &b))
-                opts->accept_sound = b;
         }
         else if (eqi(name, "reports")) {
             int b;
@@ -559,13 +552,6 @@ static int settings_build(const PlatformInitOptions *opts, IniEntry *items, char
         "; name: your name on the MULTIPLAYER login screen. Typed there and saved back\n"
         "; here while REMEMBER LOGIN INFO is on.",
         opts->netplay_name };
-#if PROJECT_ACCOUNTS
-    SETTING(n) = (IniEntry){ "netplay", "account_site",
-        "; account_site: sensiblesoccer | swosunited -- the site the log-in, RANKINGS and LEAGUES\n"
-        "; use: sensiblesoccer.de (the default), or SWOS United's own, swos.swosunited.com.\n"
-        "; Ranked and league results go to sensiblesoccer.de either way, for now.",
-        opts->account_site[0] ? opts->account_site : "sensiblesoccer" };
-#endif
     SETTING(n) = (IniEntry){ "netplay", "remember_login",
         "; remember_login: true | false -- the login screen's REMEMBER LOGIN INFO switch.",
         opts->netplay_remember ? "true" : "false" };
@@ -579,10 +565,6 @@ static int settings_build(const PlatformInitOptions *opts, IniEntry *items, char
         "; live_cast: true | false -- let LIVE CAST's viewers watch your online matches on the\n"
         "; recorder (false keeps them off its list; recording for desync checks goes on).",
         opts->live_cast ? "true" : "false" };
-    SETTING(n) = (IniEntry){ "netplay", "accept_sound",
-        "; accept_sound: true | false -- MULTIPLAYER SETTINGS' ACCEPT SOUND: play a sound when the\n"
-        "; host of a game accepts you.",
-        opts->accept_sound ? "true" : "false" };
     SETTING(n) = (IniEntry){ "netplay", "reports",
         "; reports: true | false -- after an online match, send both players' SWOS.log and\n"
         "; HOW WAS THE MATCH? to the other player and the server, zipped (a copy is kept in\n"

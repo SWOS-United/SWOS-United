@@ -53,7 +53,7 @@ rebase), `git cherry-pick <commit>` one fix, or nothing at all. `upstream` is fe
   a joiner who leaves before they arrive has not sent their score. SWOS 2020 sent the joiner's
   password to the host instead: never do that.
 - **swos.swosunited.com**, the site taking over from sensiblesoccer.de (JSON API, SWOS-API
-  issues 1-4; `PROJECT_ACCOUNT_API`): `[netplay] account_site = swosunited` in SWOS.ini (or
+  issues 1-4; `PROJECT_ACCOUNT_API`): `[mod.menus2020] account_site = swosunited` in SWOS.ini (or
   `SWOS_UNITED_SITE=swosunited`) moves the log-in (`api/auth/key`, its `api_key` kept for the
   session), RANKINGS (`api/rankings/users`, active players), LEAGUES (`api/seasons/current`,
   `api/tournament`) and RANKED matches there; `sensiblesoccer`, the default, keeps the old site.
@@ -172,6 +172,12 @@ rebase), `git cherry-pick <commit>` one fix, or nothing at all. `upstream` is fe
   Drawn over the picture through gfx.h (GPU presenter and SDL renderer alike) from the mod hooks
   spritesBegin / spriteDraw / frameKept / frameDrawn: nothing the match keeps, hashes or records
   changes. Was Playa's discord-hooks `match_scoreboard.c` + `[video] scoreboard` (SDL renderer only).
+- **SWOS 2020's online screens** (`src/online_menus_fork.inc`, United's own file): the MATCH MAKING
+  table, the lobby (LOCATIONS, stars, GO's tick and cross, TEAM DB), CHOOSE GAMEPLAY's buttons, the
+  join / accept sounds, "USING <pad>", the Discord match's start and end. OpenSWOS's
+  `src/online_menus.c` includes it at its end and calls it through its `OnlineMenusFork` hooks
+  (docs/MODS.md §25) -- United no longer edits that file. Settings: `[mod.menus2020] accept_sound`
+  and `account_site` (were `[netplay] ...`).
 - **discord2020** (`src/mod_discord2020.c`, `include/live_ticker.h`; a STATIC mod): SWOS 2020's
   LIVE TICKERS and LIVE SCORE BOARDS through sensiblesoccer.de's `discord_proxy.php`
   (`PROJECT_DISCORD_PROXY`). It hears the match only through OpenSWOS's mod hooks for an online

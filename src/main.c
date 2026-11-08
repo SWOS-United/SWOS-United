@@ -583,7 +583,6 @@ int main(int argc, char **argv)
     for (int qi = 0; qi < MATCHCHAT_QUICK; qi++)       /* [chat] quick1..quick0 */
         snprintf(opts.chat_quick[qi], sizeof opts.chat_quick[qi], "%s", MatchChat_DefaultQuick(qi));
     opts.prediction = 1;          /* default: a live match's replay keeps what each player saw */
-    opts.accept_sound = 1;        /* default: SWOS 2020's, when a host takes this player in */
     opts.no_injuries_cards = 0;   /* [testing] no_injuries_cards: the real rules unless asked (test_rules.h) */
 #ifdef SWOS_TEST_RULES
     opts.reports = 1;             /* a tester build: match reports come back to us */
@@ -1234,10 +1233,6 @@ int main(int argc, char **argv)
     MatchRecord_SetLiveCast(opts.live_cast);
     /* And whether a match report leaves this machine (include/match_report.h). */
     MatchReport_SetEnabled(opts.reports);
-#if PROJECT_ACCOUNTS
-    /* Which site SWOS United's accounts use (include/united_api.h). */
-    { extern void United_SetSite(const char *name); United_SetSite(opts.account_site); }
-#endif
     for (int qi = 0; qi < MATCHCHAT_QUICK; qi++)
         MatchChat_SetQuick(qi, opts.chat_quick[qi]);
     { extern void ReplayRec_SetPredictionKept(int32_t on); ReplayRec_SetPredictionKept(opts.prediction); }

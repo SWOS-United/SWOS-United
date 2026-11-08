@@ -20,7 +20,7 @@
  * opens that association (0-12, kLeagues' order), goes to that round and group once it has
  * loaded, and with ":m" presses MATCHES -- the screens tried without a mouse.
  *
- * With [netplay] account_site = swosunited it is swos.swosunited.com's instead (JSON): the season
+ * With [mod.menus2020] account_site = swosunited it is swos.swosunited.com's instead (JSON): the season
  * from api/seasons/current (associations, their series, their tournaments), a tournament from
  * api/tournament?id= -- its rounds, the standings of each group of a league round, and every
  * leg played or to play, each with its round and group (0 in a cup round).

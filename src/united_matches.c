@@ -18,7 +18,7 @@
  *              to the joiner in the lobby's rules. (SWOS 2020 sent the joiner's password to the
  *              host so the host could submit both. Not here.)
  *
- * With [netplay] account_site = swosunited a RANKED match is swos.swosunited.com's (SWOS-API
+ * With [mod.menus2020] account_site = swosunited a RANKED match is swos.swosunited.com's (SWOS-API
  * issue 4, JSON with the log-in's api_key): the SRNs from api/rankings/users (both rankings,
  * every player: the lobby knows the other player by name, not id); the host makes the session
  * after the first match (swos-matches/create, ranking + opponent's name) and a leg after each

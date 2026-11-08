@@ -108,6 +108,12 @@ int32_t United_Banned(const char *name, const char *mode) { (void)name; (void)mo
 
 void Account_Init(void)
 {
+    /* Which site the accounts use: [mod.menus2020] account_site = sensiblesoccer (the default) |
+     * swosunited (was [netplay] account_site). */
+    {
+        extern const char *ModApi_Setting(const char *slug, const char *key, const char *fallback);
+        United_SetSite(ModApi_Setting("menus2020", "account_site", "sensiblesoccer"));
+    }
     UnitedRankings_Register();
     UnitedLeagues_Register();
     UnitedMatches_Register();

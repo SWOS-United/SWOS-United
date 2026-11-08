@@ -12,8 +12,6 @@ void    OnlineMenus_Init(void);
 
 /* Show a JSON-only menu by its loader name, e.g. "swos2020/logInMenu". */
 void    OnlineMenus_Show(const char *name);
-/* The star rating an SRN earns, 36x10 at (x, y) on the menu's screen (the lobby's, SWOS 2020's). */
-void    OnlineMenus_DrawStars(int32_t srn, int32_t x, int32_t y);
 
 /* --menu=<name>: remember a menu for OnlineMenus_ShowStartMenu to open once, when
  * the front end first starts. ShowStartMenu returns 1 when it showed one (and so the

@@ -62,7 +62,7 @@
 #define PROJECT_SITE            "openswos.net"
 
 /* SWOS United's own site, taking over from sensiblesoccer.de: its JSON API (the SWOS-API repo's
- * issues 1-3). [netplay] account_site = swosunited (or SWOS_UNITED_SITE=swosunited) uses it for
+ * issues 1-3). [mod.menus2020] account_site = swosunited (or SWOS_UNITED_SITE=swosunited) uses it for
  * the log-in, the rankings and the leagues; sensiblesoccer, the default, keeps the old site.
  * Ranked and league results still go to sensiblesoccer.de (the account ids are the same). */
 #define PROJECT_ACCOUNT_API     "https://swos.swosunited.com/api/"
