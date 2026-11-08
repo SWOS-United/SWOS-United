@@ -415,9 +415,15 @@ static void init(void)
     ModApi_RegisterHandlers(SLUG, handlers, (int32_t)(sizeof handlers / sizeof handlers[0]));
 }
 
+/* The lobby, SWOS 2020's way: a change on the other side leaves this player's GO as it is -- a
+ * confirmed line-up stays confirmed (Playaveli, 42e31392). Safe: the other player's own GO goes
+ * down with any change to their side, so a match starts only on a side both games have. */
+static int32_t keeps_ready(void) { return 1; }
+
 const ModDef ModDef_menus2020 = {
-    .slug = SLUG,
-    .init = init,
+    .slug            = SLUG,
+    .init            = init,
+    .lobbyKeepsReady = keeps_ready,
 };
 
 #endif /* SWOS_SDL_BUILD */

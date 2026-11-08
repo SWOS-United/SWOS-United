@@ -2977,7 +2977,8 @@ static void lineup_screen(void)
     lineup_begin();
     _exitGameFlag = 0;
     g_playMatchStartLabel = confirm;
-    g_playMatchStartRefused = NetplayLobby_LegBlocked;
+    g_playMatchStartRefused = NetplayLobby_LegBlocked;     /* (a second leg: no CONFIRM while the
+                                                             * first's injured or sent off play) */
     ShowPlayMatchMenu(1, (int16_t)NetplayLobby_Rules()->maxSubs, 0, 1, 1,
                       &_selectedTeams[0], &_selectedTeams[1]);
     g_playMatchStartLabel = NULL;

@@ -88,7 +88,7 @@ int32_t     Account_LobbyCanStart(void);
 /* The lobby's MATCH row: what this match is for ("(NO MATCH INFO)"), NULL hides the row and
  * its SELECT MATCH button. */
 const char *Account_MatchText(void);
-/* A league or cup match's tournament, its whole name (the Discord posts, src/live_ticker.c); 0 when
+/* A league or cup match's tournament, its whole name (a fork's Discord posts: SWOS United's discord2020 mod); 0 when
  * the match is not one, or none is picked yet. */
 const char *Account_MatchTournament(void);
 void        Account_SelectMatch(void);              /* SELECT MATCH */

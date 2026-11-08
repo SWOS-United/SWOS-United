@@ -2854,6 +2854,9 @@ void Platform_ShowProgress(int permille)
 #include <dlfcn.h>
 #endif
 
+/* SDL_OpenURL, except in the Windows (Cygwin) build: Cygwin's SDL runs xdg-open, which a Windows
+ * machine does not have, so every link button did nothing there -- ShellExecute instead (from
+ * SWOS United). */
 int Platform_OpenUrl(const char *url)
 {
     if (!url || !url[0])
@@ -2882,7 +2885,8 @@ int Platform_OpenUrl(const char *url)
 #endif
 }
 
-/* One colour of the palette the screen is drawn in (the lobby maps SWOS 2020's RGB flags to it). */
+/* One colour of the palette the screen is drawn in (true colour drawn over the picture -- a
+ * mod's, the lobby's flags -- picks the game's own colours by index). */
 void Platform_PaletteRgb(int index, uint8_t *r, uint8_t *g, uint8_t *b)
 {
     const SDL_Color c = s_palette[index & 255];
