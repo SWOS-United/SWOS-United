@@ -1,14 +1,23 @@
 /*
- * live_ticker.c -- an online match on Discord: SWOS 2020's LIVE TICKERS and LIVE SCORE BOARDS
- * (include/live_ticker.h). SWOS 2020's are LiveTicker::poll(), livescoreWebhook() and
- * postToDiscordProxy() (its src/mpgame.cpp, src/util/util.cpp); the lines here are its lines, its
- * emoji (its Discord server's own) and its channels.
+ * mod_discord2020.c -- the discord2020 mod (bin/mods/discord2020; static in SWOS United): an
+ * online match on Discord, SWOS 2020's LIVE TICKERS and LIVE SCORE BOARDS (include/live_ticker.h).
+ * SWOS 2020's are LiveTicker::poll(), livescoreWebhook() and postToDiscordProxy() (its
+ * src/mpgame.cpp, src/util/util.cpp); the lines here are its lines, its emoji (its Discord
+ * server's own) and its channels.
+ *
+ * What it hears comes through OpenSWOS's mod hooks for an online match as played (mod_api.h):
+ * netFrame (a frame played, again after a rollback), matchMoment (an injury, a substitution:
+ * every run), soundEvent (the PC sound events: goals, cards, the woodwork, ...) and netConfirmed.
+ * The lobby (online_menus.c) says who plays whom and how the match ended: LiveTicker_Begin/End.
+ * Its settings: [mod.discord2020] post = on|off, webhook = a test channel's (SWOS.ini).
  */
 #include "live_ticker.h"
 
 #ifdef SWOS_SDL_BUILD
 
 #include "project_identity.h"
+#include "mod_api.h"
+#include "mods.h"
 #include "netplay_lobby.h"
 #include "dos_sound.h"
 #include "dos_mode.h"
@@ -52,17 +61,21 @@ static const char *const k_pitchNames[7] = { "FROZEN", "MUDDY", "WET", "SOFT", "
 
 /* ---- the settings ---- */
 
+#define SLUG "discord2020"
+
 static int32_t s_cfgOn = 1;
 static char    s_webhook[256];
 
-void LiveTicker_Configure(int32_t on, const char *testWebhook)
+/* [mod.discord2020] post / webhook (SWOS_DISCORD=0 and SWOS_DISCORD_WEBHOOK for a run); the mod
+ * off (a rig's), nothing. Read at each match's start, in the lobby -- never inside a frame. */
+static void read_settings(void)
 {
     const char *env = getenv("SWOS_DISCORD_WEBHOOK");
-    s_cfgOn = on;
-    snprintf(s_webhook, sizeof s_webhook, "%s", env && env[0] ? env : testWebhook ? testWebhook : "");
+    s_cfgOn = Mods_IsOn(SLUG) && ModApi_SettingInt(SLUG, "post", 1);
+    snprintf(s_webhook, sizeof s_webhook, "%s", env && env[0] ? env : ModApi_Setting(SLUG, "webhook", ""));
     env = getenv("SWOS_DISCORD");
     if (env && env[0])
-        s_cfgOn = strcmp(env, "0") != 0;
+        s_cfgOn = s_cfgOn && strcmp(env, "0") != 0;
 }
 
 /* A matchmaker on this machine or the local network: a test, not a match for Discord. */
@@ -282,11 +295,6 @@ static TeamGeneralInfo *team_info(int32_t team)
     return _topTeamData.teamNumber == team ? &_topTeamData : &_bottomTeamData;
 }
 
-int32_t LiveTicker_TeamOf(const void *teamGame)
-{
-    return (const void *)_topTeamData.inGameTeamPtr == teamGame ? _topTeamData.teamNumber : _bottomTeamData.teamNumber;
-}
-
 static void sprite_name(const Sprite *s, char *out, uint32_t cap)
 {
     const PlayerInfo *pi;
@@ -393,6 +401,7 @@ void LiveTicker_Begin(const LiveTickerMatch *match)
     char text[400], flag1[48], flag2[48], mode[80];
 
     s_m = *match;
+    read_settings();
     s_enabled = s_cfgOn && (s_webhook[0] || (PROJECT_DISCORD_PROXY[0] && !local_server() &&
                                              !getenv("SWOS_UNITED_DRY_RUN")));
     s_collect = s_enabled && s_m.host;
@@ -429,7 +438,7 @@ void LiveTicker_Begin(const LiveTickerMatch *match)
     post(ticker_type(), text);
 }
 
-void LiveTicker_FrameBegin(int32_t frame)
+static void net_frame(int32_t frame)
 {
     char text[320];
     Snap now, *prev;
@@ -484,7 +493,7 @@ void LiveTicker_FrameBegin(int32_t frame)
     s_snap[(uint32_t)frame & (SNAP_FRAMES - 1)] = now;
 }
 
-void LiveTicker_Confirmed(int32_t frame)
+static void net_confirmed(int32_t frame)
 {
     int32_t i, n;
     if (!s_collect || frame <= s_confirmed)
@@ -505,25 +514,31 @@ void LiveTicker_Confirmed(int32_t frame)
     s_pendingCount = n;
 }
 
-void LiveTicker_Report(int32_t kind, int32_t team, const int8_t *name1, const int8_t *name2, int32_t arg)
+/* matchMoment: an injury (arg its severity) or a substitution, by the players' slots. */
+static void moment(const ModMatchEvent *e)
 {
-    char text[320], n1[24], n2[24];
-    if (!s_collect || team < 1 || team > 2)
+    char text[320], raw[24], n1[24], n2[24];
+    const int32_t team = e->team + 1;
+    if (!s_collect || team < 1 || team > 2 ||
+        (e->kind != MODEVENT_INJURY && e->kind != MODEVENT_SUBSTITUTION))
         return;
-    copy_name(n1, sizeof n1, name1, 15);
-    if (kind == LIVE_TICKER_INJURY) {
+    ModApi_MatchPlayerName(e->team, e->player, raw, sizeof raw);
+    copy_name(n1, sizeof n1, (const int8_t *)raw, (uint32_t)strlen(raw));
+    if (e->kind == MODEVENT_INJURY) {
+        const int32_t arg = e->arg;
         snprintf(text, sizeof text, "%s *(%d mins.)* %s **%s (%s)** *got injured*",
                  k_injuryEmoji[arg >= 1 && arg <= 7 ? arg : 0], minute(), vs(), n1, team_name(team));
         add(text, team);
-    } else if (kind == LIVE_TICKER_SUB && name2) {
-        copy_name(n2, sizeof n2, name2, 15);
+    } else {
+        ModApi_MatchPlayerName(e->team, e->arg, raw, sizeof raw);
+        copy_name(n2, sizeof n2, (const int8_t *)raw, (uint32_t)strlen(raw));
         snprintf(text, sizeof text, ":arrows_counterclockwise: *(%d mins.)* %s **%s** *comes in for* **%s** **(%s)**",
                  minute(), vs(), n1, n2, team_name(team));
         add(text, 0);
     }
 }
 
-void LiveTicker_DosEvent(uint8_t event, uint16_t arg)
+static void sound_event(uint8_t event, uint16_t arg)
 {
     char text[320], name[24];
     int32_t team;
@@ -708,7 +723,7 @@ void LiveTicker_End(int32_t finished, const char *why)
     if (finished) {
         if (!s_collect)
             return;
-        LiveTicker_Confirmed(0x7FFFFFFF);       /* every frame was played */
+        net_confirmed(0x7FFFFFFF);       /* every frame was played */
         if (!s_finalPosted) {                   /* (a test's cut-off match has no whistle) */
             match_over_text(text, sizeof text);
             post_final(text);
@@ -738,5 +753,13 @@ void LiveTicker_End(int32_t finished, const char *why)
         post(ticker_type(), text);
     }
 }
+
+const ModDef ModDef_discord2020 = {
+    .slug         = SLUG,
+    .netFrame     = net_frame,
+    .netConfirmed = net_confirmed,
+    .matchMoment  = moment,
+    .soundEvent   = sound_event,
+};
 
 #endif /* SWOS_SDL_BUILD */

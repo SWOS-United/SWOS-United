@@ -589,8 +589,6 @@ int main(int argc, char **argv)
         snprintf(opts.chat_quick[qi], sizeof opts.chat_quick[qi], "%s", MatchChat_DefaultQuick(qi));
     opts.prediction = 1;          /* default: a live match's replay keeps what each player saw */
     opts.accept_sound = 1;        /* default: SWOS 2020's, when a host takes this player in */
-    opts.discord = 1;             /* default: online matches on Discord, as SWOS 2020's (live_ticker.h) */
-    opts.discord_webhook[0] = '\0';
     opts.no_injuries_cards = 0;   /* [testing] no_injuries_cards: the real rules unless asked (test_rules.h) */
 #ifdef SWOS_TEST_RULES
     opts.reports = 1;             /* a tester build: match reports come back to us */
@@ -1246,9 +1244,6 @@ int main(int argc, char **argv)
 #if PROJECT_ACCOUNTS
     /* Which site SWOS United's accounts use (include/united_api.h). */
     { extern void United_SetSite(const char *name); United_SetSite(opts.account_site); }
-    /* And whether online matches go to Discord (include/live_ticker.h). */
-    { extern void LiveTicker_Configure(int32_t on, const char *testWebhook);
-      LiveTicker_Configure(opts.discord, opts.discord_webhook); }
 #endif
     for (int qi = 0; qi < MATCHCHAT_QUICK; qi++)
         MatchChat_SetQuick(qi, opts.chat_quick[qi]);

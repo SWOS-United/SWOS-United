@@ -168,10 +168,15 @@ rebase), `git cherry-pick <commit>` one fix, or nothing at all. `upstream` is fe
   Drawn over the picture through gfx.h (GPU presenter and SDL renderer alike) from the mod hooks
   spritesBegin / spriteDraw / frameKept / frameDrawn: nothing the match keeps, hashes or records
   changes. Was Playa's discord-hooks `match_scoreboard.c` + `[video] scoreboard` (SDL renderer only).
-- **Discord** (`src/live_ticker.c`, `include/live_ticker.h`): SWOS 2020's LIVE TICKERS and LIVE
-  SCORE BOARDS through sensiblesoccer.de's `discord_proxy.php` (`PROJECT_DISCORD_PROXY`).
-  `[netplay] discord`, `discord_webhook` (a test channel for every post; or
-  `SWOS_DISCORD_WEBHOOK`); `SWOS_DISCORD=0` for a run.
+- **discord2020** (`src/mod_discord2020.c`, `include/live_ticker.h`; a STATIC mod): SWOS 2020's
+  LIVE TICKERS and LIVE SCORE BOARDS through sensiblesoccer.de's `discord_proxy.php`
+  (`PROJECT_DISCORD_PROXY`). It hears the match only through OpenSWOS's mod hooks for an online
+  match as played (`netFrame`, `matchMoment`, `soundEvent`, `netConfirmed`: what a rollback takes
+  back is never posted); the lobby calls `LiveTicker_Begin` / `End`. `[mod.discord2020] post`
+  (on/off; was `[netplay] discord`), `webhook` (a test channel for every post; was
+  `[netplay] discord_webhook`; or `SWOS_DISCORD_WEBHOOK`); `SWOS_DISCORD=0` for a run. Test:
+  `HOST_ENV="SWOS_DISCORD_WEBHOOK=http://127.0.0.1:9/hook" scripts/netplay_lobby_test.sh` and read
+  the host log's `[ticker]` lines.
 - **Secrets**: `include/united_secrets.h` (gitignored; `include/united_secrets.sample.h` is the
   template, the file itself is in SWOS-API-secrets.zip). Without it a build cannot host a
   ranked match.

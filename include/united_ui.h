@@ -28,6 +28,10 @@ typedef struct {
 /* tournaInfoMenu to look at a player's open legs, not to pick one (src/united_matches.c). */
 void        UnitedMatches_BrowseTournaments(const char *player, const OpenLeg *legs, int32_t count);
 
+/* SWOS 2020's ban list (PROJECT_BAN_LIST, src/online_account_united.c): 1 when `name` is banned
+ * from `mode` -- "ALL LOG IN", "FRIENDLY MATCHES", "RANKED MATCHES". */
+int32_t     United_Banned(const char *name, const char *mode);
+
 /* SWOS United's screens (registered by Account_Init). */
 void        UnitedRankings_Register(void);
 void        UnitedLeagues_Register(void);

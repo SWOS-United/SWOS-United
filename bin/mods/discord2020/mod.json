@@ -1,0 +1,24 @@
+{
+ "uuid": "0ff8a394-4b43-5231-a0c1-ea596e7cce5f",
+ "id": "discord2020",
+ "name": "SWOS 2020 Discord posts",
+ "version": "1.0",
+ "author": "SWOS United (Playaveli; SWOS 2020's LIVE TICKERS and LIVE SCORE BOARDS)",
+ "about": "An online match's goals, cards, injuries, substitutions and result posted to SWOS 2020's Discord, as SWOS 2020 does.",
+ "targets": [
+  "sdl"
+ ],
+ "changes": "cosmetic",
+ "default": true,
+ "settings": [
+  {
+   "key": "post",
+   "label": "Post my online matches",
+   "choices": [
+    "on",
+    "off"
+   ],
+   "default": "on"
+  }
+ ]
+}
