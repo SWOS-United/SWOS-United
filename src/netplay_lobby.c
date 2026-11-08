@@ -164,6 +164,7 @@ static uint8_t *tactic_slot(int32_t i)
     }
 }
 
+enum { kLegPlayers = 16 };
 static LobbyPlayer *mine(void)   { return &s_lobby.players[s_lobby.me - 1]; }
 static LobbyPlayer *theirs(void) { return &s_lobby.players[2 - s_lobby.me]; }
 
@@ -457,19 +458,6 @@ static void send_state(void)
         s_lobby.dirty = 0;
 }
 
-/* The other player's side is what they will play; ours stops being "agreed" when it
- * changes in any way that matters to the match. */
-static int32_t side_differs(const LobbyPlayer *a, const LobbyPlayer *b)
-{
-    if (a->hasTeam != b->hasTeam || a->tactic != b->tactic || a->extraDelay != b->extraDelay)
-        return 1;
-    if (a->hasTeam && memcmp(&a->team, &b->team, sizeof a->team) != 0)
-        return 1;
-    if (a->tactic >= TACTIC_USER_A && memcmp(&a->userTactic, &b->userTactic, TACTIC_BYTES) != 0)
-        return 1;
-    return 0;
-}
-
 static void team_check(void);      /* the matchmaking server's word on both teams */
 static int32_t team_blocks(const LobbyPlayer *p);
 
@@ -538,8 +526,9 @@ static void read_peer_state(void)
         got.refused = 1;
     }
 
-    if (theirs()->known && side_differs(theirs(), &got))
-        drop_my_ready();
+    /* (A change on the other side leaves this player's GO as it is -- SWOS 2020's: a confirmed line-up
+     * stays confirmed. Safe: the other player's own GO goes down with any change to their side, in
+     * the same state, so a match starts only on a side both games have.) */
     got.verified = theirs()->verified;      /* the server's word stands until the team changes (team_check) */
     *theirs() = got;
     if (!s_lobby.peerAnnounced && got.name[0]) {
@@ -670,6 +659,11 @@ static void assemble_match(void)
         }
         team.team.teamControls = TEAM_PLAYER_CONTROLLED;
         team.team.tactics      = (uint8_t)tactic;
+        if (!NetplayLobby_SecondLeg()) {        /* (the rules may have left the tie since) */
+            int32_t i;
+            for (i = 0; i < kLegPlayers; i++)
+                team.players[i].cardsInjuries = 0;
+        }
         _selectedTeams[p] = team;
     }
     /* THE SAME TEAM ON BOTH SIDES. A match finds a team by its NUMBER -- country and
@@ -1077,6 +1071,10 @@ void NetplayLobby_SetReady(int32_t ready)
         set_notice(NOT_IN_YOUR_BUILD);
         return;
     }
+    if (ready && NetplayLobby_LegBlocked(&p->team)) {
+        set_notice("REPLACE YOUR INJURED OR SENT OFF PLAYERS");
+        return;
+    }
     if (p->ready != (ready ? 1 : 0)) {
         p->ready = ready ? 1 : 0;
         s_lobby.dirty = 1;
@@ -1090,6 +1088,68 @@ void NetplayLobby_SetActivity(int32_t activity)
         return;
     mine()->activity = activity;
     s_lobby.dirty = 1;
+}
+
+/* ---- what a first leg leaves behind ----
+ *
+ * SWOS 2020 copies both teams back after a first leg, and the second is played with what it left
+ * on them (updateCardsInjuriesAndEtc). Here each game reads it off the match it has just played,
+ * and the two played the same match, so nothing has to be sent. In the player's cardsInjuries,
+ * as a friendly's init reads it: the injury in its top three bits; a sending-off as two cards,
+ * which is numYellowCards 2 again, so that he cannot come on from the bench. The same player
+ * is found through playerIndex: a substitution moves him in the match's order, not in the team's. */
+enum { CARDS_SENT_OFF = 2 << 2, CARDS_MASK = 0x1C, INJURY_MASK = 0xE0, INJURY_KNOCK = 0x20 };
+
+static void leg_carry(LobbyPlayer *side, const TeamGame *played)
+{
+    int32_t i;
+    for (i = 0; i < kLegPlayers; i++) {
+        const PlayerInfo *pi = &played->players[i];
+        const int32_t idx = pi->playerIndex;
+        uint8_t status = 0;
+        if (idx < 0 || idx >= kLegPlayers)
+            continue;
+        if (pi->isInjured)
+            status |= (uint8_t)pi->injuriesBitfield & INJURY_MASK;
+        if ((uint8_t)pi->numYellowCards >= 2)
+            status |= CARDS_SENT_OFF;
+        side->team.players[idx].cardsInjuries = status;
+        if (status)
+            fprintf(stderr, "[lobby] second leg: %.22s (%.16s) carries %s%s (level %d)\n",
+                    (const char *)side->team.players[idx].playerName, (const char *)side->team.team.teamName,
+                    status & CARDS_SENT_OFF ? "a sending-off " : "",
+                    status & INJURY_MASK ? "an injury" : "", (int)(status >> 5));
+    }
+}
+
+static void leg_clear(void)
+{
+    int32_t p, i;
+    for (p = 0; p < 2; p++)
+        for (i = 0; i < kLegPlayers; i++)
+            s_lobby.players[p].team.players[i].cardsInjuries = 0;
+}
+
+int32_t NetplayLobby_SecondLeg(void)
+{
+    return s_lobby.rules.legs == 2 && s_lobby.rules.leg == 2;
+}
+
+int32_t NetplayLobby_LegBlocked(const TeamFileEx *team)
+{
+    int32_t slot;
+    if (!NetplayLobby_SecondLeg())
+        return 0;
+    for (slot = 0; slot < 11; slot++) {
+        const int32_t idx = team->team.playerNumbers[slot];
+        uint8_t status;
+        if (idx >= kLegPlayers)
+            continue;
+        status = team->players[idx].cardsInjuries;
+        if ((status & CARDS_MASK) >= CARDS_SENT_OFF || (status & INJURY_MASK) > INJURY_KNOCK)
+            return 1;
+    }
+    return 0;
 }
 
 void NetplayLobby_MatchPlayed(int32_t completed, int32_t goals1, int32_t goals2)
@@ -1109,11 +1169,24 @@ void NetplayLobby_MatchPlayed(int32_t completed, int32_t goals1, int32_t goals2)
     if (r->legs != 2 || !completed)
         return;
     if (r->leg == 1) {
+        extern TeamGame _topTeamInGame, _bottomTeamInGame;
+        const char *test = getenv("SWOS_LOBBY_TEST_LEG");   /* <side 1|2>:<player>:<status>,... */
         r->leg = 2;
         r->firstLeg1 = (uint16_t)(goals1 < 0 ? 0 : goals1);
         r->firstLeg2 = (uint16_t)(goals2 < 0 ? 0 : goals2);
+        leg_carry(&s_lobby.players[0], &_topTeamInGame);    /* (player 1 is the top team) */
+        leg_carry(&s_lobby.players[1], &_bottomTeamInGame);
+        while (test && *test) {
+            int side, player, status;
+            if (sscanf(test, "%d:%d:%i", &side, &player, &status) == 3 && (side == 1 || side == 2) &&
+                player >= 0 && player < kLegPlayers)
+                s_lobby.players[side - 1].team.players[player].cardsInjuries = (uint8_t)status;
+            test = strchr(test, ',');
+            test = test ? test + 1 : NULL;
+        }
     } else {
         r->leg = 1;
+        leg_clear();
     }
     clamp_rules(r);
     if (s_lobby.me == 1)
@@ -1288,6 +1361,7 @@ int32_t NetplayLobby_CanStart(void)
     const LobbyPlayer *host = &s_lobby.players[0], *joiner = &s_lobby.players[1];
     return s_lobby.me == 1 && s_lobby.state == LOBBY_OPEN &&
            !team_blocks(host) && !team_blocks(joiner) &&     /* the server has vouched for both, or is not there */
+           !NetplayLobby_LegBlocked(&host->team) && !NetplayLobby_LegBlocked(&joiner->team) &&
            P2PLink_State() == P2P_CONNECTED &&
            host->hasTeam && host->ready && joiner->known && joiner->hasTeam && joiner->ready &&
            s_lobby.peerRulesSeen == s_lobby.rulesGen &&
@@ -1417,6 +1491,8 @@ void NetplayLobby_Peer(char *ip, uint32_t ipCap, uint16_t *peerPort, uint16_t *l
 #else  /* !SWOS_NETPLAY -- no link to set a match up over */
 
 static LobbyRules  s_noRules;
+int32_t            NetplayLobby_SecondLeg(void) { return 0; }
+int32_t            NetplayLobby_LegBlocked(const TeamFileEx *team) { (void)team; return 0; }
 
 void               NetplayLobby_Begin(int32_t localPlayer, const char *localName) { (void)localPlayer; (void)localName; }
 void               NetplayLobby_Poll(void) {}

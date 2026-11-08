@@ -184,6 +184,9 @@ bin/sound_dos/*
 !bin/sound_dos/commentary
 bin/sound_dos/commentary/*
 !bin/sound_dos/commentary/README.txt
+# (SWOS 2020's two online sounds: a join request, and being accepted)
+!bin/sound_dos/join.wav
+!bin/sound_dos/accept_1.wav
 bin/save/
 # SWOS 2020's tier: five PC files and SWOS 2020's own pitches, the setup copies
 # from the player's SWOS 2020 install (and makes grafs_aga/P2020_n.MAP from them).

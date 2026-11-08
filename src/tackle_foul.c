@@ -7,6 +7,7 @@
 #include "tackle_foul.h"
 #include "test_rules.h"
 #include "dos_sound.h"
+#include "live_ticker.h"   /* an online match's injuries, for Discord */
 #include "contest_log.h"    /* how long a slide leaves a player down (ContestLog_Down) */
 
 /* the mods' match events (include/mod_api.h ModEventKind): team, sprite */
@@ -274,6 +275,7 @@ apply_injury:
     pi->isInjured = 1;
     MOD_EVENT(8 /* MODEVENT_INJURY */, team, player);
     DOS_SOUND(DOS_EV_INJURY, team->playerNumber != 0);
+    LIVE_TICKER(LIVE_TICKER_INJURY, team->teamNumber, pi->shortName, 0, severity >> 5);
 
     /* Only upgrade injury severity, never downgrade */
     if ((uint8_t)severity > (uint8_t)pi->injuriesBitfield) {

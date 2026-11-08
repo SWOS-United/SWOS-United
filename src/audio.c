@@ -6,6 +6,7 @@
 #include "audio.h"
 #include "audio_sfx_filter.h"
 #include "dos_sound.h"
+#include "live_ticker.h"
 #include "dos_music.h"
 #include "sfx_ids.h"
 #include "endian_helpers.h"
@@ -84,6 +85,9 @@ void Audio_SetSfxObserver(AudioSfxObserver observer)
  * back on a frame played again, like the Amiga's effects, whatever the sound style. */
 void Audio_DosEvent(uint8_t event, uint16_t arg)
 {
+    /* An online match's moments for Discord: every call, a re-simulated frame's too (live_ticker.c
+     * keeps what its frames finally say). */
+    LiveTicker_DosEvent(event, arg);
     if (s_sfxObserver && event != DOS_EV_TICK)
         s_sfxObserver(AUDIO_SFX_DOS, event, arg);
     if (s_sfxFilter && !s_sfxFilter(AUDIO_SFX_DOS, event, arg))

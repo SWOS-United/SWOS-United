@@ -17,8 +17,20 @@ void        United_DrawPageArrow(int32_t down, int32_t x, int32_t y);
 void        United_DrawStars(int32_t n, int32_t x, int32_t y);
 /* A rating's stars, in halves (1 = half a star .. 10 = five): SWOS Galore's */
 void        United_DrawRating(int32_t halves, int32_t x, int32_t y);
+/* An open leg of a tournament or a ranked match. */
+typedef struct {
+    uint32_t matchId, legId, tournaId;
+    int32_t  rankingId;
+    int32_t  group;                     /* 1 a group (league) match, 0 a knockout one, -1 not known yet */
+    char     tournament[32], home[24], away[24];
+} OpenLeg;
+
+/* tournaInfoMenu to look at a player's open legs, not to pick one (src/united_matches.c). */
+void        UnitedMatches_BrowseTournaments(const char *player, const OpenLeg *legs, int32_t count);
+
 /* SWOS United's screens (registered by Account_Init). */
 void        UnitedRankings_Register(void);
 void        UnitedLeagues_Register(void);
 void        UnitedMatches_Register(void);
+void        UnitedMatchInfo_Register(void);
 #endif /* UNITED_UI_H */

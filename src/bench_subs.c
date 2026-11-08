@@ -27,6 +27,7 @@
 #endif      /* ai_injury_subs */
 #include "bench_subs.h"
 #include "dos_sound.h"
+#include "live_ticker.h"   /* an online match's substitutions, for Discord */
 #include "game_types.h"
 #include "game_state.h"
 #include "goalkeeper.h"
@@ -1169,6 +1170,9 @@ substitutePlayer(void)
     _waitForPlayerToGoInTimer = 100;
     _subsBlockFire = 1;
     DOS_SOUND(DOS_EV_SUBSTITUTION, 0);
+    /* (swapped: off7's slot holds the player coming on, off6's the one going off) */
+    LIVE_TICKER(LIVE_TICKER_SUB, LiveTicker_TeamOf(a0), (const int8_t *)a0 + off7 + 42 + 12,
+                (const int8_t *)a0 + off6 + 42 + 12, 0);
 
     leaveSubsMenu();
 }
@@ -3149,6 +3153,8 @@ void SubstitutePlayer(void)
     _waitForPlayerToGoInTimer = 100;
     _subsBlockFire = 1;
     DOS_SOUND(DOS_EV_SUBSTITUTION, 0);
+    /* (swapped: the leaving slot holds the player coming on, the bench's the one going off) */
+    LIVE_TICKER(LIVE_TICKER_SUB, LiveTicker_TeamOf(tg), (const int8_t *)pL + 12, (const int8_t *)pE + 12, 0);
     LeaveSubsMenu();
 }
 

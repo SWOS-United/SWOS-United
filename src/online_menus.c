@@ -21,6 +21,8 @@
 #include "test_rules.h"
 #include "online_menus.h"
 #include "dos_mode.h"           /* the gameplay style: OPEN asks it, the lobby shows it */
+#include "live_ticker.h"        /* the match on Discord: LIVE TICKERS, LIVE SCORE BOARDS */
+#include "swos_io.h"            /* swos_data_path: the online sounds */
 #include "project_identity.h"  /* PROJECT_HIDE_SWOS2020_EXTRAS */
 #include "mm_client.h"         /* the matchmaking server (docs/NETPLAY.md section 7) */
 #include "p2p_menu.h"
@@ -391,6 +393,18 @@ static void liveCast_OnSelect(void)          { s_liveCast = !s_liveCast; }
  * Default is a matchmaker on this machine (scripts/run_matchmaker.sh), which is
  * what the whole local setup exists for. SWOS_MM_HOST / SWOS_MM_PORT point it
  * somewhere else without a rebuild. */
+/* SWOS 2020's two online sounds (bin/sound_dos), through the one-shot sample. */
+static void online_sound(const char *rel)
+{
+    extern int  AudioSDL_LoadOverlaySample(const char *path);
+    extern void AudioSDL_PlayOverlaySample(void);
+    char path[512];
+    if (AudioSDL_LoadOverlaySample(swos_data_path(rel, path, sizeof path)) == 0) {
+        AudioSDL_PlayOverlaySample();
+        fprintf(stderr, "[mm] played %s\n", rel);
+    }
+}
+
 static const char *mm_host(void) { return MmClient_DefaultHost(); }
 static uint16_t    mm_port(void) { return MmClient_DefaultPort(); }
 
@@ -785,6 +799,12 @@ static void mm2_buttons(MmMenuMode mode)
     const int32_t busy = mode == MMM_1_WAIT || mode == MMM_2_REQUESTED || mode == MMM_3_ACCEPT;
     set_entry(MatchMakingMenu_desc, mode == MMM_X && MmClient_State() == MM_CONNECTING ? "CONNECTING TO SERVER"
                                                                                        : kDesc[mode], 0, 0);
+    if (mode == MMM_0_DEFAULT) {        /* (the cursor on a name: SWOS 2020's hint) */
+        extern uint8_t _currentMenu[];
+        const MenuEntry *sel = ((Menu *)_currentMenu)->selectedEntry;
+        if (sel >= entry_at(MatchMakingMenu_users_00) && sel <= entry_at(MatchMakingMenu_users_00 + MM_USERS - 1))
+            set_entry(MatchMakingMenu_desc, "CLICK PLAYER NAME TO VIEW MATCH INFO", 0, 0);
+    }
     set_entry(MatchMakingMenu_openGame, "HOST MATCH", 1, mode == MMM_0_DEFAULT ? kGreen : kGray);
     set_entry(MatchMakingMenu_cancelGame, "CANCEL", 1, busy ? kGreen : kGray);
     set_entry(MatchMakingMenu_menuSettings, "SETTINGS", 1, busy ? kGray : kGreen);
@@ -1014,10 +1034,13 @@ static void matchMakingMenu_OnDraw(void)
      * request however many frames it takes to answer. SWOS_MM_AUTO=host answers
      * it for a test -- there is nobody to press the button on either machine. */
     if (MmClient_TakeJoinRequest(who, sizeof who)) {
+        const int32_t allowed = Account_JoinAllowed(who);
         snprintf(s_joinAsker, sizeof s_joinAsker, "%s", who);
-        if (!Account_JoinAllowed(s_joinAsker)) {
-            /* not this game's player (a league or cup match's opponent alone): refused */
-            fprintf(stderr, "[mm] refusing '%s': not this match's opponent\n", s_joinAsker);
+        if (allowed)
+            online_sound("sound_dos/join.wav");         /* (SWOS 2020's playJoinSound) */
+        if (!allowed) {
+            /* not this game's player (a league or cup match's opponent alone), or banned from it: refused */
+            fprintf(stderr, "[mm] refusing '%s': not allowed in this game\n", s_joinAsker);
             MmClient_Eject(s_joinAsker);
             s_joinAsker[0] = '\0';
         } else if (s_mmAuto == MM_AUTO_HOST) {
@@ -1410,6 +1433,12 @@ void OnlineMenus_StartMatchFromMatchmaking(void)
     }
 
     OnlineMenus_Show(SWOS2020_MENU(mpWaitingMenu));
+
+    /* Back on MATCH MAKING: the lobby was left, or the link never came. The connection to the server
+     * went to make room for the link (above): log in again, or the player is left with a list
+     * that says DISCONNECTED. */
+    if (MmClient_State() == MM_IDLE && s_myName[0])
+        MmClient_Connect(mm_host(), mm_port(), s_myName, NULL);
 }
 
 const char *OnlineMenus_MatchStatus(void)
@@ -1618,7 +1647,12 @@ static int32_t s_openMode;          /* LOBBY_MODE_*: what OPEN's game counts for
 
 void OnlineMenus_EnterLobby(int32_t player, const char *name)
 {
+    extern PlatformInitOptions *g_arcadeOpts;
+
     OnlineMenus_Init();
+    /* The joiner, accepted (SWOS 2020's playAcceptSound): once, not on each return from a match. */
+    if (player == 2 && (!g_arcadeOpts || g_arcadeOpts->accept_sound))
+        online_sound("sound_dos/accept_1.wav");
     NetplayLobby_Begin(player, name);
     if (player == 1 && s_openMode != LOBBY_MODE_FRIENDLY) {    /* what OPEN's game counts for */
         LobbyRules r = *NetplayLobby_Rules();
@@ -1770,7 +1804,9 @@ static void lobby_layout(void)
     int32_t tactics = MpGameSetupMenu_tactics_00 + row;
     int32_t go = MpGameSetupMenu_go_00 + row;
 
-    lobby_nav(teams,   -1,      tactics, -1, MpGameSetupMenu_legOpt1);
+    lobby_nav(teams,   MpGameSetupMenu_cPlayers_00 + row, tactics, -1, MpGameSetupMenu_legOpt1);
+    lobby_nav(MpGameSetupMenu_cPlayers_01, -1, row == 1 ? teams : -1, -1, MpGameSetupMenu_cPlayers_02);
+    lobby_nav(MpGameSetupMenu_cPlayers_02, -1, row == 2 ? teams : -1, MpGameSetupMenu_cPlayers_01, -1);
     lobby_nav(tactics, teams,   go,      -1, MpGameSetupMenu_etPen1);
     lobby_nav(go,      tactics, -1,      -1, MpGameSetupMenu_etPen1);
     lobby_nav(MpGameSetupMenu_legOpt1, -1, MpGameSetupMenu_etPen1, teams, MpGameSetupMenu_gameLength1);
@@ -2270,9 +2306,14 @@ static void location_AfterDraw(MenuEntry *e)
 {
     const int32_t r = lobby_row_of(e, MpGameSetupMenu_location_01);
     if (r >= 0 && s_locFlag[r] >= 0)
-        draw_flag(s_locFlag[r], e->x + 4, e->y + (e->dwHeight - kFlagH) / 2);
+        draw_flag(s_locFlag[r], e->x + 3, e->y + (e->dwHeight - kFlagH) / 2);
     if (r == 1)
         lobby_kits(0, e->x + 2, e->y + e->dwHeight + 2);
+}
+
+void OnlineMenus_DrawStars(int32_t srn, int32_t x, int32_t y)
+{
+    put_map(&k_starsMap[star_level(srn) * 10], 10, 0, 36, x, y);
 }
 
 static void player_AfterDraw(MenuEntry *e)
@@ -2287,8 +2328,8 @@ static void go_AfterDraw(MenuEntry *e)
 {
     const int32_t r = lobby_row_of(e, MpGameSetupMenu_go_01);
     if (r >= 0 && s_goState[r] >= 0)
-        put_map(k_checkSymbols, 13, 12 * (s_goState[r] ? 2 : 3), 12, e->x + e->dwWidth / 2 - 6,
-                e->y + e->dwHeight / 2 - 4);            /* (as the stars) */
+        put_map(k_checkSymbols, 13, 12 * (s_goState[r] ? 2 : 3), 12, e->x + (e->dwWidth - 7) / 2,
+                e->y + e->dwHeight / 2 - 4);            /* (as the stars; the tick and cross are 7 wide) */
     if (r == 1)
         lobby_kits(1, e->x + e->dwWidth - 15 - 16 - 1, e->y + e->dwHeight + 2);
 }
@@ -2315,6 +2356,17 @@ static void lobby2020_layout(void)
         entry_at(MpGameSetupMenu_location_00 + i)->isDisabled = 1;
     }
     set_entry(MpGameSetupMenu_location_00, "LOC.", 0, kGray);       /* (SWOS 2020 since its flags) */
+    /* LOC. 4 wider (room between the flag and the country), GO 4 narrower; the columns between
+     * them move along. From LOC.'s own x, so every draw puts them in the same place. */
+    for (i = 0; i < 3; i++) {
+        const int32_t L = entry_at(MpGameSetupMenu_location_00 + i)->x;
+        entry_at(MpGameSetupMenu_location_00 + i)->dwWidth = 30 + 4;
+        entry_at(MpGameSetupMenu_cPlayers_00 + i)->x = (uint16_t)(L + 32 + 4);
+        entry_at(MpGameSetupMenu_teams_00 + i)->x    = (uint16_t)(L + 140 + 4);
+        entry_at(MpGameSetupMenu_tactics_00 + i)->x  = (uint16_t)(L + 238 + 4);
+        entry_at(MpGameSetupMenu_go_00 + i)->x       = (uint16_t)(L + 284 + 4);
+        entry_at(MpGameSetupMenu_go_00 + i)->dwWidth = 36 - 4;
+    }
     snprintf(s_teamDb1, sizeof s_teamDb1, "%.2s/%.2s", tag, strlen(tag) >= 4 ? tag + 2 : "");
     snprintf(s_teamDb, sizeof s_teamDb, "TEAM DB: %s", s_teamDb1);
     set_visible(MpGameSetupMenu_teamDB, 1);
@@ -2347,6 +2399,28 @@ static void lobby2020_layout(void)
 
 /* One player's row, SWOS 2020's way (after OpenSWOS's has set what each may do). */
 static char s_rowName2[2][LOBBY_NAME_MAX + 4], s_rowTeam2[2][24];
+/* FIRE on a name: their MATCH INFO. While this player is in it the match cannot start (as in the
+ * team list), so their GO goes down for that time and comes back if it stood. */
+static void lobby_player_onSelect(MenuEntry *unused)
+{
+    extern uint8_t _currentMenu[];
+    const MenuEntry *e = ((Menu *)_currentMenu)->selectedEntry;
+    const int32_t me = NetplayLobby_LocalPlayer();
+    const LobbyPlayer *p = NetplayLobby_Player(e == entry_at(MpGameSetupMenu_cPlayers_01) ? 1 : 2);
+    const LobbyPlayer *mine = NetplayLobby_Player(me);
+    const int32_t wasReady = mine && mine->ready;
+    (void)unused;
+    if (!p || !p->name[0])
+        return;
+    if (wasReady) {
+        NetplayLobby_SetReady(0);
+        NetplayLobby_Poll();
+    }
+    Account_ShowPlayer(p->name);
+    if (wasReady && NetplayLobby_State() == LOBBY_OPEN)
+        NetplayLobby_SetReady(1);
+}
+
 static void lobby2020_row(int32_t row, const LobbyPlayer *p, int32_t canEdit)
 {
     extern uint8_t _smallCharsTable[];
@@ -2376,7 +2450,8 @@ static void lobby2020_row(int32_t row, const LobbyPlayer *p, int32_t canEdit)
             break;
         }
     }
-    set_entry(MpGameSetupMenu_cPlayers_01 + row, s_rowName2[row], 0, kPurple);
+    set_entry(MpGameSetupMenu_cPlayers_01 + row, s_rowName2[row], known, kPurple);
+    pe->onSelect = known ? lobby_player_onSelect : NULL;
     text_flags(MpGameSetupMenu_cPlayers_01 + row, kWhiteText2, gone ? 0 : kLeftAligned);
 
     /* TEAMS (from the left) and TACTICS light brown, GO red with its symbol */
@@ -2711,6 +2786,11 @@ static void mpGameSetup_teams_onSelect(void)
 
     if (!on_my_row(MpGameSetupMenu_teams_00))
         return;
+    /* The tie is one team's: another now would leave the first leg's injuries behind it. */
+    if (NetplayLobby_SecondLeg()) {
+        NetplayLobby_ChatNotice("YOUR TEAM STAYS FOR THE SECOND LEG");
+        return;
+    }
 
     /* Tell the other player first -- and take ready down, so a start cannot be
      * offered while this player is away in the list. */
@@ -2885,6 +2965,7 @@ static void lineup_screen(void)
                                      int16_t isFirstPlayer, int16_t squadChanges,
                                      TeamFileEx *team1, TeamFileEx *team2);
     extern const char *g_playMatchStartLabel;
+    extern int32_t (*g_playMatchStartRefused)(const TeamFileEx *team);
     extern TeamFileEx _selectedTeams[SELECTED_TEAMS_MAX];
     extern uint16_t   _exitGameFlag;
     static char confirm[] = "CONFIRM";
@@ -2896,9 +2977,11 @@ static void lineup_screen(void)
     lineup_begin();
     _exitGameFlag = 0;
     g_playMatchStartLabel = confirm;
+    g_playMatchStartRefused = NetplayLobby_LegBlocked;
     ShowPlayMatchMenu(1, (int16_t)NetplayLobby_Rules()->maxSubs, 0, 1, 1,
                       &_selectedTeams[0], &_selectedTeams[1]);
     g_playMatchStartLabel = NULL;
+    g_playMatchStartRefused = NULL;
     confirmed = _exitGameFlag == 0;     /* EXIT sets it; CONFIRM (the PLAY button) does not */
     _exitGameFlag = 0;
     lineup_end();
@@ -3225,6 +3308,57 @@ static void tell_service(int32_t completed)
     Account_MatchPlayed(&r);
 }
 
+/* Who plays whom, for Discord (include/live_ticker.h): at kick-off, the match's rules in force. */
+static void ticker_begin(void)
+{
+    const LobbyRules *rules = NetplayLobby_Rules();
+    const char *tag = World_Tag();
+    const char *tour = Account_MatchTournament();
+    LiveTickerMatch m;
+    int32_t p;
+
+    memset(&m, 0, sizeof m);
+    for (p = 0; p < 2; p++) {
+        const LobbyPlayer *lp = NetplayLobby_Player(p + 1);
+        char country[40] = "", tactic[24];
+        int32_t srn, i, o = 0;
+        if (!lp)
+            continue;
+        snprintf(m.name[p], sizeof m.name[p], "%s", lp->name);
+        for (i = 0; i < 17 && lp->team.team.teamName[i] && o + 1 < (int32_t)sizeof m.team[p]; i++)
+            if (o || lp->team.team.teamName[i] != ' ')
+                m.team[p][o++] = (char)lp->team.team.teamName[i];
+        m.team[p][o] = 0;
+        snprintf(m.tactic[p], sizeof m.tactic[p], "%s", tactic_name(lp, tactic, sizeof tactic));
+        if (Account_PlayerInfo(lp->name, country, sizeof country, &srn)) {
+            const char *iso2 = country_iso2(country);
+            if (iso2) {
+                snprintf(m.country[p], sizeof m.country[p], "%s", iso2);
+                for (i = 0; i < (int32_t)(sizeof k_countryNames / sizeof k_countryNames[0]); i++)
+                    if (strcmp(k_countryNames[i][1], iso2) == 0) {
+                        snprintf(m.location[p], sizeof m.location[p], "%s", k_countryNames[i][0]);
+                        break;
+                    }
+                if (!m.location[p][0] && strncmp(iso2, "GB-", 3) == 0)
+                    snprintf(m.location[p], sizeof m.location[p], "%s",
+                             iso2[3] == 'E' ? "ENGLAND" : iso2[3] == 'S' ? "SCOTLAND" : iso2[3] == 'W' ? "WALES"
+                                                                                         : "NORTHERN IRELAND");
+            }
+        }
+    }
+    m.mode = rules->mode;
+    snprintf(m.tournament, sizeof m.tournament, "%s", tour ? tour : "");
+    m.style = _gGameplayStyle;
+    snprintf(m.teamDb, sizeof m.teamDb, "%.2s/%.2s", tag, strlen(tag) >= 4 ? tag + 2 : "");
+    m.legs = rules->legs;
+    m.leg = rules->leg;
+    m.firstLeg1 = rules->firstLeg1;
+    m.firstLeg2 = rules->firstLeg2;
+    m.host = NetplayLobby_IsHost();
+    m.localPlayer = NetplayLobby_LocalPlayer();
+    LiveTicker_Begin(&m);
+}
+
 static void run_live_match(void)
 {
     extern TeamFileEx  _selectedTeams[SELECTED_TEAMS_MAX];
@@ -3254,6 +3388,7 @@ static void run_live_match(void)
 
     snprintf(s_matchStatus, sizeof s_matchStatus, "PLAYING");
     _gFrameStepInput = 1;               /* one frame of input at a time (game_loop.h) */
+    ticker_begin();
     InitAndPlayGame(&_selectedTeams[0], &_selectedTeams[1]);
     s_lobbyMatches++;
 
@@ -3274,6 +3409,7 @@ static void run_live_match(void)
                      (unsigned)_statsTeam1Goals, (unsigned)_statsTeam2Goals);
         else
             snprintf(notice, sizeof notice, "FULL TIME - PRESS GO FOR A REMATCH");
+        LiveTicker_End(!s_matchEndedEarly, why);    /* (Discord: how it ended, the stats) */
         tell_service(!s_matchEndedEarly);       /* (before the rules move on: the leg it was) */
         /* A two-leg tie moves on (the host's rules; the joiner hears of it). */
         NetplayLobby_MatchPlayed(!s_matchEndedEarly, _statsTeam1Goals, _statsTeam2Goals);
@@ -3455,6 +3591,10 @@ static void mmsOnDraw(void)
      * (include/match_report.h). */
     set_text(MmSettingsMenu_soundFxLabel, "SEND MATCH REPORTS");
     set_text(MmSettingsMenu_soundFx, MatchReport_Enabled() ? "ON" : "OFF");
+    {   /* (SWOS 2020's words; its SOUND 2 was never ours) */
+        extern PlatformInitOptions *g_arcadeOpts;
+        set_text(MmSettingsMenu_acceptSound, !g_arcadeOpts || g_arcadeOpts->accept_sound ? "SOUND 1" : "OFF");
+    }
     /* SWOS 2020's other rows -- its commentary and chat options, JOIN AMIGA SUPER LEAGUE,
      * JOIN DISCORD, HELP DESK -- are features this project will not have: hidden (the cursor
      * passes over a hidden entry to the next one its way), MY CUSTOM TEAM moved up under the
@@ -3514,6 +3654,19 @@ static void mmsSelectSoundFx(void)
         Settings_Save(g_arcadeOpts, g_arcadeIniPath);
 }
 
+/* ACCEPT SOUND: on or off, in SWOS.ini. */
+static void mmsAcceptSound(void)
+{
+    extern PlatformInitOptions *g_arcadeOpts;
+    extern const char *g_arcadeIniPath;
+
+    if (!g_arcadeOpts)
+        return;
+    g_arcadeOpts->accept_sound = !g_arcadeOpts->accept_sound;
+    if (g_arcadeIniPath)
+        Settings_Save(g_arcadeOpts, g_arcadeIniPath);
+}
+
 static void matchMaking_rankings_onSelect(void)
 {
     OnlineMenus_Show(SWOS2020_MENU(rankingsMenu));
@@ -3562,6 +3715,7 @@ static const MenuSymbol k_handlers[] = {
     HANDLER(mmsOnDraw),
     HANDLER(mmsSelectPitchSet),
     HANDLER(mmsSelectSoundFx),
+    HANDLER(mmsAcceptSound),
     HANDLER(matchMaking_rankings_onSelect),
     HANDLER(matchMaking_openGame_onSelect),
     HANDLER(matchMaking_cancelGame_onSelect),

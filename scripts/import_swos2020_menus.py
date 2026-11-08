@@ -242,9 +242,31 @@ _STYLE_BUTTON = [{"kind": "entry", "name": "button3",
                                {"op": "colors", "frame_color": 0, "background_color": 13},
                                {"op": "onselect_fire", "func": "hostGameMessageMenu_button3_OnSelect"}]}]
 
+# SWOS United's IMPORT FROM SWOS 2020 (src/custom_team.c, src/united_teamimport.c): the button, over
+# the three slots and the same size, which custom_team.c moves up to the same pitch; under them two
+# lines of text -- the messages are wider than one line of the 336-wide screen, and than the game's
+# prompt -- and YES and NO for overwriting, shown for that question alone. Shown and linked in code;
+# hidden on a project with no such service.
+def _import_entry(name, x, y, w, h, color, func=None):
+    commands = [{"op": "text_no_ptr", "flags": "0x0"},
+                {"op": "colors", "frame_color": 0, "background_color": color}]
+    if func:
+        commands.append({"op": "onselect_fire", "func": func})
+    return {"kind": "entry", "name": name, "coords": {"x": x, "y": y, "w": w, "h": h}, "commands": commands}
+
+
+_TEAM_IMPORT = [
+    _import_entry("importTeams", 92, 24, 125, 20, 14, "selectMyCustomTeamsImport"),
+    _import_entry("importYes", 62, 164, 90, 15, 14, "selectMyCustomTeamsImportYes"),
+    _import_entry("importNo", 157, 164, 90, 15, 10, "selectMyCustomTeamsImportNo"),
+    _import_entry("importLine1", 2, 146, 305, 8, 0),
+    _import_entry("importLine2", 2, 154, 305, 8, 0),
+]
+
 EXTRA_ENTRIES = {
     "mpGameSetup": _switch_rows(),
     "hostGameMessage": _STYLE_BUTTON,
+    "selectMyCustomTeams": _TEAM_IMPORT,
 }
 
 

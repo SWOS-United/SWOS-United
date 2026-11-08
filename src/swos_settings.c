@@ -83,7 +83,11 @@ static int handler(void *user, const char *section,
     PlatformInitOptions *opts = (PlatformInitOptions *)user;
 
     if (eqi(section, "video")) {
-        if (eqi(name, "renderer")) {
+        if (eqi(name, "scoreboard")) {
+            int b;
+            if (parse_bool(value, &b))
+                opts->scoreboard = b;
+        } else if (eqi(name, "renderer")) {
             if      (eqi(value, "software")) opts->renderer = PLATFORM_RENDERER_SOFTWARE;
             else if (eqi(value, "accel"))    opts->renderer = PLATFORM_RENDERER_ACCEL;
             else if (eqi(value, "gpu"))      opts->renderer = PLATFORM_RENDERER_ACCEL;
@@ -206,6 +210,12 @@ static int handler(void *user, const char *section,
             snprintf(opts->netplay_name, sizeof opts->netplay_name, "%s", value);
         else if (eqi(name, "account_site"))
             snprintf(opts->account_site, sizeof opts->account_site, "%s", value);
+        else if (eqi(name, "discord")) {
+            int b;
+            if (parse_bool(value, &b))
+                opts->discord = b;
+        } else if (eqi(name, "discord_webhook"))
+            snprintf(opts->discord_webhook, sizeof opts->discord_webhook, "%s", value);
         else if (eqi(name, "remember_login")) {
             int b;
             if (parse_bool(value, &b))
@@ -216,6 +226,11 @@ static int handler(void *user, const char *section,
             int b;
             if (parse_bool(value, &b))
                 opts->live_cast = b;
+        }
+        else if (eqi(name, "accept_sound")) {
+            int b;
+            if (parse_bool(value, &b))
+                opts->accept_sound = b;
         }
         else if (eqi(name, "reports")) {
             int b;
@@ -435,6 +450,10 @@ static int settings_build(const PlatformInitOptions *opts, IniEntry *items, char
      * happily emits a longer line and the READER then reports "parse error at
      * line N" on our own generated file. Cost me one round-trip to notice. */
     int n = 0;
+    SETTING(n) = (IniEntry){ "video", "scoreboard",
+        "; scoreboard: true | false -- SWOS 2020's scoreboard in a match: the minute, both kits and the\n"
+        "; score at the top left, from the kick-off to the final whistle.",
+        opts->scoreboard ? "true" : "false" };
     SETTING(n) = (IniEntry){ "video",  "renderer",   "; renderer: accel (the GPU presenter, else SDL's) | sdl (SDL's renderer) | software", renderer_str(opts->renderer) };
     SETTING(n) = (IniEntry){ "video",  "vsync",      "; vsync: true | false  (accel renderer only)", opts->vsync ? "true" : "false" };
     SETTING(n) = (IniEntry){ "video",  "subpixel_scroll", "; subpixel_scroll: true | false. Smooths scrolling by shifting the frame by the camera's sub-pixel remainder. Never blurs. Off = compare", opts->subpixel_scroll ? "true" : "false" };
@@ -561,6 +580,15 @@ static int settings_build(const PlatformInitOptions *opts, IniEntry *items, char
         "; use: sensiblesoccer.de (the default), or SWOS United's own, swos.swosunited.com.\n"
         "; Ranked and league results go to sensiblesoccer.de either way, for now.",
         opts->account_site[0] ? opts->account_site : "sensiblesoccer" };
+    SETTING(n) = (IniEntry){ "netplay", "discord",
+        "; discord: true | false -- post your online matches to SWOS 2020's Discord, as SWOS 2020\n"
+        "; does: LIVE TICKERS (goals, cards, ... as they happen) and LIVE SCORE BOARDS (the stats).\n"
+        "; The game that opened the match posts them.",
+        opts->discord ? "true" : "false" };
+    SETTING(n) = (IniEntry){ "netplay", "discord_webhook",
+        "; discord_webhook: for testing -- a Discord webhook that takes EVERY post instead (each\n"
+        "; marked with the channel it is for). Empty: the real channels.",
+        opts->discord_webhook };
 #endif
     SETTING(n) = (IniEntry){ "netplay", "remember_login",
         "; remember_login: true | false -- the login screen's REMEMBER LOGIN INFO switch.",
@@ -575,6 +603,10 @@ static int settings_build(const PlatformInitOptions *opts, IniEntry *items, char
         "; live_cast: true | false -- let LIVE CAST's viewers watch your online matches on the\n"
         "; recorder (false keeps them off its list; recording for desync checks goes on).",
         opts->live_cast ? "true" : "false" };
+    SETTING(n) = (IniEntry){ "netplay", "accept_sound",
+        "; accept_sound: true | false -- MULTIPLAYER SETTINGS' ACCEPT SOUND: play a sound when the\n"
+        "; host of a game accepts you.",
+        opts->accept_sound ? "true" : "false" };
     SETTING(n) = (IniEntry){ "netplay", "reports",
         "; reports: true | false -- after an online match, send both players' SWOS.log and\n"
         "; HOW WAS THE MATCH? to the other player and the server, zipped (a copy is kept in\n"

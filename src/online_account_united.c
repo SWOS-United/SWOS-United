@@ -42,18 +42,83 @@ static const char *const kUrls[ACCOUNT_LINKS] = {
 
 static void test_login(void);
 
+/* ---- SWOS 2020's ban list ----
+ *
+ * Its BanUsers: "NAME, MODE, *" a line, ended by "- END OF SETTING -", read at each log-in, names in
+ * capitals. As in SWOS 2020, a list that does not come bans nobody: the site being down locks
+ * no one out. SWOS_UNITED_BANS_TEST="NAME, MODE;..." adds lines, for a test. */
+#if defined(SWOS_SDL_BUILD) && defined(SWOS_HTTPS)
+enum { MAX_BANS = 512 };
+static struct { char name[40], mode[24]; } s_bans[MAX_BANS];
+static int32_t s_banCount;
+
+static void trim(char *s)
+{
+    char *p = s;
+    size_t n;
+    while (*p == ' ' || *p == '\t')
+        p++;
+    memmove(s, p, strlen(p) + 1);
+    n = strlen(s);
+    while (n > 0 && (s[n - 1] == ' ' || s[n - 1] == '\t' || s[n - 1] == '\r' || s[n - 1] == '\n'))
+        s[--n] = 0;
+}
+
+static void ban_line(const char *line)
+{
+    char copy[128], *comma, *end;
+    snprintf(copy, sizeof copy, "%s", line);
+    if (s_banCount == MAX_BANS || !(comma = strchr(copy, ',')))
+        return;
+    *comma++ = 0;
+    if ((end = strchr(comma, ',')) != NULL)
+        *end = 0;
+    trim(copy);
+    trim(comma);
+    if (!copy[0] || !comma[0])
+        return;
+    snprintf(s_bans[s_banCount].name, sizeof s_bans[0].name, "%s", copy);
+    snprintf(s_bans[s_banCount].mode, sizeof s_bans[0].mode, "%s", comma);
+    s_banCount++;
+}
+
+static void ban_lines(const char *text, char separator)
+{
+    while (text && *text) {
+        const char *next = strchr(text, separator);
+        const size_t n = next ? (size_t)(next - text) : strlen(text);
+        char line[128];
+        snprintf(line, sizeof line, "%.*s", (int)(n < sizeof line ? n : sizeof line - 1), text);
+        ban_line(line);
+        text = next ? next + 1 : NULL;
+    }
+}
+
+int32_t United_Banned(const char *name, const char *mode)
+{
+    int32_t i;
+    for (i = 0; name && i < s_banCount; i++)
+        if (strcmp(s_bans[i].mode, mode) == 0 && SDL_strcasecmp(s_bans[i].name, name) == 0)
+            return 1;
+    return 0;
+}
+#else
+int32_t United_Banned(const char *name, const char *mode) { (void)name; (void)mode; return 0; }
+#endif
+
 void Account_Init(void)
 {
     UnitedRankings_Register();
     UnitedLeagues_Register();
     UnitedMatches_Register();
+    UnitedMatchInfo_Register();
     test_login();
 }
 
 int32_t Account_Has(AccountFeature feature)
 {
     return feature == ACCOUNT_HAS_RANKINGS || feature == ACCOUNT_HAS_RANKED ||
-           feature == ACCOUNT_HAS_LEAGUES;      /* (MATCH LOGS: to come) */
+           feature == ACCOUNT_HAS_LEAGUES || feature == ACCOUNT_HAS_TEAM_IMPORT;      /* (MATCH LOGS: to come) */
 }
 
 int32_t     Account_Enabled(void)         { return 1; }
@@ -64,7 +129,48 @@ const char *Account_Prompt(void)
 const char *Account_Url(AccountLink link) { return (uint32_t)link < ACCOUNT_LINKS ? kUrls[link] : 0; }
 const char *Account_Error(void)           { return United_LoginError(); }
 void        Account_Begin(const char *user, const char *password) { United_LoginBegin(user, password); }
-int32_t     Account_Poll(void)            { return United_LoginPoll(); }
+
+/* The log-in (SWOS-API's), then the ban list: a player banned from ALL LOG IN is refused
+ * (United_LoginRefuse forgets the session). No list (no answer): nobody is banned this session.
+ * SWOS_UNITED_BANS_TEST="NAME, MODE;..." adds lines, for a test. */
+int32_t Account_Poll(void)
+{
+#if defined(SWOS_SDL_BUILD) && defined(SWOS_HTTPS)
+    static int32_t s_banStage;          /* 1: the list is being fetched */
+    if (s_banStage) {
+        HttpsReply reply;
+        if (!Https_PollAsync(&reply))
+            return 0;
+        s_banStage = 0;
+        s_banCount = 0;
+        if (reply.status == 200 && reply.body)
+            ban_lines(reply.body, '\n');
+        else
+            fprintf(stderr, "[account] no ban list (%d): nobody is banned this session\n", (int)reply.status);
+        Https_Free(&reply);
+        ban_lines(getenv("SWOS_UNITED_BANS_TEST"), ';');
+        fprintf(stderr, "[account] ban list: %d lines\n", (int)s_banCount);
+        if (United_Banned(United_UserName(), "ALL LOG IN")) {
+            fprintf(stderr, "[account] %s is banned from all log in\n", United_UserName());
+            United_LoginRefuse("BANNED FROM ALL LOG IN. CONTACT THE SITE MANAGER.");
+            return -1;
+        }
+        return 1;
+    }
+    {
+        const int32_t r = United_LoginPoll();
+        if (r != 1)
+            return r;
+        if (Https_RequestAsync(PROJECT_BAN_LIST, NULL) == 0) {
+            s_banStage = 1;
+            return 0;
+        }
+        return 1;                       /* (no request: nobody is banned this session) */
+    }
+#else
+    return United_LoginPoll();
+#endif
+}
 
 /* A test drives the matchmaking menu with no hands (SWOS_MM_AUTO), so nothing types a
  * password: SWOS_UNITED_LOGIN=<user> logs in as that user with the password in

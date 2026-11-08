@@ -47,6 +47,7 @@
 #include "https_client.h"
 #include "menu_load_json.h"
 #include "menu_system.h"
+#include "mm_client.h"
 #include "netplay_lobby.h"
 #include "online_menus.h"
 #include "platform_sdl.h"         /* Platform_OpenUrl */
@@ -100,13 +101,6 @@ typedef struct {
     char    name[24];
     char    country[32];                /* the old site's nation (a name), the new one's flag code */
 } Player;
-
-typedef struct {
-    uint32_t matchId, legId, tournaId;
-    int32_t  rankingId;
-    int32_t  group;                     /* 1 a group (league) match, 0 a knockout one, -1 not known yet */
-    char     tournament[32], home[24], away[24];
-} OpenLeg;
 
 static Player   s_me, s_peer;
 static OpenLeg  s_picked;               /* (LEAGUE / CUP's picked leg: with tournaInfoMenu below) */
@@ -623,6 +617,7 @@ static void srn_lines(void)
 /* ---- OPEN: openLobbyMenu ---- */
 
 static int32_t s_choice, s_notSigned, s_waitLegs, s_noKeys;
+static const char *s_banned;            /* the mode OPEN LOBBY has just refused this player, or NULL */
 /* LEAGUE / CUP's match, picked on SWOS 2020's tournaInfoMenu before the game is opened */
 static OpenLeg  s_picked;
 static int32_t  s_havePicked, s_pickTold;
@@ -672,6 +667,11 @@ static void openLobbyMenu_layout(void)
             snprintf(s_desc[0], sizeof s_desc[0], "%s", "");
             snprintf(s_desc[1], sizeof s_desc[1], "LOOKING FOR YOUR LEAGUE AND CUP MATCHES...");
             s_desc[2][0] = s_desc[3][0] = 0;
+        } else if (s_banned) {                  /* (SWOS 2020's showFeatureNotAvailableMessage) */
+            snprintf(s_desc[0], sizeof s_desc[0], "%s", "");
+            snprintf(s_desc[1], sizeof s_desc[1], "YOU ARE BANNED FROM %s.", s_banned);
+            snprintf(s_desc[2], sizeof s_desc[2], "PLEASE CONTACT THE SITE MANAGER.");
+            s_desc[3][0] = 0;
         } else if (s_noKeys) {                  /* (RANKED MATCH pressed in a build without the keys) */
             snprintf(s_desc[0], sizeof s_desc[0], "THIS BUILD CANNOT HOST RANKED MATCHES:");
             snprintf(s_desc[1], sizeof s_desc[1], "IT WAS MADE WITHOUT SENSIBLESOCCER.DE'S KEYS.");
@@ -714,6 +714,9 @@ static void openLobbyMenu_OnDraw(void)
 
 static void selectFriendly(void)
 {
+    s_banned = United_Banned(United_UserName(), "FRIENDLY MATCHES") ? "FRIENDLY MATCHES" : NULL;
+    if (s_banned)
+        return;
     s_choice = LOBBY_MODE_FRIENDLY;
     SetExitMenuFlag();
 }
@@ -724,6 +727,9 @@ static void selectRanked(void)
         open_url(Account_Url(ACCOUNT_LINK_LEAGUES));
         return;
     }
+    s_banned = United_Banned(United_UserName(), "RANKED MATCHES") ? "RANKED MATCHES" : NULL;
+    if (s_banned)
+        return;
     if (!United_NewSite() && !UNITED_RANKED_CREATE_KEY[0]) {     /* (a build without the old site's keys) */
         s_noKeys = 1;                           /* (said by openLobbyMenu_layout, which redraws the lines) */
         return;
@@ -740,6 +746,7 @@ static void selectLeagueAndTournament(void)
     }
     if (s_waitLegs)
         return;
+    s_banned = NULL;                    /* (a ban from the others is not from league and cup matches) */
     s_waitLegs = 1;
     ask_legs();
 }
@@ -788,6 +795,13 @@ int32_t Account_PlayerInfo(const char *name, char *country, uint32_t cap, int32_
 int32_t Account_JoinAllowed(const char *name)
 {
     const char *opp;
+    /* A joiner's game cannot see what a game is for (the matchmaker keeps no such thing), so SWOS
+     * 2020's check at JOIN is made here, by the game they ask to join. */
+    if ((s_choice == LOBBY_MODE_RANKED && United_Banned(name, "RANKED MATCHES")) ||
+        (s_choice == LOBBY_MODE_FRIENDLY && United_Banned(name, "FRIENDLY MATCHES"))) {
+        fprintf(stderr, "[united] %s is banned from this kind of match\n", name);
+        return 0;
+    }
     if (s_choice != LOBBY_MODE_LEAGUE || !s_havePicked || !name)
         return 1;
     opp = SDL_strcasecmp(s_picked.home, United_UserName()) == 0 ? s_picked.away : s_picked.home;
@@ -798,6 +812,7 @@ int32_t Account_ChooseMode(void)
 {
     s_choice = -1;
     s_notSigned = s_waitLegs = s_noKeys = 0;
+    s_banned = NULL;
     s_havePicked = 0;
     OnlineMenus_Show("swos2020/openLobbyMenu");
     return s_choice;
@@ -974,6 +989,13 @@ const char *Account_MatchText(void)
     return "(NO MATCH SELECTED)";                     /* (SWOS 2020's words) */
 }
 
+const char *Account_MatchTournament(void)
+{
+    const LobbyRules *rules = NetplayLobby_Rules();
+    const OpenLeg *l = rules->mode == LOBBY_MODE_LEAGUE && rules->legId ? leg_by_id(rules->legId) : NULL;
+    return l && l->tournament[0] ? l->tournament : 0;
+}
+
 /* This leg's result has been taken -- or is on its way: queued or being sent (a rematch can end
  * before the last report has gone). */
 static int32_t done(uint32_t legId)
@@ -988,11 +1010,12 @@ static int32_t done(uint32_t legId)
     return s_running && (s_current.kind == JOB_SUBMIT || s_current.kind == JOB_N_REPORT) && s_current.legId == legId;
 }
 
-/* A player's row in the matchmaking list. SWOS 2020 opens MATCH INFO / PLAYER INFO there
- * (mpgame.cpp:10648); United has neither screen yet (docs/SWOS2020_MODS.md §6), so nothing. */
+/* A player's row in the matchmaking list: their MATCH INFO, as SWOS 2020 opens it there
+ * (mpgame.cpp:10648; src/united_matchinfo.c). */
 void Account_UserSelected(const char *name)
 {
-    (void)name;
+    if (name && name[0])
+        Account_ShowPlayer(name);
 }
 
 /* SELECT MATCH: the first open leg between the two of us in a tournament of this game's style. */
@@ -1174,14 +1197,18 @@ static TiTourna s_ti[TI_MAX];
 static int32_t  s_tiCount, s_tiCur, s_tiPage, s_tiMatchPage;
 static char     s_tiName[TI_ROWS][24], s_tiRank[TI_ROWS][8], s_tiHome[TI_ROWS][24], s_tiAway[TI_ROWS][24];
 static char     s_tiHead1[24], s_tiHead2[24], s_tiPage1[16], s_tiPage2[16], s_tiInfo[32];
+/* The list shown: this player's legs to pick from, or MATCH INFO's for a look (s_tiPlayer's). */
+static const OpenLeg *s_tiSrc;
+static int32_t  s_tiSrcCount, s_tiBrowse;
+static char     s_tiPlayer[32];
 
 static void ti_group(void)
 {
     int32_t i, t;
     s_tiCount = 0;
-    for (i = 0; i < s_legCount; i++) {
-        const OpenLeg *l = &s_legs[i];
-        if (done(l->legId))
+    for (i = 0; i < s_tiSrcCount; i++) {
+        const OpenLeg *l = &s_tiSrc[i];
+        if (!s_tiBrowse && done(l->legId))
             continue;
         for (t = 0; t < s_tiCount; t++)
             if (strcmp(s_ti[t].name, l->tournament) == 0 && s_ti[t].rankingId == l->rankingId)
@@ -1260,15 +1287,18 @@ static const OpenLeg *ti_leg(int32_t r)
 {
     const TiTourna *t = s_tiCur >= 0 && s_tiCur < s_tiCount ? &s_ti[s_tiCur] : NULL;
     const int32_t idx = r + s_tiMatchPage * TI_ROWS;
-    return t && idx < t->count ? &s_legs[t->first[idx]] : NULL;
+    return t && idx < t->count ? &s_tiSrc[t->first[idx]] : NULL;
 }
 
 static void tournaInfoMenu_OnDraw(void)
 {
     MenuEntry *sel = ti_selected();
+    const char *me = s_tiBrowse ? s_tiPlayer : United_UserName();
     int32_t r;
 
     jobs_pump();
+    if (MmClient_State() == MM_CONNECTED)
+        MmClient_Poll();
     /* the cursor on a tournament makes it the one shown (SWOS 2020's g_CurTourna) */
     for (r = 0; r < TI_ROWS; r++)
         if ((sel == entry_at(TournaInfoMenu_name_01 + r) || sel == entry_at(TournaInfoMenu_ranking_01 + r)) &&
@@ -1281,8 +1311,10 @@ static void tournaInfoMenu_OnDraw(void)
     snprintf(s_tiHead2, sizeof s_tiHead2, "MATCHES (%d)", (int)(s_tiCur < s_tiCount ? s_ti[s_tiCur].count : 0));
     entry_at(TournaInfoMenu_subHeader1)->fg = (uintptr_t)s_tiHead1;
     entry_at(TournaInfoMenu_subHeader2)->fg = (uintptr_t)s_tiHead2;
-    entry_at(TournaInfoMenu_header)->isInvisible = 1;
-    entry_at(TournaInfoMenu_header2)->isInvisible = 0;
+    entry_at(TournaInfoMenu_header)->isInvisible = s_tiBrowse ? 0 : 1;
+    entry_at(TournaInfoMenu_header2)->isInvisible = s_tiBrowse ? 1 : 0;
+    if (s_tiBrowse)
+        entry_at(TournaInfoMenu_header)->fg = (uintptr_t)s_tiPlayer;
     entry_at(TournaInfoMenu_friendlyMatch)->isInvisible = 1;
     ti_cell(TournaInfoMenu_name_00, "NAME", kTiOrange);
     ti_cell(TournaInfoMenu_ranking_00, "RANKING", kTiOrange);
@@ -1299,7 +1331,8 @@ static void tournaInfoMenu_OnDraw(void)
             snprintf(s_tiName[r], sizeof s_tiName[r], "%s", s_ti[t].name);
             ti_upper(s_tiName[r]);
             ti_shorten(s_tiName[r], 70 + 25 - 8 - 8);
-            snprintf(s_tiRank[r], sizeof s_tiRank[r], "%s", s_ti[t].rankingId == 13 ? "PC DOS" : "AMIGA");
+            snprintf(s_tiRank[r], sizeof s_tiRank[r], "%s",
+                     s_ti[t].rankingId == 13 ? "PC DOS" : s_ti[t].rankingId == 8 ? "XBOX" : "AMIGA");
         }
         ti_cell(TournaInfoMenu_name_01 + r, s_tiName[r], t == s_tiCur && t < s_tiCount ? kTiRed : kTiGray);
         ti_cell(TournaInfoMenu_ranking_01 + r, s_tiRank[r], t == s_tiCur && t < s_tiCount ? kTiRed : kTiGray);
@@ -1312,9 +1345,9 @@ static void tournaInfoMenu_OnDraw(void)
                 snprintf(s_tiInfo, sizeof s_tiInfo, "ID: %u-%u", (unsigned)l->matchId, (unsigned)l->legId);
         }
         ti_cell(TournaInfoMenu_home_01 + r, s_tiHome[r],
-                on ? kTiRed : l && SDL_strcasecmp(l->home, United_UserName()) != 0 ? kTiDarkBlue : kTiGray);
+                on ? kTiRed : l && SDL_strcasecmp(l->home, me) != 0 ? kTiDarkBlue : kTiGray);
         ti_cell(TournaInfoMenu_away_01 + r, s_tiAway[r],
-                on ? kTiRed : l && SDL_strcasecmp(l->away, United_UserName()) != 0 ? kTiDarkBlue : kTiGray);
+                on ? kTiRed : l && SDL_strcasecmp(l->away, me) != 0 ? kTiDarkBlue : kTiGray);
     }
     if (s_tiCount)
         snprintf(s_tiPage1, sizeof s_tiPage1, "(%d / %d)", (int)s_tiPage + 1, (int)ti_pages(s_tiCount));
@@ -1379,6 +1412,8 @@ static void ti_pick_row(void)
 {
     MenuEntry *sel = ti_selected();
     int32_t r;
+    if (s_tiBrowse)
+        return;                         /* (MATCH INFO: to look at) */
     for (r = 0; r < TI_ROWS; r++)
         if (sel == entry_at(TournaInfoMenu_home_01 + r) || sel == entry_at(TournaInfoMenu_away_01 + r)) {
             const OpenLeg *l = ti_leg(r);
@@ -1395,10 +1430,25 @@ static void tournaInfoMenu_AwayUser_OnSelect(void) { ti_pick_row(); }
 
 static void pick_match(void)
 {
+    s_tiSrc = s_legs;
+    s_tiSrcCount = s_legCount;
+    s_tiBrowse = 0;
     ti_group();
     s_tiCur = s_tiPage = s_tiMatchPage = 0;
     s_havePicked = 0;
     OnlineMenus_Show("swos2020/tournaInfoMenu");
+}
+
+void UnitedMatches_BrowseTournaments(const char *player, const OpenLeg *legs, int32_t count)
+{
+    s_tiSrc = legs;
+    s_tiSrcCount = count;
+    s_tiBrowse = 1;
+    snprintf(s_tiPlayer, sizeof s_tiPlayer, "%s", player);
+    ti_group();
+    s_tiCur = s_tiPage = s_tiMatchPage = 0;
+    OnlineMenus_Show("swos2020/tournaInfoMenu");
+    s_tiBrowse = 0;
 }
 
 #define HANDLER(fn) { #fn, (void *)fn, SYM_FUNC }
@@ -1441,6 +1491,8 @@ int32_t     Account_PlayerInfo(const char *name, char *country, uint32_t cap, in
 int32_t     Account_CupLocked(void)             { return 0; }
 int32_t     Account_LobbyCanStart(void)         { return 1; }
 const char *Account_MatchText(void)             { return 0; }
+const char *Account_MatchTournament(void)       { return 0; }
+void        Account_ShowPlayer(const char *name) { (void)name; }
 void        Account_SelectMatch(void)           {}
 void        Account_UserSelected(const char *name) { (void)name; }
 void        Account_MatchPlayed(const AccountResult *result) { (void)result; }

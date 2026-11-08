@@ -20,6 +20,7 @@
 #include "match_step.h"
 #include "match_record.h"   /* the recorder: SWOS_RECORD, [netplay] record */
 #include "match_report.h"   /* both players' logs, after the match */
+#include "live_ticker.h"    /* the match on Discord, frame by confirmed frame */
 #include "match_prediction.h"   /* both players' PRED and SEEN, after the match */
 #include "netplay_ghost.h"  /* what this peer drew against what finally happened */
 #include "netplay_lobby.h"
@@ -591,6 +592,8 @@ static void soundFrameBegin(int32_t frame, int32_t again)
     /* The replay recorder numbers frames the same way, so a re-simulated frame replaces
      * what was recorded for it (src/replay_v2.c). */
     { extern void ReplayRec_SetFrame(uint32_t frame); ReplayRec_SetFrame((uint32_t)frame); }
+    if (s_np.live)
+        LiveTicker_FrameBegin(frame);   /* (and the Discord ticker: a frame played again says it again) */
     SoundFrame *f = &s_sound[(uint32_t)frame & (SOUND_FRAMES - 1)];
     if (f->frame != frame) {
         f->frame = frame;
@@ -1032,8 +1035,10 @@ static void recordConfirmed(int32_t confirmed)
         MatchRecord_Frame(s_np.recordNext, s_np.traceSim[s_np.recordNext]);
         s_np.recordNext++;
     }
-    if (confirmed >= 0)
+    if (confirmed >= 0) {
         MatchRecord_Replay((uint32_t)confirmed);
+        LiveTicker_Confirmed(confirmed);
+    }
     MatchRecord_Pump();
 }
 
