@@ -25,13 +25,37 @@ without changing anything.
 
 | target | backend |
 |---|---|
-| Windows (Cygwin), Linux | OpenGL 4.1 core; entry points loaded through `SDL_GL_GetProcAddress` (`src/sokol_gl_loader.h`), so no GL library is linked |
-| macOS | OpenGL 4.1 core (`-framework OpenGL`); Metal is the planned next step |
+| Windows (Cygwin) | Direct3D 11 (`src/sokol_impl_d3d11.c`; `-ld3d11 -ldxgi -ldxguid`, Windows 10's own DLLs, HLSL compiled by its `d3dcompiler_47.dll`); `make WIN_GL=1` keeps OpenGL 4.1 core |
+| Linux | OpenGL 4.1 core; entry points loaded through `SDL_GL_GetProcAddress` (`src/sokol_gl_loader.h`), so no GL library is linked |
+| macOS | Metal (`src/sokol_impl_metal.m`, Objective-C with ARC; `-framework Metal QuartzCore Foundation`); `make MACOS_GL=1` keeps OpenGL 4.1 core |
 | web | WebGL 2 (`-sMAX_WEBGL_VERSION=2`) |
 | Android | GLES 3 (`GLESv3` in `packaging/mobile/CMakeLists.txt`) |
+| iOS | Metal, as macOS (`src/sokol_impl_metal.m` in `packaging/mobile/CMakeLists.txt`; until 2026-11-08 SDL's renderer) |
+| Switch | none yet: SDL's renderer |
 
-`src/sokol_impl.c` is the one file that compiles sokol's implementation. sokol itself is
-vendored in `third_party/sokol` (see its `OPENSWOS.md`).
+The web build compiles it as well (`make WASM=1`): with a 4 MB stack (glslang's parser overran
+Emscripten's 64 KB) and the compiler left out of Asyncify (`ASYNCIFY_REMOVE`: instrumented, the
+browser's page process died mid-compile with no message; left out, the wasm is 24 -> 15 MB).
+Proved in headless Chrome (the Retro TV preset) and on a Pixel 8 (it and crt-lottes-multipass on
+Mali GLES), 2026-11-08.
+
+The phone builds compile the shader compiler too: `packaging/mobile/CMakeLists.txt` reads the
+Makefile's `SHADERCC_SRCS` list out of the Makefile itself, so the two cannot drift.
+
+`src/sokol_impl.c` compiles sokol's implementation for GL. Metal and Direct3D 11 each have a file
+that compiles it for their backend and gives the presenter one native interface
+(`src/gpu_native.h`: the device, the window's swapchain, the frame's target, a capture, mipmaps).
+`src/sokol_impl_d3d11.c`: a feature level 11.1 (else 11.0) device, a flip-model swapchain on
+SDL's window (RGBA8, resized when the window is), `Present` at the frame's end, a capture through
+a staging texture, and mipmaps through a helper texture (sokol's images cannot take
+`GENERATE_MIPS`). Cygwin's SDL headers are its Unix ones, so the window's `HWND` is read from
+`SDL_SysWMinfo`'s union by SDL's ABI. `src/sokol_impl_metal.m`, for Metal: the device, SDL's Metal view and its
+`CAMetalLayer` (BGRA8, so the presenter's default colour format is BGRA8 there; vsync is the
+layer's `displaySyncEnabled`), an autorelease pool a frame, the drawable for the screen pass
+(sokol presents it at the pass's end and commits at `sg_commit`), and a capture: the drawable
+blitted into a shared buffer on the frame's own command buffer before the pass ends, read after the
+commit completes; mipmaps with a blit encoder. sokol itself is vendored in `third_party/sokol` (see its `OPENSWOS.md`: one
+change, a double release when a Metal shader fails to compile).
 
 ## Shaders
 
@@ -72,28 +96,47 @@ On SDL it maps onto SDL_Renderer; on the GPU presenter onto one streamed vertex 
 (`GpuGfx_*`). New overlay drawing goes through `gfx.h`, never straight to SDL_Renderer, or it will
 not show on the GPU presenter.
 
-## The CRT pass (`[video] crt_curvature`, `crt_ntsc`)
+## Shaders from files: RetroArch's slang (the Retro TV mod)
 
-Two TV effects only the GPU presenter has (SDL's renderer has no shader stage: there they are
-off), each 0-100, both 0 by default (`--crt-curvature=`, `--crt-ntsc=` for a run). With both at
-0 nothing changes and nothing is spent. With either on, `GpuPresent_Begin` draws the picture's
-space -- the frame, the HUD and every overlay in `GFX_SPACE_PICTURE` (the flags, display2020,
-the weather) -- into an offscreen image the picture's size on screen, and the first
-`GFX_SPACE_OUTPUT` draw (or the end of the pass) resolves it through the `crt` program onto the
-screen (`crt_resolve`); what is drawn in the window's space after that (the chat, the touch
-controls, the CRT mask / vignette / corners overlay) stays flat on the glass.
+The picture can go through a RetroArch **slang** preset (`.slangp`) -- OpenSWOS's own, or any of
+libretro's -- on the GPU presenter (SDL's renderer has no shader stage: none there). RetroArch's
+way, one file for every backend: `src/slang.c` reads the preset and its passes (`.slang`, Vulkan
+GLSL with `#pragma stage` sections), **glslang** compiles each to SPIR-V on the player's machine,
+and **SPIRV-Cross** reflects its uniforms and textures and translates it for the backend: GLSL
+410, GLSL ES 300, Metal or HLSL (both libraries are submodules built by the Makefile: `SHADERCC`).
+`src/gpu_slang.c` runs the passes: the game's picture, its HUD and the mods' picture-space
+overlays drawn at the game's own size into `Original`; each pass into its own image (its scale
+type, its format; mipmaps when the next asks), the last onto the screen in the picture's place,
+then the window's overlays. Each pass gets what it reads -- Original, Source, earlier passes'
+output, feedback, history, the preset's textures -- and its uniforms by meaning (MVP, the sizes,
+FrameCount, the parameters). A last pass that reads its own last frame (its `PassFeedback`) is
+drawn twice: into its image, the picture's size, for the next frame, and onto the screen -- the
+same shader and inputs, so the same pixels.
 
-- **Curvature**: a barrel -- each point pushed out by the square of its distance along the other
-  axis; outside the bent picture, black.
-- **NTSC**: our own model of a composite signal, written for this from how one works (no filter's
-  code -- Blargg's snes_ntsc is LGPL, docs and memory: parked for that). The picture is ENCODED
-  as Y plus I and Q on a subcarrier running a cycle each two source pixels, half a cycle further
-  each line and each frame, then DECODED with box filters of whole cycles -- Y one, I two, Q
-  three -- so a flat colour comes back as it was and only edges and detail bleed and fringe
-  (and crawl). 25 taps a pixel, a quarter of a source pixel apart, of the offscreen image.
+Traps, each met: GL keeps render targets bottom up and slang takes the first row as the top, so
+on GL every pass into an image (and Original) is drawn upside down; GL's blocks are real uniform
+blocks bound to our own buffers (`SokolGl_*`), since sokol's GL uniforms take one type a block and
+no `uint`; sRGB passes need `GL_FRAMEBUFFER_SRGB`; a preset value may carry a `#` comment. Metal
+and HLSL bind by slot, not name, so every texture a pass declares needs one: a texture we do not
+feed gets a slot past ours (`SLANG_MAX_TEXTURES` on), or SPIRV-Cross puts it at 0 over the one
+that is there -- crt-guest-advanced's `OriginalHistory0` did (which is Original, slang's spec says;
+now fed). On Metal, Original is drawn in the presenter's format (BGRA8), not RGBA8. Metal and GL
+draw crt-royale's 12 passes the same, to 1 in 255 (2026-11-08, Apple M4 Pro); Direct3D 11 and GL
+on one Windows machine (AMD 890M) crt-guest-advanced and the Retro TV preset to 1 in 255, royale
+but for 8 pixels in 1.6 million (6 in 255: float rounding). A Metal or D3D compiler's warnings are
+not logged, its errors are.
+
+Choosing one: the **retrotv** mod (`src/mod_retrotv.c`, off by default) -- `[mod.retrotv] preset`
+from its `shaders/` or the player's `Documents\SWOS\shaders` (a preset with its `.slang` files and
+textures beside it, as RetroArch keeps them), `curvature` / `ntsc` setting the parameters of those
+names. Its default, `openswos-tv.slangp`, is the tube's glass and our own composite-signal model
+(no filter's code). For a run: `SWOS_SHADER=<preset>`; `SWOS_SHADER_PASSES=k` stops the chain at
+pass k; `--slang-selftest=<preset>` compiles one for every backend. Until 2026-11-08 the curvature
+and signal were a built-in pass (`[video] crt_curvature`, `crt_ntsc`): gone, the mod is it. The
+mask / vignette / corners overlay (`[video] crt_mask` ...) is unchanged and works on both renderers.
 
 ## Captures
 
 With the GPU presenter, F12, `SWOS_SCREENSHOT_INTERVAL` and `SWOS_DUMP_FRAMES` still convert the
 frame on the CPU, only on the frames they capture. `SWOS_PRESENT_CAPTURE` reads the drawable back
-(`glReadPixels`).
+(`glReadPixels`; on Metal and Direct3D 11, the copies described above).

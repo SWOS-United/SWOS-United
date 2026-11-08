@@ -25,6 +25,7 @@
 
 #if SWOS_GPU
 #include "shaders/present.glsl.h"
+#include "gpu_slang.h"      /* a slang preset's passes (the toOff == 2 frames) */
 
 extern int  SokolGl_Load(void);                          /* sokol_impl.c */
 extern void SokolGl_ReadPixels(int w, int h, void *rgba);
@@ -64,29 +65,39 @@ static struct {
     GfxBlend      batchBlend;
     GfxSpace      batchSpace;
     int           batchFull;            /* the buffer's room for this frame is spent */
-    /* the CRT pass ([video] crt_curvature, crt_ntsc): the picture's space drawn into `off`, then
-     * through the crt program onto the screen (resolve) before anything in the window's space */
-    float         crtCurve, crtNtsc;    /* 0..1 */
-    sg_pipeline   crt;
-    sg_image      off;
-    sg_view       offTex, offAtt;
-    int           offW, offH;
-    int           toOff;                /* this frame's picture space is going into `off` */
+    /* a slang preset (src/gpu_slang.c): the picture's space drawn into the chain's Original, then
+     * its passes onto the screen (crt_resolve) before anything in the window's space */
+    int           toOff;                /* 2: this frame's picture space is going into Original */
     GpuTex       *backdrop;             /* the menus' true-colour backdrop (GpuFrame.backdrop) */
     uint32_t      backdropSerial;
     uint32_t      frames;
 } G;
 
-void GpuPresent_SetCrt(int curvature, int ntsc)
+/* The slang preset to show (src/gpu_slang.c): loaded at the next frame -- the presenter may not
+ * be up yet when it is chosen. NULL / "" none. */
+static char s_preset[1024];
+static int  s_presetPending;
+
+void GpuPresent_SetShaderPreset(const char *path)
 {
-    G.crtCurve = (float)(curvature < 0 ? 0 : curvature > 100 ? 100 : curvature) / 100.0f;
-    G.crtNtsc = (float)(ntsc < 0 ? 0 : ntsc > 100 ? 100 : ntsc) / 100.0f;
+    snprintf(s_preset, sizeof s_preset, "%s", path ? path : "");
+    s_presetPending = 1;
 }
+
+/* (toOff 2: a slang chain's Original -- GL draws it first row on top, so upside down: s_flipDst) */
+static int s_flipDst;
 
 static void sokol_log(const char *tag, uint32_t level, uint32_t item, const char *msg, uint32_t line,
                       const char *file, void *user)
 {
     (void)tag; (void)file; (void)user;
+    if (item == SG_LOGITEM_METAL_SHADER_COMPILATION_OUTPUT || item == SG_LOGITEM_D3D11_SHADER_COMPILATION_OUTPUT) {
+        /* (the compiler's own words: its errors -- a preset's warnings, D3D's pow() ones above all,
+         *  would fill the log) */
+        if (msg && strstr(msg, "error"))
+            fprintf(stderr, "[gpu] the shader compiler says: %s\n", msg);
+        return;
+    }
     if (level <= 2)                                    /* panic, error, warning */
         fprintf(stderr, "[gpu] sokol %s %u: %s (line %u)\n", level <= 1 ? "error" : "warning",
                 (unsigned)item, msg ? msg : "", (unsigned)line);
@@ -96,9 +107,20 @@ int32_t GpuPresent_Compiled(void) { return 1; }
 int32_t GpuPresent_Active(void) { return G.up; }
 int32_t GpuPresent_Vsync(void) { return G.vsync; }
 
+#include "gpu_native.h"     /* (Metal, Direct3D 11: src/sokol_impl_metal.m, src/sokol_impl_d3d11.c) */
+#if defined(GPU_NATIVE)
+#define SokolGl_Renderer GpuNative_Renderer
+#define SWAP_FORMAT GpuNative_SwapFormat()
+#else
+#define SWAP_FORMAT SG_PIXELFORMAT_RGBA8
+#endif
+static int s_committed;     /* (native: a capture committed the frame already) */
+
 void GpuPresent_ConfigureWindow(void)
 {
-#if defined(SOKOL_GLES3)
+#if defined(GPU_NATIVE)
+    return;                             /* (no GL context: the backend makes its own device) */
+#elif defined(SOKOL_GLES3)
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
@@ -113,7 +135,13 @@ void GpuPresent_ConfigureWindow(void)
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 0);
 }
 
+#if defined(SOKOL_METAL)
+uint32_t GpuPresent_WindowFlags(void) { return SDL_WINDOW_METAL; }
+#elif defined(GPU_NATIVE)
+uint32_t GpuPresent_WindowFlags(void) { return 0; }
+#else
 uint32_t GpuPresent_WindowFlags(void) { return SDL_WINDOW_OPENGL; }
+#endif
 
 static sg_pipeline make_pipeline(sg_shader shd, int strip, GfxBlend blend, int premultiplied, int vertices,
                                  const char *label)
@@ -184,6 +212,24 @@ int32_t GpuPresent_Init(SDL_Window *window, int vsync)
 {
     memset(&G, 0, sizeof G);
     G.window = window;
+    sg_desc desc;
+    memset(&desc, 0, sizeof desc);
+#if defined(GPU_NATIVE)
+    {
+        int32_t vs = 0;
+        if (GpuNative_Init(window, vsync, &vs, &desc.environment) != 0) {
+            fprintf(stderr, "[gpu] no %s device: SDL's renderer instead\n",
+#if defined(SOKOL_METAL)
+                    "Metal"
+#else
+                    "Direct3D 11"
+#endif
+                    );
+            return -1;
+        }
+        G.vsync = vs;
+    }
+#else
     G.ctx = SDL_GL_CreateContext(window);
     if (!G.ctx) {
         fprintf(stderr, "[gpu] no OpenGL context (%s): SDL's renderer instead\n", SDL_GetError());
@@ -203,11 +249,10 @@ int32_t GpuPresent_Init(SDL_Window *window, int vsync)
         SDL_GL_SetSwapInterval(0);
     }
     G.vsync = SDL_GL_GetSwapInterval() != 0;
+#endif
 
-    sg_desc desc;
-    memset(&desc, 0, sizeof desc);
     desc.logger.func = sokol_log;
-    desc.environment.defaults.color_format = SG_PIXELFORMAT_RGBA8;
+    desc.environment.defaults.color_format = SWAP_FORMAT;
     desc.environment.defaults.depth_format = SG_PIXELFORMAT_NONE;
     desc.environment.defaults.sample_count = 1;
     desc.buffer_pool_size = 16;
@@ -216,15 +261,18 @@ int32_t GpuPresent_Init(SDL_Window *window, int vsync)
     sg_setup(&desc);
     if (!sg_isvalid()) {
         fprintf(stderr, "[gpu] sokol did not start: SDL's renderer instead\n");
+#if defined(GPU_NATIVE)
+        GpuNative_Shutdown();
+#else
         SDL_GL_DeleteContext(G.ctx);
         G.ctx = NULL;
+#endif
         return -1;
     }
 
     const sg_backend be = sg_query_backend();
     const sg_shader present = sg_make_shader(present_shader_desc(be));
     const sg_shader batch = sg_make_shader(batch_shader_desc(be));
-    G.crt = make_pipeline(sg_make_shader(crt_shader_desc(be)), 1, GFX_BLEND_NONE, 0, 0, "crt");
     G.world = make_pipeline(present, 1, GFX_BLEND_NONE, 0, 0, "present-world");
     G.hud = make_pipeline(present, 1, GFX_BLEND_NONE, 1, 0, "present-hud");
     for (int b = 0; b < 3; b++)
@@ -257,8 +305,12 @@ int32_t GpuPresent_Init(SDL_Window *window, int vsync)
     if (!ok) {
         fprintf(stderr, "[gpu] the presenter's shaders did not build: SDL's renderer instead\n");
         sg_shutdown();
+#if defined(GPU_NATIVE)
+        GpuNative_Shutdown();
+#else
         SDL_GL_DeleteContext(G.ctx);
         G.ctx = NULL;
+#endif
         return -1;
     }
     G.up = 1;
@@ -266,8 +318,14 @@ int32_t GpuPresent_Init(SDL_Window *window, int vsync)
     G.white = GpuGfx_CreateTexture(1, 1, 0);
     G.batchBlend = GFX_BLEND_ALPHA;
     G.batchSpace = GFX_SPACE_PICTURE;
+    if (getenv("SWOS_SHADER"))          /* (a slang preset for this run) */
+        GpuPresent_SetShaderPreset(getenv("SWOS_SHADER"));
     fprintf(stderr, "[gpu] presenter up: %s, %s, vsync %s\n",
-#if defined(SOKOL_GLES3)
+#if defined(SOKOL_METAL)
+            "Metal",
+#elif defined(SOKOL_D3D11)
+            "Direct3D 11",
+#elif defined(SOKOL_GLES3)
             "OpenGL ES 3 / WebGL2",
 #else
             "OpenGL 4.1 core",
@@ -282,8 +340,12 @@ void GpuPresent_Shutdown(void)
     if (!G.up)
         return;
     sg_shutdown();
+#if defined(GPU_NATIVE)
+    GpuNative_Shutdown();
+#else
     if (G.ctx)
         SDL_GL_DeleteContext(G.ctx);
+#endif
     free(G.stage);
     free(G.palStage);
     G.up = 0;
@@ -291,7 +353,11 @@ void GpuPresent_Shutdown(void)
 
 void GpuPresent_OutputSize(int *w, int *h)
 {
+#if defined(GPU_NATIVE)
+    GpuNative_DrawableSize(w, h);
+#else
     SDL_GL_GetDrawableSize(G.window, w, h);
+#endif
 }
 
 void GpuPresent_PictureRect(float *x, float *y, float *w, float *h)
@@ -368,6 +434,10 @@ static void draw_picture(sg_pipeline pip, sg_view tex, const float src[4], float
     vs_present_params_t vp;
     fs_present_params_t fp;
     vp.dst[0] = -1.0f; vp.dst[1] = 1.0f; vp.dst[2] = 1.0f; vp.dst[3] = -1.0f;
+    if (s_flipDst) {
+        vp.dst[1] = -1.0f;
+        vp.dst[3] = 1.0f;
+    }
     memcpy(vp.src, src, sizeof vp.src);
     memset(&fp, 0, sizeof fp);
     fp.size[0] = (float)G.srcW;
@@ -389,36 +459,6 @@ static void draw_picture(sg_pipeline pip, sg_view tex, const float src[4], float
     sg_draw(0, 4, 1);
 }
 
-/* The CRT pass's image, the picture's size on screen. */
-static int ensure_offscreen(int w, int h)
-{
-    if (G.off.id && G.offW == w && G.offH == h)
-        return 1;
-    if (G.off.id) {
-        sg_destroy_view(G.offTex);
-        sg_destroy_view(G.offAtt);
-        sg_destroy_image(G.off);
-    }
-    sg_image_desc d;
-    memset(&d, 0, sizeof d);
-    d.width = w;
-    d.height = h;
-    d.pixel_format = SG_PIXELFORMAT_RGBA8;
-    d.usage.color_attachment = true;
-    d.label = "crt-picture";
-    G.off = sg_make_image(&d);
-    sg_view_desc v;
-    memset(&v, 0, sizeof v);
-    v.texture.image = G.off;
-    G.offTex = sg_make_view(&v);
-    memset(&v, 0, sizeof v);
-    v.color_attachment.image = G.off;
-    G.offAtt = sg_make_view(&v);
-    G.offW = w;
-    G.offH = h;
-    return sg_query_view_state(G.offAtt) == SG_RESOURCESTATE_VALID;
-}
-
 static void begin_screen_pass(const float clear[3])
 {
     sg_pass pass;
@@ -431,45 +471,32 @@ static void begin_screen_pass(const float clear[3])
     pass.swapchain.width = G.outW;
     pass.swapchain.height = G.outH;
     pass.swapchain.sample_count = 1;
-    pass.swapchain.color_format = SG_PIXELFORMAT_RGBA8;
+    pass.swapchain.color_format = SWAP_FORMAT;
     pass.swapchain.depth_format = SG_PIXELFORMAT_NONE;
+#if defined(GPU_NATIVE)
+    GpuNative_Swapchain(&pass.swapchain);
+#else
     pass.swapchain.gl.framebuffer = 0;
+#endif
     sg_begin_pass(&pass);
 }
 
 static float s_clear[3];
 static void batch_flush(void);
 
-/* The picture's space is done: onto the screen through the crt program, and from here every
- * draw is the screen's. */
+/* The picture's space is done: through the slang chain onto the screen, and from here every draw
+ * is the screen's. */
+static void begin_screen_cleared(void) { begin_screen_pass(s_clear); }
+
 static void crt_resolve(void)
 {
     if (!G.toOff)
         return;
     batch_flush();
     sg_end_pass();
-    G.toOff = 0;
-    begin_screen_pass(s_clear);
-    vs_crt_params_t vp;
-    fs_crt_params_t fp;
-    vp.dst[0] = -1.0f; vp.dst[1] = 1.0f; vp.dst[2] = 1.0f; vp.dst[3] = -1.0f;
-    memset(&fp, 0, sizeof fp);
-    fp.src[0] = (float)G.srcW;
-    fp.src[1] = (float)G.srcH;
-    fp.src[2] = (float)(G.frames & 1);
-    fp.crt[0] = G.crtCurve;
-    fp.crt[1] = G.crtNtsc;
-    fp.crt[2] = 1.0f;                   /* (GL: the image's first row is the picture's bottom) */
-    sg_bindings b;
-    memset(&b, 0, sizeof b);
-    b.views[VIEW_pic_tex] = G.offTex;
-    b.samplers[SMP_pic_smp] = G.linear;
-    sg_apply_viewportf(G.picX, G.picY, G.picW, G.picH, true);
-    sg_apply_pipeline(G.crt);
-    sg_apply_bindings(&b);
-    sg_apply_uniforms(UB_vs_crt_params, &(sg_range){ &vp, sizeof vp });
-    sg_apply_uniforms(UB_fs_crt_params, &(sg_range){ &fp, sizeof fp });
-    sg_draw(0, 4, 1);
+    G.toOff = 0;                        /* a slang chain: its passes, the last onto the screen */
+    s_flipDst = 0;
+    GpuSlang_Run(G.picX, G.picY, G.picW, G.picH, begin_screen_cleared);
 }
 
 int32_t GpuPresent_Begin(const GpuFrame *f, const uint8_t clear[3])
@@ -515,18 +542,32 @@ int32_t GpuPresent_Begin(const GpuFrame *f, const uint8_t clear[3])
     s_clear[2] = clear ? clear[2] / 255.0f : 0.0f;
     picture_rect(f ? f->stretch : 0, f ? f->w : 0, f ? f->h : 0);
     G.frames++;
-    G.toOff = f && (G.crtCurve > 0.0f || G.crtNtsc > 0.0f) && G.picW >= 1.0f && G.picH >= 1.0f &&
-              ensure_offscreen((int)G.picW, (int)G.picH);
-    if (G.toOff) {                      /* the picture's space into `off` (crt_resolve) */
-        sg_pass pass;
-        memset(&pass, 0, sizeof pass);
-        pass.action.colors[0].load_action = SG_LOADACTION_CLEAR;
-        pass.action.colors[0].clear_value.a = 1.0f;
-        pass.attachments.colors[0] = G.offAtt;
-        sg_begin_pass(&pass);
-    } else {
-        begin_screen_pass(s_clear);
+#if defined(GPU_NATIVE)
+    GpuNative_FrameBegin();             /* (GpuNative_FrameEnd in GpuPresent_End) */
+#endif
+    if (s_presetPending) {
+        s_presetPending = 0;
+        GpuSlang_Load(s_preset);
     }
+    G.toOff = 0;
+    s_flipDst = 0;
+    if (f && !f->argb && GpuSlang_Active() && G.picW >= 1.0f && G.picH >= 1.0f) {
+        const sg_view att = GpuSlang_BeginOriginal(f->w, f->h);
+        if (att.id) {                   /* the picture's space into the chain's Original */
+            sg_pass pass;
+            memset(&pass, 0, sizeof pass);
+            pass.action.colors[0].load_action = SG_LOADACTION_CLEAR;
+            pass.action.colors[0].clear_value.a = 1.0f;
+            pass.attachments.colors[0] = att;
+            sg_begin_pass(&pass);
+            G.toOff = 2;
+#if defined(SOKOL_GLCORE) || defined(SOKOL_GLES3)
+            s_flipDst = 1;
+#endif
+        }
+    }
+    if (!G.toOff)
+        begin_screen_pass(s_clear);
     G.inPass = 1;
     G.nverts = 0;
     G.batchFull = 0;
@@ -548,7 +589,9 @@ int32_t GpuPresent_Begin(const GpuFrame *f, const uint8_t clear[3])
         if (n > 8.0f) n = 8.0f;
     }
     float qx = 0.0f, qy = 0.0f;
-    if (f->subpixel && (f->fracX || f->fracY)) {
+    if (G.toOff == 2)
+        n = 0.0f;                       /* (Original is the picture at its own size: no scaling) */
+    if (G.toOff != 2 && f->subpixel && (f->fracX || f->fracY)) {
         const float fx = (float)f->fracX / 65536.0f, fy = (float)f->fracY / 65536.0f;
         if (n > 0.0f) {
             qx = floorf(fx * n + 0.5f) / n;
@@ -595,7 +638,9 @@ int32_t GpuPresent_Begin(const GpuFrame *f, const uint8_t clear[3])
             s_key = (float)f->backdropKey + 1.0f;
         }
     }
-    if (G.toOff)
+    if (G.toOff == 2)
+        sg_apply_viewport(0, 0, f->w, f->h, true);
+    else if (G.toOff)
         sg_apply_viewport(0, 0, (int)G.picW, (int)G.picH, true);
     else
         sg_apply_viewportf(G.picX, G.picY, G.picW, G.picH, true);
@@ -638,12 +683,15 @@ static void batch_flush(void)
         vp.view[0] = (float)G.outW;
         vp.view[1] = (float)G.outH;
     } else {
-        if (G.toOff)
+        if (G.toOff == 2)
+            sg_apply_viewport(0, 0, G.srcW, G.srcH, true);
+        else if (G.toOff)
             sg_apply_viewport(0, 0, (int)G.picW, (int)G.picH, true);
         else
             sg_apply_viewportf(G.picX, G.picY, G.picW, G.picH, true);
         vp.view[0] = (float)G.srcW;
         vp.view[1] = (float)G.srcH;
+        vp.view[2] = s_flipDst ? 1.0f : 0.0f;   /* (a slang chain's Original on GL: first row on top) */
     }
     GpuTex *t = G.batchTex ? G.batchTex : G.white;
     sg_bindings b;
@@ -767,8 +815,27 @@ int32_t GpuPresent_ReadPixels(uint8_t *rgba, int w, int h)
 {
     if (!G.up || w != G.outW || h != G.outH)
         return -1;
+#if defined(GPU_NATIVE)
+    /* the drawable copied out before its pass ends (and presents it); read once the frame is done */
+    if (!G.inPass)
+        return -1;
+    batch_flush();
+    crt_resolve();
+    batch_flush();
+    {
+        const int reading = GpuNative_ReadBeforeEndPass(w, h);
+        sg_end_pass();
+        G.inPass = 0;
+        sg_commit();
+        s_committed = 1;
+        if (!reading)
+            return -1;
+        GpuNative_ReadAfterCommit(rgba);
+    }
+#else
     GpuPresent_EndPass();
     SokolGl_ReadPixels(w, h, rgba);
+#endif
     return 0;
 }
 
@@ -777,8 +844,15 @@ void GpuPresent_End(void)
     if (!G.up)
         return;
     GpuPresent_EndPass();
+#if defined(GPU_NATIVE)
+    if (!s_committed)
+        sg_commit();
+    s_committed = 0;
+    GpuNative_FrameEnd();               /* (Metal: sokol presented the drawable; D3D11: Present) */
+#else
     sg_commit();
     SDL_GL_SwapWindow(G.window);
+#endif
 }
 
 #else /* !SWOS_GPU */
@@ -793,7 +867,7 @@ int32_t GpuPresent_Vsync(void) { return 0; }
 int32_t GpuPresent_Begin(const GpuFrame *f, const uint8_t clear[3]) { (void)f; (void)clear; return 0; }
 void    GpuPresent_End(void) {}
 void    GpuPresent_EndPass(void) {}
-void    GpuPresent_SetCrt(int curvature, int ntsc) { (void)curvature; (void)ntsc; }
+void    GpuPresent_SetShaderPreset(const char *path) { (void)path; }
 void    GpuPresent_OutputSize(int *w, int *h) { *w = *h = 0; }
 void    GpuPresent_PictureRect(float *x, float *y, float *w, float *h) { *x = *y = *w = *h = 0; }
 int32_t GpuPresent_ReadPixels(uint8_t *rgba, int w, int h) { (void)rgba; (void)w; (void)h; return -1; }
