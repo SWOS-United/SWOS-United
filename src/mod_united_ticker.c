@@ -26,6 +26,7 @@
 
 #include "mjson.h"
 #include "https_client.h"
+#include "gfx.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,8 +38,7 @@ enum { kMaxItems = 64, kTextLen = 160 };
 
 static char    s_text[kMaxItems][kTextLen];
 static int32_t s_count, s_loaded, s_item = -1;
-static int32_t s_offset;                /* the text's left edge, from the box's right edge */
-static uint32_t s_lastTick, s_seed = 0x2545F491u;
+static uint32_t s_seed = 0x2545F491u;
 
 static uint32_t next_random(void)       /* (its own: the game's numbers are the match's) */
 {
@@ -182,12 +182,29 @@ static void load(void)
     fprintf(stderr, "[ticker] %d news items\n", (int)s_count);
 }
 
-/* Each menu frame: the box painted back, the line drawn where it has scrolled to, clipped to the
- * box a character at a time (the menu text has no clipping of its own). */
+/* ---- the line, gliding ----
+ * The text is made into a picture once an item (ModApi_TextImage: the game's own font) and drawn
+ * over the box through gfx.h each frame the window shows -- at a fractional place, clipped to the
+ * box to the pixel -- so it glides at the window's resolution and refresh rate, not the game's
+ * whole pixels at the menu's pace. Its place comes from the time since the item started, never
+ * from adding up steps. The menu frame keeps the box painted back (the line is not in the frame). */
+static GfxTexture *s_tex;
+static int32_t     s_texW, s_texH, s_texItem = -1;
+static uint32_t    s_start, s_seenAt;
+static int32_t     s_bx, s_by, s_bw, s_bh;
+
+static int32_t px_per_sec(void)
+{
+    const char *speed = ModApi_Setting(SLUG, "speed", "normal");
+    return !strcmp(speed, "slow") ? 30 : !strcmp(speed, "fast") ? 90 : 50;
+}
+
+/* Each menu frame: the news, the item's picture when it changes, the box painted back. */
 static void ticker_menu_drawn(void)
 {
+    static uint8_t rgba[kTextLen * 16 * 12 * 4];
     const int32_t entry = ModApi_MenuTickerEntry();
-    int32_t bx, by, bw, bh;
+    const uint32_t now = ModApi_Ticks();
     if (entry < 0)
         return;
     if (s_feed != 2)
@@ -196,46 +213,71 @@ static void ticker_menu_drawn(void)
         load();
     if (!s_count)
         return;
-    ModApi_MenuEntryRect(entry, &bx, &by, &bw, &bh);
-    if (bw <= 0 || bh <= 0)
+    ModApi_MenuEntryRect(entry, &s_bx, &s_by, &s_bw, &s_bh);
+    if (s_bw <= 0 || s_bh <= 0)
         return;
+    if (s_item < 0 || (s_tex && (float)(now - s_start) * (float)px_per_sec() / 1000.0f > (float)(s_bw + s_texW))) {
+        s_item = (int32_t)(next_random() % (uint32_t)s_count);     /* the first, or the last gone off */
+        s_start = now;
+    }
+    if (s_texItem != s_item) {
+        int32_t w = 0, h = 0;
+        if (ModApi_TextImage(s_text[s_item], 1, 2, rgba, (int32_t)sizeof rgba, &w, &h)) {
+            if (!s_tex || w != s_texW || h != s_texH) {
+                if (s_tex)
+                    Gfx_DestroyTexture(s_tex);
+                s_tex = Gfx_CreateTexture(w, h, 0);
+            }
+            if (s_tex)
+                Gfx_UpdateTexture(s_tex, rgba, w * 4);
+            s_texW = w;
+            s_texH = h;
+        }
+        s_texItem = s_item;
+        s_start = now;
+    }
+    ModApi_RestoreMenuBackground(s_bx, s_by, s_bw, s_bh);
+    s_seenAt = now ? now : 1;
+}
 
-    const char *speed = ModApi_Setting(SLUG, "speed", "normal");
-    const int32_t pxPerSec = !strcmp(speed, "slow") ? 30 : !strcmp(speed, "fast") ? 90 : 50;
+/* Each frame the window shows: the line where it is now, clipped to the box. */
+static void ticker_frame_drawn(void)
+{
+    extern int _menu_draw_x_offset;
     const uint32_t now = ModApi_Ticks();
-    if (s_item < 0 || !s_lastTick) {
-        s_item = (int32_t)(next_random() % (uint32_t)s_count);
-        s_offset = 0;
-        s_lastTick = now;
-    }
-    s_offset += (int32_t)((now - s_lastTick) * (uint32_t)pxPerSec / 1000u);
-    if ((now - s_lastTick) * (uint32_t)pxPerSec >= 1000u)
-        s_lastTick = now;
-
-    const char *text = s_text[s_item];
-    const int32_t width = ModApi_TextWidth(text, 1);
-    if (s_offset > bw + width) {            /* gone off the left: the next one */
-        s_item = (int32_t)(next_random() % (uint32_t)s_count);
-        s_offset = 0;
-    }
-
-    ModApi_RestoreMenuBackground(bx, by, bw, bh);
-    const int32_t y = by + (bh - 6) / 2;
-    int32_t x = bx + bw - s_offset;
-    for (const char *c = text; *c; c++) {
-        char one[2] = { *c, 0 };
-        const int32_t cw = ModApi_TextWidth(one, 1);
-        if (x >= bx && x + cw <= bx + bw && *c != ' ')
-            ModApi_DrawText(x, y, 2, one, 1);
-        x += cw;
-        if (x >= bx + bw)
-            break;
+    if (!s_tex || !s_seenAt || now - s_seenAt > 150 || !ModApi_InMenus())
+        return;                             /* (the ticker's menu is not the one shown) */
+    const float offset = (float)(now - s_start) * (float)px_per_sec() / 1000.0f;
+    const float boxL = (float)(s_bx + _menu_draw_x_offset), boxR = boxL + (float)s_bw;
+    float x0 = boxR - offset, x1 = x0 + (float)s_texW;
+    float u0 = 0.0f, u1 = 1.0f;
+    const float y0 = (float)(s_by + (s_bh - 6) / 2 - 2), y1 = y0 + (float)s_texH;
+    if (x1 <= boxL || x0 >= boxR)
+        return;
+    if (x0 < boxL) { u0 = (boxL - x0) / (float)s_texW; x0 = boxL; }
+    if (x1 > boxR) { u1 = 1.0f - (x1 - boxR) / (float)s_texW; x1 = boxR; }
+    {
+        GfxVertex v[6];
+        const float px[6] = { x0, x1, x0, x1, x1, x0 }, py[6] = { y0, y0, y1, y0, y1, y1 };
+        const float tu[6] = { u0, u1, u0, u1, u1, u0 }, tv[6] = { 0, 0, 1, 0, 1, 1 };
+        for (int i = 0; i < 6; i++) {
+            memset(&v[i], 0, sizeof v[i]);
+            v[i].position.x = px[i];
+            v[i].position.y = py[i];
+            v[i].color.r = v[i].color.g = v[i].color.b = v[i].color.a = 255;
+            v[i].tex_coord.x = tu[i];
+            v[i].tex_coord.y = tv[i];
+        }
+        Gfx_SetSpace(GFX_SPACE_PICTURE);
+        Gfx_SetBlend(GFX_BLEND_ALPHA);
+        Gfx_Geometry(s_tex, v, 6, NULL, 0);
     }
 }
 
 const ModDef ModDef_unitedTicker = {
-    .slug = SLUG,
-    .menuDrawn = ticker_menu_drawn,
+    .slug       = SLUG,
+    .menuDrawn  = ticker_menu_drawn,
+    .frameDrawn = ticker_frame_drawn,
 };
 
 #endif /* SWOS_SDL_BUILD */
