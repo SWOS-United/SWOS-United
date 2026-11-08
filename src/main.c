@@ -588,7 +588,6 @@ int main(int argc, char **argv)
     for (int qi = 0; qi < MATCHCHAT_QUICK; qi++)       /* [chat] quick1..quick0 */
         snprintf(opts.chat_quick[qi], sizeof opts.chat_quick[qi], "%s", MatchChat_DefaultQuick(qi));
     opts.prediction = 1;          /* default: a live match's replay keeps what each player saw */
-    opts.scoreboard = 1;          /* default: SWOS 2020's scoreboard in a match (match_scoreboard.h) */
     opts.accept_sound = 1;        /* default: SWOS 2020's, when a host takes this player in */
     opts.discord = 1;             /* default: online matches on Discord, as SWOS 2020's (live_ticker.h) */
     opts.discord_webhook[0] = '\0';
@@ -1315,7 +1314,6 @@ int main(int argc, char **argv)
     DosSound_SetCommentaryDir(opts.commentary_dir);
     DosSound_SetStyle(opts.sound_style);
     DosMusic_SetStyle(opts.music_style);
-    { extern void MatchScoreboard_SetEnabled(int32_t on); MatchScoreboard_SetEnabled(opts.scoreboard); }
     DosMusic_SetMenuRecording(opts.menu_recording);
     DosSound_SetCommentary(opts.commentary);
     { extern int _gArcadeMode; _gArcadeMode = opts.arcade; }

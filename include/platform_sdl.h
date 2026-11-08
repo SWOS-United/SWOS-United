@@ -149,7 +149,6 @@ typedef struct {
     char                   account_site[24]; /* [netplay] account_site: sensiblesoccer | swosunited (SWOS United) */
     int                    live_cast;        /* [netplay] live_cast: 1 viewers may watch this player's
                                               * matches (LIVE CAST, the default), 0 not */
-    int                    scoreboard;       /* [video] scoreboard: SWOS 2020's, at the top left (default on) */
     int                    accept_sound;     /* [netplay] accept_sound: MULTIPLAYER SETTINGS' ACCEPT SOUND (default on) */
     int                    discord;          /* [netplay] discord: post online matches to Discord (live_ticker.h) */
     char                   discord_webhook[256]; /* [netplay] discord_webhook: a test channel's webhook, for every post */
@@ -257,6 +256,12 @@ void Platform_SetFrameHook(void (*hook)(void));
 void Platform_RenderFrame(void);
 /* A progress bar alone on the screen (the phones' Wi-Fi copy, before the game's data). */
 void Platform_ShowProgress(int permille);
+
+/* For a mod drawing over the picture (ModDef frameDrawn): the 8bpp frame this present shows
+ * (FRONTBUFFER_ROW_STRIDE_BYTES a row), and the HUD layer (8bpp, _screen_width a row, index 0
+ * empty), NULL when the HUD is drawn in the frame itself ([video] subpixel_scroll off). */
+const uint8_t *Platform_FrameShown(void);
+uint8_t       *Platform_HudLayerBuffer(void);
 
 /* Run the Amiga Level-3 VBlank ISR body, throttled to ~50 Hz max and
  * mutex-guarded so concurrent calls from the timer thread and the main

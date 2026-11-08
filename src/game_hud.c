@@ -328,33 +328,3 @@ hide_and_clear:
     spr->z.s.i      = 25000;
     _lastPlayerBeforeGoalkeeper = (Sprite *)0;
 }
-
-#ifdef SWOS_SDL_BUILD
-/* SWOS 2020's scoreboard takes the top left, so while it shows the name of the player on the ball
- * is drawn where SWOS 2020 puts it: the top right, on the board's row (its text 8 rows down),
- * right-aligned 10 columns in from the edge. The top-left corner (the game's default, 4) and the
- * top-right one (3) swap places, so the indicator key still visits all four corners: 3 is then the
- * top left, under the board (+7, as before). Only the drawing (sprites.c): the sprite, which is
- * match state, is where SetCurrentPlayerName put it. */
-void CurrentPlayerName_ScoreboardShift(const Sprite *spr, int16_t *dx, int16_t *dy)
-{
-    const int16_t leftX = _gDosView ? 12 : 20, leftY = _gDosView ? 0 : 14;
-    const int16_t rightY = _gDosView ? 8 : 14;
-    int16_t len = 0, i;
-
-    *dx = *dy = 0;
-    for (i = 0; i < 32; i++)
-        if ((i < 16 ? SPR_TEAM1_PLAYER_NAMES_START : SPR_TEAM2_PLAYER_NAMES_START) +
-            (int16_t)(int8_t)_plOrdinalsTable[i] == spr->imageIndex) {
-            len = (int16_t)(int8_t)_plNamesLengthTableCopy[i];
-            break;
-        }
-    if (_currentPlayerIndicatorPosition == 4) {
-        *dx = (int16_t)(HUD_WIDTH - 10 - len - leftX);
-        *dy = (int16_t)(8 - leftY);
-    } else if (_currentPlayerIndicatorPosition == 3) {
-        *dx = (int16_t)(leftX - (HUD_WIDTH - 10 - len));
-        *dy = (int16_t)(leftY - rightY + 7);
-    }
-}
-#endif

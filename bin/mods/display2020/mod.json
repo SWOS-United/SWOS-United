@@ -1,0 +1,11 @@
+{
+ "uuid": "77d4ef2a-528e-5918-93da-c331e300dacc",
+ "id": "display2020",
+ "name": "SWOS 2020 match display",
+ "version": "1.0",
+ "author": "SWOS United (Playaveli; SWOS 2020's scoreboard and result band)",
+ "about": "SWOS 2020's scoreboard at the top left, its result band darkened smoothly, each side's kit beside the score.",
+ "targets": ["sdl"],
+ "changes": "cosmetic",
+ "default": true
+}
