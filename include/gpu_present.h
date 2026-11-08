@@ -43,6 +43,11 @@ typedef struct {
     int             subpixel;   /* [video] subpixel_scroll */
     int             smooth;     /* [video] scaling = smooth */
     int             stretch;    /* the picture fills the window (widescreen = stretch) */
+    /* the menus' true-colour backdrop (Platform_SetMenuBackdrop): drawn covering the window, and
+     * the frame's `backdropKey` pixels transparent over it; NULL none */
+    const uint8_t  *backdrop;   /* R, G, B, A bytes */
+    int             backdropW, backdropH, backdropKey;
+    uint32_t        backdropSerial;     /* changes when the image does */
 } GpuFrame;
 
 /* Draws the picture; the overlays (gfx.h) can go on after it, until GpuPresent_End. A frame with
@@ -67,5 +72,7 @@ GpuTex *GpuGfx_CreateTexture(int w, int h, int linear);
 void    GpuGfx_UpdateTexture(GpuTex *t, const void *rgba, int pitch);
 void    GpuGfx_DestroyTexture(GpuTex *t);
 void    GpuPresent_EndPass(void);                        /* (before a read of the pixels) */
+/* The CRT pass ([video] crt_curvature, crt_ntsc, each 0..100; 0 and 0: none, no cost). */
+void    GpuPresent_SetCrt(int curvature, int ntsc);
 
 #endif
