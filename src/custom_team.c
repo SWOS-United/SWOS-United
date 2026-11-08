@@ -45,12 +45,11 @@
 #include "menu_system.h"
 #include "mjson.h"
 #include "netplay_lobby.h"      /* LOBBY_TACTIC_MAX */
-#include "online_account.h"     /* IMPORT FROM SWOS 2020, on a service that has it */
 #include "swos2020_menus.h"
 #include "swos_io.h"
+#include "world.h"
 #include "team_db.h"
 #include "team_proto.h"
-#include "world.h"
 #include "teams.h"
 
 extern TeamFileEx  _selectedTeams[SELECTED_TEAMS_MAX];
@@ -130,53 +129,34 @@ static int32_t match_players(const TeamFileEx *team, const TeamFileEx *base, uin
     return 1;
 }
 
-/* ---- THE RULE: A CUSTOM TEAM IS 96/97's ----
+/* ---- A TEAM'S DATABASE ----
  *
- * A custom team is made from, and checked against, the original 96/97 data and nothing else,
- * whatever world the game is playing (the owner, 2026-11-04). A world's file for a country
- * replaces 96/97's in what the game reads (src/save_format_json.c), so everything here that
- * makes, reads or checks a custom team runs inside this scope, which reads 96/97: the team
- * database (src/team_db.c keeps one copy a world) and LoadTeamFile (whose cached file goes both
- * ways). World tables stay as they are, so it is not for showing a team list: see edit_slot. */
-extern uint8_t _lastLoadedExtNumber;
-static int32_t s_baseDepth, s_baseSwitched;
-static char    s_baseWorld[8];
-
-static void base_begin(void)
+ * A world (World 2026-27) replaces a country's file in what the game reads, so the team with a
+ * number is the world's while it is played. A team is checked against the database it came from:
+ * the world's team with its number, else -- a world being played -- 96/97's (src/team_db.c keeps
+ * both). A 96/97 custom team plays on with a world on, and one made from a world's team plays
+ * while that world is. `out` gets the candidates, the world's first; returns how many. */
+static int32_t bases_of(const TeamFileEx *team, const TeamDbEntry *out[2])
 {
-    if (s_baseDepth++ == 0 && World_Current() != WORLD_9697) {
-        snprintf(s_baseWorld, sizeof s_baseWorld, "%s", World_Tag());
-        World_Set(World_TagOf(WORLD_9697));
-        _lastLoadedExtNumber = 0xFF;
-        s_baseSwitched = 1;
-    }
+    int32_t n = 0;
+    const TeamDbEntry *e = TeamDb_Team(team->team.countryNumber, team->team.teamOrdinal);
+    if (e)
+        out[n++] = e;
+    if (World_Current() != WORLD_9697 &&
+        (e = TeamDb_Team9697(team->team.countryNumber, team->team.teamOrdinal)) != NULL && (n == 0 || e != out[0]))
+        out[n++] = e;
+    return n;
 }
 
-static void base_end(void)
+/* The candidate whose players a team has (canonical ones only when `canonical`), or NULL. */
+static const TeamDbEntry *base_with_players(const TeamFileEx *team, uint8_t is[kPlayers], int32_t canonical)
 {
-    if (--s_baseDepth == 0 && s_baseSwitched) {
-        s_baseSwitched = 0;
-        World_Set(s_baseWorld);
-        _lastLoadedExtNumber = 0xFF;
-    }
-}
-
-/* Names, nationalities or faces not the database team's: a custom team's changes (not its kit:
- * the UNIFORM screen's choice travels inside any team). */
-static int32_t renamed(const TeamFileEx *team, const TeamFileEx *base, const uint8_t is[kPlayers])
-{
-    int32_t i;
-    if (strncmp((const char *)team->team.teamName, (const char *)base->team.teamName, sizeof team->team.teamName) != 0 ||
-        strncmp((const char *)team->team.coachName, (const char *)base->team.coachName, sizeof team->team.coachName) != 0)
-        return 1;
-    for (i = 0; i < kPlayers; i++) {
-        const PlayerFile *p = &team->players[i], *q = &base->players[is[i]];
-        if (strncmp((const char *)p->playerName, (const char *)q->playerName, sizeof p->playerName) != 0 ||
-            p->nationality != q->nationality ||
-            (p->positionAndFace & PF_FACE_MASK) != (q->positionAndFace & PF_FACE_MASK))
-            return 1;
-    }
-    return 0;
+    const TeamDbEntry *bases[2];
+    int32_t i, n = bases_of(team, bases);
+    for (i = 0; i < n; i++)
+        if ((!canonical || bases[i]->canonical) && match_players(team, &bases[i]->team, is))
+            return bases[i];
+    return NULL;
 }
 
 int32_t CustomTeam_Allowed(const TeamFileEx *team)
@@ -190,17 +170,10 @@ int32_t CustomTeam_Allowed(const TeamFileEx *team)
     if (answer >= 0 && memcmp(&asked, team, sizeof asked) == 0)
         return answer;
     asked = *team;
-    /* A 96/97 team, custom or not. */
-    base_begin();
+    answer = base_with_players(team, is, 1) != NULL;
     base = TeamDb_Team(team->team.countryNumber, team->team.teamOrdinal);
-    answer = base && base->canonical && match_players(team, &base->team, is);
-    base_end();
-    /* The world's own teams may be played as they are; a change makes one a custom team, and a
-     * custom team made from a world's data is what the rule forbids. */
-    if (!answer && World_Current() != WORLD_9697) {
-        base = TeamDb_Team(team->team.countryNumber, team->team.teamOrdinal);
-        answer = base && base->canonical && match_players(team, &base->team, is) && !renamed(team, &base->team, is);
-    }
+    if (!base)
+        base = TeamDb_Team9697(team->team.countryNumber, team->team.teamOrdinal);
     if (!answer && !g_customTeamQuiet)
         fprintf(stderr, "[custom-team] %.16s (team %d of country %d) is not that team of the database: %s\n",
                 (const char *)team->team.teamName, team->team.teamOrdinal, team->team.countryNumber,
@@ -210,15 +183,15 @@ int32_t CustomTeam_Allowed(const TeamFileEx *team)
     return answer;
 }
 
-static int32_t is_custom(const TeamFileEx *team)
+int32_t CustomTeam_IsCustom(const TeamFileEx *team)
 {
-    const TeamDbEntry *base = TeamDb_Team(team->team.countryNumber, team->team.teamOrdinal);
-    const TeamFile *a = &team->team, *b;
     uint8_t is[kPlayers];
+    const TeamDbEntry *base = base_with_players(team, is, 0);
+    const TeamFile *a = &team->team, *b;
     KitLook mine, his;
     int32_t i, kit;
 
-    if (!base || !match_players(team, &base->team, is))
+    if (!base)
         return 0;                   /* not a database team at all: the screen says what it always did */
     b = &base->team.team;
     if (strncmp((const char *)a->teamName, (const char *)b->teamName, sizeof a->teamName) != 0 ||
@@ -240,33 +213,22 @@ static int32_t is_custom(const TeamFileEx *team)
     return 0;
 }
 
-int32_t CustomTeam_IsCustom(const TeamFileEx *team)
+void CustomTeam_Claim(const TeamFileEx *team, uint8_t uuid[16], uint8_t checksum[8])
 {
-    int32_t custom;
-    base_begin();
-    custom = is_custom(team);
-    base_end();
-    return custom || (World_Current() != WORLD_9697 && is_custom(team));
-}
-
-/* What the server is told: the team as the current database has it. `mustMatch`: only if its
- * players are that team's (0 said, nothing written). */
-static int32_t claim(const TeamFileEx *team, uint8_t uuid[16], uint8_t checksum[8], int32_t mustMatch)
-{
-    const TeamDbEntry *base = TeamDb_Team(team->team.countryNumber, team->team.teamOrdinal);
+    uint8_t is[kPlayers];
+    const TeamDbEntry *base = base_with_players(team, is, 0);   /* (its own database's id) */
     char id[TEAM_UUID_TEXT], sum[TEAM_CHECKSUM_TEXT];
     TeamFileEx ordered = *team;
-    uint8_t is[kPlayers];
     int32_t i;
 
-    if (mustMatch && !(base && match_players(team, &base->team, is)))
-        return 0;
     /* The checksum is of the sixteen in the DATABASE's order, and a custom team may
      * hold them in another: put each back where the database has him. A team whose
      * players are not that team's is hashed as it stands, which is what gives it away. */
-    if (base && match_players(team, &base->team, is))
+    if (base)
         for (i = 0; i < kPlayers; i++)
             ordered.players[is[i]] = team->players[i];
+    else
+        base = TeamDb_Team(team->team.countryNumber, team->team.teamOrdinal);
     if (base)
         snprintf(id, sizeof id, "%s", base->ids.uuid);
     else
@@ -274,17 +236,6 @@ static int32_t claim(const TeamFileEx *team, uint8_t uuid[16], uint8_t checksum[
     TeamDb_Checksum(&ordered, sum);
     TeamCheck_Hex(id, uuid, 16);
     TeamCheck_Hex(sum, checksum, 8);
-    return 1;
-}
-
-void CustomTeam_Claim(const TeamFileEx *team, uint8_t uuid[16], uint8_t checksum[8])
-{
-    int32_t done;
-    base_begin();
-    done = claim(team, uuid, checksum, 1);      /* a 96/97 team is told as 96/97's */
-    base_end();
-    if (!done)
-        claim(team, uuid, checksum, 0);
 }
 
 /* Which database team a team was made from, judged by its PLAYERS: the number in a
@@ -294,15 +245,17 @@ void CustomTeam_Claim(const TeamFileEx *team, uint8_t uuid[16], uint8_t checksum
  * file. NULL if no team of the database has those sixteen players. */
 static const TeamDbEntry *find_base(const TeamFileEx *team, uint8_t is[kPlayers])
 {
-    const TeamDbEntry *e = TeamDb_Team(team->team.countryNumber, team->team.teamOrdinal);
-    int32_t country, i;
+    const TeamDbEntry *e = base_with_players(team, is, 1);
+    int32_t country, i, db;
 
-    if (e && e->canonical && match_players(team, &e->team, is))
+    if (e)
         return e;
-    for (country = 0; country < kCountries; country++)
-        for (i = 0; (e = TeamDb_Entry(country, i)) != NULL; i++)
-            if (e->team.team.countryNumber == country && e->canonical && match_players(team, &e->team, is))
-                return e;
+    /* (the world being played, then -- a world on -- 96/97's) */
+    for (db = 0; db < (World_Current() != WORLD_9697 ? 2 : 1); db++)
+        for (country = 0; country < kCountries; country++)
+            for (i = 0; (e = db ? TeamDb_Entry9697(country, i) : TeamDb_Entry(country, i)) != NULL; i++)
+                if (e->team.team.countryNumber == country && e->canonical && match_players(team, &e->team, is))
+                    return e;
     return NULL;
 }
 
@@ -339,7 +292,7 @@ static int32_t is_permutation(const uint8_t *order)
 /* A team as a CustomTeam: which database team it is (found by its number, then by its
  * players) and everything about it that a custom team may change. 0 if it is no
  * database team's players. */
-static int32_t from_team(const TeamFileEx *team, CustomTeam *out)
+int32_t CustomTeam_FromTeam(const TeamFileEx *team, CustomTeam *out)
 {
     uint8_t is[kPlayers];
     const TeamDbEntry *base = find_base(team, is);
@@ -379,40 +332,42 @@ static int32_t from_team(const TeamFileEx *team, CustomTeam *out)
     return 1;
 }
 
-int32_t CustomTeam_FromTeam(const TeamFileEx *team, CustomTeam *out)
-{
-    int32_t ok;
-    base_begin();
-    ok = from_team(team, out);
-    base_end();
-    return ok;
-}
-
 /* The database team as the GAME hands it out (LoadTeamFile: global numbers set), for
- * a team that is going to be played. From a menu only: it loads into the game's own
- * team buffer. */
-static int32_t game_team(int32_t country, int32_t ordinal, TeamFileEx *out)
+ * a team that is going to be played -- from the database it is in: a 96/97 team with a world on
+ * is read with 96/97 on for the while (the file it is in is not the one the world plays). From
+ * a menu only: it loads into the game's own team buffer. */
+extern uint8_t _lastLoadedExtNumber;    /* LoadTeamFile's: the file loaded, 0xFF none */
+static int32_t game_team(const TeamDbEntry *base, TeamFileEx *out)
 {
     const TeamFileEx *rec = (const TeamFileEx *)(_teamFileBuffer + 2);
+    const int32_t country = base->team.team.countryNumber, ordinal = base->team.team.teamOrdinal;
+    const int32_t played = (int32_t)World_Current(), other = base->world != played;
     uint16_t count, i;
+    int32_t found = 0;
 
-    if (!TeamDb_Team(country, ordinal))         /* LoadTeamFile panics on a file that is not there */
-        return 0;
-    if (LoadTeamFile((uint16_t)country) != 0)
-        return 0;
-    count = *(uint16_t *)_teamFileBuffer;
-    for (i = 0; i < count; i++)
-        if (rec[i].team.countryNumber == country && rec[i].team.teamOrdinal == ordinal) {
-            *out = rec[i];
-            return 1;
-        }
-    return 0;
+    if (other) {
+        World_Set(World_TagOf((WorldId)base->world));
+        _lastLoadedExtNumber = 0xFF;            /* (its file, not the one cached) */
+    }
+    if (LoadTeamFile((uint16_t)country) == 0) {
+        count = *(uint16_t *)_teamFileBuffer;
+        for (i = 0; i < count && !found; i++)
+            if (rec[i].team.countryNumber == country && rec[i].team.teamOrdinal == ordinal) {
+                *out = rec[i];
+                found = 1;
+            }
+    }
+    if (other) {
+        World_Set(World_TagOf((WorldId)played));
+        _lastLoadedExtNumber = 0xFF;            /* (and the world's again next time) */
+    }
+    return found;
 }
 
 /* The team a CustomTeam plays as: the database team its id names -- which has to be
  * there, be canonical, and be the data the file's checksum says -- with the owner's
  * changes on it. Every position, skill and value comes from the database. */
-static int32_t resolve(const CustomTeam *custom, TeamFileEx *out)
+int32_t CustomTeam_Resolve(const CustomTeam *custom, TeamFileEx *out)
 {
     const TeamDbEntry *base = TeamDb_ByUuid(custom->madeFrom);
     uint8_t taken[kPlayers] = { 0 };
@@ -426,7 +381,7 @@ static int32_t resolve(const CustomTeam *custom, TeamFileEx *out)
         why = "this database's copy of that team has been changed";
     else if (custom->checksum[0] && strcmp(custom->checksum, base->computed) != 0)
         why = "the team with that id here is not the data it was made from";
-    else if (!game_team(base->team.team.countryNumber, base->team.team.teamOrdinal, &game))
+    else if (!game_team(base, &game))
         why = "the game could not load that team";
     if (why) {
         if (!g_customTeamQuiet)
@@ -678,16 +633,7 @@ static int32_t read_json(const char *json, int32_t length, CustomTeam *out)
     return 1;
 }
 
-int32_t CustomTeam_Resolve(const CustomTeam *custom, TeamFileEx *out)
-{
-    int32_t ok;
-    base_begin();
-    ok = resolve(custom, out);
-    base_end();
-    return ok;
-}
-
-static int32_t slot_save(int32_t slot, const TeamFileEx *team)
+int32_t CustomTeam_Save(int32_t slot, const TeamFileEx *team)
 {
     static char json[kJsonMax];
     CustomTeam custom;
@@ -712,16 +658,7 @@ static int32_t slot_save(int32_t slot, const TeamFileEx *team)
     return 1;
 }
 
-int32_t CustomTeam_Save(int32_t slot, const TeamFileEx *team)
-{
-    int32_t ok;
-    base_begin();
-    ok = slot_save(slot, team);
-    base_end();
-    return ok;
-}
-
-static int32_t slot_load(int32_t slot, TeamFileEx *out)
+int32_t CustomTeam_Load(int32_t slot, TeamFileEx *out)
 {
     char name[24];
     uint8_t *data = NULL;
@@ -757,15 +694,6 @@ static int32_t slot_load(int32_t slot, TeamFileEx *out)
     return ok;
 }
 
-int32_t CustomTeam_Load(int32_t slot, TeamFileEx *out)
-{
-    int32_t ok;
-    base_begin();
-    ok = slot_load(slot, out);
-    base_end();
-    return ok;
-}
-
 /* ======================================================================
  * The editor: the game's EDIT TEAM screen, on a custom team
  * ====================================================================== */
@@ -790,22 +718,11 @@ static int32_t choose_database_team(TeamFileEx *out)
     return 1;
 }
 
-/* What the slots screen has to say about the last edit (the rule, above). */
-static const char *s_note1 = "", *s_note2 = "";
-
 static void edit_slot(int32_t slot)
 {
     TeamFileEx keep = _selectedTeams[0];
 
-    s_note1 = s_note2 = "";
     if (!CustomTeam_Load(slot, &s_edit.team)) {
-        /* The team list shows the world being played, and its tables stay that world's: nothing
-         * in it may become a custom team. */
-        if (World_Current() != WORLD_9697) {
-            s_note1 = "CUSTOM TEAMS ARE MADE FROM 96/97 TEAMS ONLY.";
-            s_note2 = "SWITCH TO 96/97 TO CREATE ONE.";
-            return;
-        }
         if (!choose_database_team(&s_edit.team))
             return;
         CustomTeam_Save(slot, &s_edit.team);
@@ -814,10 +731,7 @@ static void edit_slot(int32_t slot)
     EditTeamsCallback(&s_edit.team);        /* the EDIT TEAM screen; OK writes the team back */
     s_edit.on = 0;
     _selectedTeams[0] = keep;
-    if (!CustomTeam_Save(slot, &s_edit.team)) {         /* (its IMPORT, from a world's list) */
-        s_note1 = "NOT SAVED: NOT A TEAM OF THE 96/97 DATA.";
-        s_note2 = "CUSTOM TEAMS ARE MADE FROM 96/97 TEAMS ONLY.";
-    }
+    CustomTeam_Save(slot, &s_edit.team);
 }
 
 /* LINEUP: the team screen a match shows, on the team being edited (which the EDIT TEAM
@@ -896,94 +810,18 @@ static void read_slots(void)
     }
 }
 
-static void selectMyCustomTeamsMenu_OnInit(void) { Account_TeamImportReset(); }
+static void selectMyCustomTeamsMenu_OnInit(void) {}
 
-static void slots_link(int32_t ordinal, int32_t left, int32_t right, int32_t up, int32_t down)
-{
-    MenuEntry *e = CalcMenuEntryAddress((uint16_t)ordinal);
-    e->leftEntry = (int8_t)left;
-    e->rightEntry = (int8_t)right;
-    e->upEntry = (int8_t)up;
-    e->downEntry = (int8_t)down;
-    e->directionLeft = e->directionRight = e->directionUp = e->directionDown = -1;
-}
-
-/* IMPORT FROM SWOS 2020: the button, or YES and NO in its place, and the two lines under it. A
- * service without it, and the list a team is picked from, have none of them. */
-static int32_t import_draw(void)
-{
-    extern uint8_t _currentMenu[];
-    static const int32_t all[5] = { SelectMyCustomTeams_importTeams, SelectMyCustomTeams_importYes,
-                                    SelectMyCustomTeams_importNo, SelectMyCustomTeams_importLine1,
-                                    SelectMyCustomTeams_importLine2 };
-    static char label[] = "IMPORT FROM SWOS 2020", busy[] = "CHECKING SWOS 2020...", yes[] = "YES", no[] = "NO";
-    const int32_t on = !s_slots.picking && Account_Has(ACCOUNT_HAS_TEAM_IMPORT);
-    Menu *menu = (Menu *)_currentMenu;
-    const char *line1 = "", *line2 = "";
-    int32_t state = TEAM_IMPORT_IDLE, changed = 0, i;
-
-    if (on)
-        state = Account_TeamImportPoll(&line1, &line2, &changed);
-    if (changed)
-        read_slots();
-    if (s_note1[0] && !line1[0]) {
-        line1 = s_note1;
-        line2 = s_note2;
-    }
-    for (i = 0; i < 5; i++)
-        CalcMenuEntryAddress((uint16_t)all[i])->isInvisible = !on && !(i >= 3 && s_note1[0]);
-    if (on) {       /* the four at one pitch, the button first; without it the slots stay as they are */
-        const MenuEntry *top = CalcMenuEntryAddress(SelectMyCustomTeams_importTeams);
-        for (i = 0; i < CUSTOM_TEAM_SLOTS; i++)
-            CalcMenuEntryAddress((uint16_t)(SelectMyCustomTeams_team1 + i))->y = (uint16_t)(top->y + (i + 1) * 32);
-    }
-    CalcMenuEntryAddress(SelectMyCustomTeams_importTeams)->isDisabled = state != TEAM_IMPORT_IDLE;
-    CalcMenuEntryAddress(SelectMyCustomTeams_importYes)->isInvisible = state != TEAM_IMPORT_ASKING;
-    CalcMenuEntryAddress(SelectMyCustomTeams_importNo)->isInvisible = state != TEAM_IMPORT_ASKING;
-    CalcMenuEntryAddress(SelectMyCustomTeams_importTeams)->fg = (uintptr_t)(state == TEAM_IMPORT_BUSY ? busy : label);
-    CalcMenuEntryAddress(SelectMyCustomTeams_importTeams)->bgColor = state == TEAM_IMPORT_IDLE ? 14 : 7;
-    CalcMenuEntryAddress(SelectMyCustomTeams_importYes)->fg = (uintptr_t)yes;
-    CalcMenuEntryAddress(SelectMyCustomTeams_importNo)->fg = (uintptr_t)no;
-    CalcMenuEntryAddress(SelectMyCustomTeams_importLine1)->fg = (uintptr_t)line1;
-    CalcMenuEntryAddress(SelectMyCustomTeams_importLine2)->fg = (uintptr_t)line2;
-    CalcMenuEntryAddress(SelectMyCustomTeams_importLine1)->isDisabled = 1;
-    CalcMenuEntryAddress(SelectMyCustomTeams_importLine2)->isDisabled = 1;
-
-    if (state == TEAM_IMPORT_ASKING) {
-        slots_link(SelectMyCustomTeams_importYes, -1, SelectMyCustomTeams_importNo, -1, SelectMyCustomTeams_exit);
-        slots_link(SelectMyCustomTeams_importNo, SelectMyCustomTeams_importYes, -1, -1, SelectMyCustomTeams_exit);
-        slots_link(SelectMyCustomTeams_exit, -1, -1, SelectMyCustomTeams_importNo, -1);
-        if (menu->selectedEntry != CalcMenuEntryAddress(SelectMyCustomTeams_importYes) &&
-            menu->selectedEntry != CalcMenuEntryAddress(SelectMyCustomTeams_exit))
-            menu->selectedEntry = CalcMenuEntryAddress(SelectMyCustomTeams_importNo);   /* (nothing lost by default) */
-    } else if (on) {
-        slots_link(SelectMyCustomTeams_importTeams, -1, -1, -1, SelectMyCustomTeams_team1);
-        slots_link(SelectMyCustomTeams_team1, -1, -1, SelectMyCustomTeams_importTeams, SelectMyCustomTeams_team2);
-        slots_link(SelectMyCustomTeams_team2, -1, -1, SelectMyCustomTeams_team1, SelectMyCustomTeams_team3);
-        slots_link(SelectMyCustomTeams_team3, -1, -1, SelectMyCustomTeams_team2, SelectMyCustomTeams_exit);
-        slots_link(SelectMyCustomTeams_exit, -1, -1, SelectMyCustomTeams_team3, -1);
-        if (menu->selectedEntry == CalcMenuEntryAddress(SelectMyCustomTeams_importYes) ||
-            menu->selectedEntry == CalcMenuEntryAddress(SelectMyCustomTeams_importNo))
-            menu->selectedEntry = CalcMenuEntryAddress(SelectMyCustomTeams_importTeams);
-    }
-    return state != TEAM_IMPORT_IDLE;
-}
-
-static void selectMyCustomTeamsImport(void)    { Account_TeamImportStart(); }
-static void selectMyCustomTeamsImportYes(void) { Account_TeamImportAnswer(1); }
-static void selectMyCustomTeamsImportNo(void)  { Account_TeamImportAnswer(0); }
-
-static void selectMyCustomTeamsMenu_OnDraw(void)
+void CustomTeam_SlotsDraw(void)
 {
     static char pickHeader[] = "CHOOSE YOUR TEAM", pickExit[] = "OTHER TEAMS";
-    const int32_t importing = import_draw();    /* (the slots wait while it decides what goes in them) */
     int32_t slot;
 
     for (slot = 0; slot < CUSTOM_TEAM_SLOTS; slot++) {
         MenuEntry *e = CalcMenuEntryAddress((uint16_t)(SelectMyCustomTeams_team1 + slot));
         e->fg = (uintptr_t)s_slots.label[slot];
         e->bgColor = s_slots.filled[slot] ? 13 : 7;     /* light blue: a team; grey: none */
-        e->isDisabled = importing || (s_slots.picking && !s_slots.filled[slot]);
+        e->isDisabled = s_slots.picking && !s_slots.filled[slot];
     }
     if (s_slots.picking) {
         CalcMenuEntryAddress(SelectMyCustomTeams_header)->fg = (uintptr_t)pickHeader;
@@ -991,9 +829,14 @@ static void selectMyCustomTeamsMenu_OnDraw(void)
     }
 }
 
+static void selectMyCustomTeamsMenu_OnDraw(void) { CustomTeam_SlotsDraw(); }
+
+int32_t CustomTeam_SlotsPicking(void) { return s_slots.picking; }
+void    CustomTeam_SlotsReload(void)  { read_slots(); }
+
 static void select_slot(int32_t slot)
 {
-    if ((s_slots.picking && !s_slots.filled[slot]) || CalcMenuEntryAddress((uint16_t)(SelectMyCustomTeams_team1 + slot))->isDisabled)
+    if (s_slots.picking && !s_slots.filled[slot])
         return;
     s_slots.chosen = slot;
     SetExitMenuFlag();
@@ -1010,9 +853,6 @@ static const MenuSymbol k_handlers[] = {
     HANDLER(selectMyCustomTeam1),
     HANDLER(selectMyCustomTeam2),
     HANDLER(selectMyCustomTeam3),
-    HANDLER(selectMyCustomTeamsImport),
-    HANDLER(selectMyCustomTeamsImportYes),
-    HANDLER(selectMyCustomTeamsImportNo),
 };
 #undef HANDLER
 
@@ -1065,56 +905,17 @@ int32_t CustomTeam_Pick(TeamFileEx *out)
  * after a trip through the file's text -- which has no skill in it, refuses a wrong
  * checksum and an unknown id, and ignores a skill someone writes into it.
  * ====================================================================== */
-/* The rule, with a world selected (SWOS_WORLD=2627 --custom-team-selftest): a team of the world
- * that is not a 96/97 team cannot become a custom team, may be played as it is, and is refused
- * renamed. */
-static int32_t world_self_test(void)
-{
-    int32_t country, i, worldOnly = 0, bad = 0;
-
-    if (World_Current() == WORLD_9697)
-        return 1;
-    g_customTeamQuiet = 1;
-    for (country = 0; country < kCountries; country++) {
-        const TeamDbEntry *e;
-        for (i = 0; (e = TeamDb_Entry(country, i)) != NULL; i++) {
-            TeamFileEx team = e->team;
-            CustomTeam custom;
-            if (e->team.team.countryNumber != country || !e->canonical || CustomTeam_FromTeam(&team, &custom))
-                continue;
-            worldOnly++;
-            if (!CustomTeam_Allowed(&team))
-                bad++;
-            memcpy(team.team.teamName, "NOT 96/97 DATA", 15);
-            if (CustomTeam_Allowed(&team))
-                bad++;
-        }
-    }
-    g_customTeamQuiet = 0;
-    fprintf(stderr, "[custom-team] the rule, in world %s: %d teams not of the 96/97 data, none can be a custom "
-                    "team; %d wrong answers\n", World_Tag(), (int)worldOnly, (int)bad);
-    return worldOnly > 0 && bad == 0;   /* (none at all: the world's data was not there to test) */
-}
-
-static int32_t self_test(void);
-
 int32_t CustomTeam_SelfTest(void)
 {
-    int32_t ok;
-    base_begin();
-    ok = self_test();
-    base_end();
-    return ok && world_self_test();
-}
-
-static int32_t self_test(void)
-{
     static char json[kJsonMax], edited[kJsonMax + 64];
-    int32_t country, i, teamsSeen = 0, failed = 0, idsOk = TeamDb_SelfTest();
+    int32_t country, i, db, teamsSeen = 0, failed = 0, idsOk = TeamDb_SelfTest();
     const TeamDbEntry *e;
 
+    /* The world being played's teams, and -- a world on (SWOS_WORLD=2627) -- 96/97's too: a
+     * custom team of either is checked against its own database. */
+    for (db = 0; db < (World_Current() != WORLD_9697 ? 2 : 1); db++)
     for (country = 0; country < kCountries; country++) {
-        for (i = 0; (e = TeamDb_Entry(country, i)) != NULL; i++) {
+        for (i = 0; (e = db ? TeamDb_Entry9697(country, i) : TeamDb_Entry(country, i)) != NULL; i++) {
             TeamFileEx team = e->team, back, cheat, want, base;
             CustomTeam custom, read;
             uint8_t swap;
@@ -1164,7 +965,7 @@ static int32_t self_test(void)
                 if (memcmp(&back, &want, sizeof want) != 0 || !CustomTeam_Allowed(&back))
                     bad |= 32;
                 /* It is the database's players under the owner's changes. */
-                if (!game_team(country, team.team.teamOrdinal, &base) ||
+                if (!game_team(e, &base) ||
                     memcmp(want.team.teamName, "SELF TEST UNITED", 16) != 0 || want.team.tactics != 5 ||
                     want.team.prShirtType != 3 || want.team.secSocksColor != 4 ||
                     want.team.playerNumbers[1] != team.team.playerNumbers[1] ||
@@ -1212,7 +1013,8 @@ static int32_t self_test(void)
             }
         }
     }
-    fprintf(stderr, "[custom-team] self-test: %d teams of the database, %d failed\n", (int)teamsSeen, (int)failed);
+    fprintf(stderr, "[custom-team] self-test: %d teams of the database%s, %d failed\n", (int)teamsSeen,
+            World_Current() != WORLD_9697 ? "s (the world's and 96/97's)" : "", (int)failed);
     return idsOk && teamsSeen > 0 && failed == 0;
 }
 
@@ -1252,18 +1054,7 @@ static int32_t closest_team(const TeamFileEx *team, const TeamDbEntry **nearest)
     return best;
 }
 
-static int32_t convert_dir(const char *in, const char *out);
-
 int32_t CustomTeam_ConvertDir(const char *in, const char *out)
-{
-    int32_t ok;
-    base_begin();
-    ok = convert_dir(in, out);
-    base_end();
-    return ok;
-}
-
-static int32_t convert_dir(const char *in, const char *out)
 {
     static char json[kJsonMax];
     struct dirent *de;

@@ -133,20 +133,21 @@ rebase), `git cherry-pick <commit>` one fix, or nothing at all. `upstream` is fe
   14 s: a 660 KB ranking, then a call a tournament). The asking runs on a thread of its own: the
   game never stops for it, the menu says LOADING. `SWOS_UNITED_TEST_INFO=<name>[:p|o|t]` with
   `--menu=swos2020/matchInfoMenu` opens one.
-- **IMPORT FROM SWOS 2020** (`src/united_teamimport.c`, its button in `src/custom_team.c` behind
-  `ACCOUNT_HAS_TEAM_IMPORT`, its entries in the import script's `EXTRA_ENTRIES`): the logged-in
-  player's `<USER>.TEAM`, `_2`, `_3` from `PROJECT_SWOS2020_TEAMS`, converted like any raw record
-  in a slot. Empty slots first; a team already in a slot is left alone; too few empty slots asks
-  DO YOU WANT TO OVERWRITE..., and NO still fills the empty ones. Teams are found by their players
-  alone; one that cannot be verified is refused: `'NAME' CANNOT BE IMPORTED. PLEASE CREATE IT MANUALLY.`
-  `SWOS_UNITED_TEST_IMPORT=<name>[:y|n]` imports another player's and answers for you.
-- **A CUSTOM TEAM IS 96/97's, always** (the owner, 2026-11-04: building one from any other data is
-  prohibited). `src/custom_team.c`'s `base_begin`/`base_end` scope makes everything that makes,
-  reads or checks one read 96/97, whatever world is played; `src/team_db.c` keeps one copy a
-  world. With a world on: a world's team may be played as it is, renamed it is refused
-  (`CustomTeam_Allowed`); the list a new team is made from shows the world, so making one is
-  refused there. `SWOS_WORLD=2627 --custom-team-selftest` proves it (2,281 teams) and fails if
-  the world's data is not there to test.
+- **IMPORT FROM SWOS 2020** -- the static `teamimport2020` mod (`src/mod_teamimport2020.c`, its
+  overlay `bin/mods/teamimport2020/data_json/menus/swos2020/selectMyCustomTeams.json`: the game's
+  menu and five entries; its onDraw calls OpenSWOS's `CustomTeam_SlotsDraw`). The fetch and the
+  conversion are `src/united_teamimport.c`, behind `Account_TeamImport*` / `ACCOUNT_HAS_TEAM_IMPORT`:
+  the logged-in player's `<USER>.TEAM`, `_2`, `_3` from `PROJECT_SWOS2020_TEAMS`, converted like
+  any raw record in a slot. Empty slots first; a team already in a slot is left alone; too few
+  empty slots asks DO YOU WANT TO OVERWRITE..., and NO still fills the empty ones. Teams are found
+  by their players alone; one that cannot be verified is refused: `'NAME' CANNOT BE IMPORTED.
+  PLEASE CREATE IT MANUALLY.` `SWOS_UNITED_TEST_IMPORT=<name>[:y|n]` imports another player's and
+  answers for you.
+- **Custom teams and the worlds**: each is checked against the database it came from -- OpenSWOS's
+  rule since c0beebae (docs/CUSTOM_TEAMS.md §4), replacing the first "a custom team is always
+  96/97's" (2026-11-04; the owner, 2026-11-07: United plays the worlds too). A 96/97 custom team
+  plays with a world on; one made from a world's club plays while that world is.
+  `SWOS_WORLD=2627 --custom-team-selftest`: 4,103 teams.
 - **Bans** (`src/online_account_united.c`, `United_Banned`): SWOS 2020's list, `PROJECT_BAN_LIST`
   (`NAME, MODE, *`), read at each log-in on either site. ALL LOG IN stops the log-in after the
   password. RANKED MATCHES / FRIENDLY MATCHES: OPEN LOBBY refuses that choice alone, and the HOST's

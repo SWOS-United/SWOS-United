@@ -1,0 +1,13 @@
+{
+ "uuid": "8b6ba42e-36cc-5440-b11b-2e4a7e526009",
+ "id": "teamimport2020",
+ "name": "Import from SWOS 2020",
+ "version": "1.0",
+ "author": "SWOS United (Playaveli)",
+ "about": "MY CUSTOM TEAMS' IMPORT FROM SWOS 2020: your custom teams from sensiblesoccer.de, by your log-in.",
+ "targets": [
+  "sdl"
+ ],
+ "changes": "cosmetic",
+ "default": true
+}

@@ -872,7 +872,7 @@ int main(int argc, char **argv)
                 return 1;
             }
             *comma = '\0';
-            if (getenv("SWOS_WORLD"))
+            if (getenv("SWOS_WORLD"))       /* (these two run before the world is set, below) */
                 World_Set(getenv("SWOS_WORLD"));
             return CustomTeam_ConvertDir(dirs, comma + 1) ? 0 : 1;
         } else if ((v = match_kv(a, "sound-style")) != NULL) {
@@ -902,7 +902,7 @@ int main(int argc, char **argv)
         } else if (strcmp(a, "--dos-sound-selftest") == 0) {
             return DosSound_SelfTest() ? 1 : 0;
         } else if (strcmp(a, "--custom-team-selftest") == 0) {
-            if (getenv("SWOS_WORLD"))       /* (these two run before the world is set, below) */
+            if (getenv("SWOS_WORLD"))
                 World_Set(getenv("SWOS_WORLD"));
             return CustomTeam_SelfTest() ? 0 : 1;
         } else if (strncmp(a, "--matchmaker-selftest", 21) == 0) {

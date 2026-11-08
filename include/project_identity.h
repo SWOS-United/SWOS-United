@@ -108,6 +108,6 @@
 /* SWOS United: every SWOS 2020 mod is part of the game (the owner and Playaveli, 2026-11-07) --
  * its main menu, its challenge and speedrun screens, SWOS Galore, the news ticker, and the
  * records read from SWOS 2020's servers. */
-#define PROJECT_STATIC_MODS     "menus2020, challenges2020, swos2020-challenges, speedrun2020, galore2020, ticker, online-records, discord2020"
+#define PROJECT_STATIC_MODS     "menus2020, challenges2020, swos2020-challenges, speedrun2020, galore2020, ticker, online-records, discord2020, teamimport2020"
 
 #endif /* PROJECT_IDENTITY_H */
