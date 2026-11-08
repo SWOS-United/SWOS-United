@@ -2092,6 +2092,9 @@ __attribute__((used, externally_visible))
 void DrawQueuedSprites(void)
 {
     uint8_t *a2 = (uint8_t *)_renderStackPtr;
+#ifdef SWOS_SDL_BUILD
+    { extern void MatchScoreboard_SpritesBegin(void); MatchScoreboard_SpritesBegin(); }
+#endif
 
     /* Stack entry on disk: [Sprite *a1][SpriteGraphics *a0][int16 d1][int16 d2]
      * On 32-bit each pointer is 4 B (total 12 B/entry); on 64-bit each is 8 B
@@ -2131,7 +2134,11 @@ void DrawQueuedSprites(void)
             extern Sprite  _currentTimeSprite, _currentPlayerNameSprite;
             extern int32_t MatchScoreboard_Showing(void), MatchScoreboard_HidesClock(void);
             extern void    CurrentPlayerName_ScoreboardShift(const Sprite *spr, int16_t *dx, int16_t *dy);
+            extern int32_t MatchScoreboard_Sprite(const Sprite *spr, int16_t *x, int16_t y, int32_t h);
             if (a4 == &_currentTimeSprite && MatchScoreboard_HidesClock())
+                continue;
+            /* the result's band (SWOS 2020's: smooth, its kits beside the score, the names out) */
+            if (a0 && MatchScoreboard_Sprite(a4, &d1, d2, a0->nlines))
                 continue;
             if (a4 == &_currentPlayerNameSprite && MatchScoreboard_Showing()) {
                 int16_t dx, dy;

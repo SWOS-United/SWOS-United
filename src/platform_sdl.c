@@ -222,6 +222,7 @@ void Platform_KeepFrameFresh(void)
     extern void Render_KeepScrollSubpixel(void);
     if (s_hud_stamp)
         s_hud_stamp = Platform_NowMs();
+    MatchScoreboard_KeepFresh();
     Render_KeepScrollSubpixel();
 }
 
@@ -2085,6 +2086,7 @@ static void present_frame_copy(SDL_Texture *tex)
 /* SWOS 2020's scoreboard this frame: 0 none, 1 in the HUD strip (the sub-pixel shift must not move
  * it), 2 in the picture itself. */
 static int s_scoreboard;
+static uintptr_t s_band_fb;     /* the frame buffer whose result band is drawn this frame, or 0 */
 
 static uint32_t *screenshot_frame_with_hud(uint32_t *fb)
 {
@@ -2107,6 +2109,8 @@ static uint32_t *screenshot_frame_with_hud(uint32_t *fb)
     }
     if (s_scoreboard == 1)
         MatchScoreboard_Draw(tmp, _screen_width, 0, 0, 0);
+    if (s_band_fb && s_hud_layer && s_subpixel_scroll)
+        MatchScoreboard_DrawBandKits(tmp, _screen_width, s_band_fb, 0, 0);
     return tmp;
 }
 
@@ -2175,6 +2179,21 @@ static void render_frame_impl(int pump_full)
     /* SWOS 2020's scoreboard (match_scoreboard.c): with the sub-pixel scroll on, over the world in
      * the HUD strip, its box joined to the strip's here; else straight into the picture. */
     s_scoreboard = 0;
+    /* The result's band (match_scoreboard.c), for the frame buffer shown: darkened in the picture,
+     * under the result's text (in the HUD strip, or left alone in the picture), its kits over it. */
+    s_band_fb = 0;
+    if (!arcade_full && _usePlaneOffsetFlag == 0) {
+        const uintptr_t shown = _useAltBaseFlag ? _frontbufferBasePtr : _frontbufferBaseAltPtr;
+        int32_t bx, by, bw, bh;
+        if (MatchScoreboard_BandRect(shown, &bx, &by, &bw, &bh)) {
+            MatchScoreboard_DrawBand(fb, fbpx, shown, (const uint8_t *)shown);
+            s_band_fb = shown;
+            if (s_hud_layer && s_subpixel_scroll)
+                Platform_HudLayerMark(bx, by, bw, bh);
+            else
+                MatchScoreboard_DrawBandKits(fb, fbpx, shown, 0, 0);
+        }
+    }
     if (!arcade_full && MatchScoreboard_Showing()) {
         if (s_hud_layer && s_subpixel_scroll) {
             int32_t bx, by, bw, bh;
@@ -2239,6 +2258,8 @@ shots_done:
         int stripRows = compose_hud_strip(fb, _screen_width);
         if (s_scoreboard == 1 && s_hud_strip_w > 0)
             MatchScoreboard_Draw(fb + (size_t)PLATFORM_SCREEN_H * fbpx, fbpx, s_hud_dst_x, s_hud_dst_y, 1);
+        if (s_band_fb && s_hud_layer && s_subpixel_scroll && s_hud_strip_w > 0)
+            MatchScoreboard_DrawBandKits(fb + (size_t)PLATFORM_SCREEN_H * fbpx, fbpx, s_band_fb, s_hud_dst_x, s_hud_dst_y);
         SDL_Rect up = { 0, 0, _screen_width, PLATFORM_SCREEN_H + stripRows };
         SDL_UpdateTexture(tex, &up, fb, _screen_width * 4);
     }

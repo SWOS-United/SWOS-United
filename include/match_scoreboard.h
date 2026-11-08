@@ -24,6 +24,18 @@ void    MatchScoreboard_Rect(int32_t *x, int32_t *y, int32_t *w, int32_t *h);
 /* Draws it into an ARGB picture the game's size: `overlay` 1 for a layer drawn over the picture
  * (the box is then half-transparent black), 0 for the picture itself (the box darkens it). */
 void    MatchScoreboard_Draw(uint32_t *argb, int32_t pitchPixels, int32_t originX, int32_t originY, int32_t overlay);
+
+/* The result's band, as SWOS 2020 draws it (match_scoreboard.c). DrawQueuedSprites: SpritesBegin
+ * before its sprites, and Sprite for each -- 1 to leave a grid sprite out (its rows noted), and
+ * the team names' x moved out. The present, for the frame buffer it shows: BandRect (its box, 0 if
+ * none), DrawBand (darkens the picture there, the text left alone), DrawBandKits (the kits). */
+struct Sprite;
+void    MatchScoreboard_SpritesBegin(void);
+void    MatchScoreboard_KeepFresh(void);          /* the match is paused: what it drew stays */
+int32_t MatchScoreboard_Sprite(const struct Sprite *spr, int16_t *x, int16_t y, int32_t h);
+int32_t MatchScoreboard_BandRect(uintptr_t fb, int32_t *x, int32_t *y, int32_t *w, int32_t *h);
+void    MatchScoreboard_DrawBand(uint32_t *argb, int32_t pitchPixels, uintptr_t fb, const uint8_t *fb8);
+void    MatchScoreboard_DrawBandKits(uint32_t *argb, int32_t pitchPixels, uintptr_t fb, int32_t originX, int32_t originY);
 #endif
 
 #endif
