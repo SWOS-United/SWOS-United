@@ -153,7 +153,8 @@ rebase), `git cherry-pick <commit>` one fix, or nothing at all. `upstream` is fe
   game refuses a banned joiner (`Account_JoinAllowed`), since a joiner cannot see what a game is
   for. League / cup is never affected. No list, no bans, as in SWOS 2020.
   `SWOS_UNITED_BANS_TEST="NAME, MODE;..."` adds lines for a test.
-- **A cup tie's second leg** (`src/netplay_lobby.c`, `leg_carry`; NETPLAY_COMPAT 10): after a
+- **A cup tie's second leg** -- now OPENSWOS's rule (e6fb5181, its NETPLAY_COMPAT 12; `src/netplay_lobby.c`,
+  `leg_carry`; docs/NETPLAY.md): after a
   completed first leg each game reads its injuries and sendings-off off the match into both
   teams' `cardsInjuries` (both played the same match, so nothing is sent), by `playerIndex`, a
   substituted player too. SWOS 2020's rule: in the eleven, a sending-off or an injury past a knock
@@ -161,6 +162,8 @@ rebase), `git cherry-pick <commit>` one fix, or nothing at all. `upstream` is fe
   a knock plays. Cleared after the second leg. The team stays for the second leg (ours: another
   would leave the injuries behind). `SWOS_LOBBY_TEST_LEG=<side>:<file index>:<status>,...`
   on BOTH games forces one; file index, not line-up slot.
+- **GO stays confirmed** when the other player changes their side (SWOS 2020's): the static
+  menus2020 mod's `lobbyKeepsReady` (OpenSWOS's lobby takes GO down without it).
 - **display2020** (`src/mod_display2020.c`, a mod: MODS -> SWOS 2020 MATCH DISPLAY, on by default,
   togglable): SWOS 2020's match display in three parts -- the scoreboard at the top left (minute,
   both kits, score, its scores mode 4; the game's own clock left out, the player's name top right),
