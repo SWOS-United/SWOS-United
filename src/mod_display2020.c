@@ -19,7 +19,7 @@
  *
  * How: the engine's hooks (include/mod_api.h). spriteDraw leaves the clock and the grid sprites
  * out of the picture, notes the band's rows (and the frame buffer's pixels there before the
- * result's text) and moves the names; frameDrawn draws the board, the band's darkening and the
+ * result's text) and moves the names; frameUnder (under the other mods: the flags go over it) draws the board, the band's darkening and the
  * kits into an RGBA layer the picture's size, over the finished picture through gfx.h -- either
  * presenter, the GPU one or SDL's. Halving a colour is black at half alpha over it; the band's
  * text (what changed in the frame buffer since the snapshot, or what the HUD layer holds with
@@ -338,15 +338,17 @@ static int32_t draw_band(void)
     }
     if (_replayState)
         return 1;
-    if (wide_layout()) {
-        y = b->gridTop + 11;
-        x1 = centre - (40 + (_statsTeam1Goals >= 10 ? 5 : 0));
-        /* (its additionalGap carries over: a two-digit home score moves the away kit 5 too) */
-        x2 = centre + (22 + (_statsTeam2Goals >= 10 ? 6 : _statsTeam1Goals >= 10 ? 5 : 0));
-    } else {
-        y = b->gridTop - 7 + 3;
-        x1 = centre - 76;
-        x2 = centre + 64;
+    /* the kits under the flags (the flags mod's: 22 x 16, 6 in from the banner's edge, centred on
+     * the names' row) -- in the same place with the flags mod off. Not SWOS 2020's place (above
+     * the names, or beside the score): the owner's, 2026-11-07. */
+    {
+        ModResultBanner rb;
+        if (!ModApi_ResultBanner(&rb))
+            return 1;
+        y  = rb.nameTop + (rb.nameHeight - 16) / 2 + 16 + 3;
+        x1 = rb.left + 6 + (22 - 16) / 2;
+        x2 = rb.right - 6 - 22 + (22 - 16) / 2;
+        (void)centre;
     }
     kit(x1, y, &_topTeamInGame, 2);
     kit(x2, y, &_bottomTeamInGame, 2);
@@ -429,7 +431,7 @@ static void frame_drawn(void)
 
 const ModDef ModDef_display2020 = {
     .slug = SLUG,
-    .frameDrawn = frame_drawn,
+    .frameUnder = frame_drawn,      /* under the flags mod and the rest: the band is shading */
     .spritesBegin = sprites_begin,
     .spriteDraw = sprite_draw,
     .frameKept = frame_kept,
