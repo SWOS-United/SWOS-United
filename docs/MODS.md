@@ -908,8 +908,8 @@ the centre 1440 x 1080, which a 4:3 window keeps -- it is cropped to the window'
 
 ## 25c. PC menu shading (the dosmenus mod)
 
-The menus' buttons shaded as the PC game shades them (`src/mod_dosmenus.c`, canonical, off by
-default; needs the PC game's `grafs_dos/FILL.256`, which the setup installs). The PC game
+The menus' buttons shaded as the PC game shades them (`src/mod_dosmenus.c`, canonical, on by
+default since 2026-11-08 -- the owner, so F5 works out of the box; needs the PC game's `grafs_dos/FILL.256`, which the setup installs). The PC game
 (swos.asm `DrawEmptyMenuItem`) draws a box of menu colour c pixel by pixel as ramp
 `menuItemColorTable[c]` of its menu palette plus FILL.256's shade (0-31, a dithered gradient,
 dark bottom-left to bright top-right, 320 x 200) at that pixel; a 1-pixel line flat. Here the
@@ -1176,3 +1176,6 @@ player can move it or switch it off in SWOS.ini -- `[mod.<slug>] hotkey = F7` / 
   on one machine only, so anything that touched the match would part the two games.
 
 The first: dosmenus' F5 (§25c), switching the menus between the PC's shading and the Amiga's.
+
+A mod's message the player answers: `ModApi_ShowDialog(title, text, buttons, count, default)` -- the
+game's own dialog screen (docs/MENUS.md §14), from the menus, never during a match.
