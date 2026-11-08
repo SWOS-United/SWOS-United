@@ -17,10 +17,12 @@
  * where the controls would be -- a phone with nothing else to steer by is not locked out of the menu
  * that would put them back.
  */
+#include "gfx.h"
 #include <SDL.h>
 #include <math.h>
 #include <string.h>
 #include "touch_controls.h"
+#include "match_chat.h"     /* CHAT: an online match's chat line, with the phone's keyboard */
 
 #ifdef SWOS_MOBILE_BUILD
 
@@ -31,7 +33,7 @@ enum { KEY_P = 0x19, KEY_ESC = 0x45 };          /* (raw Amiga scancodes) */
 #define DEADZONE 0.28f                          /* (of the stick's radius) */
 
 static SDL_FingerID s_stickFinger = -1, s_fireFinger[4] = { -1, -1, -1, -1 };
-static int   s_dirs, s_fire, s_sent = -1, s_hidden, s_keyDown[2];
+static int   s_dirs, s_fire, s_sent = -1, s_hidden, s_keyDown[3];
 static int   s_mode = TOUCH_CONTROLS_AUTO;      /* [input] touch_controls */
 static float s_knobX, s_knobY;                  /* (the knob's offset, in output pixels) */
 
@@ -39,13 +41,14 @@ static float s_knobX, s_knobY;                  /* (the knob's offset, in output
  * 150 px stick and 112 px FIRE on a 360 px tall landscape phone). */
 typedef struct { float x, y, r; } Circle;
 typedef struct { float x, y, w, h; } Box;
-static void layout(int w, int h, Circle *stick, Circle *fire, Box *pause, Box *esc)
+static void layout(int w, int h, Circle *stick, Circle *fire, Box *pause, Box *esc, Box *chat)
 {
     const float u = (float)h / 360.0f;
     stick->r = 75 * u; stick->x = 28 * u + stick->r; stick->y = h - 28 * u - stick->r;
     fire->r = 56 * u;  fire->x = w - 32 * u - fire->r; fire->y = h - 44 * u - fire->r;
     esc->w = 52 * u; esc->h = 32 * u; esc->x = w - 32 * u - esc->w; esc->y = h - 172 * u - esc->h;
     *pause = *esc; pause->w = 64 * u; pause->x = esc->x - 10 * u - pause->w;
+    *chat = *esc; chat->x = pause->x - 10 * u - chat->w;     /* (only in an online match) */
 }
 
 static void send(void)
@@ -92,7 +95,7 @@ static void release_all(void)
     s_stickFinger = -1;
     for (int i = 0; i < 4; i++) s_fireFinger[i] = -1;
     s_dirs = 0; s_fire = 0; s_knobX = s_knobY = 0;
-    s_keyDown[0] = s_keyDown[1] = 0;
+    s_keyDown[0] = s_keyDown[1] = s_keyDown[2] = 0;
     send();
 }
 
@@ -114,7 +117,7 @@ int TouchControls_Mode(void)
 
 void TouchControls_ReleaseAll(void)
 {
-    if (s_stickFinger != -1 || s_fire || s_keyDown[0] || s_keyDown[1])
+    if (s_stickFinger != -1 || s_fire || s_keyDown[0] || s_keyDown[1] || s_keyDown[2])
         release_all();
 }
 
@@ -122,7 +125,7 @@ void TouchControls_ReleaseAll(void)
 void TouchControls_HandleEvent(const SDL_Event *e, int w, int h)
 {
     Circle stick, fire;
-    Box pause, esc;
+    Box pause, esc, chat;
     if (e->type == SDL_CONTROLLERBUTTONDOWN) {
         if (!s_hidden && s_mode == TOUCH_CONTROLS_AUTO) { s_hidden = 1; release_all(); }
         return;
@@ -131,13 +134,14 @@ void TouchControls_HandleEvent(const SDL_Event *e, int w, int h)
         return;
     if (w <= 0 || h <= 0)
         return;
-    layout(w, h, &stick, &fire, &pause, &esc);
+    layout(w, h, &stick, &fire, &pause, &esc, &chat);
     const float x = e->tfinger.x * w, y = e->tfinger.y * h;
     const SDL_FingerID id = e->tfinger.fingerId;
     if (e->type == SDL_FINGERDOWN) {
         s_hidden = 0;
         if (in_box(&pause, x, y)) { s_keyDown[0] = 1; InputSDL_TouchKey(KEY_P); return; }
         if (in_box(&esc, x, y))   { s_keyDown[1] = 1; InputSDL_TouchKey(KEY_ESC); return; }
+        if (MatchChat_Active() && in_box(&chat, x, y)) { s_keyDown[2] = 1; MatchChat_ToggleInput(); return; }
         if (y < h * 0.40f)
             return;                                     /* (the zones: the lower 60 %, as the page's) */
         if (x < w * 0.5f) {
@@ -156,7 +160,7 @@ void TouchControls_HandleEvent(const SDL_Event *e, int w, int h)
         return;
     }
     /* up */
-    s_keyDown[0] = s_keyDown[1] = 0;
+    s_keyDown[0] = s_keyDown[1] = s_keyDown[2] = 0;
     if (id == s_stickFinger) {
         s_stickFinger = -1; s_dirs = 0; s_knobX = s_knobY = 0;
         send();
@@ -168,7 +172,7 @@ void TouchControls_HandleEvent(const SDL_Event *e, int w, int h)
 
 /* ---- drawing: in output pixels, over the finished frame ---- */
 
-static void disc(SDL_Renderer *r, float cx, float cy, float rad, SDL_Color c)
+static void disc(float cx, float cy, float rad, SDL_Color c)
 {
     enum { N = 40 };
     SDL_Vertex v[N + 1];
@@ -181,10 +185,10 @@ static void disc(SDL_Renderer *r, float cx, float cy, float rad, SDL_Color c)
         v[i + 1].color = c;
         idx[i * 3] = 0; idx[i * 3 + 1] = i + 1; idx[i * 3 + 2] = (i + 1) % N + 1;
     }
-    SDL_RenderGeometry(r, NULL, v, N + 1, idx, N * 3);
+    Gfx_Geometry(NULL, v, N + 1, idx, N * 3);
 }
 
-static void ring(SDL_Renderer *r, float cx, float cy, float rad, float width, SDL_Color c)
+static void ring(float cx, float cy, float rad, float width, SDL_Color c)
 {
     enum { N = 40 };
     SDL_Vertex v[N * 2];
@@ -198,76 +202,79 @@ static void ring(SDL_Renderer *r, float cx, float cy, float rad, float width, SD
         idx[i * 6] = i * 2; idx[i * 6 + 1] = i * 2 + 1; idx[i * 6 + 2] = j * 2;
         idx[i * 6 + 3] = j * 2; idx[i * 6 + 4] = i * 2 + 1; idx[i * 6 + 5] = j * 2 + 1;
     }
-    SDL_RenderGeometry(r, NULL, v, N * 2, idx, N * 6);
+    Gfx_Geometry(NULL, v, N * 2, idx, N * 6);
 }
 
-static void box(SDL_Renderer *r, const Box *b, int down, float u)
+static void box(const Box *b, int down, float u)
 {
     SDL_FRect f = { b->x, b->y, b->w, b->h };
-    SDL_SetRenderDrawColor(r, 255, 255, 255, down ? 102 : 31);
-    SDL_RenderFillRectF(r, &f);
-    SDL_SetRenderDrawColor(r, 255, 255, 255, 102);
+    Gfx_FillRect(&f, (SDL_Color){ 255, 255, 255, (Uint8)(down ? 102 : 31) });
     for (int i = 0; i < (int)(2 * u + 0.5f); i++) {
         SDL_FRect o = { f.x + i, f.y + i, f.w - 2 * i, f.h - 2 * i };
-        SDL_RenderDrawRectF(r, &o);
+        Gfx_DrawRect(&o, (SDL_Color){ 255, 255, 255, 102 });
     }
 }
 
-void TouchControls_Draw(SDL_Renderer *r)
+void TouchControls_Draw(void)
 {
-    int w, h;
+    int w = 0, h = 0;
     Circle stick, fire;
-    Box pause, esc;
-    if (s_hidden || s_mode == TOUCH_CONTROLS_NEVER || SDL_GetRendererOutputSize(r, &w, &h) != 0 ||
-        w <= 0 || h <= 0)
+    Box pause, esc, chat;
+    Gfx_OutputSize(&w, &h);
+    if (s_hidden || s_mode == TOUCH_CONTROLS_NEVER || w <= 0 || h <= 0)
         return;
-    layout(w, h, &stick, &fire, &pause, &esc);
+    layout(w, h, &stick, &fire, &pause, &esc, &chat);
     const float u = (float)h / 360.0f;
-    /* (in output pixels: the picture's logical size and scale put aside, then put back) */
-    int lw, lh;
-    float sx, sy;
-    SDL_Rect vp;
-    SDL_RenderGetLogicalSize(r, &lw, &lh);
-    SDL_RenderGetScale(r, &sx, &sy);
-    SDL_RenderGetViewport(r, &vp);
-    SDL_RenderSetLogicalSize(r, 0, 0);
-    SDL_RenderSetScale(r, 1.0f, 1.0f);
-    SDL_RenderSetViewport(r, NULL);
-    SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
+    /* (in output pixels, on either presenter: gfx.h) */
+    const GfxSpace space = Gfx_Space();
+    const GfxBlend blend = Gfx_Blend();
+    Gfx_SetSpace(GFX_SPACE_OUTPUT);
+    Gfx_SetBlend(GFX_BLEND_ALPHA);
 
     const SDL_Color faint = { 255, 255, 255, 26 }, edge = { 255, 255, 255, 89 }, knob = { 255, 255, 255, 89 },
                     fireUp = { 255, 255, 255, 36 }, fireDown = { 255, 255, 255, 102 };
-    disc(r, stick.x, stick.y, stick.r, faint);
-    ring(r, stick.x, stick.y, stick.r, 2 * u, edge);
-    disc(r, stick.x + s_knobX, stick.y + s_knobY, 31 * u, knob);
-    ring(r, stick.x + s_knobX, stick.y + s_knobY, 31 * u, 2 * u, edge);
-    disc(r, fire.x, fire.y, fire.r, s_fire ? fireDown : fireUp);
-    ring(r, fire.x, fire.y, fire.r, 2 * u, edge);
-    box(r, &pause, s_keyDown[0], u);
-    box(r, &esc, s_keyDown[1], u);
+    disc(stick.x, stick.y, stick.r, faint);
+    ring(stick.x, stick.y, stick.r, 2 * u, edge);
+    disc(stick.x + s_knobX, stick.y + s_knobY, 31 * u, knob);
+    ring(stick.x + s_knobX, stick.y + s_knobY, 31 * u, 2 * u, edge);
+    disc(fire.x, fire.y, fire.r, s_fire ? fireDown : fireUp);
+    ring(fire.x, fire.y, fire.r, 2 * u, edge);
+    box(&pause, s_keyDown[0], u);
+    box(&esc, s_keyDown[1], u);
     /* their marks: PAUSE two bars, ESC a cross */
-    SDL_SetRenderDrawColor(r, 255, 255, 255, 191);
+    const SDL_Color mark = { 255, 255, 255, 191 };
     {
         const float bh = pause.h * 0.5f, bw = 4 * u, cx = pause.x + pause.w / 2, cy = pause.y + pause.h / 2;
         SDL_FRect b1 = { cx - 2 * bw, cy - bh / 2, bw, bh }, b2 = { cx + bw, cy - bh / 2, bw, bh };
-        SDL_RenderFillRectF(r, &b1);
-        SDL_RenderFillRectF(r, &b2);
+        Gfx_FillRect(&b1, mark);
+        Gfx_FillRect(&b2, mark);
     }
     {
         const float s = esc.h * 0.25f, cx = esc.x + esc.w / 2, cy = esc.y + esc.h / 2;
         for (float t = -1.5f * u; t <= 1.5f * u; t += 1.0f) {
-            SDL_RenderDrawLineF(r, cx - s + t, cy - s, cx + s + t, cy + s);
-            SDL_RenderDrawLineF(r, cx - s + t, cy + s, cx + s + t, cy - s);
+            Gfx_DrawLine(cx - s + t, cy - s, cx + s + t, cy + s, mark);
+            Gfx_DrawLine(cx - s + t, cy + s, cx + s + t, cy - s, mark);
         }
     }
+    if (MatchChat_Active()) {   /* CHAT: a speech bubble, lit while a line is open */
+        box(&chat, s_keyDown[2] || MatchChat_Typing(), u);
+        const float bw = chat.w * 0.46f, bh = chat.h * 0.38f, cx = chat.x + chat.w / 2, cy = chat.y + chat.h * 0.45f;
+        SDL_FRect b = { cx - bw / 2, cy - bh / 2, bw, bh };
+        Gfx_FillRect(&b, mark);
+        SDL_Vertex t[3];
+        memset(t, 0, sizeof t);
+        t[0].position.x = cx - bw * 0.25f; t[0].position.y = cy + bh / 2;
+        t[1].position.x = cx - bw * 0.05f; t[1].position.y = cy + bh / 2;
+        t[2].position.x = cx - bw * 0.35f; t[2].position.y = cy + bh / 2 + chat.h * 0.18f;
+        t[0].color = t[1].color = t[2].color = mark;
+        Gfx_Geometry(NULL, t, 3, NULL, 0);
+    }
     {   /* FIRE's: a ball's ring */
-        ring(r, fire.x, fire.y, fire.r * 0.32f, 3 * u, (SDL_Color){ 255, 255, 255, 170 });
+        ring(fire.x, fire.y, fire.r * 0.32f, 3 * u, (SDL_Color){ 255, 255, 255, 170 });
     }
 
-    SDL_RenderSetLogicalSize(r, lw, lh);
-    if (!lw)
-        SDL_RenderSetScale(r, sx, sy);
-    SDL_RenderSetViewport(r, lw ? NULL : &vp);
+    Gfx_SetBlend(blend);
+    Gfx_SetSpace(space);
 }
 
 #else   /* the desktops have no on-screen controls: the setting is kept, and does nothing */

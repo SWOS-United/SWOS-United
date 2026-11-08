@@ -50,7 +50,7 @@ values and comments are never rewritten or reordered.
 
 ```ini
 [video]
-renderer=accel        ; software | accel (hardware-accelerated)
+renderer=accel        ; accel (the GPU presenter, else SDL's) | sdl | software
 vsync=off             ; on | off — accel renderer only
 subpixel_scroll=on    ; on | off — smooth sub-pixel scrolling (see below)
 scaling=smooth        ; sharp | smooth — how the frame is scaled (see below)
@@ -72,7 +72,7 @@ screen=0              ; monitor index to open on, 0 = primary. Auto-clamped.
 mode=mono             ; mono | stereo
 
 [general]
-language=en           ; en | de | fr | es | it | nl
+language=en           ; en | de | fr | es | it | nl -- also OPTIONS -> LANGUAGE (from the next start)
 currency=pound        ; pound | dollar | euro
 world=9697            ; the football world: 9697 (Sensible World of Soccer 96/97) | 2627
                       ; (World 2026-27, if installed); OPTIONS -> WORLD sets it, from the
@@ -110,6 +110,16 @@ key_service=F2
 Everything in `[arcade]` except `enabled` is also editable in-game from
 the F2 service menu, which writes changes straight back to `SWOS.ini`.
 
+#### `[chat]` (online matches)
+
+```ini
+[chat]
+quick1=Good luck, have fun!   ; the keys 1 .. 9, 0 send these in an online match
+quick2=Nice goal!             ; (TAB types your own line, F3 hides the chat).
+...                           ; Empty: that key sends nothing.
+quick0=GG
+```
+
 #### `[mods]` and `[tweaks]` (docs/MODS.md)
 
 ```ini
@@ -146,10 +156,12 @@ keeps MULTIPLAYER off. Every tweak is off online and in the test rigs.
                           multi-monitor rigs.
 --scale=<1|2|3|4>         Windowed pixel scale at startup. Default: 3.
                           Adjust at runtime with the + and - keys.
---renderer=<software|accel>
-                          Choose the SDL renderer. Default: accel.
-                          'accel' uses the platform's hardware backend
-                          (D3D / OpenGL / Metal). 'software' is a CPU-only
+--renderer=<accel|sdl|software>
+                          Choose the renderer. Default: accel.
+                          'accel' is the GPU presenter (docs/RENDERING.md),
+                          or SDL's renderer where it cannot start; 'sdl' is
+                          SDL's hardware renderer (D3D / OpenGL / Metal),
+                          as before the GPU presenter. 'software' is a CPU-only
                           fallback for hosts where the hardware path
                           misbehaves.
 --subpixel=<on|off>       Smooth sub-pixel scrolling. Default: on.

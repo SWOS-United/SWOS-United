@@ -4,7 +4,7 @@
  * Layout (SWOS.ini):
  *
  *   [video]
- *   renderer=accel        ; software | accel
+ *   renderer=accel        ; software | accel (the GPU presenter, else SDL's) | sdl
  *   vsync=false           ; true | false
  *   subpixel_scroll=true  ; true | false — smooth sub-pixel scrolling
  *   scaling=smooth        ; sharp | smooth — even pixels at a non-integer scale
@@ -72,6 +72,11 @@ static int parse_bool(const char *v, int *out)
     return 0;
 }
 
+/* [chat] quick1 .. quick0: the keys 1..9, 0 (match_chat.h) */
+static const char *const kQuickNames[10] = {
+    "quick1", "quick2", "quick3", "quick4", "quick5", "quick6", "quick7", "quick8", "quick9", "quick0",
+};
+
 static int handler(void *user, const char *section,
                    const char *name, const char *value)
 {
@@ -81,6 +86,8 @@ static int handler(void *user, const char *section,
         if (eqi(name, "renderer")) {
             if      (eqi(value, "software")) opts->renderer = PLATFORM_RENDERER_SOFTWARE;
             else if (eqi(value, "accel"))    opts->renderer = PLATFORM_RENDERER_ACCEL;
+            else if (eqi(value, "gpu"))      opts->renderer = PLATFORM_RENDERER_ACCEL;
+            else if (eqi(value, "sdl"))      opts->renderer = PLATFORM_RENDERER_SDL;
         } else if (eqi(name, "vsync")) {
             int b;
             if (parse_bool(value, &b)) opts->vsync = b;
@@ -219,6 +226,10 @@ static int handler(void *user, const char *section,
             if (parse_bool(value, &b))
                 opts->prediction = b;
         }
+    } else if (eqi(section, "chat")) {
+        for (int qi = 0; qi < 10; qi++)
+            if (eqi(name, kQuickNames[qi]))
+                snprintf(opts->chat_quick[qi], sizeof opts->chat_quick[qi], "%s", value);
     } else if (eqi(section, "graphics")) {
         int b;
         if (eqi(name, "style")) {
@@ -350,7 +361,7 @@ void Settings_Load(PlatformInitOptions *opts, const char *path)
 
 static const char *renderer_str(PlatformRendererMode m)
 {
-    return (m == PLATFORM_RENDERER_SOFTWARE) ? "software" : "accel";
+    return m == PLATFORM_RENDERER_SOFTWARE ? "software" : m == PLATFORM_RENDERER_SDL ? "sdl" : "accel";
 }
 
 static const char *fullscreen_str(PlatformFullscreenMode m)
@@ -388,7 +399,7 @@ static const char *crt_mask_str(int m)
  * next setting saved -- OPTIONS -> GAMEPLAY first of all -- crashed the macOS build,
  * which checks its stack, and corrupted it quietly everywhere else (2026-10-05). Every
  * append is bounded now (SETTING), and a full table says so. */
-#define SETTINGS_MAX 96
+#define SETTINGS_MAX 128
 #define SETTING(n)  if ((n) < SETTINGS_MAX) items[(n)++]
 
 /* Inline comment appended to a section-header line in a freshly-created file. */
@@ -424,7 +435,7 @@ static int settings_build(const PlatformInitOptions *opts, IniEntry *items, char
      * happily emits a longer line and the READER then reports "parse error at
      * line N" on our own generated file. Cost me one round-trip to notice. */
     int n = 0;
-    SETTING(n) = (IniEntry){ "video",  "renderer",   "; renderer: software | accel  (hardware-accelerated)", renderer_str(opts->renderer) };
+    SETTING(n) = (IniEntry){ "video",  "renderer",   "; renderer: accel (the GPU presenter, else SDL's) | sdl (SDL's renderer) | software", renderer_str(opts->renderer) };
     SETTING(n) = (IniEntry){ "video",  "vsync",      "; vsync: true | false  (accel renderer only)", opts->vsync ? "true" : "false" };
     SETTING(n) = (IniEntry){ "video",  "subpixel_scroll", "; subpixel_scroll: true | false. Smooths scrolling by shifting the frame by the camera's sub-pixel remainder. Never blurs. Off = compare", opts->subpixel_scroll ? "true" : "false" };
     SETTING(n) = (IniEntry){ "video",  "scaling",    "; scaling: sharp | smooth. A fullscreen scale is rarely a whole number (1080/272 = 3.97), so a plain nearest copy makes some pixels bigger than others. smooth evens them", opts->scaling_smooth ? "smooth" : "sharp" };
@@ -575,6 +586,11 @@ static int settings_build(const PlatformInitOptions *opts, IniEntry *items, char
         "; rollbacks, and where players were drawn against where they really were. The\n"
         "; playback page shows it (docs/PLAYBACK.md). A replay plays the same without it.",
         opts->prediction ? "true" : "false" };
+    for (int qi = 0; qi < 10; qi++)
+        SETTING(n) = (IniEntry){ "chat", kQuickNames[qi], qi ? NULL :
+            "; quick1 .. quick0: in an online match, the keys 1 .. 0 send these lines to the other\n"
+            "; player (TAB types one of your own, F3 hides the chat). Empty: that key sends nothing.",
+            opts->chat_quick[qi] };
 
 
     SETTING(n) = (IniEntry){ "graphics", "style",
