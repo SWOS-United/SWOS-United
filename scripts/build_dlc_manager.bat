@@ -1,6 +1,6 @@
 @echo off
 rem Build the SWOS United DLC Manager for Windows (tools\dlc-manager, a submodule) with MSVC:
-rem ONE static .exe -- Slint, SDL2, curl, libarchive and the MSVC runtime linked in, no DLLs
+rem ONE static .exe -- Slint, SDL2, SDL2_mixer, curl, libarchive and the MSVC runtime linked in, no DLLs
 rem beside it and no VC++ redistributable, like the data setup's window (tools\swosdata\build.bat static).
 rem
 rem   scripts\build_dlc_manager.bat         -> tools\dlc-manager\build_win_static\bin\Release\swos-dlc-manager.exe
@@ -41,7 +41,8 @@ where cmake >nul 2>&1 || (
   exit /b 3
 )
 
-"%VCPKG_ROOT%\vcpkg.exe" install sdl2 curl libarchive --triplet x64-windows-static
+rem sdl2-mixer for the DLC previews (.wav/.ogg/.mp3): its default build has the built-in decoders.
+"%VCPKG_ROOT%\vcpkg.exe" install sdl2 sdl2-mixer curl libarchive --triplet x64-windows-static
 if errorlevel 1 exit /b 1
 
 rem A cache made for another source path (the checkout seen from elsewhere) cannot be reused.

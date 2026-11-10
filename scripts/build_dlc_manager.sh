@@ -79,6 +79,31 @@ die() { say "$*" >&2; exit 1; }
 [ -f "$DLCM/CMakeLists.txt" ] ||
     die "$DLCM is empty: git submodule update --init $DLCM"
 
+# The DLC previews (.wav/.ogg/.mp3, DLC-Manager's apps/dlc_manager/main.cpp) need SDL2_mixer. A
+# distro's links fluidsynth, modplug, mpg123, opus and FLAC (and they jack, glib, readline...), the
+# stack CLAUDE.md says not to bundle; so our own, STATIC, with only SDL2_mixer's built-in decoders
+# (WAV, stb_vorbis, minimp3, dr_flac): linked into the manager, nothing beside it to ship.
+SDL2_MIXER_VERSION=2.8.1
+build_sdl2_mixer_static() {   # $1 = the install prefix; the rest: cmake arguments (the Mac's SDL2, arch)
+    local prefix="$1" src="$1-src"
+    shift
+    [ -f "$prefix/lib/cmake/SDL2_mixer/SDL2_mixerConfig.cmake" ] && return 0
+    local url="https://github.com/libsdl-org/SDL_mixer/releases/download/release-$SDL2_MIXER_VERSION/SDL2_mixer-$SDL2_MIXER_VERSION.tar.gz"
+    say "fetching $url"
+    rm -rf "$src" && mkdir -p "$src" &&
+        curl -fsSL "$url" | tar -xz -C "$src" --strip-components=1 || die "cannot fetch SDL2_mixer $SDL2_MIXER_VERSION"
+    cmake -S "$src" -B "$src/build" -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$prefix" \
+          -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DBUILD_SHARED_LIBS=OFF -DSDL2MIXER_SAMPLES=OFF \
+          -DSDL2MIXER_VENDORED=OFF -DSDL2MIXER_DEPS_SHARED=OFF \
+          -DSDL2MIXER_VORBIS=STB -DSDL2MIXER_MP3=ON -DSDL2MIXER_MP3_MINIMP3=ON -DSDL2MIXER_MP3_MPG123=OFF \
+          -DSDL2MIXER_FLAC=ON -DSDL2MIXER_FLAC_DRFLAC=ON -DSDL2MIXER_FLAC_LIBFLAC=OFF \
+          -DSDL2MIXER_OPUS=OFF -DSDL2MIXER_MOD=OFF -DSDL2MIXER_MIDI=OFF -DSDL2MIXER_WAVPACK=OFF \
+          -DSDL2MIXER_GME=OFF "$@" >/dev/null &&
+        cmake --build "$src/build" >/dev/null && cmake --install "$src/build" >/dev/null ||
+        die "SDL2_mixer $SDL2_MIXER_VERSION did not build (static, built-in decoders)"
+    rm -rf "$src"
+}
+
 build_linux() {
     [ "$(uname -s)" = Linux ] && [ "$(uname -m)" = x86_64 ] || skip "the Linux build is x86_64 Linux only"
     command -v cmake >/dev/null && command -v ninja >/dev/null || skip "no cmake/ninja"
@@ -90,6 +115,7 @@ build_linux() {
             curl -fsSL "$url" | tar -xz -C "$SLINT_LINUX" --strip-components=1 ||
             { rm -rf "$SLINT_LINUX"; die "cannot fetch Slint $SLINT_VERSION"; }
     fi
+    build_sdl2_mixer_static "$ROOT/$LINUX_BUILD-mixer"
     # '\$ORIGIN': the flag goes through Ninja to /bin/sh, which would expand a bare one to nothing.
     # BUILD_WITH_INSTALL_RPATH: the project's INSTALL_RPATH ($ORIGIN) in the built file, not the
     # build tree's path; the flag adds lib/x86_64 after it.
@@ -97,10 +123,14 @@ build_linux() {
           -DSWOS_SLINT_ROOT="$ROOT/$SLINT_LINUX" \
           -DSWOS_USER_DIR="$USER_DIR" -DSWOS_USER_DOT_DIR="$USER_DOT_DIR" \
           -DCMAKE_DISABLE_FIND_PACKAGE_PkgConfig=ON \
+          -DSDL2_mixer_DIR="$ROOT/$LINUX_BUILD-mixer/lib/cmake/SDL2_mixer" \
           -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON \
           '-DCMAKE_EXE_LINKER_FLAGS=-Wl,--disable-new-dtags -Wl,-rpath,\$ORIGIN/lib/x86_64' >/dev/null ||
         die "cmake configure failed (missing libsdl2-dev / libcurl4-openssl-dev / libarchive-dev?)"
     cmake --build "$LINUX_BUILD" || die "build failed"
+    grep -aq 'Mix_LoadWAV_RW' "$LINUX_BIN" ||     # (SDL2_mixer's own message: linked in)
+        die "$LINUX_BIN was built without SDL2_mixer: no DLC previews"
+    readelf -d "$LINUX_BIN" | grep -q 'SDL2_mixer' && die "$LINUX_BIN needs a shared SDL2_mixer (it must be the static one)"
     readelf -d "$LINUX_BIN" | grep -q 'RPATH.*\$ORIGIN/lib/x86_64' ||
         die "$LINUX_BIN has no DT_RPATH \$ORIGIN/lib/x86_64"
     say "OK: $LINUX_BIN"
@@ -166,11 +196,14 @@ build_macos() {
             curl -fsSL "$url" | tar -xz -C "$SLINT_MAC" --strip-components=1 ||
             { rm -rf "$SLINT_MAC"; die "cannot fetch Slint $SLINT_VERSION"; }
     fi
+    build_sdl2_mixer_static "$ROOT/$MAC_BUILD-mixer" -DSDL2_DIR="$fw/Resources/CMake" \
+        -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
     cmake -S "$DLCM" -B "$MAC_BUILD" -G Ninja -DCMAKE_BUILD_TYPE=Release \
           -DSWOS_SLINT_ROOT="$ROOT/$SLINT_MAC" -DSDL2_DIR="$fw/Resources/CMake" \
           -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 \
           -DSWOS_USER_DIR="$USER_DIR" -DSWOS_USER_DOT_DIR="$USER_DOT_DIR" \
-          -DCMAKE_DISABLE_FIND_PACKAGE_PkgConfig=ON -DCMAKE_DISABLE_FIND_PACKAGE_SDL2_mixer=ON >/dev/null ||
+          -DCMAKE_DISABLE_FIND_PACKAGE_PkgConfig=ON \
+          -DSDL2_mixer_DIR="$ROOT/$MAC_BUILD-mixer/lib/cmake/SDL2_mixer" >/dev/null ||
         die "cmake configure failed (brew install libarchive?)"
     cmake --build "$MAC_BUILD" || die "build failed"
     local app="$MAC_BUILD/bin/swos-dlc-manager.app" fws
