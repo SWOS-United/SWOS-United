@@ -14,6 +14,7 @@
 extern const ModDef ModDef_weather;     /* src/mod_weather.c */
 extern const ModDef ModDef_hair;        /* src/mod_hair.c */
 extern const ModDef ModDef_practice;    /* src/mod_practice.c */
+extern const ModDef ModDef_petarkuPractice; /* src/mod_petarku_practice.c */
 extern const ModDef ModDef_speedrun;    /* src/mod_speedrun.c */
 extern const ModDef ModDef_challenges;  /* src/mod_challenges.c */
 extern const ModDef ModDef_classics;    /* src/mod_classics.c */
@@ -23,6 +24,12 @@ extern const ModDef ModDef_pitchmaps;   /* src/mod_pitchmaps.c (SDL: Tile Agent 
 extern const ModDef ModDef_backgrounds; /* src/mod_backgrounds.c (SDL: the menus' true-colour backdrop) */
 extern const ModDef ModDef_dosmenus;    /* src/mod_dosmenus.c (SDL: the PC game's menu shading) */
 extern const ModDef ModDef_retrotv;     /* src/mod_retrotv.c (SDL: the picture through a slang preset) */
+extern const ModDef ModDef_paletteq;    /* src/mod_paletteq.c (SDL: the picture in an old machine's colours) */
+extern const ModDef ModDef_autoplay;    /* src/mod_autoplay.c (SDL: SWOS 2020's F1 AUTOPLAY) */
+extern const ModDef ModDef_balltrails;  /* src/mod_balltrails.c (SDL: SWOS 2020's ball trails) */
+extern const ModDef ModDef_scoreboard;  /* src/mod_scoreboard.c (SDL: SWOS 2020's new scoreboard) */
+extern const ModDef ModDef_netstats;    /* src/mod_netstats.c (SDL: SWOS 2020's network quality strip, F7) */
+extern const ModDef ModDef_pitchselect; /* src/mod_pitchselect.c (SDL: SWOS 2020's SELECT PITCH) */
 
 #if defined(__has_include)
 #if __has_include("fork_mods.inc")
@@ -47,6 +54,7 @@ const ModDef *const g_builtinMods[] = {
     MOD_SDL(ModDef_weather)
     MOD_SDL(ModDef_hair)
     MOD_AMIGA(ModDef_practice)
+    MOD_AMIGA(ModDef_petarkuPractice)
     MOD_AMIGA(ModDef_speedrun)
     MOD_AMIGA(ModDef_challenges)
     MOD_AMIGA(ModDef_classics)
@@ -56,6 +64,12 @@ const ModDef *const g_builtinMods[] = {
     MOD_SDL(ModDef_backgrounds)
     MOD_SDL(ModDef_dosmenus)
     MOD_SDL(ModDef_retrotv)
+    MOD_SDL(ModDef_paletteq)
+    MOD_SDL(ModDef_autoplay)
+    MOD_SDL(ModDef_balltrails)
+    MOD_SDL(ModDef_scoreboard)
+    MOD_SDL(ModDef_netstats)
+    MOD_SDL(ModDef_pitchselect)
 #ifdef FORK_MODS
     FORK_MOD_LIST                       /* "&ModDef_<slug>," a fork's mods */
 #endif

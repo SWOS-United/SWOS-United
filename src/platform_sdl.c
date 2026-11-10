@@ -13,7 +13,9 @@
 #include <stdint.h>
 #include "project_identity.h"
 #include "platform_sdl.h"
-#include "mod_hooks.h"      /* ModHooks_FrameDrawn: the built-in mods' drawing */
+#include "mod_hooks.h"
+#include "swos_settings.h"  /* Settings_Save: the volume keys' */
+#include "text_render.h"    /* DrawMenuText: their readout */      /* ModHooks_FrameDrawn: the built-in mods' drawing */
 #include "gfx.h"            /* the overlays' drawing, on either presenter */
 #include "gpu_present.h"    /* the GPU presenter ([video] renderer = gpu: docs/RENDERING.md) */
 #include "match_chat.h"     /* chatting in an online match: its keys first, its box over the picture */
@@ -1284,6 +1286,31 @@ void Platform_ToggleFullscreen(void)
     }
 }
 
+/* ---- SWOS 2020's VIDEO OPTIONS (SWOS 2020 port, agent A; src/settings_menus.c) ----
+ * WINDOW MODE: windowed, or one of the two fullscreens, now -- what Alt+Enter toggles between,
+ * picked by name. The kind of fullscreen is also what the next Alt+Enter goes to. */
+void Platform_SetFullscreenMode(PlatformFullscreenMode mode)
+{
+#ifdef SWOS_WASM_BUILD
+    (void)mode;
+    return;                             /* (the page owns fullscreen: Platform_ToggleFullscreen) */
+#else
+    if (!s_window)
+        return;
+    if (mode != PLATFORM_FULLSCREEN_NONE)
+        s_fullscreen_mode = mode;
+    if (mode == Platform_GetFullscreenMode())
+        return;
+    if (mode == PLATFORM_FULLSCREEN_NONE) {
+        Platform_ToggleFullscreen();    /* (back to the window's own size) */
+        return;
+    }
+    SDL_SetWindowFullscreen(s_window, mode == PLATFORM_FULLSCREEN_EXCLUSIVE ? SDL_WINDOW_FULLSCREEN
+                                                                            : SDL_WINDOW_FULLSCREEN_DESKTOP);
+    SDL_ShowCursor(SDL_DISABLE);
+#endif
+}
+
 /* The picture's pixel under the window's point wx, wy (the letterbox and the scaling undone,
  * as SDL draws the picture): 0 when it is on the picture (menu_mouse.c). */
 int Platform_MouseToPicture(int wx, int wy, int *x, int *y)
@@ -1700,6 +1727,48 @@ static void write_screenshot(const uint32_t *argb)
     free(rgba);
 }
 
+/* ---- SWOS 2020's in-match volume keys and their two seconds on screen ---- */
+static uint32_t s_volume_shown;         /* SDL_GetTicks() when a key changed one, 0 none */
+
+void Platform_VolumeKey(int key)
+{
+    extern PlatformInitOptions *g_arcadeOpts;
+    extern const char *g_arcadeIniPath;
+    extern void AudioSDL_SetKindVolumes(int music, int chants, int commentary, int effects);
+    PlatformInitOptions *o = g_arcadeOpts;
+    if (!o)
+        return;
+    int *v = key < 2 ? &o->vol_chants : key < 4 ? &o->vol_commentary : &o->vol_effects;
+    *v += (key & 1) ? 5 : -5;
+    *v = *v < 0 ? 0 : *v > 100 ? 100 : *v;
+    AudioSDL_SetKindVolumes(o->vol_music, o->vol_chants, o->vol_commentary, o->vol_effects);
+    s_volume_shown = SDL_GetTicks() | 1u;
+    if (g_arcadeIniPath)
+        Settings_Save(o, g_arcadeIniPath);
+}
+
+/* The volumes over the match (showClockScoresAndOthers: three lines at the top left). From the
+ * match's frame, after its sprites. */
+void Platform_DrawVolumes(void)
+{
+    extern void *_charTables[];
+    extern PlatformInitOptions *g_arcadeOpts;
+    char buf[48];
+    if (!s_volume_shown || !g_arcadeOpts)
+        return;
+    if (SDL_GetTicks() - s_volume_shown > 2000) {
+        s_volume_shown = 0;
+        return;
+    }
+    const PlatformInitOptions *o = g_arcadeOpts;
+    snprintf(buf, sizeof buf, "   CHANTS VOLUME : %d%%", o->vol_chants);
+    DrawMenuText(4, 30, 2, (uint8_t *)buf, (uint8_t *)_charTables[0]);
+    snprintf(buf, sizeof buf, "   COMMENTARY VOLUME : %d%%", o->vol_commentary);
+    DrawMenuText(4, 41, 2, (uint8_t *)buf, (uint8_t *)_charTables[0]);
+    snprintf(buf, sizeof buf, "   BALL AND WHISTLE VOLUME : %d%%", o->vol_effects);
+    DrawMenuText(4, 52, 2, (uint8_t *)buf, (uint8_t *)_charTables[0]);
+}
+
 /* Capture what is actually PRESENTED — not what was drawn into the framebuffer.
  *
  * write_screenshot() reads `fb`, which is UPSTREAM of present_frame_copy, so it
@@ -1903,6 +1972,32 @@ static void pump_events_any_thread(void)
                 (ev.key.keysym.mod & KMOD_ALT)) {
                 Platform_ToggleFullscreen();
                 continue;
+            }
+            /* SWOS 2020's volume keys in a match: Shift+1 / 2 the crowd chants down / up, 3 / 4
+             * the commentary, 5 / 6 the ball and whistle; shown for two seconds, kept in
+             * SWOS.ini ([audio] *_volume). */
+            if (ev.key.repeat == 0 && !_gTextInputActive && (ev.key.keysym.mod & KMOD_SHIFT) &&
+                ev.key.keysym.sym >= SDLK_1 && ev.key.keysym.sym <= SDLK_6) {
+                extern int32_t ModApi_InMatch(void);
+                if (ModApi_InMatch()) {
+                    Platform_VolumeKey((int)(ev.key.keysym.sym - SDLK_1));
+                    continue;
+                }
+            }
+            /* A recording being viewed: its controls (src/replay_v2.c, the viewer's: P, I,
+             * the arrows, Home, End, PgUp, PgDn), before the game's own pause. */
+            if (ev.key.repeat == 0 && !_gTextInputActive) {
+                extern int32_t ReplayV2_ViewerKey(int32_t key);
+                if (ReplayV2_ViewerKey((int32_t)ev.key.keysym.sym))
+                    continue;
+            }
+            /* A key for a mod during a match (ModDef.matchKey: SWOS 2020's training drills,
+             * F1-F12, ALT, 9, 0, - and =), before the game's and the window's own. */
+            if (ev.key.repeat == 0 && !_gTextInputActive) {
+                extern int32_t ModApi_InMatch(void);
+                extern int32_t ModHooks_MatchKey(const char *key);
+                if (ModApi_InMatch() && ModHooks_MatchKey(SDL_GetKeyName(ev.key.keysym.sym)))
+                    continue;
             }
             /* +/- keys: cycle the windowed scale 1..4. Both the typing-
              * row keys and the keypad ones work. SDLK_EQUALS is the

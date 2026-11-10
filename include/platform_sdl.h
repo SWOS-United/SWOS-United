@@ -116,6 +116,7 @@ typedef struct {
     int                    shadow_shading;   /* 1 = shade the drop shadow, 0 = SWOS's colour 8 */
     int                    hair_shading;     /* 1 = shade hair the game leaves flat (black), 0 = as the game has it */
     int                    shade_step;       /* sixteenths between kit shades: 16, 16-N, 16-2N, 16-3N; hair too */
+    int                    clash_kits;       /* [graphics] clash_kits: SWOS 2020's GK/REF CLASH KITS (clash_kits.c), 0 = off */
     int                    kit_art;          /* the UNIFORM screen's kit drawings: 0 = the Amiga's, 1 = the Jaguar's (kit_art.h) */
     int                    sound_style;      /* a match's sounds: 0 = the Amiga's, 1 = the PC game's samples (dos_sound.h) */
     char                   commentary_dir[260]; /* the folder of commentary categories; "" = sound_dos/commentary */
@@ -130,6 +131,9 @@ typedef struct {
                                               * kills your held fire button's shot charge for good. 0 (default)
                                               * = fixed. See _gOriginalFireHoldLockout in team_control.c */
     int                    replay_auto_save; /* 1 = keep a dated .SRP of every match, not only LATEST.SRP */
+    int                    replay_frame_overlay; /* 1 = the viewer's frame box shows at first (I toggles it) */
+    int                    vol_music, vol_chants, vol_commentary, vol_effects;  /* 0..100 ([audio] *_volume) */
+    int                    replay_half_speed;    /* 1 = recordings start at half speed in the viewer */
     char                   matchmaker[80];   /* [netplay] matchmaker: the server MULTIPLAYER logs in to,
                                               * "host" or "host:port". Typed on the login menu and saved
                                               * there; empty = a server on this machine. */
@@ -175,6 +179,11 @@ typedef struct {
     char                   assets_reminder_off[64]; /* [general] assets_reminder_off: the data versions whose "update your
                                                      * game data" reminder was dismissed (src/assets_check.c), "" none */
     char                   currency[8];      /* "pound" (default) or "dollar" — money symbol */
+    /* ---- SWOS 2020 port, agent B ---- */
+    char                   file_sort[8];     /* [general] file_sort: the LOAD / SAVE lists' order (SWOS 2020's
+                                              * sortOption): "name" (the game's own, default) | "date" */
+    int                    quick_access;     /* [general] quick_access: SWOS 2020's QUICK ACCESS after a
+                                              * friendly (src/quick_access.c), 0 off (default) */
     char                   world[8];         /* [general] world: the football world (include/world.h), "" = 9697 */
     char                   mods[256];        /* [mods] enabled: the mods to play with (include/mods.h), "" = none */
     char                   mods_disabled[256];   /* [mods] disabled: canonical mods turned off, "" = none */
@@ -189,6 +198,19 @@ typedef struct {
     int                    opt_all_teams_equal;
     int                    opt_auto_save_highlights;
     int                    opt_menu_music;
+    /* -- the match chat's window (SWOS 2020 port, agent C; include/match_chat.h) -- */
+    int                    chat_scale;           /* [chat] scale: 0..8, the box 1x .. 5x in halves */
+    int                    chat_auto_close;      /* [chat] auto_close: 1..5 s the box stays after a line */
+    /* ---- SWOS 2020's CONTROLS MENU, CONTROLLER SETUP, menu look and MULTIPLAYER SETTINGS
+     * (SWOS 2020 port, agent A; src/input_sdl.c, src/settings_menus.c, src/match_chat.c) ---- */
+    char                   pad_pref[2][48];      /* [input] pad1/pad2: auto | keyboard | none | <guid>[#n] */
+    int                    auto_detect_pads;     /* [input] auto_detect_pads (1) */
+    char                   pad_config[512];      /* [input] pad_config: per pad GUID, fire/bench/cut-offs */
+    int                    shoulder_buttons_off; /* [input] shoulder_buttons: 1 = off, as SWOS 2020's default */
+    int                    call_bench;           /* [input] call_bench: 0 both, 1 taps, 2 button */
+    int                    menu_cursor;          /* [video] menu_cursor: 0 flashing, 1 steady */
+    int                    chat_controller_off;  /* [chat] controller_off: the pad steers nobody while typing */
+    int                    esc_presses;          /* [netplay] esc_presses: ESCs that leave a live match, 1-3 */
 } PlatformInitOptions;
 
 int  Platform_Init(const PlatformInitOptions *opts);
@@ -210,6 +232,8 @@ void Platform_PaletteRgb(int index, uint8_t *r, uint8_t *g, uint8_t *b);
  * Toggles between windowed and the fullscreen flavour the user launched
  * with (--fullscreen=desktop or =exclusive). */
 void Platform_ToggleFullscreen(void);
+void Platform_SetFullscreenMode(PlatformFullscreenMode mode);    /* VIDEO OPTIONS' WINDOW MODE (agent A) */
+void Platform_VolumeKey(int key);        /* Shift+1..6 in a match: a volume down / up */
 
 /* Set the windowed-mode integer scale factor (1..4) at runtime. Called
  * from the +/- key handlers. No-op while fullscreen. */

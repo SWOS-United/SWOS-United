@@ -208,10 +208,11 @@ static void print_usage(const char *argv0)
         "  --dos-graphics=<on|off>   Render the DOS-version graphics (bin/grafs_dos)\n"
         "                            instead of the Amiga graphics. Default: off.\n"
         "                            PC-only extra; the Amiga look is the default.\n"
-        "  --gameplay=<amiga|dos|xbox>  The gameplay style ([gameplay] style): the\n"
-        "                            Amiga's (50 Hz), the DOS version's (70 Hz), or\n"
-        "                            SWOS 2020's XBOX (60 Hz, the Amiga's ball physics,\n"
-        "                            the DOS goalkeepers).\n"
+        "  --gameplay=<amiga|dos|xbox|amiga60|moon>  The gameplay style ([gameplay]\n"
+        "                            style): the Amiga's (50 Hz), the DOS version's (70 Hz),\n"
+        "                            or one of SWOS 2020's: XBOX (60 Hz, the Amiga's ball\n"
+        "                            physics, the DOS goalkeepers), AMIGA60 (the Amiga's\n"
+        "                            game at 60 Hz) or MOON (the Amiga's, a moon's gravity).\n"
         "  --dos-gameplay=<on|off>   Use the DOS version's gameplay tuning: a 70 Hz\n"
         "                            game tick (movement scaled 41/64 so it doesn't\n"
         "                            play faster), plus the DOS goalkeeper reach and\n"
@@ -570,15 +571,24 @@ int main(int argc, char **argv)
     opts.dos_gameplay = 0;        /* default Amiga gameplay */
     opts.stick_deadzone = 25;     /* percent: about what the old per-axis threshold was */
     opts.latch_presses = 1;       /* a short fire press is never lost between two reads */
+    /* SWOS 2020's CONTROLS MENU, menu look and MULTIPLAYER SETTINGS (agent A): as before them */
+    opts.auto_detect_pads = 1;
+    opts.shoulder_buttons_off = 1;
+    opts.esc_presses = 1;
     memset(opts.key_bind, 0, sizeof opts.key_bind);   /* no keys of the player's own */
     opts.fire_hold_lockout = 0;   /* default: the original's fire-hold bug is FIXED */
     opts.contest_own_ratings = 0; /* default: the original's roll, team-mate's rating and all */
     opts.live_cast = 1;           /* (LIVE CAST: viewers may watch, as SWOS 2020's ON) */
     opts.replay_auto_save = 0;    /* default: LATEST.SRP only, no dated copy per match */
+    opts.replay_frame_overlay = 1;    /* (SWOS 2020's FRAME INFO OVERLAY: on) */
+    opts.replay_half_speed = 0;
+    opts.vol_music = opts.vol_chants = opts.vol_commentary = opts.vol_effects = 100;
     opts.netplay_name[0] = '\0';
     opts.netplay_remember = 1;    /* REMEMBER LOGIN INFO: on, as the login screen shows it */
     opts.assets_reminder_off[0] = '\0';  /* remind about older game data (src/assets_check.c) */
     opts.world[0] = '\0';                /* [general] world: 96/97 (include/world.h) */
+    snprintf(opts.file_sort, sizeof opts.file_sort, "%s", "name");   /* [general] file_sort (src/file_io.c) */
+    opts.quick_access = 0;               /* [general] quick_access (src/quick_access.c) */
     opts.opt_game_length = opts.opt_pitch_type = opts.opt_auto_replays = OPTION_UNSET;   /* [options]: */
     opts.opt_all_teams_equal = opts.opt_auto_save_highlights = opts.opt_menu_music = OPTION_UNSET;  /* the game's */
     opts.matchmaker[0] = '\0';    /* default: a matchmaking server on this machine */
@@ -586,6 +596,8 @@ int main(int argc, char **argv)
     for (int qi = 0; qi < MATCHCHAT_QUICK; qi++)       /* [chat] quick1..quick0 */
         snprintf(opts.chat_quick[qi], sizeof opts.chat_quick[qi], "%s", MatchChat_DefaultQuick(qi));
     opts.prediction = 1;          /* default: a live match's replay keeps what each player saw */
+    opts.chat_scale = 0;          /* [chat] scale: 1x (SWOS 2020's) */
+    opts.chat_auto_close = 5;     /* [chat] auto_close: 5 s (SWOS 2020's AFTER 5 SECONDS) */
     opts.no_injuries_cards = 0;   /* [testing] no_injuries_cards: the real rules unless asked (test_rules.h) */
 #ifdef SWOS_TEST_RULES
     opts.reports = 1;             /* a tester build: match reports come back to us */
@@ -740,8 +752,10 @@ int main(int argc, char **argv)
             if      (strcmp(v, "amiga") == 0) opts.dos_gameplay = GAMEPLAY_AMIGA;
             else if (strcmp(v, "dos") == 0)   opts.dos_gameplay = GAMEPLAY_DOS;
             else if (strcmp(v, "xbox") == 0)  opts.dos_gameplay = GAMEPLAY_XBOX;
+            else if (strcmp(v, "amiga60") == 0) opts.dos_gameplay = GAMEPLAY_AMIGA60;
+            else if (strcmp(v, "moon") == 0)  opts.dos_gameplay = GAMEPLAY_MOON;
             else {
-                fprintf(stderr, "Invalid --gameplay value '%s' (expected amiga|dos|xbox)\n", v);
+                fprintf(stderr, "Invalid --gameplay value '%s' (expected amiga|dos|xbox|amiga60|moon)\n", v);
                 return 1;
             }
         } else if ((v = match_kv(a, "dos-gameplay")) != NULL) {
@@ -857,6 +871,10 @@ int main(int argc, char **argv)
             return Settings_GameOptionsSelfTest();
         } else if (strcmp(a, "--menu-selftest") == 0) {
             return OnlineMenus_SelfTest();
+        } else if (strcmp(a, "--settings-menus-selftest") == 0) {
+            /* SWOS 2020's OPTIONS screens and CONTROLLER SETUP (src/settings_menus.c, agent A) */
+            extern int SettingsMenus_SelfTest(void);
+            return SettingsMenus_SelfTest() ? 1 : 0;
         } else if ((v = match_kv(a, "convert-teams")) != NULL) {
             static char dirs[2048];
             char *comma;
@@ -1222,6 +1240,10 @@ int main(int argc, char **argv)
 
     /* Whole-match recording (src/replay_v2.c). */
     ReplayRec_Configure(record_replay, opts.replay_auto_save);
+    { extern void ReplayV2_ViewerConfigure(int32_t overlay, int32_t halfSpeed);
+      ReplayV2_ViewerConfigure(opts.replay_frame_overlay, opts.replay_half_speed); }
+    { extern void AudioSDL_SetKindVolumes(int music, int chants, int commentary, int effects);
+      AudioSDL_SetKindVolumes(opts.vol_music, opts.vol_chants, opts.vol_commentary, opts.vol_effects); }
 
     /* The matchmaking server the MULTIPLAYER menu logs in to (src/mm_client.c).
      * SWOS_MM_HOST / SWOS_MM_PORT still win, so a test can point one process
@@ -1241,6 +1263,8 @@ int main(int argc, char **argv)
     MatchReport_SetEnabled(opts.reports);
     for (int qi = 0; qi < MATCHCHAT_QUICK; qi++)
         MatchChat_SetQuick(qi, opts.chat_quick[qi]);
+    MatchChat_SetScale(opts.chat_scale);
+    MatchChat_SetAutoClose(opts.chat_auto_close);
     { extern void ReplayRec_SetPredictionKept(int32_t on); ReplayRec_SetPredictionKept(opts.prediction); }
     /* The testers' rule, for offline play (include/test_rules.h). Said in the log: a
      * report from a career played without injuries is read differently. */
@@ -1259,6 +1283,7 @@ int main(int argc, char **argv)
     JagGfx_SetEnabled(opts.jag_graphics);
     JagGfx_SetShading(opts.outfit_shading, opts.shadow_shading, opts.hair_shading, opts.shade_step);
     KitArt_SetJaguar(opts.kit_art);
+    { extern int32_t g_clashKits; g_clashKits = opts.clash_kits; }   /* [graphics] clash_kits */
     { extern void InputSDL_SetStickDeadzone(int percent); InputSDL_SetStickDeadzone(opts.stick_deadzone); }
     {
         extern void InputSDL_SetPressLatch(int on);
@@ -1268,6 +1293,16 @@ int main(int argc, char **argv)
         TouchControls_SetMode(opts.touch_controls);     /* the phones' on-screen controls */
         for (i = 0; i < 5; i++)
             InputSDL_SetKeyBinding(i, opts.key_bind[i]);
+    }
+    {   /* SWOS 2020's CONTROLS MENU, CONTROLLER SETUP, menu cursor and MULTIPLAYER SETTINGS (agent A) */
+        extern void InputSDL_Configure(const PlatformInitOptions *o);
+        extern void InputSDL_SetChatPadOff(int on);
+        extern void InputSDL_SetEscPresses(int n);
+        extern void MenuLook_SetCursor(int steady);
+        InputSDL_Configure(&opts);
+        InputSDL_SetChatPadOff(opts.chat_controller_off);
+        InputSDL_SetEscPresses(opts.esc_presses);
+        MenuLook_SetCursor(opts.menu_cursor);
     }
     /* SWOS_SOUND_STYLE=pc, SWOS_COMMENTARY=on: for the test scripts, which pass no options. */
     { const char *e = getenv("SWOS_SOUND_STYLE");
@@ -1316,6 +1351,10 @@ int main(int argc, char **argv)
             ? "DOS (70fps physics and timers, DOS formations)"
             : _gGameplayStyle == GAMEPLAY_XBOX
             ? "XBOX (SWOS 2020's: 60fps, Amiga ball physics, DOS goalkeepers)"
+            : _gGameplayStyle == GAMEPLAY_AMIGA60
+            ? "AMIGA60 (SWOS 2020's: the Amiga's game at 60fps)"
+            : _gGameplayStyle == GAMEPLAY_MOON
+            ? "MOON (SWOS 2020's Moon Soccer: the Amiga's game, gravity 2560)"
             : "AMIGA (the shipped default)");
     /* Say it out loud — this one is a deliberate departure from the original,
      * so a tester comparing against real SWOS can see which half he is on. */
@@ -1402,10 +1441,12 @@ int main(int argc, char **argv)
     { extern volatile uint8_t _skipLoaderIntro; _skipLoaderIntro = 1; }
     Tweaks_Set(opts.tweaks);    /* [tweaks] (include/tweaks.h): off line only, off in the rigs */
     if (opts.tweaks)
-        fprintf(stderr, "[tweaks] on:%s%s%s (off line only)\n",
+        fprintf(stderr, "[tweaks] on:%s%s%s%s%s (off line only)\n",
                 (opts.tweaks & TWEAK_CPU_CARDS) ? " cpu_cards" : "",
                 (opts.tweaks & TWEAK_NO_TEAMMATE_TACKLES) ? " no_teammate_tackles" : "",
-                (opts.tweaks & TWEAK_TACKLE_CONTROLLED_PLAYER) ? " tackle_controlled_player" : "");
+                (opts.tweaks & TWEAK_TACKLE_CONTROLLED_PLAYER) ? " tackle_controlled_player" : "",
+                (opts.tweaks & TWEAK_STRONGER_GOALKEEPER_AI) ? " stronger_goalkeeper_ai" : "",
+                (opts.tweaks & TWEAK_UNLIMITED_TRANSFERS) ? " unlimited_transfers" : "");
     /* Load the UI translation table for the selected language
      * (data_json/translations/<lang>.json) now that the CWD is the binary dir
      * and stderr is the log. tr(symbol) resolves menu/UI text through it; a

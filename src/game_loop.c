@@ -830,6 +830,10 @@ GameFrameResult GameLoop_Frame(void)
     DrawBenchAndSubsMenu();
     BenchCheckControls();
     UpdateAndDrawStatistics();
+#ifdef SWOS_SDL_BUILD
+    { extern void ModHooks_MatchDrawn(void); ModHooks_MatchDrawn(); }  /* (a mod's drawing over the match) */
+    { extern void Platform_DrawVolumes(void); Platform_DrawVolumes(); } /* (the volume keys' readout) */
+#endif
 
     /* The window was closed. Not out of a LIVE match from here: this frame may be one
      * GGPO is re-simulating, and "a re-simulated frame left the match loop" was an
@@ -925,12 +929,21 @@ static int32_t s_gameLoopDepth;
  * (Video_ApplyDisplayChange waits for the menus after it). */
 int32_t GameLoop_Active(void) { return s_gameLoopDepth > 0; }
 
+/* ...and its frames are still running: not once it is over, when the same loop shows the
+ * REPLAY / EXIT screen and the mods' AFTER THE MATCH entries (ModApi_InMatch: a mod drawing
+ * over the match -- the weather's rain -- stops there). A REPLAY's own GameLoop runs again. */
+static int32_t s_matchOver;
+int32_t GameLoop_MatchRunning(void) { return s_gameLoopDepth > 0 && !s_matchOver; }
+
 void __attribute__((used, externally_visible))
 GameLoop(void)
 {
+    const int32_t wasOver = s_matchOver;
+    s_matchOver = 0;
     s_gameLoopDepth++;
     game_loop_body();
     s_gameLoopDepth--;
+    s_matchOver = wasOver;
 }
 
 static void game_loop_body(void)
@@ -963,6 +976,12 @@ static void game_loop_body(void)
             d2 = SIM_CAMERA_MAX_Y;   /* bottom end: 592 at 272 lines */
         else
             d2 = 16;                 /* top end: the same in both */
+        {   /* a mod's match that starts at the top goal (SWOS 2020's shoot-out: its GameLoop_130
+             * sets D0 = 0 after the Rand, which is still drawn) */
+            extern int32_t ModMatch_CameraTop(void);
+            if (ModMatch_CameraTop())
+                d2 = 16;
+        }
         d1 = SIM_CAMERA_CENTRE_X;    /* 168 at 336 wide */
     }
 
@@ -991,6 +1010,7 @@ end_of_match_flow:
     { extern void ReplayRec_MatchEnd(void); ReplayRec_MatchEnd(); }
 #endif
     { extern void ModMatch_Ended(void); ModMatch_Ended(); }   /* the mods are told, before any menu */
+    s_matchOver = 1;                                           /* (ModApi_InMatch: its frames are over) */
     FadeOutToBlack();
     /* nullsub_3 — no-op */
     SetHilFileHeader();
@@ -1031,8 +1051,13 @@ end_of_match_flow:
     {
         extern void ModEntries_AfterMatch(void);
         extern int32_t ModMatch_Active(void);
-        if (_isGameFriendly != 0 && _trainingGame == 0 && !arcadeNoReplayMenu && !ModMatch_Active())
+        if (_isGameFriendly != 0 && _trainingGame == 0 && !arcadeNoReplayMenu && !ModMatch_Active()) {
+#ifdef SWOS_SDL_BUILD
+            extern void QuickAccess_AfterMatch(void);
+            QuickAccess_AfterMatch();       /* SWOS 2020's QUICK ACCESS ([general] quick_access) */
+#endif
             ModEntries_AfterMatch();
+        }
     }
 
 cleanup_and_return:

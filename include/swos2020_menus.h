@@ -57,8 +57,9 @@
     X(customChallengesEditMenu, "swos2020/customChallengesEditMenu", CustomChallengesEditMenu, 53) \
     X(swosGaloreMenu, "swos2020/swosGaloreMenu", SwosGaloreMenu, 7) \
     X(chartHighlightsMenu, "swos2020/chartHighlightsMenu", ChartHighlightsMenu, 52) \
+    X(customTacticsWarningMenu, "swos2020/customTacticsWarningMenu", CustomTacticsWarningMenu, 10) \
 
-/* Every handler name the imported menus reference (452), sorted. */
+/* Every handler name the imported menus reference (454), sorted. */
 #define SWOS2020_MENU_CALLBACKS(X) \
     X(ChartHighlightsMenu_OnDraw) \
     X(ChartHighlightsMenu_OnInit) \
@@ -192,6 +193,8 @@
     X(customChallengesSortByMenu_sortByDate_onSelect) \
     X(customChallengesSortByMenu_sortByLevel_onSelect) \
     X(customChallengesSortByMenu_sortByTeam_onSelect) \
+    X(customTacticsWarningMenu_OnDraw) \
+    X(customTacticsWarningMenu_OnInit) \
     X(difficulty_Dec_onSelect) \
     X(difficulty_Inc_onSelect) \
     X(difficulty_onSelect) \
@@ -450,9 +453,6 @@
     X(selectMyCustomTeam1) \
     X(selectMyCustomTeam2) \
     X(selectMyCustomTeam3) \
-    X(selectMyCustomTeamsImport) \
-    X(selectMyCustomTeamsImportNo) \
-    X(selectMyCustomTeamsImportYes) \
     X(selectMyCustomTeamsMenu_OnDraw) \
     X(selectMyCustomTeamsMenu_OnInit) \
     X(selectOOO) \
@@ -3144,5 +3144,20 @@ enum {
 #define ChartHighlightsMenu_kCH_AvgRateWidth (34)
 #define ChartHighlightsMenu_kCH_AvgRateHeight (14)
 #define ChartHighlightsMenu_kCH_AvgRateBaseColor (3)
+
+/* ---- customTacticsWarningMenu -- src/menus/customTacticsWarning.mnu ---- */
+enum {
+    CustomTacticsWarningMenu_header = 0,
+    CustomTacticsWarningMenu_panel = 1,
+    CustomTacticsWarningMenu_message0 = 2,
+    CustomTacticsWarningMenu_message1 = 3,
+    CustomTacticsWarningMenu_message2 = 4,
+    CustomTacticsWarningMenu_message3 = 5,
+    CustomTacticsWarningMenu_message4 = 6,
+    CustomTacticsWarningMenu_message5 = 7,
+    CustomTacticsWarningMenu_message6 = 8,
+    CustomTacticsWarningMenu_exit = 9,
+};
+#define CustomTacticsWarningMenu_numEntries 10
 
 #endif /* SWOS2020_MENUS_H */

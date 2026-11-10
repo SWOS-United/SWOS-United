@@ -75,6 +75,8 @@ MULTIPLAYER_MENUS = [
     "customChallengesNewOrLoad", "customChallengesEdit",
     # SWOS Galore: its menu and the highlights charts -- src/united_galore.c   (replays/replaysMenu.cpp)
     "swosGalore", "chartHighlights",
+    # the ranked match's warning, the opponent on custom tactics      (game.cpp)
+    "customTacticsWarning",
 ]
 
 # SWOS 2020's skip opcodes, by NUMBER (menuCodes.h: kLeftSkip = 17 ... kDownSkip = 20),
