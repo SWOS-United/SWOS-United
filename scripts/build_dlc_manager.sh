@@ -5,9 +5,11 @@
 #
 #   scripts/build_dlc_manager.sh linux            # -> tools/dlc-manager/build-dist-linux-x86_64/bin/swos-dlc-manager
 #   scripts/build_dlc_manager.sh windows          # -> tools/dlc-manager/build_win_static/bin/Release/swos-dlc-manager.exe
+#   scripts/build_dlc_manager.sh macos            # -> tools/dlc-manager/build-dist-macos/bin/swos-dlc-manager.app (on the Mac)
 #   scripts/build_dlc_manager.sh amiga            # -> tools/dlc-manager/amiga/dlc_manager/out/SWOS-DLC (+ .info)
 #   scripts/build_dlc_manager.sh stage-portable DEST   # what SWOS-portable.zip carries, into DEST
 #   scripts/build_dlc_manager.sh stage-windows DEST    # what the Windows installer carries, into DEST
+#   scripts/build_dlc_manager.sh stage-macos DEST      # "SWOS United DLC Manager.app", into DEST (on the Mac)
 #   scripts/build_dlc_manager.sh stage-amiga DRAWER    # SWOS-DLC + its icon, into the SWOS drawer
 #   scripts/build_dlc_manager.sh check-windows         # the .exe's DLLs: every one shipped or Windows' own
 #
@@ -32,7 +34,8 @@
 #   Windows  scripts/build_dlc_manager.bat through cmd.exe: MSVC + vcpkg (x64-windows-static) + the
 #            static Slint the setup uses -- ONE .exe, no DLLs, no VC++ redistributable, like
 #            the data setup's window (tools/swosdata/build.bat static). No vcpkg (VCPKG_ROOT) or no static Slint is a SKIP.
-#   macOS    scripts/build_macos.sh, on the Mac.
+#   macOS    `macos` and `stage-macos`, run on the Mac by scripts/build_macos.sh: an arm64 .app
+#            beside SWOS.app in SWOS-macOS-app.zip (see build_macos below).
 #   Amiga    amiga/dlc_manager's Makefile with the game's m68k toolchain and the Roadshow SDK's
 #            netinclude (ROADSHOW_SDK). It goes INSIDE the SWOS drawer beside SWOS2 (it reads and
 #            writes PROGDIR:mods/ and PROGDIR:data/MODS -- the game's). NOT in the setup's WHDLoad
@@ -58,6 +61,8 @@ LINUX_LIBDIR="${LINUX_LIBDIR:-/usr/lib}"
 LINUX_SHARED_LIBS="libSDL2-2.0.so.0 libdecor-0.so.0"
 WIN_DIR="$DLCM/build_win_static/bin/Release"
 WIN_EXE="$WIN_DIR/swos-dlc-manager.exe"
+SLINT_MAC="$DLCM/build-slint-darwin-arm64"
+MAC_BUILD="$DLCM/build-dist-macos"
 AMIGA_TOOLCHAIN="${AMIGA_TOOLCHAIN:-/mnt/c/Users/headk/.vscode/extensions/bartmanabyss.amiga-debug-1.8.2/bin/linux}"
 ROADSHOW_SDK="${ROADSHOW_SDK:-/mnt/c/Projects/Amiga/Roadshow/Roadshow-SDK-1.8}"
 AMIGA_OUT="$DLCM/amiga/dlc_manager/out"
@@ -131,7 +136,68 @@ check_windows() {
         done
     done
     [ -z "$bad" ] || { say "check-windows: $WIN_EXE needs DLLs a player may not have:$bad" >&2; return 1; }
-    say "check-windows: every DLL is shipped or Windows' own:$(echo $seen | tr ' ' '\n' | sort | tr '\n' ' ')"
+    say "check-windows: all $(echo $seen | wc -w) DLLs are shipped or Windows' own"
+}
+
+# macOS: run ON the Mac by scripts/build_macos.sh. arm64 only (Slint publishes no Darwin-x86_64
+# SDK, and Homebrew's libarchive is arm64). SDL2 is the game's: the official SDL2.framework in
+# /Library/Frameworks (a real SDL2, not Homebrew's sdl2-compat, which dlopens SDL3), bundled into
+# the .app beside libslint_cpp.dylib (the project's CMake puts that one there); every other
+# non-system dylib (libarchive and its xz/zstd/lz4/b2 from Homebrew) is copied into
+# Contents/Frameworks and pointed at through @rpath, then the bundle is signed ad hoc again
+# (install_name_tool breaks an arm64 signature). curl is the SDK's. No SDL2_mixer, as on Linux.
+build_macos() {
+    [ "$(uname -s)" = Darwin ] || skip "the macOS build runs on a Mac (scripts/build_macos.sh)"
+    [ "$(uname -m)" = arm64 ] || skip "no prebuilt Slint for macOS $(uname -m)"
+    export PATH="/opt/homebrew/bin:$PATH"
+    command -v cmake >/dev/null && command -v ninja >/dev/null || skip "no cmake/ninja (brew install cmake ninja)"
+    local fw=/Library/Frameworks/SDL2.framework
+    [ -f "$fw/Resources/CMake/sdl2-config.cmake" ] || skip "no $fw (with its CMake files): the game's SDL2"
+    if [ ! -f "$SLINT_MAC/lib/cmake/Slint/SlintConfig.cmake" ]; then
+        local url="https://github.com/slint-ui/slint/releases/download/v$SLINT_VERSION/Slint-cpp-$SLINT_VERSION-Darwin-arm64.tar.gz"
+        say "fetching $url"
+        mkdir -p "$SLINT_MAC" &&
+            curl -fsSL "$url" | tar -xz -C "$SLINT_MAC" --strip-components=1 ||
+            { rm -rf "$SLINT_MAC"; die "cannot fetch Slint $SLINT_VERSION"; }
+    fi
+    cmake -S "$DLCM" -B "$MAC_BUILD" -G Ninja -DCMAKE_BUILD_TYPE=Release \
+          -DSWOS_SLINT_ROOT="$ROOT/$SLINT_MAC" -DSDL2_DIR="$fw/Resources/CMake" \
+          -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 \
+          -DCMAKE_DISABLE_FIND_PACKAGE_PkgConfig=ON -DCMAKE_DISABLE_FIND_PACKAGE_SDL2_mixer=ON >/dev/null ||
+        die "cmake configure failed (brew install libarchive?)"
+    cmake --build "$MAC_BUILD" || die "build failed"
+    local app="$MAC_BUILD/bin/swos-dlc-manager.app" fws
+    [ -d "$app" ] || die "no $app"
+    fws="$app/Contents/Frameworks"
+    mkdir -p "$fws" && rm -rf "$fws/SDL2.framework" && ditto "$fw" "$fws/SDL2.framework" || die "cannot bundle SDL2.framework"
+    # Homebrew's dylibs, recursively: copy, re-id, repoint every reference.
+    local todo="$app/Contents/MacOS/swos-dlc-manager" f d n
+    while [ -n "$todo" ]; do
+        set -- $todo; f="$1"; shift; todo="$*"
+        for d in $(otool -L "$f" | awk 'NR > 1 { print $1 }' | grep -E '^(/opt/homebrew|/usr/local)/'); do
+            n="$(basename "$d")"
+            if [ ! -f "$fws/$n" ]; then
+                cp -L "$d" "$fws/$n" && chmod u+w "$fws/$n" &&
+                    install_name_tool -id "@rpath/$n" "$fws/$n" 2>/dev/null || die "cannot bundle $d"
+                todo="$todo $fws/$n"
+            fi
+            install_name_tool -change "$d" "@rpath/$n" "$f" 2>/dev/null || die "cannot repoint $d in $f"
+        done
+    done
+    # (a dylib in Frameworks finds its siblings through the executable's rpath, ../Frameworks)
+    codesign --force --deep -s - "$app" >/dev/null 2>&1 || die "codesign failed"
+    if find "$app" -type f \( -perm -u+x -o -name '*.dylib' \) -exec otool -L {} \; 2>/dev/null |
+           grep -E '^\s+(/opt/homebrew|/usr/local)/'; then
+        die "$app still needs Homebrew (above)"
+    fi
+    say "OK: $app ($(lipo -archs "$app/Contents/MacOS/swos-dlc-manager"))"
+}
+
+stage_macos() {   # DEST (the app zip's folder, beside SWOS.app)
+    local app="$MAC_BUILD/bin/swos-dlc-manager.app"
+    [ -d "$app" ] || { say "NOTE: no macOS manager built ($app)"; return 0; }
+    ditto "$app" "$1/SWOS United DLC Manager.app" || die "cannot stage $app"
+    say "staged SWOS United DLC Manager.app"
 }
 
 build_amiga() {
@@ -180,10 +246,12 @@ stage_amiga() {   # DRAWER
 case "${1:-}" in
     linux)          build_linux ;;
     windows)        build_windows ;;
+    macos)          build_macos ;;
     amiga)          build_amiga ;;
     check-windows)  check_windows ;;
     stage-portable) [ -n "${2:-}" ] || die "stage-portable DEST"; stage_linux "$2"; stage_windows "$2" ;;
     stage-windows)  [ -n "${2:-}" ] || die "stage-windows DEST"; stage_windows "$2" ;;
+    stage-macos)    [ -n "${2:-}" ] || die "stage-macos DEST"; stage_macos "$2" ;;
     stage-amiga)    [ -n "${2:-}" ] || die "stage-amiga DRAWER"; stage_amiga "$2" ;;
     *) awk 'NR >= 3 { if ($0 !~ /^#/) exit; sub(/^# ?/, ""); print }' "${BASH_SOURCE[0]}"; exit 2 ;;
 esac
