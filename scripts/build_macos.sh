@@ -183,6 +183,12 @@ case "$(lipo -archs "$SETUP_APP/Contents/MacOS/OpenSWOS Setup" 2>/dev/null)" in
     *) echo "!! OpenSWOS Setup is not universal"; exit 1 ;;
 esac
 
+# SWOS United's DLC Manager (tools/dlc-manager), beside the game in the app zip: arm64 only, as
+# the Slint SDK and Homebrew are. No toolchain (exit 3) leaves it out, a failure stops the drop.
+echo "== DLC Manager (scripts/build_dlc_manager.sh macos)"
+scripts/build_dlc_manager.sh macos; DLCM_RC=$?
+[ "$DLCM_RC" = 0 ] || [ "$DLCM_RC" = 3 ] || { echo "!! DLC Manager failed"; exit 1; }
+
 mkdir -p dist
 echo "== packing dist/$ZIP (ditto — preserves the frameworks' symlinks)"
 rm -f "dist/$ZIP"
@@ -194,6 +200,7 @@ mkdir -p "$STAGE" &&
     ditto bin/SWOS.app "$STAGE/SWOS.app" &&
     ditto "$SETUP_APP" "$STAGE/OpenSWOS Setup.app" &&
     cp tools/swosdata/build/swosdata-universal "$STAGE/swosdata" &&
+    scripts/build_dlc_manager.sh stage-macos "$STAGE" &&
     { [ ! -f dist/portmaster-swos.zip ] ||
       { mkdir -p "$STAGE/portmaster" && cp dist/portmaster-swos.zip "$STAGE/portmaster/swos.zip"; }; } &&
     ditto -c -k --sequesterRsrc --keepParent "$STAGE" "dist/$ZIP" ||

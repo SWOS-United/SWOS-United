@@ -31,6 +31,9 @@
 ; The data setup: OpenSWOS ships none of the original game's data, and this makes
 ; it from the player's own copy (tools/swosdata). Run when the install finishes.
 #define SetupExeName   "openswos-setup.exe"
+; SWOS United's DLC Manager: SWOS 2020's DLC catalogue, installed as mods in the player's folder.
+#define DlcManagerName     "SWOS United DLC Manager"
+#define DlcManagerExeName  "swos-dlc-manager.exe"
 #define AppURL         "https://github.com/benbaker76/OpenSWOS"
 
 ; Relative to THIS file. Inno resolves relative paths against the script's
@@ -106,6 +109,10 @@ Source: "{#StageDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs c
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"
 Name: "{group}\{#AppName} Setup"; Filename: "{app}\{#SetupExeName}"
+; SWOS United's DLC Manager (scripts/build_dlc_manager.sh), when the stage has it.
+#if FileExists(AddBackslash(SourcePath) + StageDir + "\" + DlcManagerExeName)
+Name: "{group}\{#DlcManagerName}"; Filename: "{app}\{#DlcManagerExeName}"
+#endif
 Name: "{group}\{cm:UninstallProgram,{#AppName}}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
 
