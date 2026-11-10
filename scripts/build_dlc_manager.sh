@@ -48,6 +48,11 @@
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# The player's folder, as the game's (include/project_identity.h): where the manager installs
+# mods and turns them on -- never a default of its own (DLC-Manager's SWOS_USER_DIR / _DOT_DIR).
+USER_DIR=$(sed -n 's/^#define PROJECT_USER_DIR  *"\(.*\)"/\1/p' "$ROOT/include/project_identity.h")
+USER_DOT_DIR=$(sed -n 's/^#define PROJECT_USER_DOT_DIR  *"\(.*\)"/\1/p' "$ROOT/include/project_identity.h")
+[ -n "$USER_DIR" ] && [ -n "$USER_DOT_DIR" ] || { echo "build_dlc_manager: no PROJECT_USER_DIR in include/project_identity.h" >&2; exit 1; }
 cd "$ROOT" || exit 1
 
 DLCM="tools/dlc-manager"
@@ -90,6 +95,7 @@ build_linux() {
     # build tree's path; the flag adds lib/x86_64 after it.
     cmake -S "$DLCM" -B "$LINUX_BUILD" -G Ninja -DCMAKE_BUILD_TYPE=Release \
           -DSWOS_SLINT_ROOT="$ROOT/$SLINT_LINUX" \
+          -DSWOS_USER_DIR="$USER_DIR" -DSWOS_USER_DOT_DIR="$USER_DOT_DIR" \
           -DCMAKE_DISABLE_FIND_PACKAGE_PkgConfig=ON \
           -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON \
           '-DCMAKE_EXE_LINKER_FLAGS=-Wl,--disable-new-dtags -Wl,-rpath,\$ORIGIN/lib/x86_64' >/dev/null ||
@@ -103,7 +109,7 @@ build_linux() {
 build_windows() {
     command -v cmd.exe >/dev/null 2>&1 || skip "no Windows side (cmd.exe)"
     local win; win="$(wslpath -w "$ROOT" 2>/dev/null)" || skip "cannot map $ROOT to a Windows path"
-    ( cd /mnt/c && cmd.exe /c "cd /d $win && scripts\\build_dlc_manager.bat" )
+    ( cd /mnt/c && cmd.exe /c "cd /d $win && set SWOS_USER_DIR=$USER_DIR&& set SWOS_USER_DOT_DIR=$USER_DOT_DIR&& scripts\\build_dlc_manager.bat" )
     case $? in
         0) ;;
         3) exit 3 ;;   # (the .bat said which toolchain)
@@ -163,6 +169,7 @@ build_macos() {
     cmake -S "$DLCM" -B "$MAC_BUILD" -G Ninja -DCMAKE_BUILD_TYPE=Release \
           -DSWOS_SLINT_ROOT="$ROOT/$SLINT_MAC" -DSDL2_DIR="$fw/Resources/CMake" \
           -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 \
+          -DSWOS_USER_DIR="$USER_DIR" -DSWOS_USER_DOT_DIR="$USER_DOT_DIR" \
           -DCMAKE_DISABLE_FIND_PACKAGE_PkgConfig=ON -DCMAKE_DISABLE_FIND_PACKAGE_SDL2_mixer=ON >/dev/null ||
         die "cmake configure failed (brew install libarchive?)"
     cmake --build "$MAC_BUILD" || die "build failed"
