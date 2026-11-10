@@ -91,6 +91,8 @@ static int32_t  s_loadKnown;
  * have them), LOAD is centred on CONTINUE's row when it is alone, and the arrows go where
  * the buttons are. */
 static int32_t s_liveShown = -2;        /* the TV's picture: 1 live, 0 idle, -2 as unpacked */
+static uint16_t s_tickerX, s_tickerY, s_tickerW;    /* the ticker's place, as unpacked */
+static int32_t  s_tickerKnown;
 
 static void main_refresh(void)
 {
@@ -101,20 +103,36 @@ static void main_refresh(void)
     show(Main_modes, 0);
     s_liveShown = -2;                   /* (unpacked again: the JSON's idle picture) */
     {   /* The ticker under SAVE and LOAD, as SWOS 2020's -- or across the top (where it was) on a
-         * screen with no rows under the menu. */
-        extern int _screen_height;
+         * screen with no rows under the menu; back under them when there are again. */
         MenuEntry *t = entry(Main_ticker);
-        if (t->y + t->dwHeight > (uint16_t)_screen_height) {
+        int32_t sw = 0, sh = 0;
+        ModApi_ScreenSize(&sw, &sh);
+        if (!s_tickerKnown) {
+            s_tickerX = t->x;
+            s_tickerY = t->y;
+            s_tickerW = t->dwWidth;
+            s_tickerKnown = 1;
+        }
+        if (s_tickerY + t->dwHeight > sh) {
             t->x = 50;
             t->y = 6;
             t->dwWidth = 262;
+        } else {
+            t->x = s_tickerX;
+            t->y = s_tickerY;
+            t->dwWidth = s_tickerW;
         }
     }
 #ifdef SWOS_NETPLAY
     nav(Main_multi, -1, Main_options, Main_liveCast, Main_compete);
 #else
-    show(Main_liveCast, 0);             /* LIVE CAST watches online matches */
-    nav(Main_multi, -1, Main_options, -1, Main_compete);
+    /* No online play in this build: MULTIPLAYER and LIVE CAST go, COMPETE is the top. */
+    show(Main_multi, 0);
+    show(Main_liveCast, 0);
+    nav(Main_compete, -1, Main_extras, -1, Main_practice);
+    nav(Main_options, Main_compete, -1, -1, Main_extras);
+    if (ModApi_MenuCurrentEntry() == Main_multi)
+        SetCurrentEntry(Main_compete);
 #endif
 
     if (!s_loadKnown && contest) {      /* (CommonMenuExit has not moved it) */
@@ -373,7 +391,7 @@ static void run_blit(uint8_t *frame, int32_t stride, int32_t fh, int32_t pl, int
 static void run_menu_frame(void)
 {
     static const int32_t kOrder[kRunPlayers] = { 0, 2, 1 };
-    extern int _screen_height;
+    int32_t sw = 0, sh = 0;
     if (!s_runState || !ModApi_IsMainMenu())
         return;
     run_update();
@@ -384,9 +402,10 @@ static void run_menu_frame(void)
     if (!frame || stride <= 0)
         return;
     const int32_t ox = ModApi_MenuMargin(), oy = entry(Main_credits)->y - 182;   /* (the rows on the picture) */
+    ModApi_ScreenSize(&sw, &sh);
     for (int32_t k = 0; k < kRunPlayers; k++) {
         const int32_t i = kOrder[k];
-        run_blit(frame, stride, _screen_height, i, ox + s_run[i].lastX, oy + s_run[i].lastY);
+        run_blit(frame, stride, sh, i, ox + s_run[i].lastX, oy + s_run[i].lastY);
     }
 }
 
@@ -471,7 +490,7 @@ static int32_t s_quitChosen;
 
 static void quitInit(void)
 {
-    entry(Quit_quit)->fg = (uintptr_t)QUIT_TO;
+    ModApi_MenuText(Quit_quit, QUIT_TO);
     SetCurrentEntry(Quit_return);
 }
 
@@ -601,7 +620,7 @@ static void modes(void)    { choose(ModesMenuSelected); }
 enum { Extras_header, Extras_news, Extras_tips, Extras_streams, Extras_editTeams,
        Extras_editTactics, Extras_manual, Extras_help, Extras_exit };
 
-static void set_text(int32_t ordinal, const char *text) { entry(ordinal)->fg = (uintptr_t)text; }
+static void set_text(int32_t ordinal, const char *text) { ModApi_MenuText(ordinal, text); }
 
 static void extrasInit(void) { SetCurrentEntry(Extras_tips); }   /* (LATEST NEWS, the first, hidden) */
 
