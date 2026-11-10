@@ -55,6 +55,10 @@
 #                                       -> openswos-setup.exe (the data setup's
 #                                          window, one static .exe; needs Visual
 #                                          Studio and Rust on the Windows side)
+#   dlc-manager    scripts/build_dlc_manager.sh linux|windows|amiga (SWOS United: the DLC Manager,
+#                  tools/dlc-manager) -> swos-dlc-manager.x86_64 + lib/x86_64/libslint_cpp.so and
+#                  swos-dlc-manager.exe in SWOS-portable.zip (the .exe in the installer too), SWOS-DLC
+#                  in the Amiga drawer; a missing toolchain SKIPs that platform
 #   installer      scripts/build_installer.sh
 #                                       -> dist/SWOS-Setup.exe  (packaging step,
 #                                          not a compile: it needs bin/SWOS.exe
@@ -165,6 +169,7 @@ SDL_SWITCH_ROOT="${SDL_SWITCH_ROOT:-D:\\Projects\\GitHub\\SDL-switch}"
 # `installer` is a packaging step rather than a compile, but it lives in this
 # list so --only/--skip and the summary treat it like everything else.
 ALL_TARGETS="linux-x86 linux-x86_64 linux-arm64 portmaster linux-armhf wasm amiga windows setup switch installer"
+ALL_TARGETS="$ALL_TARGETS dlc-manager"   # SWOS United (scripts/build_dlc_manager.sh)
 
 # Binaries that go into the zip. The WASM outputs are deliberately excluded:
 # SWOS.html/.js/.wasm/.data are a web deployment, not something a tester runs
@@ -602,6 +607,26 @@ if wanted setup; then
     esac
 fi
 
+# ---- dlc-manager (SWOS United: tools/dlc-manager) ----------------------------
+# Each platform on its own: a missing toolchain (vcpkg on Windows, the Roadshow SDK for the
+# Amiga) SKIPs that one, a failure FAILs the target. The packaging below takes what was built.
+if wanted dlc-manager; then
+    banner "dlc-manager -> Linux, Windows and Amiga DLC Manager (scripts/build_dlc_manager.sh)"
+    DLCM_OK=""; DLCM_SKIP=""; DLCM_FAIL=""
+    for p in linux windows amiga; do
+        scripts/build_dlc_manager.sh "$p"
+        case $? in
+            0) DLCM_OK="$DLCM_OK $p" ;;
+            3) DLCM_SKIP="$DLCM_SKIP $p" ;;
+            *) DLCM_FAIL="$DLCM_FAIL $p" ;;
+        esac
+    done
+    if [ -n "$DLCM_FAIL" ]; then record dlc-manager "FAIL"; echo "-- FAIL: dlc-manager:$DLCM_FAIL"
+    elif [ -z "$DLCM_OK" ]; then record dlc-manager "SKIP (no toolchain for any of:$DLCM_SKIP)"
+    else record dlc-manager "OK (${DLCM_OK# }${DLCM_SKIP:+; SKIP:$DLCM_SKIP})"; echo "-- OK: dlc-manager"
+    fi
+fi
+
 # ---- switch (NX, via Windows interop) ---------------------------------------
 # Produces dist/SWOS.nsp, not a zip: an .nsp IS the installable package, and at
 # ~84 MB it is dominated by the SDK's own opengl/vulkan modules, which compress
@@ -737,6 +762,14 @@ if [ "$DO_FULL" = 1 ] && [ -n "$ZIPPED" ] && command -v zip >/dev/null 2>&1; the
                 echo "-- port:     portmaster/swos.zip"
             rm -rf "$PM_TMP"
         fi
+        # SWOS United's DLC Manager, beside the game (the dlc-manager target; nothing if not built).
+        DLCM_TMP="$(mktemp -d)"
+        scripts/build_dlc_manager.sh stage-portable "$DLCM_TMP" &&
+            if [ -n "$(ls -A "$DLCM_TMP")" ]; then
+                ( cd "$DLCM_TMP" && zip -r -q "$ROOT/$FULL_ZIP_PATH" . ) &&
+                    echo "-- dlc manager: $(cd "$DLCM_TMP" && find . -type f | sed 's|^\./||' | tr '\n' ' ')"
+            fi
+        rm -rf "$DLCM_TMP"
 
         # Windows runtime beside SWOS.exe. Skipped cleanly off-Cygwin hosts. The list first checked
         # against what the exe needs (scripts/check_win_dlls.sh): a short one is a drop that will not start.
@@ -804,6 +837,7 @@ if [ "$DO_FULL" = 1 ] && [ -f bin/SWOS2 ] && command -v zip >/dev/null 2>&1; the
     if cp -R "$AMIGA_PKG_DIR/." "$AMIGA_TMP/" &&
        cp bin/SWOS2 "$AMIGA_TMP/SWOS/" &&
        cp bin/OpenSWOS.slave "$AMIGA_TMP/SWOS/" &&
+       scripts/build_dlc_manager.sh stage-amiga "$AMIGA_TMP/SWOS" &&
        AMIGA_DIRS="$(scripts/stage_runtime.sh "$AMIGA_TMP/SWOS" $AMIGA_DATA_DIRS $AMIGA_BOOT_DIRS)" &&
        mkdir -p "$AMIGA_TMP/SWOS/save" &&
        ( cd "$AMIGA_TMP" && zip -r -q "$ROOT/$AMIGA_ZIP_PATH" . -x '*/.DS_Store' ); then
