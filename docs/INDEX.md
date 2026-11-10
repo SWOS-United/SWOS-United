@@ -208,6 +208,7 @@ referenced but do not exist on the owner's PC; they are on another machine, or g
 | `third_party/` | `swosgfx/` (submodule: the graphics converters `tools/swosdata` is built on), `ggpo-x/` (submodule, branch `openswos`), `matchmaker/` (the server), `enet/`, `miniz/` |
 | `tools/` | `matchmaker-admin/` (the server's admin page), `mm_refpeer/`, address/stub generators |
 | `tools/swosdata/` | the data setup: builds the original game's data (not in the repo) from the player's own copy into the assets folder. `lib/` (C: ADF reader, finding the player's copy, the file lists, team JSON, the Jaguar tier; the converters are `third_party/swosgfx`'s), `cli/` (`swosdata`), `app/` (`openswos-setup`, Slint; `build.sh`/`build.bat static`) |
+| `tools/dlc-manager/` | SWOS United: the DLC Manager (submodule, github.com/SWOS-United/DLC-Manager): SWOS 2020's DLC catalogue, installed as mods in the player's folder. `swos-dlc-manager` (C++/Slint/SDL2) for the PC and Mac, `amiga/dlc_manager` (`SWOS-DLC`) for the Amiga drawer; built and staged by `scripts/build_dlc_manager.sh` (build_dist.sh target `dlc-manager`, build_macos.sh) |
 | `bin/setup/` | the setup's own inputs: `glyphs.txt` (the extended font) and the hand-drawn Jaguar goal celebrations |
 | `packaging/` | `web/` (`changelog.html`, the record of every drop), `windows/` (Inno Setup), `macos/`, `linux/`, `switch/`, icons |
 | `wasm/` | `shell.html` (the game page), `player.html` + `playback-index.html` (the recordings player), `pre.js` |
@@ -228,6 +229,7 @@ referenced but do not exist on the owner's PC; they are on another machine, or g
 | `third_party/swos-competition-engine` | the rules library (submodule; github.com/aminta/swos-competition-engine, Davide Lorigliola's): `rules/` built here as `src/swos_rules_*.c`; its `make rules-check MOD=<the Mod's checkout>` compares it with the Mod's C |
 | `C:\Projects\AI\SWOS\swosgfx` | swosgfx (github.com/benbaker76/swosgfx): the C99/C++ rewrite of SwosGfx, byte-identical to it; the converters `tools/swosdata` uses (submodule `third_party/swosgfx`). Converter changes go here |
 | `C:\Projects\GitHub\SwosGfx` | the C# SwosGfx (now github.com/benbaker76/SwosGfx-CSharp); `SwosGfx\AmigaTools.cs` is the authority for Amiga SPRITE/PITCH/PALETTE parsing; `bin\Debug\net8.0\Amiga_Images_16` the extracted graphics |
+| `C:\Projects\Amiga\Roadshow\Roadshow-SDK-1.8` | the Roadshow SDK: its `netinclude` builds the Amiga DLC Manager's networking (`ROADSHOW_SDK`, scripts/build_dlc_manager.sh) |
 | `C:\msys64\home\headk\rjp1player` | the RJP1 player for the music modules and SFX extraction |
 | `C:\Projects\AI\AmigaScope` | a standalone checkout of AmigaScope (the repo uses the submodule) |
 | `C:\Projects\Python\SWOS_Font` | the font tooling ([FONTS.md](FONTS.md)) |
