@@ -37,6 +37,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>          /* strncasecmp */
 
 #include "mjson.h"
 #include "display.h"            /* FRONTBUFFER_ROW_STRIDE_BYTES */
@@ -788,12 +789,24 @@ static void tickerDraw(void)
     nav(Tick_exit, -1, Tick_down, Tick_text0 + kTickRows, -1);
 }
 
+/* A link from the news feed is someone else's text: only a web address is opened (Platform_OpenUrl
+ * is ShellExecute "open" on Windows, which would also run a local path or a \\host\share program). */
+static int32_t is_web_link(const char *link)
+{
+    return strncasecmp(link, "http://", 7) == 0 || strncasecmp(link, "https://", 8) == 0;
+}
+
 static void tickerOpen(void)
 {
     const int32_t r = ModApi_MenuCurrentEntry() - (Tick_text0 + 1);
     const int32_t it = r >= 0 && r < kTickRows ? tick_item(s_tickPage[s_tickMode] * kTickRows + r) : -1;
-    if (it >= 0 && s_tick[it].link[0])
-        Platform_OpenUrl(s_tick[it].link);
+    if (it < 0 || !s_tick[it].link[0])
+        return;
+    if (!is_web_link(s_tick[it].link)) {
+        fprintf(stderr, "[menus2020] news link not opened (not http/https): %.80s\n", s_tick[it].link);
+        return;
+    }
+    Platform_OpenUrl(s_tick[it].link);
 }
 
 static void tickerUp(void)
