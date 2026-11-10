@@ -839,10 +839,10 @@
       "kind": "entry",
       "name": "tickerScrollUp",
       "coords": {
-        "x": 313,
-        "y": 49,
-        "w": 12,
-        "h": 12
+        "x": 303,
+        "y": 48,
+        "w": 9,
+        "h": 13
       },
       "commands": [
         {
@@ -856,17 +856,17 @@
         }
       ],
       "image": "grafs_2020/menus2020/arrow_up.bmp",
-      "image_x": 0,
-      "image_y": 0
+      "image_x": 2,
+      "image_y": 1
     },
     {
       "kind": "entry",
       "name": "tickerScrollDown",
       "coords": {
-        "x": 313,
+        "x": 303,
         "y": 153,
-        "w": 12,
-        "h": 12
+        "w": 9,
+        "h": 13
       },
       "commands": [
         {
@@ -880,7 +880,7 @@
         }
       ],
       "image": "grafs_2020/menus2020/arrow_down.bmp",
-      "image_x": 0,
+      "image_x": 2,
       "image_y": 0
     },
     {

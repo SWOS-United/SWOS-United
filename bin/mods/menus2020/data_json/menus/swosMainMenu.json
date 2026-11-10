@@ -244,9 +244,9 @@
       "kind": "entry",
       "name": "exit",
       "coords": {
-        "x": 0,
+        "x": -5,
         "y": 181,
-        "w": 34,
+        "w": 31,
         "h": 17
       },
       "commands": [
@@ -268,7 +268,7 @@
         }
       ],
       "image": "grafs_2020/menus2020/quit.bmp",
-      "image_x": 3,
+      "image_x": 0,
       "image_y": 0
     },
     {
@@ -412,7 +412,7 @@
         }
       ],
       "image": "grafs_2020/menus2020/save.bmp",
-      "image_x": 14,
+      "image_x": 6,
       "image_y": 4
     },
     {
@@ -448,7 +448,7 @@
         }
       ],
       "image": "grafs_2020/menus2020/load.bmp",
-      "image_x": 56,
+      "image_x": 48,
       "image_y": 4
     },
     {
@@ -503,7 +503,7 @@
         }
       ],
       "image": "grafs_2020/menus2020/credits.bmp",
-      "image_x": 12,
+      "image_x": 4,
       "image_y": 3
     },
     {

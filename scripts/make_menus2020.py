@@ -129,9 +129,9 @@ SUBMENUS = {
             "tickerMenuExit_OnSelect": "SetExitMenuFlag",
         },
         hide=[],
-        # The page buttons where its onDraw draws their arrows (313,49 and 313,153), pictured.
-        move={"tickerScrollUp": (313, 49, 12, 12), "tickerScrollDown": (313, 153, 12, 12)},
-        image={"tickerScrollUp": "arrow_up", "tickerScrollDown": "arrow_down"},
+        # The page buttons (ticker.mnu: 303,48 and 303,153, 9x13) pictured with the arrows its onDraw
+        # draws at 313,49 and 313,153 -- screen pixels, so less the entry's x and ConvertMenu's +8.
+        image={"tickerScrollUp": ("arrow_up", 2, 1), "tickerScrollDown": ("arrow_down", 2, 0)},
     ),
 }
 
@@ -276,22 +276,22 @@ def build_main(doc):
 
     # 11: the game prints "CONTINUE <name>" / "REPLAY <name>" into it (CommonMenuExit).
     set_text(by_name["continueContest"][0], deferred=True)
-    # SAVE and LOAD as SWOS 2020's ("      SAVE" / "   LOAD", left-aligned big text) with the
-    # floppies its onDraw draws (disk_save_load_16x14_1x3_map at 91,182 and 211,182).
-    for name, text, picture, dx in (("saveContest", "      SAVE", "save", 14),
-                                    ("loadOldCompetition", "   LOAD", "load", 56)):
+    # SAVE and LOAD as main.mnu has them, with the floppies its onDraw draws
+    # (disk_save_load_16x14_1x3_map at 91,182 and 211,182). drawMapEx takes screen pixels, and
+    # ConvertMenu puts an entry 8 right of its .mnu x: so a picture's place in the entry is
+    # SWOS 2020's x - the entry's x - 8 (and its y - the entry's y).
+    for name, picture, dx in (("saveContest", "save", 91 - 77 - 8),
+                              ("loadOldCompetition", "load", 211 - 155 - 8)):
         it = by_name[name][0]
-        set_text(it, text)
-        it["commands"][0]["flags"] = "0x8010"          # (kLeftAligned | kBigText)
         it["image"] = "grafs_2020/menus2020/%s.bmp" % picture
         it["image_x"], it["image_y"] = dx, 4
-    # QUIT and CREDITS are pictures there: drawExitIcon(3, 181) and the SWOS United logo
-    # (drawSwosUnitedLogo, 293,185) over main.mnu's credits entry (281,182, 31x18).
+    # QUIT and CREDITS are pictures there: drawExitIcon(3, 181) over main.mnu's exit entry
+    # (-5,181, 31x17) and the SWOS United logo (drawSwosUnitedLogo, 293,185) over its credits
+    # entry (281,182, 31x18).
     quit_item, quit_origin = by_name["exit"]
-    quit_item["coords"] = {"x": 0, "y": 181, "w": 34, "h": 17}
     credits_item, credits_origin = by_name["credits"]
     credits_item["coords"] = {"x": 281, "y": 182, "w": 31, "h": 18}
-    for it, picture, dx, dy in ((quit_item, "quit", 3, 0), (credits_item, "credits", 12, 3)):
+    for it, picture, dx, dy in ((quit_item, "quit", 3 - (-5) - 8, 0), (credits_item, "credits", 293 - 281 - 8, 3)):
         it["commands"] = [c for c in it["commands"] if c["op"] not in ("text", "text_no_ptr", "colors")]
         it["commands"].insert(0, {"op": "colors", "frame_color": 0, "background_color": 0})
         it["image"] = "grafs_2020/menus2020/%s.bmp" % picture
@@ -391,9 +391,9 @@ def build_sub(doc, spec):
         set_text(by_name[name], text)
     for name, (x, y, w, h) in spec.get("move", {}).items():
         by_name[name]["coords"] = {"x": x, "y": y, "w": w, "h": h}
-    for name, picture in spec.get("image", {}).items():
+    for name, (picture, dx, dy) in spec.get("image", {}).items():
         by_name[name]["image"] = "grafs_2020/menus2020/%s.bmp" % picture
-        by_name[name]["image_x"], by_name[name]["image_y"] = 0, 0
+        by_name[name]["image_x"], by_name[name]["image_y"] = dx, dy
     # Entries of ours, after SWOS 2020's (so its ordinals stay): a copy of `like` (its colours,
     # text flags) with our text and handler.
     for add in spec.get("add", []):
