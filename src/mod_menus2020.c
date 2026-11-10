@@ -40,7 +40,6 @@
 #include <strings.h>          /* strncasecmp */
 
 #include "mjson.h"
-#include "display.h"            /* FRONTBUFFER_ROW_STRIDE_BYTES */
 #include "dos_graphics.h"       /* DosGfx_DecodePlanarSprite */
 #include "dos_mode.h"           /* _gDosGraphicsDir */
 #include "edit_tactics.h"       /* FillSkinColorConversionTable */
@@ -532,41 +531,23 @@ static void competitionInit(void)
 }
 
 /* competitionMenu_OnDraw: SWOS 2020's yellow arrows either side of CHALLENGES, pointing at it,
- * coming and going (0 1 2 3 2 1 pixels, a step every 20 of its frames). Into the frame, their
- * places painted back first. Only while CHALLENGES is there (the challenges mod on). */
-static const char *const k_arrowRight[7] = {
-    ".....6F...", "......6F..", "4455566F2.", "455566FFF8", ".888886F88", ".....6F88.", "......88..",
-};
-static const char *const k_arrowLeft[7] = {
-    "..F6......", ".F688.....", "2F6655544.", "FFF6655548", ".F68888888", "..F6......", "...88.....",
-};
-
-static void draw_map(const char *const *map, int32_t w, int32_t h, int32_t x, int32_t y)
-{
-    extern volatile uintptr_t _frontbufferBasePtr;
-    extern int _menu_draw_x_offset;
-    uint8_t *fb = (uint8_t *)_frontbufferBasePtr + _menu_draw_x_offset;
-    for (int32_t j = 0; j < h; j++)
-        for (int32_t i = 0; i < w; i++) {
-            const char c = map[j][i];
-            if (c != '.' && c != '0' && x + i >= 0 && y + j >= 0)
-                fb[(uint32_t)(y + j) * FRONTBUFFER_ROW_STRIDE_BYTES + (uint32_t)(x + i)] =
-                    (uint8_t)(c <= '9' ? c - '0' : c - 'A' + 10);
-        }
-}
-
+ * coming and going -- frame[frame[i]] of { 0, 1, 2, 3, 2, 1 }, which is that table again, a step
+ * every 20 of its 70 frames a second. Its pictures (rightArrow / leftArrow, 10x7) are the mod's
+ * pixmaps.txt, made on the player's machine by scripts/make_menus2020_icons.py; without it nothing
+ * is drawn. Only while CHALLENGES is there (the challenges mod on). */
 static void competitionDraw(void)
 {
     static const int32_t kFrame[6] = { 0, 1, 2, 3, 2, 1 };
-    const MenuEntry *e = entry(Comp_challenges);
-    if (e->isInvisible)
+    int32_t x = 0, y = 0, w = 0, h = 0;
+    if (entry(Comp_challenges)->isInvisible)
         return;
-    const int32_t step = kFrame[(ModApi_Ticks() / 290) % 6];   /* (20 frames of its 70) */
-    const int32_t y = e->y + e->dwHeight / 2 - 4;
-    ModApi_RestoreMenuBackground(e->x - 16, y, 13, 7);
-    ModApi_RestoreMenuBackground(e->x + e->dwWidth + 3, y, 13, 7);
-    draw_map(k_arrowRight, 10, 7, e->x - 13 - step, y);
-    draw_map(k_arrowLeft, 10, 7, e->x + e->dwWidth + 3 + step, y);
+    const int32_t step = kFrame[kFrame[(ModApi_Ticks() / 290) % 6]];   /* (20 frames of its 70) */
+    ModApi_MenuEntryRect(Comp_challenges, &x, &y, &w, &h);
+    const int32_t dy = h / 2 - 4;
+    ModApi_RestoreMenuBackground(x - 16, y + dy, 13, 7);
+    ModApi_RestoreMenuBackground(x + w + 3, y + dy, 13, 7);
+    ModApi_DrawMapAtEntry(SLUG, "rightArrow", Comp_challenges, -13 - step, dy, 0, 0, 10, 7, 0);
+    ModApi_DrawMapAtEntry(SLUG, "leftArrow", Comp_challenges, w + 3 + step, dy, 0, 0, 10, 7, 0);
 }
 
 /* A mod's MODES entry, run with the main menu current (as every choice here is). */

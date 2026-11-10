@@ -15,7 +15,7 @@ overlay: bin/mods/menus2020/grafs_2020/menus2020/<name>.bmp (scripts/make_menus2
 names them).
 
 The icons are SWOS 2020's art, so like its pitches (grafs_2020) they are made on the player's
-machine and never committed (.gitignore). Without them the menu shows its buttons without icons.
+machine and never committed (.gitignore), as is the mod's pixmaps.txt (COMPETITIONS' arrows). Without them the menu shows its buttons without icons.
 """
 import argparse
 import os
@@ -136,6 +136,17 @@ def main():
     arrows = char_map("arrows_12x12_13x1_Map", 12)
     for k, name in ((10, "arrow_up"), (11, "arrow_down")):
         small([[int(c, 16) for c in row[12 * k:12 * (k + 1)]] for row in arrows[:12]], name)
+    # COMPETITIONS' yellow arrows either side of CHALLENGES (competitionMenu_OnDraw: rightArrow /
+    # leftArrow, 10x7), as character maps -- the mod's pixmaps.txt, drawn by ModApi_DrawMapAtEntry
+    # (src/mod_menu_tools.c: per map "name width height", then its rows).
+    with open(os.path.join(REPO, "bin", "mods", "menus2020", "pixmaps.txt"), "w", newline="\n") as f:
+        f.write("# SWOS 2020's pictures (src/PixelmapAndStrings.h): scripts/make_menus2020_icons.py\n")
+        for name in ("rightArrow", "leftArrow"):
+            rows = [row[:10] for row in char_map(name, 7)[:7]]
+            f.write("%s 10 7\n" % name)
+            f.write("".join(row + "\n" for row in rows))
+    print("  -> bin/mods/menus2020/pixmaps.txt")
+
     with open(os.path.join(args.swos2020, "src", "game.cpp"), encoding="latin-1") as f:
         src = f.read()
     m = re.search(r"void drawExitIcon\(int x, int y\)\s*\{\s*static const unsigned char kExitIconData\[\]\s*=\s*\{(.*?)\};",
