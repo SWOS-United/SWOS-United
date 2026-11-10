@@ -374,12 +374,13 @@ def build_main(doc):
                       {"op": "onselect_fire", "func": mod("liveCast")}]
 
     # SWOS United's banner across the top, right of the TV (4..46) in the band above the buttons
-    # (they start at 41), centred in x 50..316, y 0..40: the third filler, never chosen (no handler,
+    # (they start at 41), centred in x 50..311 (the menu's right edge: SWOS 2020's screen 319, our
+    # 4:3 screen's 335), y 0..40: the third filler, never chosen (no handler,
     # nothing leads to it). Its picture is ours, not SWOS 2020's -- committed, grafs_united/logo.bmp
     # in the mod, made LOGO_SIZE from docs/images/swosunited-banner.png by scripts/make_united_logo.py.
     logo = ordered[filler + 2][0]
     logo["name"] = "logo"
-    logo["coords"] = {"x": (50 + 316 - LOGO_SIZE[0]) // 2, "y": (40 - LOGO_SIZE[1] + 1) // 2,
+    logo["coords"] = {"x": (50 + 312 - LOGO_SIZE[0]) // 2, "y": (40 - LOGO_SIZE[1] + 1) // 2,
                       "w": LOGO_SIZE[0], "h": LOGO_SIZE[1]}
     logo["image"] = "grafs_united/logo.bmp"
     logo["commands"] = [{"op": "colors", "frame_color": 0, "background_color": 0}]
