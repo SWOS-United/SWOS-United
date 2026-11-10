@@ -107,8 +107,8 @@ LOAD, QUIT (asks), CREDITS.
   button that opened it runs it with the main menu current (`open_screen`).
 - **SPEEDRUNS / CHALLENGES** show when OpenSWOS's `speedrun` / `challenges` mods are on, and run
   their MODES entry (`ModApi_FindEntry` / `ModApi_RunEntry`, OpenSWOS c46c56eb).
-- SEASON and SAVE DISK FILING (the original main menu's; SWOS 2020 has neither) are kept: SEASON
-  beside CLASSIC CAREER, SAVE DISK FILING under the editors.
+- SEASON and SAVE DISK FILING (the original main menu's; SWOS 2020 has neither) were kept until
+  2026-11-10: SEASON beside CLASSIC CAREER, SAVE DISK FILING under the editors (see below).
 - 2026-11-05: the six buttons' icons ("image" + image_x/y, MENUS.md §13), the news ticker across
   the top (the canonical `ticker` mod, "ticker_entry" on the first filler), and **LIVE CAST**: SWOS
   2020's TV (the second filler; idle/live from `ModApi_LiveAny`, UP from COMPETE or a click) opens
@@ -134,9 +134,27 @@ LOAD, QUIT (asks), CREDITS.
   TEAM2.DAT, coloured as colorAllSprites) run in from the corners each time the main menu opens
   and stand at the bottom right, where the SWOS United logo then takes their place -- drawn over
   the picture (gfx.h); without the PC game's data, the logo alone.
-- Not there yet: the little player animation (SWOS 2020's main-menu sprites;
-  menu descriptions turned out to be its challenge screens' only, OpenSWOS's). Checked: SDL headless -- the menu, COMPETE -> DIY -> back, PRACTICE;
-  both targets build; `--menu-selftest`, the mod-match test.
+- The run-in (f14bb2a9, then the review's fixes): the three players start together just off the top
+  left, set off 150 ms apart and run cubic Bezier paths -- random control points each time the menu
+  opens, the parameter eased (EASE_IN_OUT_SINE) over ~7 s, three times SWOS 2020's pace -- to the
+  places of the three in the SWOS United logo (CREDITS' picture, swos_united_logo_24x14_1x1_Map at
+  SWOS 2020's 293,185), each exactly there (`SWOS_RUNIN_TEST=1`: PASS per player); after
+  kPlayersSettledDelay the logo takes their place. Without the logo (SWOS 2020's art not made) they
+  stay standing as the button; without the PC game's TEAM2.DAT the logo at once. (Menu descriptions
+  turned out to be SWOS 2020's challenge screens' only, OpenSWOS's.)
+- **The review's fixes (2026-11-10).** Pictures placed by SWOS 2020's screen pixels are put at that
+  x - the entry's x - 8 (ConvertMenu's shift: SAVE/LOAD's floppies, the logo, QUIT's icon, the news
+  lists' page arrows); COMPETITIONS' arrows come from the mod's `pixmaps.txt` (made by
+  `make_menus2020_icons.py`, gitignored) through `ModApi_DrawMapAtEntry`. TIPS AND REVIEWS /
+  STREAMS AND VIDEOS follow `tickerMenu_OnDraw`: rows 6-10 go right to the page down, pages go
+  round, its colours, EXIT first, the text cut at 249 px with "..."; the news is read by the ticker
+  mod (`UnitedTicker_News`, include/united_ticker.h: a bad item is skipped, the mod's own news.json
+  when the saved one has none), and a row opens its link only when it is http:// or https://. QUIT
+  fades out and in as `quitMenuOnInit` / `returnToGame` (the game's FadeOutToBlack / FadeIn).
+  MULTIPLAYER is hidden in a build without netplay. Across the top, SWOS United's wide banner
+  (docs/images/swosunited-banner.png, 262x31 at 52,5 by `scripts/make_united_logo.py`). `SWOS_MENUS2020_TEST=1` unpacks every menus2020 menu.
+- Checked: SDL headless -- the menu, COMPETE -> DIY -> back, PRACTICE; both targets build;
+  `--menu-selftest`, the mod-match test.
 
 ## 4. Hooks to request from OpenSWOS (specs)
 
