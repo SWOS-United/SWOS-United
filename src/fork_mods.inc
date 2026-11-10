@@ -7,7 +7,6 @@ extern const ModDef ModDef_onlineRecords;   /* the challenges' and speedruns' re
 extern const ModDef ModDef_challenges2020;  /* SWOS 2020's challenge screens (src/united_challenges.c) */
 extern const ModDef ModDef_speedrun2020;    /* SWOS 2020's speedrun screens (src/united_speedrun.c) */
 extern const ModDef ModDef_galore2020;      /* SWOS 2020's SWOS GALORE, its charts (src/united_galore.c) */
-extern const ModDef ModDef_display2020;     /* SWOS 2020's scoreboard and result band (src/mod_display2020.c) */
 extern const ModDef ModDef_discord2020;     /* SWOS 2020's Discord posts of an online match (src/mod_discord2020.c) */
 extern const ModDef ModDef_teamimport2020;  /* MY CUSTOM TEAMS' IMPORT FROM SWOS 2020 (src/mod_teamimport2020.c) */
 
@@ -15,5 +14,5 @@ extern const ModDef ModDef_teamimport2020;  /* MY CUSTOM TEAMS' IMPORT FROM SWOS
  *  ab481ba9; mods_builtin.c defines MOD_SDL / MOD_AMIGA before the list expands this) */
 #define FORK_MOD_LIST MOD_SDL(ModDef_menus2020) MOD_SDL(ModDef_unitedTicker) MOD_SDL(ModDef_onlineRecords) \
                       MOD_SDL(ModDef_challenges2020) MOD_SDL(ModDef_speedrun2020) \
-                      MOD_SDL(ModDef_galore2020) MOD_SDL(ModDef_display2020) \
+                      MOD_SDL(ModDef_galore2020) \
                       MOD_SDL(ModDef_discord2020) MOD_SDL(ModDef_teamimport2020)

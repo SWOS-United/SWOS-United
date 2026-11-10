@@ -34,6 +34,14 @@
 #include "dos_mode.h"
 #include "dos_sound.h"
 #include "dos_music.h"
+#include "tweaks.h"            /* STRONGER KEEPERS: [tweaks] stronger_goalkeeper_ai */
+#include "project_identity.h"  /* MENU LOOK: PROJECT_MENU_LOOK_AMIGA */
+#include "pixel_filter.h"      /* DISPLAY OPTIONS (launcher options, agent B) */
+#include "mod_api.h"           /* ... its mods' settings */
+#include "mods.h"
+#include "team_colors.h"       /* (its self-test) */
+#include "match_setup.h"
+#include "dos_graphics.h"
 
 #include <SDL.h>
 #include <stdio.h>
@@ -435,6 +443,24 @@ static void deadzone_change(int32_t dir)
     save();
 }
 
+/* MOUSE POINTER: [input] mouse_cursor (src/mouse_cursors.c; launcher options, agent A). */
+static void pointer_show(char *o, int32_t c)
+{
+    extern int32_t MouseCursors_Style(void);
+    static const char *const k[3] = { "SYSTEM", "WORKBENCH 2.04", "WORKBENCH 1.X" };
+    snprintf(o, (size_t)c, "%s", k[MouseCursors_Style()]);
+}
+static void pointer_change(int32_t dir)
+{
+    extern int32_t MouseCursors_Style(void);
+    extern void MouseCursors_Apply(int32_t style);
+    MouseCursors_Apply(step(MouseCursors_Style(), dir, 3));
+    if (g_arcadeOpts)
+        g_arcadeOpts->mouse_cursor = MouseCursors_Style();
+    note("THE MOUSE POINTER IN THE MENUS");
+    save();
+}
+
 static const Row k_controlRows[] = {
     { "PLAYER 1",                 p1_show,         p1_change },
     { "  SELECT JOYPAD",          select_show,     p1_select },
@@ -447,6 +473,7 @@ static const Row k_controlRows[] = {
     { "DISABLE SHOULDER BUTTONS", shoulders_show,  shoulders_change },
     { "CALL BENCH",               bench_show,      bench_change },
     { "STICK DEAD ZONE",          deadzone_show,   deadzone_change },
+    { "MOUSE POINTER",            pointer_show,    pointer_change },     /* (launcher options, agent A) */
 };
 static const Page k_controlsPage = { "CONTROLS", k_controlRows, (int32_t)(sizeof k_controlRows / sizeof k_controlRows[0]) };
 
@@ -520,6 +547,85 @@ static void cursor_change(int32_t dir)
     save();
 }
 
+/* ---- launcher options (agent A): the SWOS United Launcher's, in the game ---- */
+
+/* RESOLUTION: [video] resolution -- the render's SHAPE (swos_settings.c), auto (the display's) or
+ * one of the common shapes; a hand-written WxH shows as it is and steps to AUTO. */
+static const struct { const char *name; int w, h; } k_shapes[] = {
+    { "AUTO", 0, 0 }, { "4:3", 1440, 1080 }, { "16:10", 1920, 1200 }, { "16:9", 1920, 1080 },
+    { "21:9", 2560, 1080 }, { "32:9", 3840, 1080 },
+};
+enum { kShapes = (int)(sizeof k_shapes / sizeof k_shapes[0]) };
+
+static int32_t shape_index(void)
+{
+    for (int32_t i = 0; i < kShapes; i++)
+        if (O()->res_w == k_shapes[i].w && O()->res_h == k_shapes[i].h)
+            return i;
+    if (O()->res_w <= 0 || O()->res_h <= 0)
+        return 0;
+    return -1;
+}
+
+static void res_show(char *o, int32_t c)
+{
+    const int32_t i = shape_index();
+    if (i >= 0)
+        snprintf(o, (size_t)c, "%s", k_shapes[i].name);
+    else
+        snprintf(o, (size_t)c, "%dX%d", O()->res_w, O()->res_h);
+}
+static void res_change(int32_t dir)
+{
+    extern int Video_ResolutionChanged(const PlatformInitOptions *o, int dw, int dh);
+    int32_t i = shape_index();
+    int dw = 16, dh = 9;
+    i = i < 0 ? 0 : step(i, dir, kShapes);
+    O()->res_w = k_shapes[i].w;
+    O()->res_h = k_shapes[i].h;
+    if (O()->res_w > 0) {
+        dw = O()->res_w;
+        dh = O()->res_h;
+    } else {
+        SDL_DisplayMode dm;
+        SDL_Window *w = SDL_GetKeyboardFocus();        /* (the game's window: it has the keys) */
+        const int d = w ? SDL_GetWindowDisplayIndex(w) : O()->screen;
+        if (SDL_GetDesktopDisplayMode(d >= 0 ? d : 0, &dm) == 0 && dm.h > 0) {
+            dw = dm.w;
+            dh = dm.h;
+        }
+    }
+    if (Video_ResolutionChanged(O(), dw, dh))
+        note(i ? "THE PICTURE'S SHAPE: MORE PITCH WHEN WIDER" : "THE DISPLAY'S OWN SHAPE");
+    else
+        note("THE PICTURE'S SHAPE, WITH WIDESCREEN ON");
+    save();
+}
+
+/* AUTO CENTERING: [video] auto_centering (platform_sdl.c Platform_SetAutoCentering). */
+static void centre_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", on_off(O()->auto_centering)); }
+static void centre_change(int32_t dir)
+{
+    extern void Platform_SetAutoCentering(int on);
+    (void)dir;
+    O()->auto_centering = !O()->auto_centering;
+    Platform_SetAutoCentering(O()->auto_centering);
+    note("THE WINDOW KEPT IN THE MIDDLE OF ITS DISPLAY");
+    save();
+}
+
+/* SHOW FPS: [video] show_fps (src/fps_overlay.c). */
+static void fps_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", on_off(O()->show_fps)); }
+static void fps_change(int32_t dir)
+{
+    extern void FpsOverlay_Set(int32_t on);
+    (void)dir;
+    O()->show_fps = !O()->show_fps;
+    FpsOverlay_Set(O()->show_fps);
+    note("THE FRAMES SHOWN A SECOND, TOP RIGHT");
+    save();
+}
+
 static const Row k_videoRows[] = {
     { "WINDOW MODE",        winmode_show,  winmode_change },
     { "WINDOW SCALE",       scale_show,    scale_change },
@@ -530,6 +636,10 @@ static const Row k_videoRows[] = {
     { "MONITOR",            monitor_show,  monitor_change },
     { "RENDERER",           renderer_show, renderer_change },
     { "MENU CURSOR",        cursor_show,   cursor_change },
+    /* (launcher options, agent A) */
+    { "RESOLUTION",         res_show,      res_change },
+    { "AUTO CENTERING",     centre_show,   centre_change },
+    { "SHOW FPS",           fps_show,      fps_change },
 };
 static const Page k_videoPage = { "VIDEO OPTIONS", k_videoRows, (int32_t)(sizeof k_videoRows / sizeof k_videoRows[0]) };
 
@@ -698,13 +808,294 @@ static void hlspeed_change(int32_t dir) { (void)dir; O()->replay_half_speed = !O
 static void overlay_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", on_off(O()->replay_frame_overlay)); }
 static void overlay_change(int32_t dir) { (void)dir; O()->replay_frame_overlay = !O()->replay_frame_overlay; viewer_apply(); }
 
+/* ---- launcher options (agent A): the SWOS United Launcher's, in the game ---- */
+
+#if SWOS_TWEAK_STRONGER_GK
+/* SWOS 2020's --stronger-goalkeeper-ai: [tweaks] stronger_goalkeeper_ai (include/tweaks.h). Off
+ * line only: online and in the rigs the original's keepers play whatever this says. */
+static void keepers_show(char *o, int32_t c)
+{
+    snprintf(o, (size_t)c, "%s", (O()->tweaks & TWEAK_STRONGER_GOALKEEPER_AI) ? "STRONGER" : "ORIGINAL");
+}
+static void keepers_change(int32_t dir)
+{
+    (void)dir;
+    O()->tweaks ^= TWEAK_STRONGER_GOALKEEPER_AI;
+    Tweaks_Set(O()->tweaks);
+    note(_gGameplayStyle == GAMEPLAY_DOS || _gGameplayStyle == GAMEPLAY_XBOX
+         ? "THE AMIGA STYLES' KEEPERS; OFF LINE ONLY" : "THEY REACH A STEP FURTHER; OFF LINE ONLY");
+    save();
+}
+#endif
+
+/* ARTWORK: [graphics] style amiga | dos | 2020 -- what the pitch, HUD and menus are drawn from
+ * (main.c reads it before anything is loaded: from the next start). */
+static int32_t art_index(void)
+{
+    if (!O()->dos_graphics)
+        return 0;
+    return strcmp(O()->dos_dir, "grafs_2020") == 0 ? 2 : 1;
+}
+static void art_show(char *o, int32_t c)
+{
+    static const char *const k[3] = { "AMIGA", "PC DOS", "SWOS 2020" };
+    snprintf(o, (size_t)c, "%s", k[art_index()]);
+}
+static void art_change(int32_t dir)
+{
+    extern int swos_data_exists(const char *rel);
+    const int32_t i = step(art_index(), dir, 3);
+    O()->dos_graphics = i != 0;
+    if (i)
+        snprintf(O()->dos_dir, sizeof O()->dos_dir, "%s", i == 2 ? "grafs_2020" : "grafs_dos");
+    if (i == 2 && !swos_data_exists("grafs_2020/pitch1.dat"))
+        note("NO SWOS 2020 PITCHES: THE PC GAME'S; NEXT START");
+    else
+        later();
+    save();
+}
+
+/* MENU LOOK: [mod.dosmenus] look amiga | pc -- the PC menu shading mod's (src/mod_dosmenus.c, which
+ * follows it at once; F5 still flips it for the run). */
+static void look_show(char *o, int32_t c)
+{
+    extern const char *ModApi_Setting(const char *slug, const char *key, const char *fallback);
+    const char *v = ModApi_Setting("dosmenus", "look", PROJECT_MENU_LOOK_AMIGA ? "amiga" : "pc");
+    snprintf(o, (size_t)c, "%s", strcmp(v, "pc") == 0 ? "PC DOS" : "AMIGA");
+}
+static void look_change(int32_t dir)
+{
+    extern const char *ModApi_Setting(const char *slug, const char *key, const char *fallback);
+    extern int32_t ModApi_SetSetting(const char *slug, const char *key, const char *value);
+    extern int32_t Mods_IsOn(const char *slug);
+    extern int swos_data_exists(const char *rel);
+    const char *v = ModApi_Setting("dosmenus", "look", PROJECT_MENU_LOOK_AMIGA ? "amiga" : "pc");
+    (void)dir;
+    ModApi_SetSetting("dosmenus", "look", strcmp(v, "pc") == 0 ? "amiga" : "pc");
+    if (!Mods_IsOn("dosmenus"))
+        note("THE PC MENU SHADING MOD IS OFF: OPTIONS, MODS");
+    else if (!swos_data_exists("grafs_dos/FILL.256"))
+        note("PC DOS NEEDS THE PC GAME'S DATA");
+    else
+        note("F5 SWITCHES IT TOO, FOR THIS RUN");
+}
+
+/* CPU TACTICS: [gameplay] cpu_tactics (src/tactics_expert.c). Off line only. */
+static void tactics_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", O()->cpu_tactics ? "EXPERT" : "NORMAL"); }
+static void tactics_change(int32_t dir)
+{
+    extern void TacticsExpert_Set(int32_t expert);
+    (void)dir;
+    O()->cpu_tactics = !O()->cpu_tactics;
+    TacticsExpert_Set(O()->cpu_tactics);
+    note(O()->cpu_tactics ? "SWOS 2020'S IMPROVED FORMATIONS; OFF LINE ONLY" : "THE GAME'S OWN FORMATIONS");
+    save();
+}
+
+/* START-UP: [general] skip_intro, skip_image_reels, no_load_pause (SWOS 2020's --no-intro,
+ * --no-image-reels, --no-load-pause). */
+static void intro_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", O()->skip_intro ? "SKIP" : "PLAY"); }
+static void intro_change(int32_t dir) { (void)dir; O()->skip_intro = !O()->skip_intro; later(); save(); }
+
+static void reels_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", O()->skip_image_reels ? "TITLE ONLY" : "ALL"); }
+static void reels_change(int32_t dir)
+{
+    (void)dir;
+    O()->skip_image_reels = !O()->skip_image_reels;
+    note(O()->skip_image_reels ? "THE TITLE AND ITS TUNE ALONE; NEXT START" : "EVERY PICTURE; NEXT START");
+    save();
+}
+
+static void loadpause_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", O()->no_load_pause ? "OFF" : "ON"); }
+static void loadpause_change(int32_t dir)
+{
+    extern int _gNoLoadPause;
+    (void)dir;
+    O()->no_load_pause = !O()->no_load_pause;
+    _gNoLoadPause = O()->no_load_pause;
+    note(O()->no_load_pause ? "THE STADIUM SCREEN GOES AT ONCE; OFF LINE ONLY" : "THE STADIUM SCREEN'S 3 SECONDS");
+    save();
+}
+
 static const Row k_gameplayRows[] = {
     { "GAME STYLE",              style_show,    style_change },
     { "AUTO SAVE REPLAYS",       autosave_show, autosave_change },
     { "HIGHLIGHT DEFAULT SPEED", hlspeed_show,  hlspeed_change },
     { "FRAME INFO OVERLAY",      overlay_show,  overlay_change },
+    /* (launcher options, agent A) */
+    { "ARTWORK",                 art_show,      art_change },
+    { "MENU LOOK",               look_show,     look_change },
+    { "SKIP INTRO",              intro_show,    intro_change },
+    { "INTRO PICTURES",          reels_show,    reels_change },
+    { "PRE-MATCH PAUSE",         loadpause_show, loadpause_change },
 };
 static const Page k_gameplayPage = { "GAMEPLAY OPTIONS", k_gameplayRows, (int32_t)(sizeof k_gameplayRows / sizeof k_gameplayRows[0]) };
+
+/* ===================================================================== DISPLAY OPTIONS
+ * (launcher options, agent B; docs/RENDERING.md "DISPLAY OPTIONS") The SWOS United Launcher's look
+ * options -- SWOS 2020's command-line flags -- in the game: the menus' opacity, the pixel filter,
+ * purple for brown, the improved pitch palette ([video] in SWOS.ini, Platform_SetDisplayOptions:
+ * at once), and the result display's and the scoreboard's settings, which are their mods'
+ * ([mod.display2020], [mod.scoreboard]: OPTIONS -> MODS turns the mods on). All drawing only. */
+
+static void display_apply(void)
+{
+    Platform_SetDisplayOptions(O());
+    save();
+}
+
+static void opacity_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%d%%", O()->menu_opacity); }
+static void opacity_change(int32_t dir)
+{
+    O()->menu_opacity = (int)step(O()->menu_opacity / 10, dir, 11) * 10;
+    note("THE MENUS' BUTTONS OVER THE BACKDROP");
+    display_apply();
+}
+
+static void filter_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", PixelFilter_Label(O()->pixel_filter)); }
+static void filter_change(int32_t dir)
+{
+    O()->pixel_filter = (int)step(O()->pixel_filter, dir, PIXEL_FILTER_COUNT);
+    note(O()->renderer == PLATFORM_RENDERER_ACCEL ? "NOT WITH A SHADER PRESET (RETRO TV)" : "THE GPU RENDERER ONLY");
+    display_apply();
+}
+
+static void purple_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", O()->purple_for_brown ? "PURPLE" : "BROWN"); }
+static void purple_change(int32_t dir)
+{
+    (void)dir;
+    O()->purple_for_brown = !O()->purple_for_brown;
+    note("FROM THE NEXT MATCH");
+    display_apply();
+}
+
+static void pitchpal_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", O()->improved_pitch_palette ? "IMPROVED" : "ORIGINAL"); }
+static void pitchpal_change(int32_t dir)
+{
+    (void)dir;
+    O()->improved_pitch_palette = !O()->improved_pitch_palette;
+    note("WET AND SOFT PITCHES, FROM THE NEXT MATCH");
+    display_apply();
+}
+
+/* A mod's setting, cycled through its choices (`choices` NULL: off / on). */
+static void mod_setting_show(const char *slug, const char *key, const char *fallback, char *o, int32_t c)
+{
+    if (!Mods_IsOn(slug)) {
+        snprintf(o, (size_t)c, "MOD OFF");
+        return;
+    }
+    upper(o, c, ModApi_Setting(slug, key, fallback));
+}
+static void mod_setting_change(const char *slug, const char *key, const char *fallback,
+                               const char *const *choices, int32_t n, int32_t dir)
+{
+    static const char *const k_onOff[2] = { "off", "on" };
+    const char *now = ModApi_Setting(slug, key, fallback);
+    int32_t at = 0;
+    if (!choices) {
+        choices = k_onOff;
+        n = 2;
+    }
+    for (int32_t i = 0; i < n; i++)
+        if (SDL_strcasecmp(now, choices[i]) == 0)
+            at = i;
+    ModApi_SetSetting(slug, key, choices[step(at, dir, n)]);
+    note(Mods_IsOn(slug) ? "" : "TURN THE MOD ON IN OPTIONS, MODS");
+}
+
+static const char *const k_bands[3] = { "smooth", "game", "off" };
+static const char *const k_corners[4] = { "top-left", "top-right", "bottom-left", "bottom-right" };
+static void reskits_show(char *o, int32_t c)  { mod_setting_show("display2020", "kits", "on", o, c); }
+static void reskits_change(int32_t d)         { mod_setting_change("display2020", "kits", "on", NULL, 0, d); }
+static void resband_show(char *o, int32_t c)  { mod_setting_show("display2020", "band", "smooth", o, c); }
+static void resband_change(int32_t d)         { mod_setting_change("display2020", "band", "smooth", k_bands, 3, d); }
+static void board_show(char *o, int32_t c)    { mod_setting_show("scoreboard", "corner", "top-left", o, c); }
+static void board_change(int32_t d)           { mod_setting_change("scoreboard", "corner", "top-left", k_corners, 4, d); }
+
+static const Row k_displayRows[] = {
+    { "MENU OPACITY",       opacity_show,  opacity_change },
+    { "PIXEL FILTER",       filter_show,   filter_change },
+    { "BROWN KITS",         purple_show,   purple_change },
+    { "PITCH PALETTE",      pitchpal_show, pitchpal_change },
+    { "KITS ON THE RESULT", reskits_show,  reskits_change },
+    { "RESULT BAND",        resband_show,  resband_change },
+    { "SCOREBOARD",         board_show,    board_change },
+};
+static const Page k_displayPage = { "DISPLAY OPTIONS", k_displayRows, (int32_t)(sizeof k_displayRows / sizeof k_displayRows[0]) };
+
+/* ===================================================================== RULES
+ * The tweaks that change the original's rules (include/tweaks.h): the contest fix and SWOS 2020's
+ * league rules, ON by default; the stronger keepers and the CPU's tactics (launcher options).
+ * Every one is OFF LINE ONLY: an online match, and the test rigs, play the original. */
+
+#if SWOS_TWEAK_FIXES
+static void tweak_flip(uint32_t bit)
+{
+    O()->tweaks ^= bit;
+    Tweaks_Set(O()->tweaks);
+    save();
+}
+static void contest_show(char *o, int32_t c)
+{
+    snprintf(o, (size_t)c, "%s", (O()->tweaks & TWEAK_CONTEST_OWN_RATINGS) ? "FIXED" : "ORIGINAL");
+}
+static void contest_change(int32_t dir)
+{
+    (void)dir;
+    tweak_flip(TWEAK_CONTEST_OWN_RATINGS);
+    note((O()->tweaks & TWEAK_CONTEST_OWN_RATINGS) ? "EACH SIDE RATED BY ITS MAN AT THE BALL; OFF LINE ONLY"
+                                                    : "THE ORIGINAL RATES ONE SIDE BY A TEAM-MATE");
+}
+static void league_tweak(uint32_t bit, const char *on, const char *off)
+{
+    extern void TeamDb_ApplyLeagueTweaks(void);
+    tweak_flip(bit);
+    TeamDb_ApplyLeagueTweaks();
+    note((O()->tweaks & bit) ? on : off);
+}
+static void lfix_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", (O()->tweaks & TWEAK_LEAGUE_CRASH_FIXES) ? "ON" : "OFF"); }
+static void lfix_change(int32_t dir)
+{
+    (void)dir;
+    league_tweak(TWEAK_LEAGUE_CRASH_FIXES, "LEAGUES FITTED TO THEIR TEAMS: NEW CAREERS", "THE ORIGINAL'S: NEW CAREERS");
+}
+static void lrules_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", (O()->tweaks & TWEAK_LEAGUE_RULES_2020) ? "SWOS 2020" : "ORIGINAL"); }
+static void lrules_change(int32_t dir)
+{
+    (void)dir;
+    league_tweak(TWEAK_LEAGUE_RULES_2020, "GREECE, ISRAEL, ITALY, SCOTLAND: NEW CAREERS", "THE ORIGINAL'S: NEW CAREERS");
+}
+static void points_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", (O()->tweaks & TWEAK_THREE_POINTS) ? "3" : "ORIGINAL"); }
+static void points_change(int32_t dir)
+{
+    (void)dir;
+    league_tweak(TWEAK_THREE_POINTS, "3 POINTS FOR A WIN: NEW CAREERS", "THE ORIGINAL'S: NEW CAREERS");
+}
+static void subs_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", (O()->tweaks & TWEAK_FIVE_SUBSTITUTES) ? "5 FROM 5" : "ORIGINAL"); }
+static void subs_change(int32_t dir)
+{
+    (void)dir;
+    league_tweak(TWEAK_FIVE_SUBSTITUTES, "5 SUBSTITUTES FROM 5: NEW CAREERS", "THE ORIGINAL'S: NEW CAREERS");
+}
+#endif
+
+static const Row k_rulesRows[] = {
+#if SWOS_TWEAK_FIXES
+    { "BALL CONTEST",            contest_show,  contest_change },
+#endif
+#if SWOS_TWEAK_STRONGER_GK
+    { "STRONGER KEEPERS",        keepers_show,  keepers_change },
+#endif
+    { "CPU TACTICS",             tactics_show,  tactics_change },
+#if SWOS_TWEAK_FIXES
+    { "LEAGUE CRASH FIXES",      lfix_show,     lfix_change },
+    { "LEAGUE RULES",            lrules_show,   lrules_change },
+    { "POINTS FOR A WIN",        points_show,   points_change },
+    { "SUBSTITUTES",             subs_show,     subs_change },
+#endif
+};
+static const Page k_rulesPage = { "RULES OPTIONS", k_rulesRows, (int32_t)(sizeof k_rulesRows / sizeof k_rulesRows[0]) };
 
 /* ===================================================================== SETTINGS (the hub) */
 
@@ -729,6 +1120,8 @@ static void settingsMenu_controls_OnSelect(void) { page_show(&k_controlsPage); }
 static void settingsMenu_video_OnSelect(void)    { page_show(&k_videoPage); }
 static void settingsMenu_audio_OnSelect(void)    { page_show(&k_audioPage); }
 static void settingsMenu_gameplay_OnSelect(void) { page_show(&k_gameplayPage); }
+static void settingsMenu_display_OnSelect(void)  { page_show(&k_displayPage); }   /* (launcher options, agent B) */
+static void settingsMenu_rules_OnSelect(void)    { page_show(&k_rulesPage); }     /* (the tweaks on by default) */
 static void settingsMenu_exit_OnSelect(void)     { SetExitMenuFlag(); }
 
 /* ===================================================================== CONTROLLER SETUP */
@@ -983,6 +1376,8 @@ static const MenuSymbol k_handlers[] = {
     HANDLER(settingsMenu_video_OnSelect),
     HANDLER(settingsMenu_audio_OnSelect),
     HANDLER(settingsMenu_gameplay_OnSelect),
+    HANDLER(settingsMenu_display_OnSelect),
+    HANDLER(settingsMenu_rules_OnSelect),
     HANDLER(settingsMenu_exit_OnSelect),
     HANDLER(settingsPage_OnInit),
     HANDLER(settingsPage_OnDraw),
@@ -1042,11 +1437,45 @@ void SettingsMenus_Show(void)
     ShowMenu(menu);
 }
 
+/* DISPLAY OPTIONS, checked without a window (launcher options, agent B): the pixel filters'
+ * answers, purple for brown's menu colour and the improved pitch palette's green, each set and back. */
+static int DisplayOptions_SelfTest(void)
+{
+    extern uint16_t _kTeamColorsTable[];
+    int fails = PixelFilter_SelfTest();
+    {
+        const uint16_t maroon = _kTeamColorsTable[6];
+        TeamColors_SetPurpleForMaroon(1);
+        if (_kTeamColorsTable[6] != _kTeamColorsTable[10]) { fails++; fprintf(stderr, "[settings-selftest] FAIL: purple for brown: maroon's menu colour is not purple's\n"); }
+        TeamColors_SetPurpleForMaroon(0);
+        if (_kTeamColorsTable[6] != maroon) { fails++; fprintf(stderr, "[settings-selftest] FAIL: purple for brown not put back\n"); }
+    }
+    {
+        uint8_t was[768], now[768];
+        for (int type = 0; type < 7; type++) {
+            _gImprovedPitchPalette = 0;
+            DosGfx_BuildPalette(type, was);
+            _gImprovedPitchPalette = 1;
+            DosGfx_BuildPalette(type, now);
+            _gImprovedPitchPalette = 0;
+            const int differ = memcmp(was, now, sizeof was) != 0;
+            const int want = type == 2 || type == 3;            /* wet, soft */
+            if (differ != want || (want && !(now[9 * 3 + 1] > was[9 * 3 + 1]))) {
+                fails++;
+                fprintf(stderr, "[settings-selftest] FAIL: improved pitch palette, pitch type %d (entry 9 green %d -> %d)\n",
+                        type, was[9 * 3 + 1], now[9 * 3 + 1]);
+            }
+        }
+    }
+    return fails;
+}
+
 /* --settings-menus-selftest: every page's rows shown and changed both ways and back, with no
  * window or device, and the three menus loaded. Returns the number of failures. */
 int SettingsMenus_SelfTest(void)
 {
-    static const Page *const pages[] = { &k_controlsPage, &k_videoPage, &k_audioPage, &k_gameplayPage };
+    static const Page *const pages[] = { &k_controlsPage, &k_videoPage, &k_audioPage, &k_gameplayPage,
+                                         &k_displayPage, &k_rulesPage };
     int fails = 0;
     SettingsMenus_Init();
     for (size_t p = 0; p < sizeof pages / sizeof pages[0]; p++) {
@@ -1074,6 +1503,7 @@ int SettingsMenus_SelfTest(void)
         MenuLook_SetCursor(0);
         if (memcmp(was, _kColorTableShine, sizeof was)) { fails++; fprintf(stderr, "[settings-selftest] FAIL: flashing cursor not restored\n"); }
     }
+    fails += DisplayOptions_SelfTest();     /* (launcher options, agent B) */
     {   /* the three menus load (their entry count is checked by --menu-selftest) */
         static const char *const names[] = { SETTINGS_MENU_NAME, SETTINGS_PAGE_NAME, JOYPAD_CONFIG_NAME };
         for (size_t i = 0; i < sizeof names / sizeof names[0]; i++)

@@ -302,6 +302,12 @@ static void print_usage(const char *argv0)
         "  --title-music=mp3|midi    With --music=pc: the intro plays title.mp3 (default)\n"
         "                            or sound_dos/title.xmi on the emulated card, from a\n"
         "                            mod ([audio] title_music).\n"
+        "  --no-intro, --no-image-reels, --no-load-pause, --auto-centering=0|1,\n"
+        "  --show-fps=0|1, --mouse-cursor=0|1|2, --improved-cpu-tactics=0|1\n"
+        "                            SWOS 2020's flags, as its launcher passed them: [general]\n"
+        "                            skip_intro, skip_image_reels, no_load_pause; [video]\n"
+        "                            auto_centering, show_fps; [input] mouse_cursor;\n"
+        "                            [gameplay] cpu_tactics (docs/SETTINGS.md).\n"
         "  --input-selftest          Check the redefined keys and the press latch\n"
         "  --chat-selftest           Check the match chat's text rules and its font\n"
         "  --language=<code>         The menus' language for this run: en de fr es it nl\n"
@@ -459,6 +465,21 @@ int Video_ApplyDisplayChange(void)
     return 1;
 }
 
+/* VIDEO OPTIONS' RESOLUTION (launcher options, agent A): [video] resolution changed while the game
+ * runs -- `dw` x `dh` the new shape (the display's own for 'auto'). With widescreen on, the next
+ * menu frame takes it (Video_ApplyDisplayChange); without, the width is the view's own and the
+ * shape changes nothing. 1 when it is taken now. */
+int Video_ResolutionChanged(const PlatformInitOptions *o, int dw, int dh)
+{
+    s_videoFollows = o->widescreen == 1 && !(o->res_w > 0 && o->res_h > 0);
+    if (o->widescreen != 1 || dw <= 0 || dh <= 0)
+        return 0;
+    s_videoPending = Video_WideWidth(dw, dh, 0);
+    if (s_videoPending == _screen_width)
+        s_videoPending = 0;
+    return 1;
+}
+
 /* --mods=a,b: the mods for this run, over SWOS.ini (include/mods.h); never saved. */
 static char s_modsArg[256];          /* --mods=, for this run only */
 static int  s_modsArgSet;
@@ -581,7 +602,9 @@ int main(int argc, char **argv)
     opts.esc_presses = 1;
     memset(opts.key_bind, 0, sizeof opts.key_bind);   /* no keys of the player's own */
     opts.fire_hold_lockout = 0;   /* default: the original's fire-hold bug is FIXED */
-    opts.contest_own_ratings = 0; /* default: the original's roll, team-mate's rating and all */
+    /* The tweaks that start ON (include/tweaks.h TWEAKS_DEFAULT_ON: the contest fix, SWOS 2020's
+     * league rules), of those this build has; [tweaks] in SWOS.ini then says otherwise. */
+    opts.tweaks = Tweaks_Built(TWEAKS_DEFAULT_ON);
     opts.live_cast = 1;           /* (LIVE CAST: viewers may watch, as SWOS 2020's ON) */
     opts.replay_auto_save = 0;    /* default: LATEST.SRP only, no dated copy per match */
     opts.replay_frame_overlay = 1;    /* (SWOS 2020's FRAME INFO OVERLAY: on) */
@@ -622,6 +645,9 @@ int main(int argc, char **argv)
     snprintf(opts.arcade_key_p2_start,  sizeof opts.arcade_key_p2_start,  "%s", "2");
     snprintf(opts.arcade_key_service,   sizeof opts.arcade_key_service,   "%s", "F2");
     snprintf(opts.dos_dir, sizeof opts.dos_dir, "%s", "grafs_dos");
+    /* (launcher options, agent B) DISPLAY OPTIONS: as before them -- solid menus, no filter,
+     * maroon kits maroon, the original pitch palette (the rest are 0 from the memset) */
+    opts.menu_opacity = 100;
     const char *replay_file = NULL, *replay_level = NULL, *replay_skip = NULL;
     int replay_max_errors = 1;
     int replay_window = 0;
@@ -736,7 +762,9 @@ int main(int argc, char **argv)
                 return 1;
             }
         } else if ((v = match_kv(a, "contest-own-ratings")) != NULL) {
-            opts.contest_own_ratings = (strcmp(v, "on") == 0 || strcmp(v, "1") == 0);
+            /* ([tweaks] contest_own_ratings since 2026-11-10; this flag still sets it) */
+            if (strcmp(v, "on") == 0 || strcmp(v, "1") == 0) opts.tweaks |= Tweaks_Built(TWEAK_CONTEST_OWN_RATINGS);
+            else opts.tweaks &= ~TWEAK_CONTEST_OWN_RATINGS;
         } else if ((v = match_kv(a, "fire-hold-lockout")) != NULL) {
             if (strcmp(v, "on") == 0 || strcmp(v, "1") == 0)       opts.fire_hold_lockout = 1;
             else if (strcmp(v, "off") == 0 || strcmp(v, "0") == 0) opts.fire_hold_lockout = 0;
@@ -859,6 +887,22 @@ int main(int argc, char **argv)
             if      (strcmp(v, "amiga") == 0)  opts.kit_art = 0;
             else if (strcmp(v, "jaguar") == 0) opts.kit_art = 1;
             else { fprintf(stderr, "--kit-art must be amiga or jaguar (got %s)\n", v); return 1; }
+        /* (launcher options, agent A) SWOS 2020's own flags, as the SWOS United Launcher passed
+         * them: each is also a SWOS.ini key and a settings row (docs/SETTINGS.md). */
+        } else if (strcmp(a, "--no-intro") == 0) {
+            opts.skip_intro = 1;
+        } else if (strcmp(a, "--no-image-reels") == 0) {
+            opts.skip_image_reels = 1;
+        } else if (strcmp(a, "--no-load-pause") == 0) {
+            opts.no_load_pause = 1;
+        } else if ((v = match_kv(a, "auto-centering")) != NULL) {
+            opts.auto_centering = atoi(v) != 0 || strcmp(v, "on") == 0;
+        } else if ((v = match_kv(a, "show-fps")) != NULL) {
+            opts.show_fps = atoi(v) != 0 || strcmp(v, "on") == 0;
+        } else if ((v = match_kv(a, "mouse-cursor")) != NULL) {
+            opts.mouse_cursor = atoi(v) >= 0 && atoi(v) <= 2 ? atoi(v) : 0;
+        } else if ((v = match_kv(a, "improved-cpu-tactics")) != NULL) {
+            opts.cpu_tactics = atoi(v) != 0 || strcmp(v, "expert") == 0;
         } else if (strcmp(a, "--online") == 0) {
             /* Straight to the multiplayer log-in; leaving it, the main menu. */
             OnlineMenus_StartOnline(0);
@@ -1167,10 +1211,8 @@ int main(int argc, char **argv)
          * see project_replay_framerate_decouple. */
         if (!Rollback_Enabled())
         opts.fire_hold_lockout = 1;
-        /* And the original's roll: its recordings only replay with the squad-slot lookup
-         * (docs/BALL_CONTEST.md -- playa-10090613 parts at frame 7,009 without it). */
-        if (!Rollback_Enabled())
-        opts.contest_own_ratings = 0;
+        /* (The original's contest roll: the tweak is off under the rigs, Tweaks_On --
+         * docs/BALL_CONTEST.md: playa-10090613 parts at frame 7,009 without it.) */
         /* Replay at the port's OWN native view, not the tester's monitor. The
          * original reason given here — "SWOS's camera constants are all derived
          * from the view size" — no longer holds: b4775f3 pinned _sim_view_width
@@ -1352,8 +1394,6 @@ int main(int argc, char **argv)
     Gameplay_SetStyle(opts.dos_gameplay);      /* the style, its flags and the OPTIONS row */
     { extern int _gOriginalFireHoldLockout;
       _gOriginalFireHoldLockout = opts.fire_hold_lockout; }
-    { extern int _gContestOwnRatings;
-      _gContestOwnRatings = opts.contest_own_ratings; }
     /* And say which style is actually in force, so "it ran in Amiga mode" is
      * something a tester can read off rather than infer from feel. */
     fprintf(stderr, "[gameplay] %s\n", _gGameplayStyle == GAMEPLAY_DOS
@@ -1367,8 +1407,8 @@ int main(int argc, char **argv)
             : "AMIGA (the shipped default)");
     /* Say it out loud — this one is a deliberate departure from the original,
      * so a tester comparing against real SWOS can see which half he is on. */
-    fprintf(stderr, "[gameplay] contested ball: %s\n", opts.contest_own_ratings
-            ? "each side rated by the man at the ball (contest_own_ratings; offline matches only)"
+    fprintf(stderr, "[gameplay] contested ball: %s\n", (opts.tweaks & TWEAK_CONTEST_OWN_RATINGS)
+            ? "each side rated by the man at the ball ([tweaks] contest_own_ratings; offline matches only)"
             : "the original's roll (one side rated by a team-mate, as both releases do)");
     fprintf(stderr, "[gameplay] fire-hold lockout: %s\n", opts.fire_hold_lockout
             ? "ON — original Amiga behaviour (an opponent's tackle kills your shot charge)"
@@ -1425,6 +1465,10 @@ int main(int argc, char **argv)
     /* The built-in mods that are on, set up (include/mod_api.h ModDef.init): their entries and
      * their menus' handlers -- before the menus are built from JSON, which name them. */
     { extern void ModHooks_Init(void); ModHooks_Init(); }
+    if (getenv("SWOS_MOD_PAGE_TEST")) {     /* (launcher options, agent A: src/mods_menu.c) */
+        extern int32_t ModsMenu_PageTest(const char *slug);
+        return ModsMenu_PageTest(getenv("SWOS_MOD_PAGE_TEST"));
+    }
     { extern void TeamPacks_Install(void); TeamPacks_Install(); }   /* (the mods' team packs: include/team_packs.h) */
     {   /* A sprite set as a mod ("sprites": "jaguar", docs/JAGUAR.md): the Jaguar tier draws its
          * grafs_jag/, with the four shading settings its own (its page; [graphics]'s otherwise). */
@@ -1448,14 +1492,41 @@ int main(int argc, char **argv)
     if ((getenv("SWOS_MOD_MATCH_TEST") && strcmp(getenv("SWOS_MOD_MATCH_TEST"), "entry") != 0) ||
         getenv("SWOS_SKIP_INTRO"))
     { extern volatile uint8_t _skipLoaderIntro; _skipLoaderIntro = 1; }
+    {   /* (launcher options, agent A: docs/SETTINGS.md) the start-up's, the FPS counter, and the
+         * built-in formations -- the game's own in a rig, whatever SWOS.ini says */
+        extern volatile uint8_t _skipLoaderIntro, _skipLoaderReels;
+        extern int _gNoLoadPause;
+        extern void FpsOverlay_Set(int32_t on);
+        extern void TacticsExpert_Set(int32_t expert);
+        if (opts.skip_intro)
+            _skipLoaderIntro = 1;
+        _skipLoaderReels = (uint8_t)(opts.skip_image_reels != 0);
+        _gNoLoadPause = opts.no_load_pause;
+        FpsOverlay_Set(opts.show_fps);
+        if (opts.cpu_tactics || getenv("SWOS_CPU_TACTICS_TEST"))
+            TacticsExpert_Set(opts.cpu_tactics && !s_rigRun);
+        if (getenv("SWOS_LAUNCHER_SETTINGS_TEST")) {
+            extern int Settings_LauncherSelfTest(void);
+            return Settings_LauncherSelfTest();
+        }
+        if (getenv("SWOS_CPU_TACTICS_TEST")) {
+            extern int32_t TacticsExpert_SelfTest(void);
+            return TacticsExpert_SelfTest();
+        }
+    }
     Tweaks_Set(opts.tweaks);    /* [tweaks] (include/tweaks.h): off line only, off in the rigs */
     if (opts.tweaks)
-        fprintf(stderr, "[tweaks] on:%s%s%s%s%s (off line only)\n",
+        fprintf(stderr, "[tweaks] on:%s%s%s%s%s%s%s%s%s%s (off line only)\n",
                 (opts.tweaks & TWEAK_CPU_CARDS) ? " cpu_cards" : "",
                 (opts.tweaks & TWEAK_NO_TEAMMATE_TACKLES) ? " no_teammate_tackles" : "",
                 (opts.tweaks & TWEAK_TACKLE_CONTROLLED_PLAYER) ? " tackle_controlled_player" : "",
                 (opts.tweaks & TWEAK_STRONGER_GOALKEEPER_AI) ? " stronger_goalkeeper_ai" : "",
-                (opts.tweaks & TWEAK_UNLIMITED_TRANSFERS) ? " unlimited_transfers" : "");
+                (opts.tweaks & TWEAK_UNLIMITED_TRANSFERS) ? " unlimited_transfers" : "",
+                (opts.tweaks & TWEAK_CONTEST_OWN_RATINGS) ? " contest_own_ratings" : "",
+                (opts.tweaks & TWEAK_LEAGUE_CRASH_FIXES) ? " league_crash_fixes" : "",
+                (opts.tweaks & TWEAK_LEAGUE_RULES_2020) ? " league_rules_2020" : "",
+                (opts.tweaks & TWEAK_THREE_POINTS) ? " three_points_for_a_win" : "",
+                (opts.tweaks & TWEAK_FIVE_SUBSTITUTES) ? " five_substitutes" : "");
     /* Load the UI translation table for the selected language
      * (data_json/translations/<lang>.json) now that the CWD is the binary dir
      * and stderr is the log. tr(symbol) resolves menu/UI text through it; a
@@ -1692,6 +1763,12 @@ int main(int argc, char **argv)
         fprintf(stderr, "Platform_Init failed\n");
         SDL_Quit();
         return 1;
+    }
+    {   /* (launcher options, agent A) the window's: the pointer and the centring */
+        extern void MouseCursors_Apply(int32_t style);
+        extern void Platform_SetAutoCentering(int on);
+        MouseCursors_Apply(opts.mouse_cursor);
+        Platform_SetAutoCentering(opts.auto_centering);
     }
 
 #ifdef SWOS_MOBILE_BUILD

@@ -125,7 +125,7 @@ typedef struct {
     int                    music_style;      /* the menus' music: 0 = the Amiga's, 1 = the PC game's menu.xmi (dos_music.h) */
     int                    commentary;       /* the PC game's commentary: 0 off, 1 on (over the Amiga's sounds too), 2 auto = with sound_style 1 */
     int                    dos_gameplay;     /* the gameplay style, GAMEPLAY_* (dos_mode.h): 0 AMIGA, 1 DOS, 2 XBOX */
-    int                    contest_own_ratings; /* 1 = a contested ball's dice rates each side by the man at the
+    int                    contest_own_ratings_unused; /* 1 = a contested ball's dice rates each side by the man at the
                                               * ball; 0 (default) = the original's squad-slot lookup
                                               * (ball_possession.c, _gContestOwnRatings). Offline only. */
     int                    fire_hold_lockout;/* 1 = keep the ORIGINAL Amiga bug where an OPPONENT's tackle
@@ -212,6 +212,21 @@ typedef struct {
     int                    menu_cursor;          /* [video] menu_cursor: 0 flashing, 1 steady */
     int                    chat_controller_off;  /* [chat] controller_off: the pad steers nobody while typing */
     int                    esc_presses;          /* [netplay] esc_presses: ESCs that leave a live match, 1-3 */
+    /* ---- launcher options (agent A): the SWOS United Launcher's, in SWOS.ini and on the settings
+     * pages (src/settings_menus.c, docs/SETTINGS.md "The launcher's options") ---- */
+    int                    skip_intro;           /* [general] skip_intro: no intro at start (--no-intro) */
+    int                    skip_image_reels;     /* [general] skip_image_reels: the intro's title only (--no-image-reels) */
+    int                    no_load_pause;        /* [general] no_load_pause: no 3 s on the stadium screen (--no-load-pause) */
+    int                    auto_centering;       /* [video] auto_centering: the window kept centred (--auto-centering) */
+    int                    show_fps;             /* [video] show_fps: the frames a second, top right (--show-fps) */
+    int                    mouse_cursor;         /* [input] mouse_cursor: 0 system, 1 workbench2, 2 workbench1 */
+    int                    cpu_tactics;          /* [gameplay] cpu_tactics: 0 normal, 1 expert (--improved-cpu-tactics) */
+    /* ---- launcher options (agent B): DISPLAY OPTIONS (src/settings_menus.c, src/display_options.c) ---- */
+    int                    menu_opacity;         /* [video] menu_opacity: 0-100, the menus' coloured parts over
+                                                  * the backdrop (SWOS 2020's --alpha-blending-menu); 100 opaque */
+    int                    purple_for_brown;     /* [video] purple_for_brown: maroon kits drawn purple */
+    int                    improved_pitch_palette; /* [video] improved_pitch_palette: SWOS 2020's wet/soft stripes */
+    int                    pixel_filter;         /* [video] pixel_filter: PIXEL_FILTER_* (include/pixel_filter.h) */
 } PlatformInitOptions;
 
 int  Platform_Init(const PlatformInitOptions *opts);
@@ -225,6 +240,10 @@ int  Platform_OpenUrl(const char *url);
  * the game's). 62: a colour of the game's own backdrop (33-62), which no menu element uses. */
 #define MENU_BACKDROP_KEY 62
 void Platform_SetMenuBackdrop(const uint8_t *rgba, int w, int h);
+/* ---- launcher options (agent B) ---- */
+/* DISPLAY OPTIONS: the menus' opacity, the pixel filter, purple for brown and the improved pitch
+ * palette, from the options (at Platform_Init, and when a row changes one). Drawing only. */
+void Platform_SetDisplayOptions(const PlatformInitOptions *o);
 /* One colour of the palette the screen is drawn in, by index. */
 void Platform_PaletteRgb(int index, uint8_t *r, uint8_t *g, uint8_t *b);
 

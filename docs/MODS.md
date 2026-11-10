@@ -366,7 +366,9 @@ SWOS 2020's dead Taiwan / San Marino / Spain cases, and its five substitutes for
   Not yet run on a phone, a handheld or under WHDLoad itself.
 
 **The first tweaks (§4)** (`include/tweaks.h`, `src/tweaks.c`): `[tweaks]` in SWOS.ini, each
-`true | false`, off by default; off online and under every rig (`Tweaks_On`); the Amiga has none.
+`true | false`, off by default but the five below the table (`TWEAKS_DEFAULT_ON`); off online and
+under every rig (`Tweaks_On`, so the golden careers and the replay rigs play the original); the
+Amiga has none. On the settings' **RULES OPTIONS** page: the five, STRONGER KEEPERS, CPU TACTICS.
 
 | Key | The original (checked: SWOS2.s and swos.asm agree; our C matched) | The tweak |
 |---|---|---|
@@ -377,6 +379,23 @@ SWOS 2020's dead Taiwan / San Marino / Spain cases, and its five substitutes for
 | `ai_injury_subs` | the computer never substitutes: `BenchCheckControls` answers only a player calling the bench | at a stoppage, the computer replaces an injured player with the bench player nearest his position (the keeper by the reserve keeper), within its substitutes; never the managed career club (benefactorr's Career+) |
 | `stronger_goalkeeper_ai` | the keeper's reach table by style (`_kGoalkeeperDiveDeltas`, `ApplyGameStyle`) | SWOS 2020's `--stronger-goalkeeper-ai`: one step lower in the styles with the Amiga's keepers (AMIGA, AMIGA60, MOON; docs/DOS_GAMEPLAY.md §10) |
 | `unlimited_transfers` | `BuyPlayerMenu` refuses with "the club is unwilling to purchase players" when fewer than 2 of the season's transfer slots are left (SWOS2.s:103795) | SWOS 2020's UNLIMITED TRANSFERS: BUY PLAYER only needs room for 2 in the career's player pool (`transfer_market.c`) |
+
+**ON by default** (2026-11-10, the owner: SWOS 2020's launcher always passed its league rules,
+`--career-crash-fix=1111111 --always-points-per-win-3=1`, core/src/game_launch.cpp; a fork without
+the other tweaks still builds these with `PROJECT_TWEAK_FIXES`, SWOS United does):
+
+| Key | The original | The tweak |
+|---|---|---|
+| `contest_own_ratings` | a contested ball's roll rates one side by a team-mate, the player with the opponent's line-up number (both releases: SWOS2.s:23439-23443, swos.asm "A1 -> opponent's controlled player, but A6 -> this team?"; docs/BALL_CONTEST.md) | each side rated by its man at the ball (`src/ball_possession.c`). Was `[gameplay] contest_own_ratings`, off by default; that key is no longer read (every earlier SWOS.ini wrote `false`) |
+| `league_crash_fixes` | SWOS 2020's fixupLeague (src/init.cpp) fixes 1-3 | a division sized by its file's clubs; if one grew, the season a month longer and the clubs meeting twice. **Nothing changes in 96/97's own leagues** (checked: 0 of them); a guard for other data |
+| `league_rules_2020` | its fixes 4-7 | Greece from October (its cup September-June), Israel plays twice (not 3), Italy relegates/promotes 3 (not 4), Scotland plays 3 times (not 4) |
+| `three_points_for_a_win` | each league's own | every league 3 points for a win |
+| `five_substitutes` | each league's and cup's own | 5 substitutes from a bench of 5 (SWOS 2020's mSub `5*16+5`) |
+
+The four league ones change 96/97's competition graph (`TeamDb_ApplyLeagueTweaks`, src/teamdb.c:
+from a snapshot of the leagues as installed, at start-up and when RULES OPTIONS changes one) --
+not with a team database mod (its `teamdb.json` "fixes" and "points_for_win") or another world. A
+career copies its leagues when it starts and saves them, so it keeps the rules it began with.
 
 Checked: with every tweak off, `rollback_test.sh --all`, `replay_v2_test.sh --all` and
 `netplay_test.sh --all` pass; both targets build. **Not yet played with the tweaks on.**
@@ -1326,6 +1345,7 @@ so `scripts/check_netplay_compat.sh` and the rigs see the game unchanged.
 | `netstats` (cosmetic) | F7 frame-fairness strip (mpgame.cpp drawImGui, ConnectionQualityTracker) | online: rollback timeline, balance bar, advantage, jitter, why it warns; F7 (a hotkey) cycles WHEN POOR / ALWAYS / NEVER (`[mod.netstats] show`) | yes | `SWOS_NETSTATS_TEST=1` prints at a live match's end (not run headless) |
 | `src/match_chat.c` | CHAT WINDOW SCALE (F11/F12), AUTO CLOSE CHATBOX | `[chat] scale` 0..8 (1x .. 5x), Page Up / Page Down in an online match (F11/F12 are screenshots here); `[chat] auto_close` 1..5 s (was a fixed 6) | 1x, 5 s | `--chat-selftest` |
 | `scoreboard` (cosmetic) | `--new-scoreboard=1..4` (the clock + score corner, showTeamIcons) | the clock, both kits and the score on a darkened box at a corner (`[mod.scoreboard] corner`: top-left, top-right, bottom-left, bottom-right); the game's clock not drawn; at the top left the player's name 7 lower | no | `SWOS_MOD_MATCH_TEST=1 SWOS_SCOREBOARD_TEST=1` |
+| `display2020` (cosmetic; launcher options, agent B) | `--new-show-result`, `--remove-darken-banner` (render.cpp showTeamIconsLarge, drawDarkenRect) | Playaveli's SWOS United mod, same slug and uuid: `[mod.display2020] kits` (each side's kit under its name on the result) and `band` = smooth / game / off (the result band evenly darkened, the game's grid, none); its scoreboard is the `scoreboard` mod's. Also rows on SETTINGS -> DISPLAY (docs/SETTINGS.md) | no | `SWOS_MODS_ENABLED=display2020 SWOS_MOD_MATCH_TEST=1 SWOS_DISPLAY2020_TEST=1` |
 
 The hooks, for any mod: `ModApi_Ball` (the ball's place, step, speed, loose), `ModApi_SpriteKind`
 (a `spriteDraw` sprite is the ball / the HUD clock / the player's name), `ModApi_SetTeamControl` /

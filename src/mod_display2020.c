@@ -1,30 +1,35 @@
 /*
- * mod_display2020.c -- SWOS 2020's match display, as a mod (bin/mods/display2020; Playaveli's,
- * from the discord-hooks branch, made a mod 2026-11-07). Three things, as SWOS 2020 draws them:
+ * mod_display2020.c -- SWOS 2020's result display, as a canonical mod (bin/mods/display2020;
+ * Playaveli's for SWOS United, brought into OpenSWOS 2026-11-10 -- the owner's decision -- with its
+ * slug and uuid, so SWOS United's copy is this one). SWOS 2020's --new-show-result and
+ * --remove-darken-banner, as two settings (OPTIONS -> MODS -> SWOS 2020 RESULT DISPLAY, or
+ * OPTIONS -> SETTINGS -> DISPLAY; SWOS.ini [mod.display2020]):
  *
- *   THE SCOREBOARD at the top left (its showTeamIcons and the clock and score of its UpdateTime
- *   hook, src/video/render.cpp, src/game.cpp; scores mode 4): a 72x8 darkened box at (8, 6), the
- *   minute right-aligned short of 30, the kits (its uniform0-3 by shirt type, from each side's
- *   in-match palette indices) at 31 and 71, the score centred near 57, in the game's small white
- *   font -- from the kick-off to the final whistle; not in an instant replay, the statistics or
- *   training. The game's own clock is left out for the whole match, and the name of the player on
- *   the ball goes to the top right, on the board's row.
+ *   kits = on | off      SWOS 2020's --new-show-result (render.cpp showTeamIconsLarge): on the
+ *                        result (half time, full time, a goal) each side's kit at twice the
+ *                        scoreboard's size -- under the flags mod's flags, in the same place with
+ *                        that mod off (the owner's place, 2026-11-07, not SWOS 2020's beside the
+ *                        score) -- and, 400 columns wide or more, the team names 14 columns
+ *                        further out (its SR_TEAM_GAP_X).
+ *   band = smooth | game | off
+ *                        the result's band: "smooth" darkened evenly across the width (SWOS 2020's
+ *                        drawDarkenRect over the wide screen's sides, render.cpp:4183), in place
+ *                        of the Amiga's checker baked into its grid sprites; "game" the game's own
+ *                        grid; "off" no band at all -- SWOS 2020's --remove-darken-banner, which
+ *                        turns its darkening off (render.cpp:4180), with the grid gone too so
+ *                        nothing darkens the pitch under the result.
  *
- *   THE RESULT'S BAND (half time, full time, a goal) darkened smoothly across the width instead of
- *   the Amiga's checker baked into its grid sprites,
+ * SWOS 2020's scoreboard (--new-scoreboard; SWOS United's first display2020 drew its top-left
+ * corner) is the scoreboard mod's (src/mod_scoreboard.c, every corner): not drawn here twice.
  *
- *   ... WITH EACH SIDE'S KIT beside the score, twice the board's size, the team names 14 columns
- *   further out (its SR_TEAM_GAP_X, SR_UNIF_GAP_*); narrower than 400 columns, its Amiga/DOS
- *   layout (the kits on a row above the names, the band 7 rows taller).
- *
- * How: the engine's hooks (include/mod_api.h). spriteDraw leaves the clock and the grid sprites
- * out of the picture, notes the band's rows (and the frame buffer's pixels there before the
- * result's text) and moves the names; frameUnder (under the other mods: the flags go over it) draws the board, the band's darkening and the
- * kits into an RGBA layer the picture's size, over the finished picture through gfx.h -- either
- * presenter, the GPU one or SDL's. Halving a colour is black at half alpha over it; the band's
- * text (what changed in the frame buffer since the snapshot, or what the HUD layer holds with
- * the sub-pixel scroll on) is left clear, so it stays bright. Drawing only: no sprite, no match
- * state changes (the sprites, the clock, the names are as the game made them).
+ * How: the engine's hooks (include/mod_api.h). spriteDraw leaves the grid sprites out of the
+ * picture (band smooth or off), notes the band's rows (and the frame buffer's pixels there before
+ * the result's text) and moves the names; frameUnder (under the other mods: the flags go over it)
+ * draws the band's darkening and the kits into an RGBA layer the picture's size, over the finished
+ * picture through gfx.h -- either presenter. Halving a colour is black at half alpha over it; the
+ * band's text (what changed in the frame buffer since the snapshot, or what the HUD layer holds
+ * with the sub-pixel scroll on) is left clear, so it stays bright. Drawing only: no sprite, no match
+ * state changes. SDL builds.
  */
 #include "mod_api.h"
 
@@ -35,38 +40,36 @@
 #include <string.h>
 
 #include "game_types.h"
-#include "display.h"            /* _screen_width, _screen_height, HUD_WIDTH, FRONTBUFFER_ROW_STRIDE_BYTES */
-#include "dos_mode.h"           /* _gDosView */
+#include "display.h"            /* _screen_width, _screen_height, FRONTBUFFER_ROW_STRIDE_BYTES */
 #include "gfx.h"
-#include "platform_sdl.h"       /* Platform_FrameShown, Platform_HudLayerBuffer */
+#include "platform_sdl.h"       /* Platform_FrameShown, Platform_HudLayerBuffer, Platform_PaletteRgb */
 
 #define SLUG "display2020"
 
 extern TeamGame  _topTeamInGame, _bottomTeamInGame;
-extern uint16_t  _statsTeam1Goals, _statsTeam2Goals;
-extern uint16_t  _gameState, _trainingGame, _replayState, _showingUserStats, _statsTimer;
+extern uint16_t  _trainingGame, _replayState;
 extern uint16_t  _playGame;
-extern uint8_t   _gameTime[];
-extern uint8_t   _smallCharsTable[];
-extern void     *_spriteGraphicsPtr;
 extern volatile uintptr_t _frontbufferBasePtr;
-extern uint16_t  _currentPlayerIndicatorPosition;
-extern uint8_t   _plNamesLengthTableCopy[];
-extern uint8_t   _plOrdinalsTable[];
-extern Sprite    _currentTimeSprite, _currentPlayerNameSprite, _team1NameSprite, _team2NameSprite;
+extern Sprite    _team1NameSprite, _team2NameSprite;
 extern Sprite    _gridUpperRowLeftSprite, _gridUpperRowRightSprite, _gridMiddleRowLeftSprite,
                  _gridMiddleRowRightSprite, _gridBottomRowLeftSprite, _gridBottomRowRightSprite,
                  _gridUpperRowExtraSprite, _gridMiddleRowExtraSprite, _gridBottomRowExtraSprite;
-extern void      Platform_PaletteRgb(int index, uint8_t *r, uint8_t *g, uint8_t *b);
-extern uint64_t  Platform_NowMs(void);
 
-enum { BOX_X = 8, BOX_Y = 6, BOX_W = 72, BOX_H = 8 };
-#define SPR_TEAM1_PLAYER_NAMES_START 0x8D       /* (game_hud.c's) */
-#define SPR_TEAM2_PLAYER_NAMES_START 0x9D
+enum { BAND_SMOOTH, BAND_GAME, BAND_OFF };
+
+static int32_t s_test, s_testBand, s_testKits;     /* SWOS_DISPLAY2020_TEST (below) */
+
+static int32_t kits_on(void) { return ModApi_SettingInt(SLUG, "kits", 1); }
+
+static int32_t band_mode(void)
+{
+    const char *b = ModApi_Setting(SLUG, "band", "smooth");
+    return strcmp(b, "game") == 0 ? BAND_GAME : strcmp(b, "off") == 0 ? BAND_OFF : BAND_SMOOTH;
+}
 
 /* When the match last drew its sprites. `_playGame` is match state and stays set when a live match
- * ends early and goes back to the lobby, so the board and the band are drawn only while the match
- * is still drawing (or paused: frameKept) -- the HUD layer's 100 ms rule (platform_sdl.c). */
+ * ends early and goes back to the lobby, so the band is drawn only while the match is still drawing
+ * (or paused: frameKept) -- the HUD layer's 100 ms rule (platform_sdl.c). */
 static uint64_t s_drawnMs;
 
 static int32_t fresh(void)
@@ -78,24 +81,6 @@ static void frame_kept(void)
 {
     if (s_drawnMs)
         s_drawnMs = Platform_NowMs();
-}
-
-static int32_t hides_clock(void)
-{
-    return _playGame && !_trainingGame;
-}
-
-static int32_t board_showing(void)
-{
-    if (!_playGame || _trainingGame || _replayState || !fresh())
-        return 0;
-    if (_showingUserStats || _statsTimer)                       /* the statistics */
-        return 0;
-    /* the final whistle (EndOfGame), the DOS shoot-out's walk off, the result */
-    if (_gameState == ST_GAME_ENDED || _gameState == ST_PLAYERS_GOING_TO_SHOWER ||
-        _gameState == ST_RESULT_AFTER_THE_GAME)
-        return 0;
-    return 1;
 }
 
 /* ---- the layer: RGBA, the picture's size, drawn over it ---- */
@@ -133,48 +118,6 @@ static void put(int32_t x, int32_t y, uint32_t c)
         s_layer[(uint32_t)y * (uint32_t)s_layerW + (uint32_t)x] = c;
 }
 
-/* The game's small font, as DrawMenuText draws it (its body colour, its shadow). */
-static int32_t text_width(const char *s)
-{
-    const CharsTableHeader *ct = (const CharsTableHeader *)_smallCharsTable;
-    const uint16_t *conv = (const uint16_t *)(ct + 1);
-    SpriteGraphics **gfx = (SpriteGraphics **)_spriteGraphicsPtr;
-    int32_t w = 0;
-    for (; *s; s++) {
-        if (*s == ' ')
-            w += ct->spaceWidth;
-        else
-            w += gfx[conv[(uint8_t)(*s - ' ')] + ct->spriteIndexOffset]->pixWidth + ct->charSpacing;
-    }
-    return w > 0 ? w - ct->charSpacing : 0;
-}
-
-static void text(int32_t x, int32_t y, const char *s, uint32_t body, uint32_t shadow)
-{
-    const CharsTableHeader *ct = (const CharsTableHeader *)_smallCharsTable;
-    const uint16_t *conv = (const uint16_t *)(ct + 1);
-    SpriteGraphics **gfx = (SpriteGraphics **)_spriteGraphicsPtr;
-    for (; *s; s++) {
-        const SpriteGraphics *g;
-        int32_t px, py, stride;
-        if (*s == ' ') {
-            x += ct->spaceWidth;
-            continue;
-        }
-        g = gfx[conv[(uint8_t)(*s - ' ')] + ct->spriteIndexOffset];
-        stride = g->wquads * 16;
-        for (py = 0; g->sprData && py < g->nlines; py++)
-            for (px = 0; px < g->pixWidth; px++) {
-                const uint8_t v = g->sprData[py * stride + px];
-                if (v & 2)
-                    put(x + px, y + py, body);
-                else if (v & 8)
-                    put(x + px, y + py, shadow);
-            }
-        x += g->pixWidth + ct->charSpacing;
-    }
-}
-
 static const char *const k_uniform[4][8] = {
     { "........", ".12221..", ".12221+.", "..222++.", "..333+..", "..333+..", "...+++..", "........" },
     { "........", ".21112..", ".21112+.", "..111++.", "..333+..", "..333+..", "...+++..", "........" },
@@ -182,8 +125,7 @@ static const char *const k_uniform[4][8] = {
     { "........", ".11111..", ".12221+.", "..111++.", "..333+..", "..333+..", "...+++..", "........" },
 };
 
-/* SWOS 2020's showUniform: `scale` 1 (the top-left board) or 2 (the result's band), its loops
- * running 0..7*scale inclusive. */
+/* SWOS 2020's showUniform: `scale` 2 (the result's), its loops running 0..7*scale inclusive. */
 static void kit(int32_t x, int32_t y, const TeamGame *t, int32_t scale)
 {
     const char *const *art = k_uniform[(uint16_t)t->prShirtType & 3];
@@ -197,55 +139,6 @@ static void kit(int32_t x, int32_t y, const TeamGame *t, int32_t scale)
         }
 }
 
-/* ---- the scoreboard ---- */
-
-static void draw_board(void)
-{
-    const int32_t minute = _gameTime[1] * 100 + _gameTime[2] * 10 + _gameTime[3];
-    const uint32_t white = argb_of(2), shadow = 0xFF000000u;
-    char buf[16];
-
-    /* SWOS 2020's drawDarkenRect fills w + 1 by h + 1: black, half seen through */
-    for (int32_t y = BOX_Y; y <= BOX_Y + BOX_H; y++)
-        for (int32_t x = BOX_X; x <= BOX_X + BOX_W; x++)
-            put(x, y, 0x80000000u);
-    /* SWOS 2020's printStringEx measures a string one pixel wider per character than it draws it
-     * (getStringLength counts width + 1, the drawing advances width), so its right-aligned minute
-     * ends a pixel per character short of 30 and its centred score sits half that left of 57. */
-    snprintf(buf, sizeof buf, "%d'", minute);
-    text(30 - (int32_t)strlen(buf) - text_width(buf), BOX_Y + 2, buf, white, shadow);
-    snprintf(buf, sizeof buf, "%d-%d", (int)_statsTeam1Goals, (int)_statsTeam2Goals);
-    text((114 - (int32_t)strlen(buf) - text_width(buf)) / 2, BOX_Y + 2, buf, white, shadow);
-    kit(BOX_X + 23, BOX_Y + 1, &_topTeamInGame, 1);         /* (team 1, the top team) */
-    kit(BOX_X + 63, BOX_Y + 1, &_bottomTeamInGame, 1);
-}
-
-/* While the board shows, the name of the player on the ball is drawn where SWOS 2020 puts it: the
- * top right, on the board's row (its text 8 rows down), right-aligned 10 columns in from the edge.
- * The top-left corner (the game's default, 4) and the top-right one (3) swap places, so the
- * indicator key still visits all four corners: 3 is then the top left, under the board (+7). */
-static void name_shift(const Sprite *spr, int16_t *dx, int16_t *dy)
-{
-    const int16_t leftX = _gDosView ? 12 : 20, leftY = _gDosView ? 0 : 14;
-    const int16_t rightY = _gDosView ? 8 : 14;
-    int16_t len = 0;
-
-    *dx = *dy = 0;
-    for (int16_t i = 0; i < 32; i++)
-        if ((i < 16 ? SPR_TEAM1_PLAYER_NAMES_START : SPR_TEAM2_PLAYER_NAMES_START) +
-            (int16_t)(int8_t)_plOrdinalsTable[i] == spr->imageIndex) {
-            len = (int16_t)(int8_t)_plNamesLengthTableCopy[i];
-            break;
-        }
-    if (_currentPlayerIndicatorPosition == 4) {
-        *dx = (int16_t)(HUD_WIDTH - 10 - len - leftX);
-        *dy = (int16_t)(8 - leftY);
-    } else if (_currentPlayerIndicatorPosition == 3) {
-        *dx = (int16_t)(leftX - (HUD_WIDTH - 10 - len));
-        *dy = (int16_t)(leftY - rightY + 7);
-    }
-}
-
 /* ---- the result's band ----
  * DrawQueuedSprites leaves the grid sprites out and notes their rows, with the frame buffer's
  * pixels there before the result's text; at the present the band is darkened wherever the text did
@@ -254,7 +147,6 @@ static void name_shift(const Sprite *spr, int16_t *dx, int16_t *dy)
 typedef struct {
     uintptr_t fb;                   /* the frame buffer it was drawn into */
     int32_t   y0, y1;               /* its rows, y1 exclusive; y1 <= y0: none */
-    int32_t   gridTop;              /* the top grid row's y (the kits are placed from it) */
     uint8_t  *snap;                 /* the frame buffer's rows before the result's text */
 } Band;
 static Band s_band[2];
@@ -299,8 +191,6 @@ static int32_t band_grid(int16_t y, int32_t h)
     if (y1 > _screen_height) y1 = _screen_height;
     if (y1 <= y0)
         return 1;
-    if (b->y1 <= b->y0 || y < b->gridTop)
-        b->gridTop = y;
     for (int32_t r = y0; r < y1; r++)
         memcpy(b->snap + (size_t)r * _screen_width,
                (const uint8_t *)_frontbufferBasePtr + (size_t)r * FRONTBUFFER_ROW_STRIDE_BYTES,
@@ -317,17 +207,15 @@ static int32_t band_grid(int16_t y, int32_t h)
 
 /* The band of the frame shown: black at half alpha (a colour halved) on every pixel the result's
  * text did not draw -- the frame buffer's, against the snapshot, and the HUD layer's (the text is
- * there with the sub-pixel scroll on) -- then the kits. */
+ * there with the sub-pixel scroll on). */
 static int32_t draw_band(void)
 {
     const uint8_t *fb8 = Platform_FrameShown();
     const uint8_t *hud = Platform_HudLayerBuffer();
     const Band *b = fresh() && fb8 ? band_for((uintptr_t)fb8, 0) : NULL;
-    const int32_t centre = _screen_width / 2;
-    int32_t x1, x2, y;
     if (!b || b->y1 <= b->y0)
         return 0;
-    for (y = b->y0; y < b->y1 && y < s_layerH; y++) {
+    for (int32_t y = b->y0; y < b->y1 && y < s_layerH; y++) {
         const uint8_t *now = fb8 + (size_t)y * FRONTBUFFER_ROW_STRIDE_BYTES;
         const uint8_t *was = b->snap + (size_t)y * _screen_width;
         const uint8_t *h = hud ? hud + (size_t)y * _screen_width : NULL;
@@ -336,22 +224,23 @@ static int32_t draw_band(void)
             if (now[x] == was[x] && !(h && h[x]))
                 p[x] = 0x80000000u;
     }
-    if (_replayState)
-        return 1;
-    /* the kits under the flags (the flags mod's: 22 x 16, 6 in from the banner's edge, centred on
-     * the names' row) -- in the same place with the flags mod off. Not SWOS 2020's place (above
-     * the names, or beside the score): the owner's, 2026-11-07. */
-    {
-        ModResultBanner rb;
-        if (!ModApi_ResultBanner(&rb))
-            return 1;
-        y  = rb.nameTop + (rb.nameHeight - 16) / 2 + 16 + 3;
-        x1 = rb.left + 6 + (22 - 16) / 2;
-        x2 = rb.right - 6 - 22 + (22 - 16) / 2;
-        (void)centre;
-    }
+    s_testBand++;
+    return 1;
+}
+
+/* The kits under the flags (the flags mod's: 22 x 16, 6 in from the banner's edge, centred on the
+ * names' row) -- in the same place with the flags mod off. */
+static int32_t draw_kits(void)
+{
+    ModResultBanner rb;
+    if (!kits_on() || _replayState || _trainingGame || !fresh() || !ModApi_ResultBanner(&rb))
+        return 0;
+    const int32_t y = rb.nameTop + (rb.nameHeight - 16) / 2 + 16 + 3;
+    const int32_t x1 = rb.left + 6 + (22 - 16) / 2;
+    const int32_t x2 = rb.right - 6 - 22 + (22 - 16) / 2;
     kit(x1, y, &_topTeamInGame, 2);
     kit(x2, y, &_bottomTeamInGame, 2);
+    s_testKits++;
     return 1;
 }
 
@@ -368,25 +257,22 @@ static int32_t sprite_draw(const Sprite *spr, const SpriteGraphics *gfx, int16_t
 {
     if (!_playGame)
         return 0;
-    if (spr == &_currentTimeSprite && hides_clock())
-        return 1;
     if (spr == &_team1NameSprite || spr == &_team2NameSprite) {
-        if (wide_layout())
+        if (wide_layout() && kits_on())
             *x += spr == &_team1NameSprite ? -14 : 14;
         return 0;
     }
-    if (gfx && is_grid(spr))
-        return band_grid(*y, gfx->nlines);
-    if (spr == &_currentPlayerNameSprite && board_showing()) {
-        int16_t dx, dy;
-        name_shift(spr, &dx, &dy);
-        *x = (int16_t)(*x + dx);
-        *y = (int16_t)(*y + dy);
+    if (gfx && is_grid(spr)) {
+        const int32_t mode = band_mode();
+        if (mode == BAND_OFF)
+            return 1;                               /* (no band: the result's text on the pitch) */
+        if (mode == BAND_SMOOTH)
+            return band_grid(*y, gfx->nlines);
     }
     return 0;
 }
 
-static void frame_drawn(void)
+static void frame_under(void)
 {
     if (!_playGame || !layer_ready())
         return;
@@ -394,11 +280,8 @@ static void frame_drawn(void)
         memset(s_layer, 0, (size_t)s_layerW * s_layerH * 4);
         s_dirty = 0;
     }
-    if (board_showing()) {
-        draw_board();
-        s_dirty = 1;
-    }
     s_dirty |= draw_band();
+    s_dirty |= draw_kits();
     if (!s_dirty)
         return;
     if (!s_tex || s_texW != s_layerW || s_texH != s_layerH) {
@@ -429,12 +312,30 @@ static void frame_drawn(void)
     }
 }
 
+/* SWOS_DISPLAY2020_TEST=1 (with SWOS_MOD_MATCH_TEST=1, whose match has the kick-off's result up):
+ * at frame 600 PASS when, by its settings, the band and the kits were drawn -- or, band game/off
+ * and kits off, were not. */
+static void match_frame(void)
+{
+    if (!s_test || ModApi_MatchFrames() != 600)
+        return;
+    const int32_t wantBand = band_mode() == BAND_SMOOTH, wantKits = kits_on();
+    const int32_t ok = (s_testBand > 0) == wantBand && (s_testKits > 0) == wantKits;
+    fprintf(stdout, "DISPLAY2020 TEST %s: band %s drawn %d times, kits %s drawn %d times\n", ok ? "PASS" : "FAIL",
+            ModApi_Setting(SLUG, "band", "smooth"), (int)s_testBand, wantKits ? "on" : "off", (int)s_testKits);
+    exit(ok ? 0 : 1);
+}
+
+static void init(void) { s_test = getenv("SWOS_DISPLAY2020_TEST") != NULL; }
+
 const ModDef ModDef_display2020 = {
     .slug = SLUG,
-    .frameUnder = frame_drawn,      /* under the flags mod and the rest: the band is shading */
+    .init = init,
+    .frameUnder = frame_under,      /* under the flags mod and the rest: the band is shading */
     .spritesBegin = sprites_begin,
     .spriteDraw = sprite_draw,
     .frameKept = frame_kept,
+    .matchFrame = match_frame,
 };
 
 #endif /* SWOS_SDL_BUILD */
