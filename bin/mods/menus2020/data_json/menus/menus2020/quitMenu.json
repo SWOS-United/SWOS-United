@@ -1,0 +1,84 @@
+{
+  "name": "quitMenu",
+  "source": {
+    "project": "swos-2020",
+    "file": "src/menus/quit.mnu",
+    "commit": "df38d20"
+  },
+  "menu_flags": {
+    "dos_redraw": true
+  },
+  "onInit": "menus2020.quitInit",
+  "onReturn": null,
+  "onDraw": null,
+  "defaultEntry": 1,
+  "exports": {},
+  "items": [
+    {
+      "kind": "entry",
+      "name": "quit",
+      "coords": {
+        "x": 85,
+        "y": 66,
+        "w": 150,
+        "h": 20
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x10",
+          "literal": "QUIT"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 14
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": -1,
+          "down": 1
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.quitGame"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "returnToGame",
+      "coords": {
+        "x": 85,
+        "y": 116,
+        "w": 150,
+        "h": 20
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x10",
+          "literal": "RETURN TO GAME"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 4
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": 0,
+          "down": -1
+        },
+        {
+          "op": "onselect_fire",
+          "func": "SetExitMenuFlag"
+        }
+      ]
+    }
+  ]
+}

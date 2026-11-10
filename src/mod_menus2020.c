@@ -7,17 +7,18 @@
  * the mod overlay while the mod is on, the rest are its own screens (menus2020/<menu>). Every
  * handler they name is one of these, "menus2020.<name>" (ModApi_RegisterHandlers).
  *
- * What the buttons do here, by what they say:
- *   COMPETE    COMPETITIONS: ONLINE (the game's MULTIPLAYER), DIY, PRESET, SEASON, CLASSIC CAREER,
- *              and SPEEDRUNS / CHALLENGES when OpenSWOS's speedrun / challenges mods are on
+ * SWOS 2020's main menu as it is built (MULTIPLAYER_MENU): main.mnu's six buttons, relabelled.
+ * What they do here, by what they say:
+ *   MULTIPLAYER  the game's MULTIPLAYER (SWOS 2020's online flow, docs/MENUS.md §10)
+ *   COMPETE    COMPETITIONS: ONLINE (the same), DIY, PRESET, CLASSIC CAREER, and SPEEDRUNS /
+ *              CHALLENGES when OpenSWOS's speedrun / challenges mods are on
  *   PRACTICE   FRIENDLY MATCH; TEAM TRAINING, PENALTY SHOOTOUT, DEMO GAME (OpenSWOS's practice
  *              mod, when on); MODES -- the mods' entries (MODPOINT_MODES) -- when another has one
- *   REPLAYS    the game's HIGHLIGHTS
  *   OPTIONS    the game's OPTIONS
- *   EDITING    EDIT CUSTOM TEAMS, EDIT TACTICS, SAVE DISK FILING
- *   EXTRAS     EDIT CUSTOM TEAMS, EDIT TACTICS, INSTRUCTION MANUAL (LATEST NEWS, TIPS AND
- *              REVIEWS, STREAMS AND VIDEOS hidden: the ticker mod's)
- *   CONTINUE / SAVE / LOAD, QUIT, CREDITS
+ *   EXTRAS     TIPS AND REVIEWS, STREAMS AND VIDEOS (the ticker's news, listed), EDIT CUSTOM
+ *              TEAMS, EDIT TACTICS, INSTRUCTION MANUAL (LATEST NEWS hidden: no source yet)
+ *   REPLAYS    the game's HIGHLIGHTS
+ *   CONTINUE / SAVE / LOAD, QUIT, CREDITS; the news ticker under them
  *
  * Two rules of the game's menus shape this file:
  *   - Every main-menu handler of the game (FriendlyMenu, CareerMenu, ...) ends in
@@ -34,7 +35,17 @@
 #ifdef SWOS_SDL_BUILD
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
+#include "mjson.h"
+#include "display.h"            /* FRONTBUFFER_ROW_STRIDE_BYTES */
+#include "dos_graphics.h"       /* DosGfx_DecodePlanarSprite */
+#include "dos_mode.h"           /* _gDosGraphicsDir */
+#include "edit_tactics.h"       /* FillSkinColorConversionTable */
+#include "file_io.h"            /* LoadFileEx */
+#include "math68k.h"            /* CalculateDeltaXAndY */
+#include "gfx.h"
 #include "menu_system.h"
 #include "menus.h"
 #include "platform_sdl.h"       /* Platform_OpenUrl, Platform_RequestQuit */
@@ -64,7 +75,8 @@ static void show(int32_t ordinal, int32_t visible) { entry(ordinal)->isInvisible
  * The main menu. Ordinals: scripts/make_menus2020.py MAIN_ORDER.
  * ====================================================================================== */
 enum {
-    Main_compete, Main_practice, Main_replays, Main_options, Main_editing, Main_extras,
+    Main_multi, Main_compete, Main_practice,        /* (main.mnu's competition, practice, replays) */
+    Main_options, Main_extras, Main_replays,        /* (its options, editing, extras) */
     Main_quit, Main_ticker, Main_liveCast,
     Main_continue = 11, Main_save, Main_load, Main_multiplayer, Main_credits, Main_modes,
 };
@@ -87,11 +99,21 @@ static void main_refresh(void)
     show(Main_multiplayer, 0);
     show(Main_modes, 0);
     s_liveShown = -2;                   /* (unpacked again: the JSON's idle picture) */
+    {   /* The ticker under SAVE and LOAD, as SWOS 2020's -- or across the top (where it was) on a
+         * screen with no rows under the menu. */
+        extern int _screen_height;
+        MenuEntry *t = entry(Main_ticker);
+        if (t->y + t->dwHeight > (uint16_t)_screen_height) {
+            t->x = 50;
+            t->y = 6;
+            t->dwWidth = 262;
+        }
+    }
 #ifdef SWOS_NETPLAY
-    nav(Main_compete, -1, Main_options, Main_liveCast, Main_practice);
+    nav(Main_multi, -1, Main_options, Main_liveCast, Main_compete);
 #else
     show(Main_liveCast, 0);             /* LIVE CAST watches online matches */
-    nav(Main_compete, -1, Main_options, -1, Main_practice);
+    nav(Main_multi, -1, Main_options, -1, Main_compete);
 #endif
 
     if (!s_loadKnown && contest) {      /* (CommonMenuExit has not moved it) */
@@ -104,9 +126,9 @@ static void main_refresh(void)
             load->x = s_loadX;
             load->y = s_loadY;
         }
-        nav(Main_replays, -1, Main_extras, Main_practice, Main_continue);
-        nav(Main_extras, Main_replays, -1, Main_editing, Main_continue);
-        nav(Main_continue, -1, -1, Main_replays, Main_save);
+        nav(Main_practice, -1, Main_replays, Main_compete, Main_continue);
+        nav(Main_replays, Main_practice, -1, Main_extras, Main_continue);
+        nav(Main_continue, -1, -1, Main_practice, Main_save);
         nav(Main_save, Main_quit, Main_load, Main_continue, -1);
         nav(Main_load, Main_save, Main_credits, Main_continue, -1);
         nav(Main_quit, -1, Main_save, Main_continue, -1);
@@ -119,11 +141,214 @@ static void main_refresh(void)
         }
         load->x = (uint16_t)(cont->x + (cont->dwWidth - load->dwWidth) / 2);
         load->y = cont->y;
-        nav(Main_replays, -1, Main_extras, Main_practice, Main_load);
-        nav(Main_extras, Main_replays, -1, Main_editing, Main_load);
-        nav(Main_load, Main_quit, Main_credits, Main_replays, -1);
-        nav(Main_quit, -1, Main_load, Main_replays, -1);
-        nav(Main_credits, Main_load, -1, Main_extras, -1);
+        nav(Main_practice, -1, Main_replays, Main_compete, Main_load);
+        nav(Main_replays, Main_practice, -1, Main_extras, Main_load);
+        nav(Main_load, Main_quit, Main_credits, Main_practice, -1);
+        nav(Main_quit, -1, Main_load, Main_practice, -1);
+        nav(Main_credits, Main_load, -1, Main_replays, -1);
+    }
+}
+
+/* ---- SWOS 2020's PixelAnimation: three little players -- red, green and blue, their faces dark,
+ * ginger and fair -- run in from around the corners each time the main menu opens and stand at
+ * the bottom right, where the SWOS United logo (the CREDITS button's picture) then takes their
+ * place. Its sprites: the PC game's TEAM2.DAT, its first 24 (the running and standing frames of
+ * the Amiga's 227..250, eight ways), coloured as its colorAllSprites does, drawn over the
+ * finished picture (gfx.h) so the menu under them is never touched. Moved by the game's own
+ * CalculateDeltaXAndY at kPlayerSpeedsGameInProgress[7] (its kPlayerSpeed 14 / 2), a frame each
+ * frameDelay (1280 - speed) / 128 + 6 of the menu's 50. Without the PC game's data: the logo. */
+enum { kRunPlayers = 3, kRunImages = 24, kRunStart = 25, kRunSettle = 38 };
+static const int16_t kRunFrames[8][4] = {          /* (_playerRunning*Team1, up first, clockwise) */
+    { 2, 0, 1, 0 }, { 23, 22, 21, 22 }, { 8, 6, 7, 6 }, { 17, 16, 15, 16 },
+    { 5, 3, 4, 3 }, { 14, 13, 12, 13 }, { 11, 9, 10, 9 }, { 20, 19, 18, 19 },
+};
+static const int16_t kRunStartXY[kRunPlayers][2] = { { -12, -15 }, { -12, 185 }, { 305, -15 } };
+static const int16_t kRunEndXY[kRunPlayers][2] = { { 293, 185 }, { 299, 185 }, { 305, 185 } };
+static const uint8_t kRunKit[kRunPlayers] = { 10, 14, 11 }, kRunFace[kRunPlayers] = { 2, 1, 0 };
+static struct { int16_t w, h, cx, cy; uint8_t *pix; } s_runImg[kRunImages];
+static GfxTexture *s_runTex[kRunPlayers][kRunImages];
+static int32_t  s_runLoaded;                    /* 0 not tried, 1 ready, -1 no data */
+static struct { int32_t x, y; int16_t destX, destY, image; uint8_t dir, step; } s_run[kRunPlayers];
+static int32_t  s_runState;                     /* 0 off, 1 waiting, 2 running, 3 standing */
+static uint32_t s_runFrames, s_runTick, s_runSeen;
+static int32_t  s_runYOff;                      /* (the menu's rows on the picture: entries' y less the JSON's) */
+
+static void run_load(void)
+{
+    static uint8_t file[64 * 1024];
+    char path[300];
+    uint32_t size = 0, at = 0;
+    s_runLoaded = -1;
+    snprintf(path, sizeof path, "%s/team2.dat", _gDosGraphicsDir);
+    if (LoadFileEx((uint8_t *)path, file, &size) != 0 || size == 0 || size > sizeof file)
+        return;
+    for (int32_t i = 0; i < kRunImages; i++) {
+        if (at + 24 > size)
+            return;
+        const uint8_t *h = file + at;
+        const int16_t w = (int16_t)(h[10] | h[11] << 8), n = (int16_t)(h[12] | h[13] << 8);
+        const int16_t q = (int16_t)(h[14] | h[15] << 8);
+        at += 24;
+        if (w <= 0 || n <= 0 || q <= 0 || at + (uint32_t)(n * q * 8) > size)
+            return;
+        s_runImg[i].pix = (uint8_t *)malloc((size_t)n * q * 16);
+        if (!s_runImg[i].pix)
+            return;
+        DosGfx_DecodePlanarSprite(file + at, n, q, s_runImg[i].pix);
+        at += (uint32_t)(n * q * 8);
+        s_runImg[i].w = (int16_t)(q * 16);          /* (the rows' stride: pixWidth fits in it) */
+        s_runImg[i].h = n;
+        s_runImg[i].cx = (int16_t)(h[16] | h[17] << 8);
+        s_runImg[i].cy = (int16_t)(h[18] | h[19] << 8);
+    }
+    s_runLoaded = 1;
+}
+
+/* A player's picture of one image: setSpriteColors' table (the kit in 10, 11 and 15, white
+ * shorts in 14, the face's skin and hair) into the menu's colours, 0 see-through. */
+static GfxTexture *run_texture(int32_t pl, int32_t img)
+{
+    static uint8_t rgba[64 * 64 * 4];
+    if (s_runTex[pl][img])
+        return s_runTex[pl][img];
+    const int32_t w = s_runImg[img].w, h = s_runImg[img].h;
+    if (w * h * 4 > (int32_t)sizeof rgba)
+        return NULL;
+    uint16_t table[16] = { 0, 1, 2, 3, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0 };
+    table[10] = table[11] = table[15] = kRunKit[pl];
+    table[14] = 2;
+    FillSkinColorConversionTable(kRunFace[pl], table);
+    for (int32_t i = 0; i < w * h; i++) {
+        const uint8_t v = s_runImg[img].pix[i];
+        const uint8_t c = v < 16 ? (uint8_t)table[v] : v;
+        uint8_t r = 0, g = 0, b = 0;
+        if (v && c)
+            ModApi_PaletteColour(c, &r, &g, &b);
+        rgba[i * 4 + 0] = r, rgba[i * 4 + 1] = g, rgba[i * 4 + 2] = b;
+        rgba[i * 4 + 3] = (uint8_t)(v && c ? 255 : 0);
+    }
+    s_runTex[pl][img] = Gfx_CreateTexture(w, h, 0);
+    if (s_runTex[pl][img])
+        Gfx_UpdateTexture(s_runTex[pl][img], rgba, w * 4);
+    return s_runTex[pl][img];
+}
+
+static void run_begin(void)
+{
+    if (!s_runLoaded)
+        run_load();
+    if (s_runLoaded != 1) {
+        s_runState = 0;
+        return;
+    }
+    for (int32_t i = 0; i < kRunPlayers; i++) {
+        const int32_t rx = (int32_t)(ModApi_Ticks() * 7919u + (uint32_t)i * 104729u) % 101;
+        const int32_t ry = (int32_t)(ModApi_Ticks() * 6151u + (uint32_t)i * 15485863u) % 101;
+        s_run[i].x = (kRunStartXY[i][0] + (i == 2 ? -rx : rx)) << 16;
+        s_run[i].y = (kRunStartXY[i][1] + (i == 1 ? -ry : ry)) << 16;
+        s_run[i].destX = kRunEndXY[i][0];
+        s_run[i].destY = kRunEndXY[i][1];
+        s_run[i].dir = 4;
+        s_run[i].step = 0;
+        s_run[i].image = kRunFrames[4][0];
+    }
+    s_runState = 1;
+    s_runFrames = 0;
+    s_runTick = ModApi_Ticks();
+    ModApi_SetMenuImage(Main_credits, NULL);    /* (the logo when they are there) */
+    ModApi_MenuRedraw(Main_credits);
+}
+
+/* One step of the menu's 50 a second. */
+static void run_step(void)
+{
+    extern uint16_t _kPlayerSpeedsGameInProgress[];
+    const int16_t speed = (int16_t)_kPlayerSpeedsGameInProgress[7];
+    const uint32_t frameDelay = (uint32_t)((1280 - speed > 0 ? 1280 - speed : 0) / 128 + 6);
+    int32_t moving = 0;
+    s_runFrames++;
+    if (s_runState == 1) {
+        if (s_runFrames >= kRunStart)
+            s_runState = 2, s_runFrames = 0;
+        return;
+    }
+    if (s_runState == 2) {
+        for (int32_t i = 0; i < kRunPlayers; i++) {
+            const int16_t x = (int16_t)(s_run[i].x >> 16), y = (int16_t)(s_run[i].y >> 16);
+            int32_t dx = 0, dy = 0;
+            if (x == s_run[i].destX && y == s_run[i].destY) {
+                s_run[i].image = kRunFrames[4][1];      /* (standing, facing down) */
+                continue;
+            }
+            moving = 1;
+            CalculateDeltaXAndY(s_run[i].destX, s_run[i].destY, x, y, speed, &dx, &dy);
+            dx &= (int32_t)0xFFFF0000, dy &= (int32_t)0xFFFF0000;     /* (whole pixels, as SWOS 2020's) */
+            if (!dx && !dy)
+                dx = (s_run[i].destX > x) - (s_run[i].destX < x), dy = (s_run[i].destY > y) - (s_run[i].destY < y),
+                dx <<= 16, dy <<= 16;
+            /* never past the place: the last step lands on it */
+            if ((dx > 0 && x + (dx >> 16) > s_run[i].destX) || (dx < 0 && x + (dx >> 16) < s_run[i].destX))
+                dx = (s_run[i].destX - x) << 16;
+            if ((dy > 0 && y + (dy >> 16) > s_run[i].destY) || (dy < 0 && y + (dy >> 16) < s_run[i].destY))
+                dy = (s_run[i].destY - y) << 16;
+            s_run[i].x += dx;
+            s_run[i].y += dy;
+            {   /* the way it runs, eight ways from up clockwise */
+                const int32_t ax = dx >> 16, ay = dy >> 16;
+                const int32_t d = ax == 0 ? (ay < 0 ? 0 : 4) : ay == 0 ? (ax > 0 ? 2 : 6)
+                                : ax > 0 ? (ay < 0 ? 1 : 3) : (ay < 0 ? 7 : 5);
+                s_run[i].dir = (uint8_t)d;
+            }
+            if (s_runFrames % frameDelay == 0)
+                s_run[i].step = (uint8_t)((s_run[i].step + 1) & 3);
+            s_run[i].image = kRunFrames[s_run[i].dir][s_run[i].step];
+        }
+        if (!moving)
+            s_runState = 3, s_runFrames = 0;
+        return;
+    }
+    if (s_runState == 3 && s_runFrames >= kRunSettle) {   /* (playersSettled: then the logo) */
+        s_runState = 0;
+        ModApi_SetMenuImage(Main_credits, "grafs_2020/menus2020/credits.bmp");
+        ModApi_MenuRedraw(Main_credits);
+    }
+}
+
+/* Each menu frame (the mod's menuDrawn) while the main menu is shown: the run, at the menu's 50
+ * steps a second. */
+static void run_menu_frame(void)
+{
+    const uint32_t now = ModApi_Ticks();
+    if (!ModApi_IsMainMenu())
+        return;
+    s_runSeen = now ? now : 1;
+    s_runYOff = entry(Main_credits)->y - 182;
+    while (s_runState && now - s_runTick >= 20) {
+        s_runTick += 20;
+        run_step();
+    }
+    if (!s_runState)
+        s_runTick = now;
+}
+
+/* Each frame the window shows: the players over the picture (drawPlayers: the middle one on top). */
+static void run_frame_drawn(void)
+{
+    static const int32_t kOrder[kRunPlayers] = { 0, 2, 1 };
+    extern int _menu_draw_x_offset;
+    if (s_runState < 2 || !ModApi_InMenus() || ModApi_Ticks() - s_runSeen > 150)
+        return;
+    Gfx_SetSpace(GFX_SPACE_PICTURE);
+    Gfx_SetBlend(GFX_BLEND_ALPHA);
+    for (int32_t k = 0; k < kRunPlayers; k++) {
+        const int32_t i = kOrder[k], img = s_run[i].image;
+        GfxTexture *tex = img >= 0 && img < kRunImages ? run_texture(i, img) : NULL;
+        if (!tex)
+            continue;
+        const SDL_FRect dst = { (float)(_menu_draw_x_offset + (s_run[i].x >> 16) - s_runImg[img].cx),
+                                (float)(s_runYOff + (s_run[i].y >> 16) - s_runImg[img].cy),
+                                (float)s_runImg[img].w, (float)s_runImg[img].h };
+        Gfx_DrawTexture(tex, NULL, &dst);
     }
 }
 
@@ -132,6 +357,7 @@ static void mainInit(void)
     extern void SWOSMainMenuInit(void);
     SWOSMainMenuInit();                 /* the game's: CommonMenuExit, its test hook */
     main_refresh();
+    run_begin();
 }
 
 /* Each frame of the main menu: the TV shows a match when one is live (SWOS 2020's drawTvIcon). */
@@ -175,6 +401,7 @@ static void extras(void)   { open_screen(SLUG "/extrasMenu"); }
 
 /* The game's own handlers, each ending in CommonMenuExit, and then this menu's layout. */
 #define GAME_BUTTON(name, fn) static void name(void) { fn(); main_refresh(); }
+GAME_BUTTON(multiplayer, MultiplayerMenuSelected)
 GAME_BUTTON(replays, HighlightsMenu)
 GAME_BUTTON(options, OptionsMenuSelected)
 GAME_BUTTON(continueContest, StartContest)
@@ -183,12 +410,40 @@ GAME_BUTTON(loadContest, LoadOldCompetitionMenu)
 GAME_BUTTON(credits, CreditsMenuSelected)
 #undef GAME_BUTTON
 
-/* QUIT (SWOS 2020's showQuitMenu): asked first, as closing the window is not. */
+/* QUIT: SWOS 2020's quit.mnu (showQuitMenu) -- QUIT TO <the system this build is for>, RETURN TO
+ * GAME chosen -- asked first, as closing the window is not. */
+enum { Quit_quit, Quit_return };
+static int32_t s_quitChosen;
+
+#if defined(SWOS_SWITCH_BUILD)
+#define QUIT_TO "QUIT TO SWITCH"
+#elif defined(SWOS_IOS_BUILD)
+#define QUIT_TO "QUIT TO IOS"
+#elif defined(__ANDROID__)
+#define QUIT_TO "QUIT TO ANDROID"
+#elif defined(SWOS_WASM_BUILD)
+#define QUIT_TO "QUIT TO BROWSER"
+#elif defined(__APPLE__)
+#define QUIT_TO "QUIT TO MAC"
+#elif defined(_WIN32) || defined(__CYGWIN__)
+#define QUIT_TO "QUIT TO WINDOWS"
+#else
+#define QUIT_TO "QUIT TO LINUX"
+#endif
+
+static void quitInit(void)
+{
+    entry(Quit_quit)->fg = (uintptr_t)QUIT_TO;
+    SetCurrentEntry(Quit_return);
+}
+
+static void quitGame(void) { s_quitChosen = 1; SetExitMenuFlag(); }
+
 static void quit(void)
 {
-    static char header[] = "QUIT THE GAME?", none[] = "", yes[] = "QUIT", no[] = "CANCEL";
-    if (DoContinueAbortMenu((uint8_t *)header, (uint8_t *)none, (uint8_t *)yes,
-                            (uint8_t *)no, 1) == 0)
+    s_quitChosen = 0;
+    ModApi_ShowMenu(SLUG "/quitMenu");
+    if (s_quitChosen)
         Platform_RequestQuit();
     CommonMenuExit();
     main_refresh();
@@ -198,8 +453,7 @@ static void quit(void)
  * COMPETITIONS (swos-2020 competition.mnu). Ordinals: its entries, in order.
  * ====================================================================================== */
 enum { Comp_header, Comp_online, Comp_speedruns, Comp_diy, Comp_challenges, Comp_preset,
-       Comp_career, Comp_exit,
-       Comp_season };                   /* (ours: the original main menu's SEASON) */
+       Comp_career, Comp_exit };
 
 /* A row pair: SWOS 2020's two columns when the left one (a mod's) is there, else the right one
  * alone in the middle. Returns the ordinal arrows reach the row by. */
@@ -231,12 +485,49 @@ static void competitionInit(void)
     nav(Comp_online, -1, -1, -1, row2);
     nav(Comp_speedruns, -1, Comp_diy, top, Comp_challenges);
     nav(Comp_diy, row2 == Comp_speedruns ? Comp_speedruns : -1, -1, top, Comp_preset);
-    nav(Comp_challenges, -1, Comp_preset, row2, Comp_season);
+    nav(Comp_challenges, -1, Comp_preset, row2, Comp_career);
     nav(Comp_preset, row3 == Comp_challenges ? Comp_challenges : -1, -1, Comp_diy, Comp_career);
-    nav(Comp_season, -1, Comp_career, row3, Comp_exit);
-    nav(Comp_career, Comp_season, -1, Comp_preset, Comp_exit);
+    nav(Comp_career, -1, -1, row3, Comp_exit);
     nav(Comp_exit, -1, -1, Comp_career, -1);
     SetCurrentEntry(Comp_diy);
+}
+
+/* competitionMenu_OnDraw: SWOS 2020's yellow arrows either side of CHALLENGES, pointing at it,
+ * coming and going (0 1 2 3 2 1 pixels, a step every 20 of its frames). Into the frame, their
+ * places painted back first. Only while CHALLENGES is there (the challenges mod on). */
+static const char *const k_arrowRight[7] = {
+    ".....6F...", "......6F..", "4455566F2.", "455566FFF8", ".888886F88", ".....6F88.", "......88..",
+};
+static const char *const k_arrowLeft[7] = {
+    "..F6......", ".F688.....", "2F6655544.", "FFF6655548", ".F68888888", "..F6......", "...88.....",
+};
+
+static void draw_map(const char *const *map, int32_t w, int32_t h, int32_t x, int32_t y)
+{
+    extern volatile uintptr_t _frontbufferBasePtr;
+    extern int _menu_draw_x_offset;
+    uint8_t *fb = (uint8_t *)_frontbufferBasePtr + _menu_draw_x_offset;
+    for (int32_t j = 0; j < h; j++)
+        for (int32_t i = 0; i < w; i++) {
+            const char c = map[j][i];
+            if (c != '.' && c != '0' && x + i >= 0 && y + j >= 0)
+                fb[(uint32_t)(y + j) * FRONTBUFFER_ROW_STRIDE_BYTES + (uint32_t)(x + i)] =
+                    (uint8_t)(c <= '9' ? c - '0' : c - 'A' + 10);
+        }
+}
+
+static void competitionDraw(void)
+{
+    static const int32_t kFrame[6] = { 0, 1, 2, 3, 2, 1 };
+    const MenuEntry *e = entry(Comp_challenges);
+    if (e->isInvisible)
+        return;
+    const int32_t step = kFrame[(ModApi_Ticks() / 290) % 6];   /* (20 frames of its 70) */
+    const int32_t y = e->y + e->dwHeight / 2 - 4;
+    ModApi_RestoreMenuBackground(e->x - 16, y, 13, 7);
+    ModApi_RestoreMenuBackground(e->x + e->dwWidth + 3, y, 13, 7);
+    draw_map(k_arrowRight, 10, 7, e->x - 13 - step, y);
+    draw_map(k_arrowLeft, 10, 7, e->x + e->dwWidth + 3 + step, y);
 }
 
 /* A mod's MODES entry, run with the main menu current (as every choice here is). */
@@ -256,7 +547,6 @@ static void online(void) { choose(MultiplayerMenuSelected); }
 static void diy(void)    { choose(DIYCompetitionMenu); }
 static void preset(void) { choose(PresetCompetitionMenu); }
 static void career(void) { choose(CareerMenu); }
-static void season(void) { choose(SeasonMenu); }
 
 /* ======================================================================================
  * PRACTICE (swos-2020 practice.mnu): FRIENDLY MATCH; TEAM TRAINING, PENALTY SHOOTOUT and DEMO GAME
@@ -291,19 +581,23 @@ static void modes(void)    { choose(ModesMenuSelected); }
 enum { Extras_header, Extras_news, Extras_tips, Extras_streams, Extras_editTeams,
        Extras_editTactics, Extras_manual, Extras_help, Extras_exit };
 
-static void extrasInit(void)
+static void set_text(int32_t ordinal, const char *text) { entry(ordinal)->fg = (uintptr_t)text; }
+
+static void extrasInit(void) { SetCurrentEntry(Extras_tips); }   /* (LATEST NEWS, the first, hidden) */
+
+/* The line under the buttons: what the chosen one does (extrasExMenuOnDraw). */
+static void extrasDraw(void)
 {
-    /* The left-hand column (the ticker's) is hidden: the right-hand one moves to the middle. */
-    const MenuEntry *header = entry(Extras_header);
-    const int32_t mid = header->x + header->dwWidth / 2;
-    for (int32_t i = Extras_editTeams; i <= Extras_manual; i++) {
-        MenuEntry *e = entry(i);
-        e->x = (uint16_t)(mid - e->dwWidth / 2);
-        e->leftEntry = -1;
-    }
-    entry(Extras_manual)->downEntry = Extras_exit;
-    entry(Extras_exit)->upEntry = Extras_manual;
-    SetCurrentEntry(Extras_editTeams);
+    static const char *const kHelp[] = {
+        [Extras_news] = "LATEST NEWS FROM SENSIBLESOCCER.DE",
+        [Extras_tips] = "LINKS TO WRITTEN ARTICLES AND WEBSITES",
+        [Extras_streams] = "LINKS TO YOUTUBE, TWITCH AND ETC.",
+        [Extras_editTeams] = "EDIT ORIGINAL AND EDITED CUSTOM TEAMS",
+        [Extras_editTactics] = "EDIT CUSTOM TACTICS",
+        [Extras_manual] = "READ INSTRUCTION MANUAL",
+    };
+    const int32_t m = ModApi_MenuCurrentEntry();
+    set_text(Extras_help, m >= Extras_news && m <= Extras_manual && kHelp[m] ? kHelp[m] : "BACK TO MAIN MENU");
 }
 
 static void editTeams(void)   { choose(EditCustomTeamMenu); }
@@ -316,7 +610,175 @@ static void manual(void)
     Platform_OpenUrl("https://www.sensiblesoccer.de/swos2020/swos_96_97_manual.pdf");
 }
 
-/* ====================================================================================== */
+/* ======================================================================================
+ * TIPS AND REVIEWS, STREAMS AND VIDEOS (SWOS 2020's ticker.mnu, tickerMenu_*): the ticker mod's
+ * news (its news.json, from sensiblesoccer.de's tips.txt) listed, ten a page -- the number, the
+ * category (the text before its ':'), the text -- a row opening its link in the browser. Tips are
+ * the items before the first "STREAM:" one, streams the rest after SWOS 2020's own first row.
+ * Ordinals: menus2020/tickerMenu.json -- the heading row then ten, per column.
+ * ====================================================================================== */
+enum { kTickRows = 10, kTickItems = 64, kTickText = 160, kTickLink = 256 };
+enum { Tick_header, Tick_no0, Tick_cate0 = Tick_no0 + kTickRows + 1, Tick_text0 = Tick_cate0 + kTickRows + 1,
+       Tick_up = Tick_text0 + kTickRows + 1, Tick_down, Tick_page, Tick_exit };
+
+static struct { char text[kTickText], link[kTickLink]; } s_tick[kTickItems];
+static int32_t s_tickCount, s_tickStreams;      /* items; the first stream's (getStreamsTicker) */
+static int32_t s_tickMode;                      /* 1 tips, 2 streams (g_TickerMode) */
+static int32_t s_tickPage[3];
+static char    s_tickNo[kTickRows][12], s_tickCate[kTickRows][24], s_tickRow[kTickRows][kTickText];
+static char    s_tickPageText[32];
+
+static void tick_add(const char *text, const char *link)
+{
+    if (s_tickCount >= kTickItems || !text[0])
+        return;
+    snprintf(s_tick[s_tickCount].text, kTickText, "%s", text);
+    snprintf(s_tick[s_tickCount].link, kTickLink, "%s", link);
+    for (char *c = s_tick[s_tickCount].text; *c; c++)      /* (the menu fonts are capitals) */
+        if (*c >= 'a' && *c <= 'z')
+            *c = (char)(*c - 32);
+    s_tickCount++;
+}
+
+/* The ticker's news.json (save/mods/ticker, else its own), each time a list opens. */
+static void tick_load(void)
+{
+    uint32_t size = 0;
+    char *json = (char *)ModApi_LoadFile("ticker", "news.json", &size), *own = NULL;
+    s_tickCount = 0;
+    s_tickStreams = -1;
+    if (!json) {
+        char path[1200];
+        const char *dir = ModApi_ModDir("ticker");
+        FILE *f;
+        snprintf(path, sizeof path, "%s/data_json/ticker/news.json", dir ? dir : ".");
+        if ((f = fopen(path, "rb")) != NULL) {
+            own = (char *)malloc(65536);
+            size = own ? (uint32_t)fread(own, 1, 65535, f) : 0;
+            if (own)
+                own[size] = 0;
+            fclose(f);
+            json = own;
+            own = NULL;
+        }
+    }
+    static const char kOwnStream[] = "STREAM: SWOS.EU LIVE BROADCAST OF ONLINE MATCHES",
+                      kOwnLink[] = "https://swos.eu/";   /* (SWOS 2020's own first stream: loadNewsStr) */
+    for (int32_t i = 0; json && s_tickCount < kTickItems; i++) {
+        char q[48], text[kTickText], link[kTickLink];
+        snprintf(q, sizeof q, "$.items[%d].text", (int)i);
+        if (mjson_get_string(json, (int)size, q, text, (int)sizeof text) < 0)
+            break;
+        snprintf(q, sizeof q, "$.items[%d].link", (int)i);
+        if (mjson_get_string(json, (int)size, q, link, (int)sizeof link) < 0)
+            link[0] = 0;
+        if (s_tickStreams < 0 && (strncmp(text, "STREAM:", 7) == 0 || strncmp(text, "stream:", 7) == 0)) {
+            s_tickStreams = s_tickCount;
+            tick_add(kOwnStream, kOwnLink);
+        }
+        tick_add(text, link);
+    }
+    if (s_tickStreams < 0) {
+        s_tickStreams = s_tickCount;
+        tick_add(kOwnStream, kOwnLink);
+    }
+    free(json);
+}
+
+/* The list's i-th item, or -1. */
+static int32_t tick_item(int32_t i)
+{
+    const int32_t first = s_tickMode == 1 ? 0 : s_tickStreams;
+    const int32_t last = s_tickMode == 1 ? s_tickStreams : s_tickCount;
+    return i >= 0 && first + i < last ? first + i : -1;
+}
+
+static int32_t tick_pages(void)
+{
+    const int32_t n = s_tickMode == 1 ? s_tickStreams : s_tickCount - s_tickStreams;
+    return n > 0 ? (n + kTickRows - 1) / kTickRows : 1;
+}
+
+static void tickerInit(void)
+{
+    tick_load();
+    if (s_tickPage[s_tickMode] >= tick_pages())
+        s_tickPage[s_tickMode] = 0;
+    SetCurrentEntry(Tick_text0 + 1);
+}
+
+static void tickerDraw(void)
+{
+    int32_t width = 0;
+    set_text(Tick_header, s_tickMode == 1 ? "TIPS AND REVIEWS" : "STREAMS AND VIDEOS");
+    set_text(Tick_no0, "NO");
+    set_text(Tick_cate0, "CATEGORY");
+    set_text(Tick_text0, "LINK COLLECTION");
+    for (int32_t r = 0; r <= kTickRows; r++) {      /* (its columns for the link lists) */
+        MenuEntry *no = entry(Tick_no0 + r), *cate = entry(Tick_cate0 + r), *text = entry(Tick_text0 + r);
+        no->x = 0;
+        cate->x = 24, cate->dwWidth = 50;
+        text->x = 76, text->dwWidth = 234;
+        width = text->dwWidth - 4;
+    }
+    for (int32_t r = 0; r < kTickRows; r++) {
+        const int32_t it = tick_item(s_tickPage[s_tickMode] * kTickRows + r);
+        s_tickNo[r][0] = s_tickCate[r][0] = s_tickRow[r][0] = 0;
+        if (it >= 0) {
+            const char *t = s_tick[it].text, *colon = strchr(t, ':');
+            snprintf(s_tickNo[r], sizeof s_tickNo[r], "%d", (int)(s_tickPage[s_tickMode] * kTickRows + r + 1));
+            if (colon) {
+                snprintf(s_tickCate[r], sizeof s_tickCate[r], "%.*s", (int)(colon - t), t);
+                t = colon + 1;
+            }
+            while (*t == ' ')
+                t++;
+            snprintf(s_tickRow[r], sizeof s_tickRow[r], "%s", t);
+            for (size_t n = strlen(s_tickRow[r]); n > 0 && ModApi_TextWidth(s_tickRow[r], 1) > width; n--)
+                s_tickRow[r][n - 1] = 0;            /* (shortenNameEx) */
+        }
+        set_text(Tick_no0 + 1 + r, s_tickNo[r]);
+        set_text(Tick_cate0 + 1 + r, s_tickCate[r]);
+        set_text(Tick_text0 + 1 + r, s_tickRow[r]);
+        nav(Tick_text0 + 1 + r, -1, Tick_up, r ? Tick_text0 + r : -1,
+            r + 1 < kTickRows ? Tick_text0 + 2 + r : Tick_exit);
+    }
+    snprintf(s_tickPageText, sizeof s_tickPageText, "(%d OF %d)", (int)s_tickPage[s_tickMode] + 1, (int)tick_pages());
+    set_text(Tick_page, s_tickPageText);
+    nav(Tick_up, Tick_text0 + 1, -1, -1, Tick_down);
+    nav(Tick_down, Tick_text0 + 1, -1, Tick_up, Tick_exit);
+    nav(Tick_exit, -1, Tick_down, Tick_text0 + kTickRows, -1);
+}
+
+static void tickerOpen(void)
+{
+    const int32_t r = ModApi_MenuCurrentEntry() - (Tick_text0 + 1);
+    const int32_t it = r >= 0 && r < kTickRows ? tick_item(s_tickPage[s_tickMode] * kTickRows + r) : -1;
+    if (it >= 0 && s_tick[it].link[0])
+        Platform_OpenUrl(s_tick[it].link);
+}
+
+static void tickerUp(void)
+{
+    if (s_tickPage[s_tickMode] > 0)
+        s_tickPage[s_tickMode]--;
+}
+
+static void tickerDown(void)
+{
+    if (s_tickPage[s_tickMode] + 1 < tick_pages())
+        s_tickPage[s_tickMode]++;
+}
+
+static void tick_list(int32_t mode)
+{
+    s_tickMode = mode;
+    ModApi_ShowMenu(SLUG "/tickerMenu");
+}
+
+static void tips(void)    { tick_list(1); }
+static void streams(void) { tick_list(2); }
+
 /* ======================================================================================
  * LIVE CAST: the live online matches (SWOS 2020 sent its TV to swos.eu/rpl in a browser; here
  * they are watched in the game, OpenSWOS's viewer ~3 s behind the players: ModApi_LiveList /
@@ -401,16 +863,20 @@ static void init(void)
         { "continueContest", continueContest }, { "saveContest", saveContest },
         { "loadContest", loadContest }, { "quit", quit }, { "credits", credits },
 
-        { "competitionInit", competitionInit },
+        { "multiplayer", multiplayer },
+        { "competitionInit", competitionInit }, { "competitionDraw", competitionDraw },
+        { "quitInit", quitInit }, { "quitGame", quitGame },
         { "online", online }, { "diy", diy }, { "preset", preset }, { "career", career },
-        { "speedruns", speedruns }, { "challenges", challenges }, { "season", season },
+        { "speedruns", speedruns }, { "challenges", challenges },
 
         { "practiceInit", practiceInit },
         { "friendly", friendly }, { "modes", modes },
 
-        { "extrasInit", extrasInit },
+        { "extrasInit", extrasInit }, { "extrasDraw", extrasDraw }, { "tips", tips }, { "streams", streams },
         { "editTeams", editTeams }, { "editTactics", editTactics }, { "manual", manual },
         { "diskFiling", diskFiling },
+        { "tickerInit", tickerInit }, { "tickerDraw", tickerDraw }, { "tickerOpen", tickerOpen },
+        { "tickerUp", tickerUp }, { "tickerDown", tickerDown },
     };
     ModApi_RegisterHandlers(SLUG, handlers, (int32_t)(sizeof handlers / sizeof handlers[0]));
 }
@@ -423,6 +889,8 @@ static int32_t keeps_ready(void) { return 1; }
 const ModDef ModDef_menus2020 = {
     .slug            = SLUG,
     .init            = init,
+    .menuDrawn       = run_menu_frame,
+    .frameDrawn      = run_frame_drawn,
     .lobbyKeepsReady = keeps_ready,
 };
 
