@@ -46,6 +46,7 @@
 #include "file_io.h"            /* LoadFileEx */
 #include "math68k.h"            /* CalculateDeltaXAndY */
 #include "gfx.h"
+#include "easing.h"            /* the run-in's ease */
 #include "menu_system.h"
 #include "menus.h"
 #include "platform_sdl.h"       /* Platform_OpenUrl, Platform_RequestQuit */
@@ -153,25 +154,39 @@ static void main_refresh(void)
  * ginger and fair -- run in from around the corners each time the main menu opens and stand at
  * the bottom right, where the SWOS United logo (the CREDITS button's picture) then takes their
  * place. Its sprites: the PC game's TEAM2.DAT, its first 24 (the running and standing frames of
- * the Amiga's 227..250, eight ways), coloured as its colorAllSprites does, drawn over the
- * finished picture (gfx.h) so the menu under them is never touched. Moved by the game's own
- * CalculateDeltaXAndY at kPlayerSpeedsGameInProgress[7] (its kPlayerSpeed 14 / 2), a frame each
- * frameDelay (1280 - speed) / 128 + 6 of the menu's 50. Without the PC game's data: the logo. */
-enum { kRunPlayers = 3, kRunImages = 24, kRunStart = 25, kRunSettle = 38 };
+ * the Amiga's 227..250, eight ways), coloured as its colorAllSprites does. Without the PC game's
+ * data: the logo at once.
+ *
+ * Each runs a cubic Bezier from a start off its corner to its place: two control points chosen
+ * at random each time (a sweep through the screen, then coming down onto the button), the path's
+ * parameter eased (include/easing.h, Penner's curves in 16.16) over the run's time. At the end the
+ * parameter is exactly 1 and the curve exactly at its last point: every player stands on its
+ * place, never short of it nor past it. The legs step with the distance covered (slower as the
+ * ease settles), the way it faces is the curve's direction. Drawn into the 8bpp menu picture
+ * (ModApi_Frame) from menuDrawn: the main menu is redrawn whole each frame (its dos_redraw), so
+ * nothing under them needs keeping. */
+enum { kRunPlayers = 3, kRunImages = 24 };
+enum { kRunDelayMs = 500, kRunSettleMs = 760, kRunStridePx = 5 };
 static const int16_t kRunFrames[8][4] = {          /* (_playerRunning*Team1, up first, clockwise) */
     { 2, 0, 1, 0 }, { 23, 22, 21, 22 }, { 8, 6, 7, 6 }, { 17, 16, 15, 16 },
     { 5, 3, 4, 3 }, { 14, 13, 12, 13 }, { 11, 9, 10, 9 }, { 20, 19, 18, 19 },
 };
 static const int16_t kRunStartXY[kRunPlayers][2] = { { -12, -15 }, { -12, 185 }, { 305, -15 } };
 static const int16_t kRunEndXY[kRunPlayers][2] = { { 293, 185 }, { 299, 185 }, { 305, 185 } };
+static const uint16_t kRunDurationMs[kRunPlayers] = { 2300, 2600, 2000 };
 static const uint8_t kRunKit[kRunPlayers] = { 10, 14, 11 }, kRunFace[kRunPlayers] = { 2, 1, 0 };
 static struct { int16_t w, h, cx, cy; uint8_t *pix; } s_runImg[kRunImages];
-static GfxTexture *s_runTex[kRunPlayers][kRunImages];
 static int32_t  s_runLoaded;                    /* 0 not tried, 1 ready, -1 no data */
-static struct { int32_t x, y; int16_t destX, destY, image; uint8_t dir, step; } s_run[kRunPlayers];
+static struct {
+    int32_t  p[4][2];                           /* the curve's four points, whole pixels */
+    uint32_t durationMs;
+    int32_t  lastX, lastY, travelled;           /* (the legs: pixels since the last step) */
+    int16_t  image;
+    uint8_t  dir, step, arrived;
+    uint16_t colours[16];                       /* sprite colour -> the menu palette's */
+} s_run[kRunPlayers];
 static int32_t  s_runState;                     /* 0 off, 1 waiting, 2 running, 3 standing */
-static uint32_t s_runFrames, s_runTick, s_runSeen;
-static int32_t  s_runYOff;                      /* (the menu's rows on the picture: entries' y less the JSON's) */
+static uint32_t s_runStartMs, s_runSeed;
 
 static void run_load(void)
 {
@@ -204,33 +219,41 @@ static void run_load(void)
     s_runLoaded = 1;
 }
 
-/* A player's picture of one image: setSpriteColors' table (the kit in 10, 11 and 15, white
- * shorts in 14, the face's skin and hair) into the menu's colours, 0 see-through. */
-static GfxTexture *run_texture(int32_t pl, int32_t img)
+static int32_t run_rand(int32_t n)              /* 0..n-1 */
 {
-    static uint8_t rgba[64 * 64 * 4];
-    if (s_runTex[pl][img])
-        return s_runTex[pl][img];
-    const int32_t w = s_runImg[img].w, h = s_runImg[img].h;
-    if (w * h * 4 > (int32_t)sizeof rgba)
-        return NULL;
-    uint16_t table[16] = { 0, 1, 2, 3, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0 };
-    table[10] = table[11] = table[15] = kRunKit[pl];
-    table[14] = 2;
-    FillSkinColorConversionTable(kRunFace[pl], table);
-    for (int32_t i = 0; i < w * h; i++) {
-        const uint8_t v = s_runImg[img].pix[i];
-        const uint8_t c = v < 16 ? (uint8_t)table[v] : v;
-        uint8_t r = 0, g = 0, b = 0;
-        if (v && c)
-            ModApi_PaletteColour(c, &r, &g, &b);
-        rgba[i * 4 + 0] = r, rgba[i * 4 + 1] = g, rgba[i * 4 + 2] = b;
-        rgba[i * 4 + 3] = (uint8_t)(v && c ? 255 : 0);
+    s_runSeed = s_runSeed * 1103515245u + 12345u;
+    return n > 0 ? (int32_t)((s_runSeed >> 16) % (uint32_t)n) : 0;
+}
+
+/* The curve at u (16.16, 0..EASE_ONE), whole pixels. At EASE_ONE the weights are 0, 0, 0, 1: the
+ * last point exactly. */
+static void run_bezier(int32_t pl, EaseFix u, int32_t *x, int32_t *y, int32_t *dx, int32_t *dy)
+{
+    const int64_t v = EASE_ONE - u;
+    const int64_t w0 = v * v / EASE_ONE * v / EASE_ONE, w1 = 3 * v * v / EASE_ONE * u / EASE_ONE,
+                  w2 = 3 * v * u / EASE_ONE * u / EASE_ONE, w3 = (int64_t)u * u / EASE_ONE * u / EASE_ONE;
+    const int32_t (*P)[2] = s_run[pl].p;
+    for (int32_t k = 0; k < 2; k++) {
+        const int64_t c = w0 * P[0][k] + w1 * P[1][k] + w2 * P[2][k] + w3 * P[3][k];
+        /* the direction: B'(u) / 3 = v^2 (P1-P0) + 2uv (P2-P1) + u^2 (P3-P2) */
+        const int64_t d = v * v / EASE_ONE * (P[1][k] - P[0][k]) + 2 * u * v / EASE_ONE * (P[2][k] - P[1][k]) +
+                          (int64_t)u * u / EASE_ONE * (P[3][k] - P[2][k]);
+        const int32_t whole = (int32_t)((c + (c >= 0 ? EASE_ONE / 2 : -EASE_ONE / 2)) / EASE_ONE);
+        if (k == 0) *x = whole, *dx = (int32_t)d; else *y = whole, *dy = (int32_t)d;
     }
-    s_runTex[pl][img] = Gfx_CreateTexture(w, h, 0);
-    if (s_runTex[pl][img])
-        Gfx_UpdateTexture(s_runTex[pl][img], rgba, w * 4);
-    return s_runTex[pl][img];
+    if (u >= EASE_ONE)
+        *x = P[3][0], *y = P[3][1];
+}
+
+/* Eight ways from up, clockwise (y grows down), from a direction: 22.5 degrees each side. */
+static uint8_t run_way(int32_t dx, int32_t dy)
+{
+    const int64_t ax = dx < 0 ? -(int64_t)dx : dx, ay = dy < 0 ? -(int64_t)dy : dy;
+    if (ay * 2 > ax * 5)                         /* (tan 67.5 ~ 2.41: nearly vertical) */
+        return dy < 0 ? 0 : 4;
+    if (ax * 2 > ay * 5)                         /* nearly horizontal */
+        return dx > 0 ? 2 : 6;
+    return dx > 0 ? (dy < 0 ? 1 : 3) : (dy < 0 ? 7 : 5);
 }
 
 static void run_begin(void)
@@ -241,114 +264,129 @@ static void run_begin(void)
         s_runState = 0;
         return;
     }
+    s_runSeed = ModApi_Ticks() * 2654435761u + 1u;
     for (int32_t i = 0; i < kRunPlayers; i++) {
-        const int32_t rx = (int32_t)(ModApi_Ticks() * 7919u + (uint32_t)i * 104729u) % 101;
-        const int32_t ry = (int32_t)(ModApi_Ticks() * 6151u + (uint32_t)i * 15485863u) % 101;
-        s_run[i].x = (kRunStartXY[i][0] + (i == 2 ? -rx : rx)) << 16;
-        s_run[i].y = (kRunStartXY[i][1] + (i == 1 ? -ry : ry)) << 16;
-        s_run[i].destX = kRunEndXY[i][0];
-        s_run[i].destY = kRunEndXY[i][1];
-        s_run[i].dir = 4;
-        s_run[i].step = 0;
+        const int32_t sx = kRunStartXY[i][0] + (i == 2 ? -run_rand(101) : run_rand(101));
+        const int32_t sy = kRunStartXY[i][1] + (i == 1 ? -run_rand(101) : run_rand(101));
+        const int32_t ex = kRunEndXY[i][0], ey = kRunEndXY[i][1];
+        s_run[i].p[0][0] = sx, s_run[i].p[0][1] = sy;
+        /* first a sweep out into the screen, then down onto the button from above */
+        s_run[i].p[1][0] = 60 + run_rand(200), s_run[i].p[1][1] = 30 + run_rand(130);
+        s_run[i].p[2][0] = ex - 40 - run_rand(160), s_run[i].p[2][1] = ey - 50 - run_rand(90);
+        s_run[i].p[3][0] = ex, s_run[i].p[3][1] = ey;
+        s_run[i].durationMs = kRunDurationMs[i] + (uint32_t)run_rand(400);
+        s_run[i].lastX = sx, s_run[i].lastY = sy, s_run[i].travelled = 0;
+        s_run[i].dir = 4, s_run[i].step = 0, s_run[i].arrived = 0;
         s_run[i].image = kRunFrames[4][0];
+        uint16_t table[16] = { 0, 1, 2, 3, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0 };   /* (setSpriteColors) */
+        table[10] = table[11] = table[15] = kRunKit[i];
+        table[14] = 2;
+        FillSkinColorConversionTable(kRunFace[i], table);
+        memcpy(s_run[i].colours, table, sizeof table);
     }
     s_runState = 1;
-    s_runFrames = 0;
-    s_runTick = ModApi_Ticks();
+    s_runStartMs = ModApi_Ticks();
     ModApi_SetMenuImage(Main_credits, NULL);    /* (the logo when they are there) */
     ModApi_MenuRedraw(Main_credits);
 }
 
-/* One step of the menu's 50 a second. */
-static void run_step(void)
+/* Where each is now, from the time since they set off. */
+static void run_update(void)
 {
-    extern uint16_t _kPlayerSpeedsGameInProgress[];
-    const int16_t speed = (int16_t)_kPlayerSpeedsGameInProgress[7];
-    const uint32_t frameDelay = (uint32_t)((1280 - speed > 0 ? 1280 - speed : 0) / 128 + 6);
-    int32_t moving = 0;
-    s_runFrames++;
+    const uint32_t now = ModApi_Ticks(), since = now - s_runStartMs;
     if (s_runState == 1) {
-        if (s_runFrames >= kRunStart)
-            s_runState = 2, s_runFrames = 0;
+        if (since < kRunDelayMs)
+            return;
+        s_runState = 2, s_runStartMs += kRunDelayMs;
         return;
     }
     if (s_runState == 2) {
+        int32_t all = 1;
         for (int32_t i = 0; i < kRunPlayers; i++) {
-            const int16_t x = (int16_t)(s_run[i].x >> 16), y = (int16_t)(s_run[i].y >> 16);
-            int32_t dx = 0, dy = 0;
-            if (x == s_run[i].destX && y == s_run[i].destY) {
-                s_run[i].image = kRunFrames[4][1];      /* (standing, facing down) */
+            if (s_run[i].arrived)
+                continue;
+            const EaseFix t = since >= s_run[i].durationMs ? EASE_ONE
+                            : (EaseFix)((int64_t)since * EASE_ONE / s_run[i].durationMs);
+            const EaseFix u = t >= EASE_ONE ? EASE_ONE : Ease(EASE_IN_OUT_SINE, t);
+            int32_t x = 0, y = 0, dx = 0, dy = 0;
+            run_bezier(i, u, &x, &y, &dx, &dy);
+            const int32_t mx = x - s_run[i].lastX, my = y - s_run[i].lastY;
+            s_run[i].travelled += (mx < 0 ? -mx : mx) > (my < 0 ? -my : my) ? (mx < 0 ? -mx : mx) : (my < 0 ? -my : my);
+            s_run[i].lastX = x, s_run[i].lastY = y;
+            if (dx || dy)
+                s_run[i].dir = run_way(dx, dy);
+            while (s_run[i].travelled >= kRunStridePx) {
+                s_run[i].travelled -= kRunStridePx;
+                s_run[i].step = (uint8_t)((s_run[i].step + 1) & 3);
+            }
+            if (t >= EASE_ONE) {                         /* there: on its place exactly */
+                s_run[i].arrived = 1;
+                if (getenv("SWOS_RUNIN_TEST"))           /* (the run-in's check: every one on its place) */
+                    fprintf(stderr, "[runin-test] player %d at %d,%d, its place %d,%d: %s\n", (int)i, (int)x, (int)y,
+                            (int)kRunEndXY[i][0], (int)kRunEndXY[i][1],
+                            x == kRunEndXY[i][0] && y == kRunEndXY[i][1] ? "PASS" : "FAIL");
+                s_run[i].image = kRunFrames[4][1];       /* (standing, facing down) */
                 continue;
             }
-            moving = 1;
-            CalculateDeltaXAndY(s_run[i].destX, s_run[i].destY, x, y, speed, &dx, &dy);
-            dx &= (int32_t)0xFFFF0000, dy &= (int32_t)0xFFFF0000;     /* (whole pixels, as SWOS 2020's) */
-            if (!dx && !dy)
-                dx = (s_run[i].destX > x) - (s_run[i].destX < x), dy = (s_run[i].destY > y) - (s_run[i].destY < y),
-                dx <<= 16, dy <<= 16;
-            /* never past the place: the last step lands on it */
-            if ((dx > 0 && x + (dx >> 16) > s_run[i].destX) || (dx < 0 && x + (dx >> 16) < s_run[i].destX))
-                dx = (s_run[i].destX - x) << 16;
-            if ((dy > 0 && y + (dy >> 16) > s_run[i].destY) || (dy < 0 && y + (dy >> 16) < s_run[i].destY))
-                dy = (s_run[i].destY - y) << 16;
-            s_run[i].x += dx;
-            s_run[i].y += dy;
-            {   /* the way it runs, eight ways from up clockwise */
-                const int32_t ax = dx >> 16, ay = dy >> 16;
-                const int32_t d = ax == 0 ? (ay < 0 ? 0 : 4) : ay == 0 ? (ax > 0 ? 2 : 6)
-                                : ax > 0 ? (ay < 0 ? 1 : 3) : (ay < 0 ? 7 : 5);
-                s_run[i].dir = (uint8_t)d;
-            }
-            if (s_runFrames % frameDelay == 0)
-                s_run[i].step = (uint8_t)((s_run[i].step + 1) & 3);
+            all = 0;
             s_run[i].image = kRunFrames[s_run[i].dir][s_run[i].step];
         }
-        if (!moving)
-            s_runState = 3, s_runFrames = 0;
+        if (all)
+            s_runState = 3, s_runStartMs = now;
         return;
     }
-    if (s_runState == 3 && s_runFrames >= kRunSettle) {   /* (playersSettled: then the logo) */
+    if (s_runState == 3 && since >= kRunSettleMs) {      /* (playersSettled: then the logo) */
         s_runState = 0;
         ModApi_SetMenuImage(Main_credits, "grafs_2020/menus2020/credits.bmp");
         ModApi_MenuRedraw(Main_credits);
     }
 }
 
-/* Each menu frame (the mod's menuDrawn) while the main menu is shown: the run, at the menu's 50
- * steps a second. */
-static void run_menu_frame(void)
+/* One player's picture into the 8bpp frame at (x, y) -- its hot spot -- 0 see-through. */
+static void run_blit(uint8_t *frame, int32_t stride, int32_t fh, int32_t pl, int32_t x, int32_t y)
 {
-    const uint32_t now = ModApi_Ticks();
-    if (!ModApi_IsMainMenu())
+    const int32_t img = s_run[pl].image;
+    if (img < 0 || img >= kRunImages || !s_runImg[img].pix)
         return;
-    s_runSeen = now ? now : 1;
-    s_runYOff = entry(Main_credits)->y - 182;
-    while (s_runState && now - s_runTick >= 20) {
-        s_runTick += 20;
-        run_step();
+    const int32_t w = s_runImg[img].w, h = s_runImg[img].h;
+    const int32_t x0 = x - s_runImg[img].cx, y0 = y - s_runImg[img].cy;
+    for (int32_t r = 0; r < h; r++) {
+        const int32_t fy = y0 + r;
+        if (fy < 0 || fy >= fh)
+            continue;
+        const uint8_t *src = s_runImg[img].pix + r * w;
+        uint8_t *dst = frame + fy * stride;
+        for (int32_t c = 0; c < w; c++) {
+            const int32_t fx = x0 + c;
+            const uint8_t v = src[c];
+            if (!v || fx < 0 || fx >= stride)
+                continue;
+            const uint8_t col = v < 16 ? (uint8_t)s_run[pl].colours[v] : v;
+            if (col)
+                dst[fx] = col;
+        }
     }
-    if (!s_runState)
-        s_runTick = now;
 }
 
-/* Each frame the window shows: the players over the picture (drawPlayers: the middle one on top). */
-static void run_frame_drawn(void)
+/* Each main-menu frame (menuDrawn): move them, and draw them over the menu (drawPlayers: the
+ * middle one on top). */
+static void run_menu_frame(void)
 {
     static const int32_t kOrder[kRunPlayers] = { 0, 2, 1 };
-    extern int _menu_draw_x_offset;
-    if (s_runState < 2 || !ModApi_InMenus() || ModApi_Ticks() - s_runSeen > 150)
+    extern int _screen_height;
+    if (!s_runState || !ModApi_IsMainMenu())
         return;
-    Gfx_SetSpace(GFX_SPACE_PICTURE);
-    Gfx_SetBlend(GFX_BLEND_ALPHA);
+    run_update();
+    if (s_runState < 2)
+        return;
+    int32_t stride = 0;
+    uint8_t *frame = ModApi_Frame(&stride);
+    if (!frame || stride <= 0)
+        return;
+    const int32_t ox = ModApi_MenuMargin(), oy = entry(Main_credits)->y - 182;   /* (the rows on the picture) */
     for (int32_t k = 0; k < kRunPlayers; k++) {
-        const int32_t i = kOrder[k], img = s_run[i].image;
-        GfxTexture *tex = img >= 0 && img < kRunImages ? run_texture(i, img) : NULL;
-        if (!tex)
-            continue;
-        const SDL_FRect dst = { (float)(_menu_draw_x_offset + (s_run[i].x >> 16) - s_runImg[img].cx),
-                                (float)(s_runYOff + (s_run[i].y >> 16) - s_runImg[img].cy),
-                                (float)s_runImg[img].w, (float)s_runImg[img].h };
-        Gfx_DrawTexture(tex, NULL, &dst);
+        const int32_t i = kOrder[k];
+        run_blit(frame, stride, _screen_height, i, ox + s_run[i].lastX, oy + s_run[i].lastY);
     }
 }
 
@@ -890,7 +928,6 @@ const ModDef ModDef_menus2020 = {
     .slug            = SLUG,
     .init            = init,
     .menuDrawn       = run_menu_frame,
-    .frameDrawn      = run_frame_drawn,
     .lobbyKeepsReady = keeps_ready,
 };
 
