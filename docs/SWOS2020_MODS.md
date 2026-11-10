@@ -116,7 +116,25 @@ LOAD, QUIT (asks), CREDITS.
   (`ModApi_LiveWatch`), back to the list. SWOS 2020 sent the TV to swos.eu/rpl in a browser. The
   pictures are SWOS 2020's art, made on the player's machine by `scripts/make_menus2020_icons.py`
   (gitignored). Viewers need the matchmaking server rebuilt with LIVE CAST (the owner's step).
-- Not there yet: SAVE/LOAD disk icons, the little player animation (SWOS 2020's main-menu sprites;
+- **2026-11-10: SWOS 2020's main menu as it is built** (mpgame.h defines `MULTIPLAYER_MENU`, which
+  relabels main.mnu's six buttons in game.cpp): MULTIPLAYER (the game's online flow), COMPETE,
+  PRACTICE / OPTIONS, EXTRAS, REPLAYS, its icons at its columns, SAVE / LOAD with their floppies, QUIT
+  and CREDITS as pictures (drawExitIcon, the SWOS United logo), the news ticker under SAVE and LOAD
+  (SWOS 2020's row 250 of 270; across the top on a screen with no rows under the menu). EDITING is
+  gone from the main menu as in SWOS 2020 -- its two editors are in EXTRAS, SAVE DISK FILING is not
+  reachable from it any more. COMPETITIONS: SEASON removed (not needed any more, the owner). EXTRAS:
+  TIPS AND REVIEWS and STREAMS AND VIDEOS list the ticker's news in SWOS 2020's ticker.mnu
+  (`menus2020/tickerMenu`: ten a page, the category before the item's ':', a row opens its link;
+  streams start at the first "STREAM:" item, after SWOS 2020's own swos.eu row), with its help line
+  (extrasExMenuOnDraw). LATEST NEWS stays hidden: SWOS 2020 read a news.txt its launcher fetched,
+  which has no source here yet.
+  Then: COMPETITIONS' yellow arrows either side of CHALLENGES (competitionMenu_OnDraw), QUIT as
+  SWOS 2020's quit.mnu (QUIT TO WINDOWS / LINUX / MAC / ANDROID / IOS / SWITCH / BROWSER, by the
+  build; RETURN TO GAME chosen), and its PixelAnimation: three little players (the PC game's
+  TEAM2.DAT, coloured as colorAllSprites) run in from the corners each time the main menu opens
+  and stand at the bottom right, where the SWOS United logo then takes their place -- drawn over
+  the picture (gfx.h); without the PC game's data, the logo alone.
+- Not there yet: the little player animation (SWOS 2020's main-menu sprites;
   menu descriptions turned out to be its challenge screens' only, OpenSWOS's). Checked: SDL headless -- the menu, COMPETE -> DIY -> back, PRACTICE;
   both targets build; `--menu-selftest`, the mod-match test.
 

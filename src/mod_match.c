@@ -487,7 +487,30 @@ uint16_t ModApi_RandomTeam(void)
 int32_t ModApi_RandomTeamData(int32_t file, struct TeamFileEx *out)
 {
     static uint32_t state;
-    if (!out || file < 0 || file > 255 || LoadTeamFile((uint16_t)file) != 0)
+    if (!out || file < 0 || file > 255)
+        return 0;
+#ifdef SWOS_SDL_BUILD
+    if (file != 100) {      /* (a file the game does not have: 0, as said -- LoadTeamFile halts on one,
+                             *  panic 0x8008; SWOS 2020's getRandomTeamNr tried to open it first) */
+        extern int DataJson_LoadTeamFileForCountry(int, uint8_t *, int);
+        extern const char *swos_data_path(const char *rel, char *buf, uint32_t buf_sz);
+        static uint8_t probe[2 + sizeof(TeamFileEx)];
+        if (DataJson_LoadTeamFileForCountry((int)file, probe, 1) <= 0) {   /* (its JSON, else the binary
+                                                                             *  file: 72 has no JSON) */
+            char rel[24], path[512];
+            snprintf(rel, sizeof rel, "data/TEAM.%03d", (int)file);
+            FILE *fp = fopen(swos_data_path(rel, path, sizeof path), "rb");
+            if (!fp) {
+                snprintf(rel, sizeof rel, "data/team.%03d", (int)file);
+                fp = fopen(swos_data_path(rel, path, sizeof path), "rb");
+            }
+            if (!fp)
+                return 0;
+            fclose(fp);
+        }
+    }
+#endif
+    if (LoadTeamFile((uint16_t)file) != 0)
         return 0;
     if (!state)
 #ifdef SWOS_SDL_BUILD
@@ -901,8 +924,8 @@ int32_t ModApi_Shootout(ModShootout *out)
 const char *ModApi_ControllerName(int32_t player)
 {
 #ifdef SWOS_SDL_BUILD
-    extern int InputSDL_PlayerHasPad(int player);
-    if (InputSDL_PlayerHasPad(player - 1))
+    extern int InputSDL_PlayerUsesPad(int player);
+    if (InputSDL_PlayerUsesPad(player - 1))
         return "JOYPAD";                    /* (capitals: the game's small font has no others) */
     return player == 2 ? "KEYBOARD2" : "KEYBOARD1";
 #else

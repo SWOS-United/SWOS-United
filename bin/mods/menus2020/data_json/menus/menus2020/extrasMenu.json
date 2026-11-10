@@ -10,7 +10,7 @@
   },
   "onInit": "menus2020.extrasInit",
   "onReturn": null,
-  "onDraw": null,
+  "onDraw": "menus2020.extrasDraw",
   "defaultEntry": 1,
   "exports": {
     "EXM_X1": 24,
@@ -96,14 +96,15 @@
           "background_color": 3
         },
         {
+          "op": "onselect_fire",
+          "func": "menus2020.tips"
+        },
+        {
           "op": "nav",
           "left": -1,
           "right": 5,
-          "up": 1,
+          "up": -1,
           "down": 3
-        },
-        {
-          "op": "invisible"
         }
       ]
     },
@@ -128,14 +129,15 @@
           "background_color": 3
         },
         {
+          "op": "onselect_fire",
+          "func": "menus2020.streams"
+        },
+        {
           "op": "nav",
           "left": -1,
           "right": 6,
           "up": 2,
           "down": 8
-        },
-        {
-          "op": "invisible"
         }
       ]
     },
@@ -160,15 +162,15 @@
           "background_color": 14
         },
         {
+          "op": "onselect_fire",
+          "func": "menus2020.editTeams"
+        },
+        {
           "op": "nav",
-          "left": 1,
+          "left": 2,
           "right": -1,
           "up": -1,
           "down": 5
-        },
-        {
-          "op": "onselect_fire",
-          "func": "menus2020.editTeams"
         }
       ]
     },
@@ -193,15 +195,15 @@
           "background_color": 14
         },
         {
+          "op": "onselect_fire",
+          "func": "menus2020.editTactics"
+        },
+        {
           "op": "nav",
           "left": 2,
           "right": -1,
           "up": 4,
           "down": 6
-        },
-        {
-          "op": "onselect_fire",
-          "func": "menus2020.editTactics"
         }
       ]
     },
@@ -226,15 +228,15 @@
           "background_color": 11
         },
         {
+          "op": "onselect_fire",
+          "func": "menus2020.manual"
+        },
+        {
           "op": "nav",
           "left": 3,
           "right": -1,
           "up": 5,
           "down": 8
-        },
-        {
-          "op": "onselect_fire",
-          "func": "menus2020.manual"
         }
       ]
     },
@@ -251,9 +253,6 @@
         {
           "op": "text_no_ptr",
           "flags": "0x0"
-        },
-        {
-          "op": "invisible"
         }
       ]
     },
@@ -278,15 +277,15 @@
           "background_color": 12
         },
         {
+          "op": "onselect_fire",
+          "func": "SetExitMenuFlag"
+        },
+        {
           "op": "nav",
           "left": -1,
           "right": -1,
           "up": 6,
           "down": -1
-        },
-        {
-          "op": "onselect_fire",
-          "func": "SetExitMenuFlag"
         }
       ]
     }
