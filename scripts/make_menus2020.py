@@ -154,6 +154,12 @@ MAIN_SLOTS = {
     "editing":     ("EXTRAS   ", "extras", None),
     "extras":      ("REPLAYS  ", "replays", 11),          # (kPurple)
 }
+# The SWOS United logo's place in the CREDITS entry: SWOS 2020's 293,185 less the entry's 281,182
+# and ConvertMenu's +8 (mod_menus2020.c kCreditsPicX / kCreditsPicY: keep the two the same).
+CREDITS_PICTURE_AT = (293 - 281 - 8, 185 - 182)
+# The banner's size (scripts/make_united_logo.py writes it): 31 high, in the band above the buttons
+# (0..40) right of the TV (4..46).
+LOGO_SIZE = (262, 31)
 # (button slot, its picture, the icon's column on it): its onDraw's drawMapEx256_8sets columns
 # under MULTIPLAYER_MENU, y + 7.
 ICON_COLUMNS = [("competition", "multiplayer", 15), ("practice", "compete", 30),
@@ -360,13 +366,14 @@ def build_main(doc):
                       {"op": "nav", "left": -1, "right": -1, "up": -1, "down": MAIN_ORDER.index("competition")},
                       {"op": "onselect_fire", "func": mod("liveCast")}]
 
-    # SWOS United's logo across the top, between the TV and the right edge, over the buttons:
-    # the third filler, never chosen (no handler, nothing leads to it). Its picture is ours, not
-    # SWOS 2020's -- committed, grafs_united/logo.bmp in the mod (docs/images/swosunited-logo.png
-    # made 38 px tall: black nudged to 1,1,1 so it is not see-through, the clear parts magenta).
+    # SWOS United's banner across the top, right of the TV (4..46) in the band above the buttons
+    # (they start at 41), centred in x 50..316, y 0..40: the third filler, never chosen (no handler,
+    # nothing leads to it). Its picture is ours, not SWOS 2020's -- committed, grafs_united/logo.bmp
+    # in the mod, made LOGO_SIZE from docs/images/swosunited-banner.png by scripts/make_united_logo.py.
     logo = ordered[filler + 2][0]
     logo["name"] = "logo"
-    logo["coords"] = {"x": 119, "y": 2, "w": 81, "h": 38}
+    logo["coords"] = {"x": (50 + 316 - LOGO_SIZE[0]) // 2, "y": (40 - LOGO_SIZE[1] + 1) // 2,
+                      "w": LOGO_SIZE[0], "h": LOGO_SIZE[1]}
     logo["image"] = "grafs_united/logo.bmp"
     logo["commands"] = [{"op": "colors", "frame_color": 0, "background_color": 0}]
 
