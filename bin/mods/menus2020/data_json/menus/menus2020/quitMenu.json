@@ -76,7 +76,7 @@
         },
         {
           "op": "onselect_fire",
-          "func": "SetExitMenuFlag"
+          "func": "menus2020.returnToGame"
         }
       ]
     }

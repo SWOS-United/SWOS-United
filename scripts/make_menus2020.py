@@ -111,10 +111,11 @@ SUBMENUS = {
              "editCustomTeams": (2, -1, -1, 5), "editTactics": (2, -1, 4, 6),
              "manual": (3, -1, 5, 8), "exit": (-1, -1, 6, -1)},
     ),
-    # QUIT's screen (menu.cpp showQuitMenu): QUIT TO <the system> / RETURN TO GAME, RETURN chosen.
+    # QUIT's screen (menu.cpp showQuitMenu): QUIT TO <the system> / RETURN TO GAME, RETURN chosen;
+    # fading out and in as its quitMenuOnInit / quitGame / returnToGame.
     "quit": dict(
         out="quitMenu", onInit="quitInit",
-        handlers={"quitGame": "quitGame", "returnToGame": "SetExitMenuFlag"},
+        handlers={"quitGame": "quitGame", "returnToGame": "returnToGame"},
         hide=[],
         text={"quit": "QUIT", "returnToGame": "RETURN TO GAME"},   # (QUIT TO ...: quitInit)
     ),
@@ -291,17 +292,23 @@ def build_main(doc):
         it = by_name[name][0]
         it["image"] = "grafs_2020/menus2020/%s.bmp" % picture
         it["image_x"], it["image_y"] = dx, 4
-    # QUIT and CREDITS are pictures there: drawExitIcon(3, 181) over main.mnu's exit entry
-    # (-5,181, 31x17) and the SWOS United logo (drawSwosUnitedLogo, 293,185) over its credits
-    # entry (281,182, 31x18).
+    # QUIT is a picture there: drawExitIcon(3, 181) over main.mnu's exit entry (-5,181, 31x17).
     quit_item, quit_origin = by_name["exit"]
+    quit_item["commands"] = [c for c in quit_item["commands"] if c["op"] not in ("text", "text_no_ptr", "colors")]
+    quit_item["commands"].insert(0, {"op": "colors", "frame_color": 0, "background_color": 0})
+    quit_item["image"] = "grafs_2020/menus2020/quit.bmp"
+    quit_item["image_x"], quit_item["image_y"] = 3 - (-5) - 8, 0
+    # CREDITS is a picture there: the SWOS United logo, three little players standing
+    # (drawSwosUnitedLogo: swos_united_logo_24x14_1x1_Map at kSwosUnitedLogoX/Y, 293,185) over
+    # main.mnu's credits entry (281,182, 31x18). mod_menus2020.c's run-in brings the three players
+    # there, each standing where it stands in the picture (CREDITS_PICTURE_AT is its kCreditsPicX/Y),
+    # then shows the picture in their place.
     credits_item, credits_origin = by_name["credits"]
     credits_item["coords"] = {"x": 281, "y": 182, "w": 31, "h": 18}
-    for it, picture, dx, dy in ((quit_item, "quit", 3 - (-5) - 8, 0), (credits_item, "credits", 293 - 281 - 8, 3)):
-        it["commands"] = [c for c in it["commands"] if c["op"] not in ("text", "text_no_ptr", "colors")]
-        it["commands"].insert(0, {"op": "colors", "frame_color": 0, "background_color": 0})
-        it["image"] = "grafs_2020/menus2020/%s.bmp" % picture
-        it["image_x"], it["image_y"] = dx, dy
+    credits_item["commands"] = [c for c in credits_item["commands"] if c["op"] not in ("text", "text_no_ptr", "colors")]
+    credits_item["commands"].insert(0, {"op": "colors", "frame_color": 0, "background_color": 0})
+    credits_item["image"] = "grafs_2020/menus2020/credits.bmp"
+    credits_item["image_x"], credits_item["image_y"] = CREDITS_PICTURE_AT
 
     # 14 and 16, the game's own MULTIPLAYER and MODES: this menu reaches online play through
     # COMPETE and the modes through PRACTICE, so both stay hidden (mod_menus2020.c keeps

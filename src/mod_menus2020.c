@@ -46,7 +46,9 @@
 #include "math68k.h"            /* CalculateDeltaXAndY */
 #include "gfx.h"
 #include "easing.h"            /* the run-in's ease */
+#include "menu_load_json.h"     /* MenuJson_VerifyDynamic (SWOS_MENUS2020_TEST) */
 #include "menu_system.h"
+#include "mjson.h"
 #include "menus.h"
 #include "platform_sdl.h"       /* Platform_OpenUrl, Platform_RequestQuit */
 #include "united_ticker.h"       /* UnitedTicker_News */
@@ -94,6 +96,8 @@ static int32_t s_liveShown = -2;        /* the TV's picture: 1 live, 0 idle, -2 
 static uint16_t s_tickerX, s_tickerY, s_tickerW;    /* the ticker's place, as unpacked */
 static int32_t  s_tickerKnown;
 
+static int32_t s_runState;              /* the run-in (below): 0 off, 1 waiting, 2 running, 3 settling, 4 done */
+
 static void main_refresh(void)
 {
     MenuEntry *cont = entry(Main_continue), *load = entry(Main_load);
@@ -101,6 +105,8 @@ static void main_refresh(void)
 
     show(Main_multiplayer, 0);
     show(Main_modes, 0);
+    if (s_runState >= 1 && s_runState <= 3)     /* (unpacked again mid-run: no picture until they settle) */
+        ModApi_SetMenuImage(Main_credits, NULL);
     s_liveShown = -2;                   /* (unpacked again: the JSON's idle picture) */
     {   /* The ticker under SAVE and LOAD, as SWOS 2020's -- or across the top (where it was) on a
          * screen with no rows under the menu; back under them when there are again. */
@@ -169,42 +175,67 @@ static void main_refresh(void)
 }
 
 /* ---- SWOS 2020's PixelAnimation: three little players -- red, green and blue, their faces dark,
- * ginger and fair -- run in from around the corners each time the main menu opens and stand at
- * the bottom right, where the SWOS United logo (the CREDITS button's picture) then takes their
- * place. Its sprites: the PC game's TEAM2.DAT, its first 24 (the running and standing frames of
- * the Amiga's 227..250, eight ways), coloured as its colorAllSprites does. Without the PC game's
- * data: the logo at once.
+ * ginger and fair -- run in from just off the top left each time the main menu opens and stand at
+ * the bottom right, where the CREDITS entry's picture -- the SWOS United logo, the same three
+ * standing (swos_united_logo_24x14_1x1_Map, made on the player's machine by
+ * scripts/make_menus2020_icons.py) -- then takes their place, and stays. Its sprites: the PC game's
+ * TEAM2.DAT, its first 24 (the running and standing frames of the Amiga's 227..250, eight ways),
+ * coloured as its colorAllSprites does. Without the logo they stay there standing (they are the
+ * button); without the PC game's data the logo at once (or an empty entry, still selectable).
  *
- * Each runs a cubic Bezier from a start off its corner to its place: two control points chosen
- * at random each time (a sweep through the screen, then coming down onto the button), the path's
- * parameter eased (include/easing.h, Penner's curves in 16.16) over the run's time. At the end the
- * parameter is exactly 1 and the curve exactly at its last point: every player stands on its
- * place, never short of it nor past it. The legs step with the distance covered (slower as the
- * ease settles), the way it faces is the curve's direction. Drawn into the 8bpp menu picture
- * (ModApi_Frame) from menuDrawn: the main menu is redrawn whole each frame (its dos_redraw), so
- * nothing under them needs keeping. */
+ * Each runs a cubic Bezier from the shared start to its place: two control points chosen at random
+ * each time the menu opens (a sweep through the screen, then coming down onto the button), the
+ * path's parameter eased (include/easing.h, Penner's curves in 16.16) over the run's time; they set
+ * off a little apart, so as not to run as one. At the end the parameter is exactly 1 and the curve
+ * exactly at its last point: every player stands on its place, never short of it nor past it. The
+ * places come from the picture's (run_places): each sprite stands where its player is in the logo
+ * (6 px apart, as SWOS 2020's kEndPositions), so the swap does not jump. The legs step with the
+ * distance covered (slower as the ease settles), the way it faces is the curve's direction. Drawn
+ * into the 8bpp menu picture (ModApi_Frame) from menuDrawn, in the menu's coordinates (the wide
+ * screen's margin added): the main menu is redrawn whole each frame (its dos_redraw), so nothing
+ * under them needs keeping. */
 enum { kRunPlayers = 3, kRunImages = 24 };
-enum { kRunDelayMs = 500, kRunSettleMs = 760, kRunStridePx = 5 };
+enum { kRunDelayMs = 500, kRunSettleMs = 540, kRunStridePx = 7 };   /* (kPlayersSettledDelay: 38 of 70) */
+/* The logo's place in the CREDITS entry (make_menus2020.py CREDITS_PICTURE_AT: keep the two the
+ * same), and its players 6 px apart, each drawn as the sprite's top left (SWOS 2020's DrawSprite). */
+enum { kCreditsPicX = 4, kCreditsPicY = 3, kCreditsPicStep = 6 };
+enum { kRunStand = 3 };                             /* (kRunFrames[4][1]: standing, facing down) */
 static const int16_t kRunFrames[8][4] = {          /* (_playerRunning*Team1, up first, clockwise) */
     { 2, 0, 1, 0 }, { 23, 22, 21, 22 }, { 8, 6, 7, 6 }, { 17, 16, 15, 16 },
     { 5, 3, 4, 3 }, { 14, 13, 12, 13 }, { 11, 9, 10, 9 }, { 20, 19, 18, 19 },
 };
-static const int16_t kRunStartXY[kRunPlayers][2] = { { -12, -15 }, { -12, 185 }, { 305, -15 } };
-static const int16_t kRunEndXY[kRunPlayers][2] = { { 293, 185 }, { 299, 185 }, { 305, 185 } };
-static const uint16_t kRunDurationMs[kRunPlayers] = { 2300, 2600, 2000 };
-static const uint8_t kRunKit[kRunPlayers] = { 10, 14, 11 }, kRunFace[kRunPlayers] = { 2, 1, 0 };
-static struct { int16_t w, h, cx, cy; uint8_t *pix; } s_runImg[kRunImages];
+static const int16_t  kRunStartXY[2] = { -16, -20 };    /* just off the screen's top left */
+static const uint16_t kRunSetOffMs[kRunPlayers] = { 0, 150, 300 };
+static const uint16_t kRunDurationMs[kRunPlayers] = { 7000, 7600, 6600 };
+static const uint8_t  kRunKit[kRunPlayers] = { 10, 14, 11 };
+static const uint8_t  kRunFace[kRunPlayers] = { 2, 1, 0 };
+static struct { int16_t w, pixW, h, cx, cy; uint8_t *pix; } s_runImg[kRunImages];
 static int32_t  s_runLoaded;                    /* 0 not tried, 1 ready, -1 no data */
 static struct {
     int32_t  p[4][2];                           /* the curve's four points, whole pixels */
-    uint32_t durationMs;
+    uint32_t setOffMs, durationMs;
     int32_t  lastX, lastY, travelled;           /* (the legs: pixels since the last step) */
     int16_t  image;
     uint8_t  dir, step, arrived;
     uint16_t colours[16];                       /* sprite colour -> the menu palette's */
 } s_run[kRunPlayers];
-static int32_t  s_runState;                     /* 0 off, 1 waiting, 2 running, 3 standing */
 static uint32_t s_runStartMs, s_runSeed;
+static int32_t  s_runPicture = -1;              /* the logo is there: 1, 0 not, -1 not looked */
+
+static int32_t run_picture(void)
+{
+    if (s_runPicture < 0) {
+        char path[1200];
+        const char *dir = ModApi_ModDir(SLUG);
+        FILE *f;
+        snprintf(path, sizeof path, "%s/grafs_2020/menus2020/credits.bmp", dir ? dir : ".");
+        f = fopen(path, "rb");
+        s_runPicture = f != NULL;
+        if (f)
+            fclose(f);
+    }
+    return s_runPicture;
+}
 
 static void run_load(void)
 {
@@ -219,7 +250,8 @@ static void run_load(void)
         if (at + 24 > size)
             return;
         const uint8_t *h = file + at;
-        const int16_t w = (int16_t)(h[10] | h[11] << 8), n = (int16_t)(h[12] | h[13] << 8);
+        const int16_t w = (int16_t)(h[10] | h[11] << 8);
+        const int16_t n = (int16_t)(h[12] | h[13] << 8);
         const int16_t q = (int16_t)(h[14] | h[15] << 8);
         at += 24;
         if (w <= 0 || n <= 0 || q <= 0 || at + (uint32_t)(n * q * 8) > size)
@@ -230,11 +262,20 @@ static void run_load(void)
         DosGfx_DecodePlanarSprite(file + at, n, q, s_runImg[i].pix);
         at += (uint32_t)(n * q * 8);
         s_runImg[i].w = (int16_t)(q * 16);          /* (the rows' stride: pixWidth fits in it) */
+        s_runImg[i].pixW = w;
         s_runImg[i].h = n;
         s_runImg[i].cx = (int16_t)(h[16] | h[17] << 8);
         s_runImg[i].cy = (int16_t)(h[18] | h[19] << 8);
     }
     s_runLoaded = 1;
+}
+
+/* The players' sprites are there (loaded the first time asked). */
+static int32_t run_ready(void)
+{
+    if (!s_runLoaded)
+        run_load();
+    return s_runLoaded == 1;
 }
 
 static int32_t run_rand(int32_t n)              /* 0..n-1 */
@@ -243,24 +284,45 @@ static int32_t run_rand(int32_t n)              /* 0..n-1 */
     return n > 0 ? (int32_t)((s_runSeed >> 16) % (uint32_t)n) : 0;
 }
 
+/* Each player's place -- its hot spot, in the menu's coordinates: where its player stands in the
+ * logo, the picture's top left + 6 px a player, then the sprite's hot spot. */
+static void run_places(int32_t place[kRunPlayers][2])
+{
+    int32_t bx = 0, by = 0;
+    ModApi_MenuEntryRect(Main_credits, &bx, &by, NULL, NULL);
+    for (int32_t i = 0; i < kRunPlayers; i++) {
+        place[i][0] = bx + kCreditsPicX + i * kCreditsPicStep + s_runImg[kRunStand].cx;
+        place[i][1] = by + kCreditsPicY + s_runImg[kRunStand].cy;
+    }
+}
+
 /* The curve at u (16.16, 0..EASE_ONE), whole pixels. At EASE_ONE the weights are 0, 0, 0, 1: the
  * last point exactly. */
 static void run_bezier(int32_t pl, EaseFix u, int32_t *x, int32_t *y, int32_t *dx, int32_t *dy)
 {
     const int64_t v = EASE_ONE - u;
-    const int64_t w0 = v * v / EASE_ONE * v / EASE_ONE, w1 = 3 * v * v / EASE_ONE * u / EASE_ONE,
-                  w2 = 3 * v * u / EASE_ONE * u / EASE_ONE, w3 = (int64_t)u * u / EASE_ONE * u / EASE_ONE;
+    const int64_t w0 = v * v / EASE_ONE * v / EASE_ONE;
+    const int64_t w1 = 3 * v * v / EASE_ONE * u / EASE_ONE;
+    const int64_t w2 = 3 * v * u / EASE_ONE * u / EASE_ONE;
+    const int64_t w3 = (int64_t)u * u / EASE_ONE * u / EASE_ONE;
     const int32_t (*P)[2] = s_run[pl].p;
+    int32_t at[2], dir[2];
     for (int32_t k = 0; k < 2; k++) {
         const int64_t c = w0 * P[0][k] + w1 * P[1][k] + w2 * P[2][k] + w3 * P[3][k];
         /* the direction: B'(u) / 3 = v^2 (P1-P0) + 2uv (P2-P1) + u^2 (P3-P2) */
         const int64_t d = v * v / EASE_ONE * (P[1][k] - P[0][k]) + 2 * u * v / EASE_ONE * (P[2][k] - P[1][k]) +
                           (int64_t)u * u / EASE_ONE * (P[3][k] - P[2][k]);
-        const int32_t whole = (int32_t)((c + (c >= 0 ? EASE_ONE / 2 : -EASE_ONE / 2)) / EASE_ONE);
-        if (k == 0) *x = whole, *dx = (int32_t)d; else *y = whole, *dy = (int32_t)d;
+        at[k] = (int32_t)((c + (c >= 0 ? EASE_ONE / 2 : -EASE_ONE / 2)) / EASE_ONE);
+        dir[k] = (int32_t)d;
     }
-    if (u >= EASE_ONE)
-        *x = P[3][0], *y = P[3][1];
+    if (u >= EASE_ONE) {
+        at[0] = P[3][0];
+        at[1] = P[3][1];
+    }
+    *x = at[0];
+    *y = at[1];
+    *dx = dir[0];
+    *dy = dir[1];
 }
 
 /* Eight ways from up, clockwise (y grows down), from a direction: 22.5 degrees each side. */
@@ -276,28 +338,40 @@ static uint8_t run_way(int32_t dx, int32_t dy)
 
 static void run_begin(void)
 {
-    if (!s_runLoaded)
-        run_load();
-    if (s_runLoaded != 1) {
-        s_runState = 0;
+    int32_t place[kRunPlayers][2];
+    if (!run_ready()) {
+        s_runState = 0;                         /* (the logo at once, as the JSON has it) */
         return;
     }
+    run_places(place);
     s_runSeed = ModApi_Ticks() * 2654435761u + 1u;
+    const int32_t sx = kRunStartXY[0] - ModApi_MenuMargin(), sy = kRunStartXY[1];
     for (int32_t i = 0; i < kRunPlayers; i++) {
-        const int32_t sx = kRunStartXY[i][0] + (i == 2 ? -run_rand(101) : run_rand(101));
-        const int32_t sy = kRunStartXY[i][1] + (i == 1 ? -run_rand(101) : run_rand(101));
-        const int32_t ex = kRunEndXY[i][0], ey = kRunEndXY[i][1];
-        s_run[i].p[0][0] = sx, s_run[i].p[0][1] = sy;
-        /* first a sweep out into the screen, then down onto the button from above */
-        s_run[i].p[1][0] = 60 + run_rand(200), s_run[i].p[1][1] = 30 + run_rand(130);
-        s_run[i].p[2][0] = ex - 40 - run_rand(160), s_run[i].p[2][1] = ey - 50 - run_rand(90);
-        s_run[i].p[3][0] = ex, s_run[i].p[3][1] = ey;
+        const int32_t ex = place[i][0], ey = place[i][1];
+        int32_t (*P)[2] = s_run[i].p;
+        P[0][0] = sx;
+        P[0][1] = sy;
+        /* first a sweep out into the screen, then down onto the button from above it -- never
+         * right of it, so they do not run past it */
+        P[1][0] = 40 + run_rand(ex - 80 > 1 ? ex - 80 : 1);
+        P[1][1] = 30 + run_rand(ey - 100 > 1 ? ey - 100 : 1);
+        P[2][0] = ex - 70 + run_rand(71);
+        P[2][1] = ey - 100 + run_rand(61);
+        P[3][0] = ex;
+        P[3][1] = ey;
+        s_run[i].setOffMs = kRunSetOffMs[i];
         s_run[i].durationMs = kRunDurationMs[i] + (uint32_t)run_rand(400);
-        s_run[i].lastX = sx, s_run[i].lastY = sy, s_run[i].travelled = 0;
-        s_run[i].dir = 4, s_run[i].step = 0, s_run[i].arrived = 0;
-        s_run[i].image = kRunFrames[4][0];
+        s_run[i].lastX = sx;
+        s_run[i].lastY = sy;
+        s_run[i].travelled = 0;
+        s_run[i].dir = 3;
+        s_run[i].step = 0;
+        s_run[i].arrived = 0;
+        s_run[i].image = kRunFrames[3][0];
         uint16_t table[16] = { 0, 1, 2, 3, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0 };   /* (setSpriteColors) */
-        table[10] = table[11] = table[15] = kRunKit[i];
+        table[10] = kRunKit[i];
+        table[11] = kRunKit[i];
+        table[15] = kRunKit[i];
         table[14] = 2;
         FillSkinColorConversionTable(kRunFace[i], table);
         memcpy(s_run[i].colours, table, sizeof table);
@@ -305,7 +379,18 @@ static void run_begin(void)
     s_runState = 1;
     s_runStartMs = ModApi_Ticks();
     ModApi_SetMenuImage(Main_credits, NULL);    /* (the logo when they are there) */
-    ModApi_MenuRedraw(Main_credits);
+}
+
+/* After they settle: the logo in their place, for good; without it they stay, standing. */
+static void run_settle(void)
+{
+    if (s_runState != 3 || ModApi_Ticks() - s_runStartMs < kRunSettleMs)
+        return;
+    s_runState = 4;
+    if (run_picture()) {
+        ModApi_SetMenuImage(Main_credits, "grafs_2020/menus2020/credits.bmp");
+        ModApi_MenuRedraw(Main_credits);
+    }
 }
 
 /* Where each is now, from the time since they set off. */
@@ -315,48 +400,62 @@ static void run_update(void)
     if (s_runState == 1) {
         if (since < kRunDelayMs)
             return;
-        s_runState = 2, s_runStartMs += kRunDelayMs;
+        s_runState = 2;
+        s_runStartMs += kRunDelayMs;
         return;
     }
-    if (s_runState == 2) {
-        int32_t all = 1;
-        for (int32_t i = 0; i < kRunPlayers; i++) {
-            if (s_run[i].arrived)
-                continue;
-            const EaseFix t = since >= s_run[i].durationMs ? EASE_ONE
-                            : (EaseFix)((int64_t)since * EASE_ONE / s_run[i].durationMs);
-            const EaseFix u = t >= EASE_ONE ? EASE_ONE : Ease(EASE_IN_OUT_SINE, t);
-            int32_t x = 0, y = 0, dx = 0, dy = 0;
-            run_bezier(i, u, &x, &y, &dx, &dy);
-            const int32_t mx = x - s_run[i].lastX, my = y - s_run[i].lastY;
-            s_run[i].travelled += (mx < 0 ? -mx : mx) > (my < 0 ? -my : my) ? (mx < 0 ? -mx : mx) : (my < 0 ? -my : my);
-            s_run[i].lastX = x, s_run[i].lastY = y;
-            if (dx || dy)
-                s_run[i].dir = run_way(dx, dy);
-            while (s_run[i].travelled >= kRunStridePx) {
-                s_run[i].travelled -= kRunStridePx;
-                s_run[i].step = (uint8_t)((s_run[i].step + 1) & 3);
-            }
-            if (t >= EASE_ONE) {                         /* there: on its place exactly */
-                s_run[i].arrived = 1;
-                if (getenv("SWOS_RUNIN_TEST"))           /* (the run-in's check: every one on its place) */
-                    fprintf(stderr, "[runin-test] player %d at %d,%d, its place %d,%d: %s\n", (int)i, (int)x, (int)y,
-                            (int)kRunEndXY[i][0], (int)kRunEndXY[i][1],
-                            x == kRunEndXY[i][0] && y == kRunEndXY[i][1] ? "PASS" : "FAIL");
-                s_run[i].image = kRunFrames[4][1];       /* (standing, facing down) */
-                continue;
-            }
-            all = 0;
-            s_run[i].image = kRunFrames[s_run[i].dir][s_run[i].step];
+    if (s_runState != 2) {
+        run_settle();
+        return;
+    }
+    int32_t all = 1;
+    for (int32_t i = 0; i < kRunPlayers; i++) {
+        if (s_run[i].arrived)
+            continue;
+        all = 0;
+        if (since < s_run[i].setOffMs)
+            continue;                                /* (not off yet: off the screen) */
+        const uint32_t ran = since - s_run[i].setOffMs;
+        const EaseFix t = ran >= s_run[i].durationMs ? EASE_ONE
+                        : (EaseFix)((int64_t)ran * EASE_ONE / s_run[i].durationMs);
+        const EaseFix u = t >= EASE_ONE ? EASE_ONE : Ease(EASE_IN_OUT_SINE, t);
+        int32_t x = 0, y = 0, dx = 0, dy = 0;
+        run_bezier(i, u, &x, &y, &dx, &dy);
+        const int32_t mx = x - s_run[i].lastX < 0 ? s_run[i].lastX - x : x - s_run[i].lastX;
+        const int32_t my = y - s_run[i].lastY < 0 ? s_run[i].lastY - y : y - s_run[i].lastY;
+        s_run[i].travelled += mx > my ? mx : my;
+        s_run[i].lastX = x;
+        s_run[i].lastY = y;
+        if (dx || dy)
+            s_run[i].dir = run_way(dx, dy);
+        while (s_run[i].travelled >= kRunStridePx) {
+            s_run[i].travelled -= kRunStridePx;
+            s_run[i].step = (uint8_t)((s_run[i].step + 1) & 3);
         }
-        if (all)
-            s_runState = 3, s_runStartMs = now;
-        return;
+        if (t >= EASE_ONE) {                         /* there: on its place exactly */
+            s_run[i].arrived = 1;
+            s_run[i].image = kRunStand;
+            if (getenv("SWOS_RUNIN_TEST")) {         /* (the run-in's check: every one on its place) */
+                int32_t place[kRunPlayers][2], bx = 0, by = 0;
+                const int32_t m = ModApi_MenuMargin();
+                run_places(place);
+                ModApi_MenuEntryRect(Main_credits, &bx, &by, NULL, NULL);
+                fprintf(stderr, "[runin-test] player %d at %d,%d, its place %d,%d: %s; on the screen its "
+                        "sprite %d,%d %dx%d, its player in the logo %d,%d (the logo %d,%d 24x14)\n",
+                        (int)i, (int)x, (int)y, (int)place[i][0], (int)place[i][1],
+                        x == place[i][0] && y == place[i][1] ? "PASS" : "FAIL",
+                        (int)(m + x - s_runImg[kRunStand].cx), (int)(y - s_runImg[kRunStand].cy),
+                        (int)s_runImg[kRunStand].pixW, (int)s_runImg[kRunStand].h,
+                        (int)(m + bx + kCreditsPicX + i * kCreditsPicStep), (int)(by + kCreditsPicY),
+                        (int)(m + bx + kCreditsPicX), (int)(by + kCreditsPicY));
+            }
+            continue;
+        }
+        s_run[i].image = kRunFrames[s_run[i].dir][s_run[i].step];
     }
-    if (s_runState == 3 && since >= kRunSettleMs) {      /* (playersSettled: then the logo) */
-        s_runState = 0;
-        ModApi_SetMenuImage(Main_credits, "grafs_2020/menus2020/credits.bmp");
-        ModApi_MenuRedraw(Main_credits);
+    if (all) {
+        s_runState = 3;                              /* (playersSettled: then the logo) */
+        s_runStartMs = now;
     }
 }
 
@@ -387,31 +486,81 @@ static void run_blit(uint8_t *frame, int32_t stride, int32_t fh, int32_t pl, int
 }
 
 /* Each main-menu frame (menuDrawn): move them, and draw them over the menu (drawPlayers: the
- * middle one on top). */
+ * middle one on top) -- until the logo takes their place; without it, standing there for good. */
 static void run_menu_frame(void)
 {
     static const int32_t kOrder[kRunPlayers] = { 0, 2, 1 };
-    int32_t sw = 0, sh = 0;
+    int32_t sw = 0, sh = 0, stride = 0;
     if (!s_runState || !ModApi_IsMainMenu())
         return;
     run_update();
-    if (s_runState < 2)
+    if (s_runState < 2 || (s_runState == 4 && run_picture()))
         return;
-    int32_t stride = 0;
     uint8_t *frame = ModApi_Frame(&stride);
     if (!frame || stride <= 0)
         return;
-    const int32_t ox = ModApi_MenuMargin(), oy = entry(Main_credits)->y - 182;   /* (the rows on the picture) */
     ModApi_ScreenSize(&sw, &sh);
+    const int32_t ox = ModApi_MenuMargin();
     for (int32_t k = 0; k < kRunPlayers; k++) {
         const int32_t i = kOrder[k];
-        run_blit(frame, stride, sh, i, ox + s_run[i].lastX, oy + s_run[i].lastY);
+        run_blit(frame, stride, sh, i, ox + s_run[i].lastX, s_run[i].lastY);
     }
+}
+
+/* SWOS_MENUS2020_TEST=1: each of the mod's menus loaded and unpacked through the real unpacker
+ * and checked against its JSON (MenuJson_VerifyDynamic: the entry count, places, links, texts),
+ * once the main menu is up -- the mod on, its overlay in place (--menu-selftest runs before the
+ * mods are) -- then the game exits, 0 when all pass. */
+static int32_t json_entries(const char *name)
+{
+    char path[1200], q[48], kind[24];
+    uint32_t size = 0;
+    int32_t n = 0;
+    const char *dir = ModApi_ModDir(SLUG);
+    snprintf(path, sizeof path, "%s/data_json/menus/%s.json", dir ? dir : ".", name);
+    char *j = (char *)ModApi_ReadFile(path, &size);
+    if (!j)
+        return -1;
+    for (int32_t i = 0; i < 4096; i++) {
+        snprintf(q, sizeof q, "$.items[%d].kind", (int)i);
+        const char *tok = NULL;
+        int tl = 0;
+        if (mjson_find(j, (int)size, q, &tok, &tl) == MJSON_TOK_INVALID) {
+            snprintf(q, sizeof q, "$.items[%d]", (int)i);
+            if (mjson_find(j, (int)size, q, &tok, &tl) == MJSON_TOK_INVALID)
+                break;
+            continue;
+        }
+        if (mjson_get_string(j, (int)size, q, kind, (int)sizeof kind) > 0 && !strcmp(kind, "entry"))
+            n++;
+    }
+    free(j);
+    return n;
+}
+
+static void menus_selftest(void)
+{
+    static const char *const kMenus[] = {
+        "swosMainMenu", SLUG "/competitionMenu", SLUG "/practiceMenu", SLUG "/editingMenu",
+        SLUG "/extrasMenu", SLUG "/quitMenu", SLUG "/tickerMenu", SLUG "/liveMenu",
+    };
+    int32_t failed = 0;
+    for (uint32_t i = 0; i < sizeof kMenus / sizeof kMenus[0]; i++) {
+        const int32_t want = json_entries(kMenus[i]);
+        const int bad = want < 0 ? -1 : MenuJson_VerifyDynamic(kMenus[i], (int)want);
+        fprintf(stderr, "[menus2020-test] %-28s %3d entries: %s\n", kMenus[i], (int)want,
+                bad == 0 ? "PASS" : bad < 0 ? "FAIL (did not load)" : "FAIL (mismatch, see above)");
+        failed += bad != 0;
+    }
+    fprintf(stderr, "[menus2020-test] %d menus, %d failed\n", (int)(sizeof kMenus / sizeof kMenus[0]), (int)failed);
+    exit(failed ? 1 : 0);
 }
 
 static void mainInit(void)
 {
     extern void SWOSMainMenuInit(void);
+    if (getenv("SWOS_MENUS2020_TEST"))
+        menus_selftest();
     SWOSMainMenuInit();                 /* the game's: CommonMenuExit, its test hook */
     main_refresh();
     run_begin();
@@ -488,13 +637,37 @@ static int32_t s_quitChosen;
 #define QUIT_TO "QUIT TO LINUX"
 #endif
 
+/* quitMenuOnInit / quitGame / returnToGame: the screen fades to black and back in on QUIT's
+ * screen, and to black again as it closes -- the main menu then fades in (menuFade). The game's
+ * fade (src/fade.c). */
 static void quitInit(void)
 {
+    extern void FadeOutToBlack(void);
+    extern void FadeIn(void);
+    extern void DrawMenu(void);
     ModApi_MenuText(Quit_quit, QUIT_TO);
     SetCurrentEntry(Quit_return);
+    FadeOutToBlack();
+    DrawMenu();                         /* (drawn, ready for the fade in) */
+    FadeIn();
 }
 
-static void quitGame(void) { s_quitChosen = 1; SetExitMenuFlag(); }
+static void quitGame(void)
+{
+    extern void FadeOutToBlack(void);
+    FadeOutToBlack();
+    s_quitChosen = 1;
+    SetExitMenuFlag();
+}
+
+static void returnToGame(void)
+{
+    extern void FadeOutToBlack(void);
+    extern uint16_t _menuFade;
+    FadeOutToBlack();
+    SetExitMenuFlag();
+    _menuFade = 1;
+}
 
 static void quit(void)
 {
@@ -932,7 +1105,7 @@ static void init(void)
 
         { "multiplayer", multiplayer },
         { "competitionInit", competitionInit }, { "competitionDraw", competitionDraw },
-        { "quitInit", quitInit }, { "quitGame", quitGame },
+        { "quitInit", quitInit }, { "quitGame", quitGame }, { "returnToGame", returnToGame },
         { "online", online }, { "diy", diy }, { "preset", preset }, { "career", career },
         { "speedruns", speedruns }, { "challenges", challenges },
 
