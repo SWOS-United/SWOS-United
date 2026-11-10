@@ -360,6 +360,16 @@ def build_main(doc):
                       {"op": "nav", "left": -1, "right": -1, "up": -1, "down": MAIN_ORDER.index("competition")},
                       {"op": "onselect_fire", "func": mod("liveCast")}]
 
+    # SWOS United's logo across the top, between the TV and the right edge, over the buttons:
+    # the third filler, never chosen (no handler, nothing leads to it). Its picture is ours, not
+    # SWOS 2020's -- committed, grafs_united/logo.bmp in the mod (docs/images/swosunited-logo.png
+    # made 38 px tall: black nudged to 1,1,1 so it is not see-through, the clear parts magenta).
+    logo = ordered[filler + 2][0]
+    logo["name"] = "logo"
+    logo["coords"] = {"x": 119, "y": 2, "w": 81, "h": 38}
+    logo["image"] = "grafs_united/logo.bmp"
+    logo["commands"] = [{"op": "colors", "frame_color": 0, "background_color": 0}]
+
     doc["items"] = emit(ordered)
     doc["name"] = "swosMainMenu"
     doc["onInit"] = mod("mainInit")
