@@ -44,6 +44,7 @@ def mod(name):
 SUBMENUS = {
     "competition": dict(
         out="competitionMenu", onInit="competitionInit",
+        onDraw="competitionDraw",       # (competitionMenu_OnDraw: the arrows either side of CHALLENGES)
         handlers={
             "selectOnline": "online",
             "selectDIYCompetitionMenu": "diy",
@@ -53,11 +54,8 @@ SUBMENUS = {
             "selectScenarioMode": "challenges",             # its challenges mod, when on
         },
         hide=[],
-        # SEASON: the original main menu's, which SWOS 2020 has not -- kept (the owner: every
-        # feature of both), beside CLASSIC CAREER MODE in its row.
-        move={"act3": (162, 137, 110, 20)},
-        add=[dict(name="season", like="act3", coords=(32, 137, 110, 20),
-                  symbol="_aSeason_1", handler="season")],
+        # (SEASON, the original main menu's, was kept beside CLASSIC CAREER MODE until
+        # 2026-11-10: not needed any more, the owner -- the row is SWOS 2020's again.)
     ),
     "practice": dict(
         out="practiceMenu", onInit="practiceInit",
@@ -96,14 +94,45 @@ SUBMENUS = {
         nav={"editTactics": (-1, -1, 1, 4), "diskFiling": (-1, -1, 2, 3), "exit": (-1, -1, 4, -1)},
     ),
     "extrasEx": dict(
-        out="extrasMenu", onInit="extrasInit",
+        out="extrasMenu", onInit="extrasInit", onDraw="extrasDraw",
         handlers={
             "EditCustomTeamMenu": "editTeams",
             "EditTacticsMenu": "editTactics",
             "manualExtras_OnSelect": "manual",
+            "tipsListExtras_OnSelect": "tips",
+            "streamsListExtras_OnSelect": "streams",
             "exitExtrasEx_OnSelect": "SetExitMenuFlag",
         },
-        hide=["newsList", "tipsList", "streamsList", "HelpMsg"],   # the ticker mod's
+        # LATEST NEWS: SWOS 2020's news.txt, which its launcher fetched -- no source here yet
+        # (the owner, 2026-11-10: left out for now). TIPS AND REVIEWS and STREAMS AND VIDEOS
+        # list the ticker's news (tips.txt), in SWOS 2020's ticker.mnu (below).
+        hide=["newsList"],
+        nav={"tipsList": (-1, 5, -1, 3), "streamsList": (-1, 6, 2, 8),
+             "editCustomTeams": (2, -1, -1, 5), "editTactics": (2, -1, 4, 6),
+             "manual": (3, -1, 5, 8), "exit": (-1, -1, 6, -1)},
+    ),
+    # QUIT's screen (menu.cpp showQuitMenu): QUIT TO <the system> / RETURN TO GAME, RETURN chosen;
+    # fading out and in as its quitMenuOnInit / quitGame / returnToGame.
+    "quit": dict(
+        out="quitMenu", onInit="quitInit",
+        handlers={"quitGame": "quitGame", "returnToGame": "returnToGame"},
+        hide=[],
+        text={"quit": "QUIT", "returnToGame": "RETURN TO GAME"},   # (QUIT TO ...: quitInit)
+    ),
+    # The list TIPS AND REVIEWS and STREAMS AND VIDEOS open (game.cpp's tickerMenu_*): ten rows
+    # a page -- number, category, text -- a row opening its link.
+    "ticker": dict(
+        out="tickerMenu", onInit="tickerInit", onDraw="tickerDraw",
+        handlers={
+            "ticker_OnSelect": "tickerOpen",
+            "tickerScrollUp_onSelect": "tickerUp",
+            "tickerScrollDown_onSelect": "tickerDown",
+            "tickerMenuExit_OnSelect": "SetExitMenuFlag",
+        },
+        hide=[],
+        # The page buttons (ticker.mnu: 303,48 and 303,153, 9x13) pictured with the arrows its onDraw
+        # draws at 313,49 and 313,153 -- screen pixels, so less the entry's x and ConvertMenu's +8.
+        image={"tickerScrollUp": ("arrow_up", 2, 1), "tickerScrollDown": ("arrow_down", 2, 0)},
     ),
 }
 
@@ -113,13 +142,30 @@ MAIN_ORDER = ["competition", "practice", "replays", "options", "editing", "extra
               "exit", None, None, None, None,
               "continueContest", "saveContest", "loadOldCompetition",
               "multiplayer", "credits", "modes"]
-# (button, its picture, the icon's column on it). SWOS 2020 drew them at columns 27-30 and
-# 95-98 (its onDraw, the menu without MULTIPLAYER_MENU), beside text in its own font; in the
-# game's big menu font those columns touch the words, so here they sit 12 in from the
-# button's outer edge (the buttons are 148 wide).
-ICON_COLUMNS = [("competition", "compete", 12), ("practice", "practice", 12),
-                ("replays", "replays", 12), ("options", "options", 120),
-                ("editing", "editing", 120), ("extras", "extras", 120)]
+# SWOS 2020 as it is built (mpgame.h defines MULTIPLAYER_MENU): main.mnu's six buttons keep
+# their places, and game.cpp relabels them (SWOSMainMenuOnDraw_2, the texts padded for the
+# icons as there; PRACTICE dark blue, REPLAYS purple) and gives them other jobs (the
+# *MainMenu_onSelect handlers): COMPETE's slot is MULTIPLAYER, PRACTICE's COMPETE, REPLAYS'
+# PRACTICE, EDITING's EXTRAS (extrasEx) and EXTRAS' REPLAYS. Per slot: text, handler, colour.
+MAIN_SLOTS = {
+    "competition": ("  MULTIPLAYER", "multiplayer", None),
+    "practice":    ("  COMPETE", "compete", None),
+    "replays":     ("  PRACTICE", "practice", 3),        # (kDarkBlue)
+    "options":     ("OPTIONS   ", "options", None),
+    "editing":     ("EXTRAS   ", "extras", None),
+    "extras":      ("REPLAYS  ", "replays", 11),          # (kPurple)
+}
+# The SWOS United logo's place in the CREDITS entry: SWOS 2020's 293,185 less the entry's 281,182
+# and ConvertMenu's +8 (mod_menus2020.c kCreditsPicX / kCreditsPicY: keep the two the same).
+CREDITS_PICTURE_AT = (293 - 281 - 8, 185 - 182)
+# The banner's size (scripts/make_united_logo.py writes it): 31 high, in the band above the buttons
+# (0..40) right of the TV (4..46).
+LOGO_SIZE = (262, 31)
+# (button slot, its picture, the icon's column on it): its onDraw's drawMapEx256_8sets columns
+# under MULTIPLAYER_MENU, y + 7.
+ICON_COLUMNS = [("competition", "multiplayer", 15), ("practice", "compete", 30),
+                ("replays", "practice", 27), ("options", "options", 98),
+                ("editing", "extras", 98), ("extras", "replays", 101)]
 MAIN_HANDLERS = {
     "SWOS_competitionMainMenu_onSelect": "compete",
     "SWOS_practiceMainMenu_onSelect": "practice",
@@ -225,20 +271,44 @@ def build_main(doc):
     button = by_name["saveContest"]
     base_colors = colors_of(button[0])
 
+    # The six buttons, relabelled (MAIN_SLOTS).
+    for name, (text, handler, colour) in MAIN_SLOTS.items():
+        it = by_name[name][0]
+        set_text(it, text)
+        for c in it["commands"]:
+            if c["op"] == "onselect_fire":
+                c["func"] = mod(handler)
+            elif c["op"] == "colors" and colour is not None:
+                c["background_color"] = colour
+
     # 11: the game prints "CONTINUE <name>" / "REPLAY <name>" into it (CommonMenuExit).
     set_text(by_name["continueContest"][0], deferred=True)
-    set_text(by_name["saveContest"][0], "SAVE")
-    set_text(by_name["loadOldCompetition"][0], "LOAD")
-    # The two small icons SWOS 2020 draws in its onDraw (not ported): words instead.
+    # SAVE and LOAD as main.mnu has them, with the floppies its onDraw draws
+    # (disk_save_load_16x14_1x3_map at 91,182 and 211,182). drawMapEx takes screen pixels, and
+    # ConvertMenu puts an entry 8 right of its .mnu x: so a picture's place in the entry is
+    # SWOS 2020's x - the entry's x - 8 (and its y - the entry's y).
+    for name, picture, dx in (("saveContest", "save", 91 - 77 - 8),
+                              ("loadOldCompetition", "load", 211 - 155 - 8)):
+        it = by_name[name][0]
+        it["image"] = "grafs_2020/menus2020/%s.bmp" % picture
+        it["image_x"], it["image_y"] = dx, 4
+    # QUIT is a picture there: drawExitIcon(3, 181) over main.mnu's exit entry (-5,181, 31x17).
     quit_item, quit_origin = by_name["exit"]
-    quit_item["coords"] = {"x": 4, "y": 182, "w": 56, "h": 18}
-    set_text(quit_item, "QUIT")
+    quit_item["commands"] = [c for c in quit_item["commands"] if c["op"] not in ("text", "text_no_ptr", "colors")]
+    quit_item["commands"].insert(0, {"op": "colors", "frame_color": 0, "background_color": 0})
+    quit_item["image"] = "grafs_2020/menus2020/quit.bmp"
+    quit_item["image_x"], quit_item["image_y"] = 3 - (-5) - 8, 0
+    # CREDITS is a picture there: the SWOS United logo, three little players standing
+    # (drawSwosUnitedLogo: swos_united_logo_24x14_1x1_Map at kSwosUnitedLogoX/Y, 293,185) over
+    # main.mnu's credits entry (281,182, 31x18). mod_menus2020.c's run-in brings the three players
+    # there, each standing where it stands in the picture (CREDITS_PICTURE_AT is its kCreditsPicX/Y),
+    # then shows the picture in their place.
     credits_item, credits_origin = by_name["credits"]
-    credits_item["coords"] = {"x": 244, "y": 182, "w": 56, "h": 18}
-    set_text(credits_item, symbol="_aCredits")
-    for it in (quit_item, credits_item):
-        if base_colors and not colors_of(it):
-            it["commands"].insert(1, dict(base_colors))
+    credits_item["coords"] = {"x": 281, "y": 182, "w": 31, "h": 18}
+    credits_item["commands"] = [c for c in credits_item["commands"] if c["op"] not in ("text", "text_no_ptr", "colors")]
+    credits_item["commands"].insert(0, {"op": "colors", "frame_color": 0, "background_color": 0})
+    credits_item["image"] = "grafs_2020/menus2020/credits.bmp"
+    credits_item["image_x"], credits_item["image_y"] = CREDITS_PICTURE_AT
 
     # 14 and 16, the game's own MULTIPLAYER and MODES: this menu reaches online play through
     # COMPETE and the modes through PRACTICE, so both stay hidden (mod_menus2020.c keeps
@@ -284,12 +354,13 @@ def build_main(doc):
         it, _o = by_name[name]
         it["image"] = "grafs_2020/menus2020/%s.bmp" % picture
         it["image_x"], it["image_y"] = dx, 7
-    # The news ticker's row (the canonical `ticker` mod scrolls its news through it,
-    # "ticker_entry"): across the top, where SWOS 2020 drew its logo -- the first filler, which
-    # is never drawn, so the row costs the menu nothing.
+    # The news ticker's row (the `ticker` mod scrolls its news through it, "ticker_entry"):
+    # at the bottom, under SAVE and LOAD, as SWOS 2020's (its window text at row 250 of 270:
+    # 15 under the menu's 200) -- the first filler, which is never drawn. mod_menus2020.c puts
+    # it back at the top on a screen with no rows under the menu.
     filler = MAIN_ORDER.index(None)
     ordered[filler][0]["name"] = "ticker"
-    ordered[filler][0]["coords"] = {"x": 50, "y": 6, "w": 262, "h": 10}
+    ordered[filler][0]["coords"] = {"x": 0, "y": 206, "w": 320, "h": 10}   # (clear of the build line)
     doc["ticker_entry"] = filler
     # LIVE CAST's TV (SWOS 2020's tvIcon: x kColumn1X + 3, y kStartY - 37, 42x38): the next
     # filler, shown -- its picture idle or live (mod_menus2020.c, ModApi_LiveAny), a click or
@@ -301,6 +372,18 @@ def build_main(doc):
     tv["commands"] = [{"op": "colors", "frame_color": 0, "background_color": 0},   # (a frame when chosen)
                       {"op": "nav", "left": -1, "right": -1, "up": -1, "down": MAIN_ORDER.index("competition")},
                       {"op": "onselect_fire", "func": mod("liveCast")}]
+
+    # SWOS United's banner across the top, right of the TV (4..46) in the band above the buttons
+    # (they start at 41), centred in x 50..311 (the menu's right edge: SWOS 2020's screen 319, our
+    # 4:3 screen's 335), y 0..40: the third filler, never chosen (no handler,
+    # nothing leads to it). Its picture is ours, not SWOS 2020's -- committed, grafs_united/logo.bmp
+    # in the mod, made LOGO_SIZE from docs/images/swosunited-banner.png by scripts/make_united_logo.py.
+    logo = ordered[filler + 2][0]
+    logo["name"] = "logo"
+    logo["coords"] = {"x": (50 + 312 - LOGO_SIZE[0]) // 2, "y": (40 - LOGO_SIZE[1] + 1) // 2,
+                      "w": LOGO_SIZE[0], "h": LOGO_SIZE[1]}
+    logo["image"] = "grafs_united/logo.bmp"
+    logo["commands"] = [{"op": "colors", "frame_color": 0, "background_color": 0}]
 
     doc["items"] = emit(ordered)
     doc["name"] = "swosMainMenu"
@@ -323,6 +406,9 @@ def build_sub(doc, spec):
         set_text(by_name[name], text)
     for name, (x, y, w, h) in spec.get("move", {}).items():
         by_name[name]["coords"] = {"x": x, "y": y, "w": w, "h": h}
+    for name, (picture, dx, dy) in spec.get("image", {}).items():
+        by_name[name]["image"] = "grafs_2020/menus2020/%s.bmp" % picture
+        by_name[name]["image_x"], by_name[name]["image_y"] = dx, dy
     # Entries of ours, after SWOS 2020's (so its ordinals stay): a copy of `like` (its colours,
     # text flags) with our text and handler.
     for add in spec.get("add", []):
@@ -343,7 +429,7 @@ def build_sub(doc, spec):
         it["commands"].append({"op": "nav", "left": l, "right": r, "up": u, "down": d})
     doc["name"] = spec["out"]
     doc["onInit"] = mod(spec["onInit"]) if spec["onInit"] else None
-    doc["onDraw"] = None
+    doc["onDraw"] = mod(spec["onDraw"]) if spec.get("onDraw") else None
     doc["onReturn"] = None
     return doc
 

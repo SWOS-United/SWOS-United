@@ -1,0 +1,929 @@
+{
+  "name": "tickerMenu",
+  "source": {
+    "project": "swos-2020",
+    "file": "src/menus/ticker.mnu",
+    "commit": "df38d20"
+  },
+  "menu_flags": {
+    "dos_redraw": true
+  },
+  "onInit": "menus2020.tickerInit",
+  "onReturn": null,
+  "onDraw": "menus2020.tickerDraw",
+  "defaultEntry": 37,
+  "exports": {
+    "kVMR_MaxRowsMyRecords": 11,
+    "kVMR_ButtonY0": 36,
+    "kVMR_ButtonHeight": 10,
+    "kVMR_ButtonStep": 12,
+    "kVMR_NoPosX": 0,
+    "kVMR_NoPosY": 36,
+    "kVMR_NoStep": 12,
+    "kVMR_NoWidth": 22,
+    "kVMR_NoHeight": 10,
+    "kVMR_NoBaseColor": 7,
+    "kVMR_CatePosX": 24,
+    "kVMR_CatePosY": 36,
+    "kVMR_CateStep": 12,
+    "kVMR_CateWidth": 60,
+    "kVMR_CateHeight": 10,
+    "kVMR_CateBaseColor": 7,
+    "kVMR_TickerPosX": 86,
+    "kVMR_TickerPosY": 36,
+    "kVMR_TickerStep": 12,
+    "kVMR_TickerWidth": 224,
+    "kVMR_TickerHeight": 10,
+    "kVMR_TickerBaseColor": 3
+  },
+  "items": [
+    {
+      "kind": "entry",
+      "name": "header",
+      "coords": {
+        "x": 92,
+        "y": 0,
+        "w": 120,
+        "h": 16
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 1,
+          "background_color": 7
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": -1,
+          "down": 37
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "no_00",
+      "coords": {
+        "x": -8,
+        "y": 36,
+        "w": 22,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "no_01",
+      "coords": {
+        "x": -8,
+        "y": 48,
+        "w": 22,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "no_02",
+      "coords": {
+        "x": -8,
+        "y": 60,
+        "w": 22,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "no_03",
+      "coords": {
+        "x": -8,
+        "y": 72,
+        "w": 22,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "no_04",
+      "coords": {
+        "x": -8,
+        "y": 84,
+        "w": 22,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "no_05",
+      "coords": {
+        "x": -8,
+        "y": 96,
+        "w": 22,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "no_06",
+      "coords": {
+        "x": -8,
+        "y": 108,
+        "w": 22,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "no_07",
+      "coords": {
+        "x": -8,
+        "y": 120,
+        "w": 22,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "no_08",
+      "coords": {
+        "x": -8,
+        "y": 132,
+        "w": 22,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "no_09",
+      "coords": {
+        "x": -8,
+        "y": 144,
+        "w": 22,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "no_10",
+      "coords": {
+        "x": -8,
+        "y": 156,
+        "w": 22,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "cate_00",
+      "coords": {
+        "x": 16,
+        "y": 36,
+        "w": 60,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "0000-00-00"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "cate_01",
+      "coords": {
+        "x": 16,
+        "y": 48,
+        "w": 60,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "0000-00-00"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "cate_02",
+      "coords": {
+        "x": 16,
+        "y": 60,
+        "w": 60,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "0000-00-00"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "cate_03",
+      "coords": {
+        "x": 16,
+        "y": 72,
+        "w": 60,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "0000-00-00"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "cate_04",
+      "coords": {
+        "x": 16,
+        "y": 84,
+        "w": 60,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "0000-00-00"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "cate_05",
+      "coords": {
+        "x": 16,
+        "y": 96,
+        "w": 60,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "0000-00-00"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "cate_06",
+      "coords": {
+        "x": 16,
+        "y": 108,
+        "w": 60,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "0000-00-00"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "cate_07",
+      "coords": {
+        "x": 16,
+        "y": 120,
+        "w": 60,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "0000-00-00"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "cate_08",
+      "coords": {
+        "x": 16,
+        "y": 132,
+        "w": 60,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "0000-00-00"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "cate_09",
+      "coords": {
+        "x": 16,
+        "y": 144,
+        "w": 60,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "0000-00-00"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "cate_10",
+      "coords": {
+        "x": 16,
+        "y": 156,
+        "w": 60,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "0000-00-00"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "ticker_00",
+      "coords": {
+        "x": 78,
+        "y": 36,
+        "w": 224,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x8000",
+          "literal": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 3
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.tickerOpen"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "ticker_01",
+      "coords": {
+        "x": 78,
+        "y": 48,
+        "w": 224,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x8000",
+          "literal": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 3
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.tickerOpen"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "ticker_02",
+      "coords": {
+        "x": 78,
+        "y": 60,
+        "w": 224,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x8000",
+          "literal": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 3
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.tickerOpen"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "ticker_03",
+      "coords": {
+        "x": 78,
+        "y": 72,
+        "w": 224,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x8000",
+          "literal": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 3
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.tickerOpen"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "ticker_04",
+      "coords": {
+        "x": 78,
+        "y": 84,
+        "w": 224,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x8000",
+          "literal": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 3
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.tickerOpen"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "ticker_05",
+      "coords": {
+        "x": 78,
+        "y": 96,
+        "w": 224,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x8000",
+          "literal": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 3
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.tickerOpen"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "ticker_06",
+      "coords": {
+        "x": 78,
+        "y": 108,
+        "w": 224,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x8000",
+          "literal": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 3
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.tickerOpen"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "ticker_07",
+      "coords": {
+        "x": 78,
+        "y": 120,
+        "w": 224,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x8000",
+          "literal": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 3
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.tickerOpen"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "ticker_08",
+      "coords": {
+        "x": 78,
+        "y": 132,
+        "w": 224,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x8000",
+          "literal": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 3
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.tickerOpen"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "ticker_09",
+      "coords": {
+        "x": 78,
+        "y": 144,
+        "w": 224,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x8000",
+          "literal": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 3
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.tickerOpen"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "ticker_10",
+      "coords": {
+        "x": 78,
+        "y": 156,
+        "w": 224,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x8000",
+          "literal": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 3
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.tickerOpen"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "tickerScrollUp",
+      "coords": {
+        "x": 303,
+        "y": 48,
+        "w": 9,
+        "h": 13
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.tickerUp"
+        }
+      ],
+      "image": "grafs_2020/menus2020/arrow_up.bmp",
+      "image_x": 2,
+      "image_y": 1
+    },
+    {
+      "kind": "entry",
+      "name": "tickerScrollDown",
+      "coords": {
+        "x": 303,
+        "y": 153,
+        "w": 9,
+        "h": 13
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        },
+        {
+          "op": "onselect_fire",
+          "func": "menus2020.tickerDown"
+        }
+      ],
+      "image": "grafs_2020/menus2020/arrow_down.bmp",
+      "image_x": 2,
+      "image_y": 0
+    },
+    {
+      "kind": "entry",
+      "name": "tickerPage",
+      "coords": {
+        "x": 277,
+        "y": 167,
+        "w": 8,
+        "h": 12
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "exit",
+      "coords": {
+        "x": 122,
+        "y": 185,
+        "w": 60,
+        "h": 15
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "str": "_aExit"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 12
+        },
+        {
+          "op": "onselect_fire",
+          "func": "SetExitMenuFlag"
+        }
+      ]
+    }
+  ]
+}

@@ -32,7 +32,7 @@
         {
           "op": "text",
           "flags": "0x10",
-          "literal": "COMPETE"
+          "literal": "  MULTIPLAYER"
         },
         {
           "op": "colors",
@@ -48,11 +48,11 @@
         },
         {
           "op": "onselect_fire",
-          "func": "menus2020.compete"
+          "func": "menus2020.multiplayer"
         }
       ],
-      "image": "grafs_2020/menus2020/compete.bmp",
-      "image_x": 12,
+      "image": "grafs_2020/menus2020/multiplayer.bmp",
+      "image_x": 15,
       "image_y": 7
     },
     {
@@ -68,7 +68,7 @@
         {
           "op": "text",
           "flags": "0x10",
-          "literal": "PRACTICE"
+          "literal": "  COMPETE"
         },
         {
           "op": "colors",
@@ -84,11 +84,11 @@
         },
         {
           "op": "onselect_fire",
-          "func": "menus2020.practice"
+          "func": "menus2020.compete"
         }
       ],
-      "image": "grafs_2020/menus2020/practice.bmp",
-      "image_x": 12,
+      "image": "grafs_2020/menus2020/compete.bmp",
+      "image_x": 30,
       "image_y": 7
     },
     {
@@ -104,12 +104,12 @@
         {
           "op": "text",
           "flags": "0x10",
-          "literal": "REPLAYS"
+          "literal": "  PRACTICE"
         },
         {
           "op": "colors",
           "frame_color": 0,
-          "background_color": 11
+          "background_color": 3
         },
         {
           "op": "nav",
@@ -120,11 +120,11 @@
         },
         {
           "op": "onselect_fire",
-          "func": "menus2020.replays"
+          "func": "menus2020.practice"
         }
       ],
-      "image": "grafs_2020/menus2020/replays.bmp",
-      "image_x": 12,
+      "image": "grafs_2020/menus2020/practice.bmp",
+      "image_x": 27,
       "image_y": 7
     },
     {
@@ -140,7 +140,7 @@
         {
           "op": "text",
           "flags": "0x10",
-          "str": "_aOptions"
+          "literal": "OPTIONS   "
         },
         {
           "op": "colors",
@@ -160,7 +160,7 @@
         }
       ],
       "image": "grafs_2020/menus2020/options.bmp",
-      "image_x": 120,
+      "image_x": 98,
       "image_y": 7
     },
     {
@@ -176,7 +176,7 @@
         {
           "op": "text",
           "flags": "0x10",
-          "literal": "EDITING"
+          "literal": "EXTRAS   "
         },
         {
           "op": "colors",
@@ -192,11 +192,11 @@
         },
         {
           "op": "onselect_fire",
-          "func": "menus2020.editing"
+          "func": "menus2020.extras"
         }
       ],
-      "image": "grafs_2020/menus2020/editing.bmp",
-      "image_x": 120,
+      "image": "grafs_2020/menus2020/extras.bmp",
+      "image_x": 98,
       "image_y": 7
     },
     {
@@ -212,12 +212,12 @@
         {
           "op": "text",
           "flags": "0x10",
-          "literal": "EXTRAS"
+          "literal": "REPLAYS  "
         },
         {
           "op": "colors",
           "frame_color": 0,
-          "background_color": 14
+          "background_color": 11
         },
         {
           "op": "nav",
@@ -228,11 +228,11 @@
         },
         {
           "op": "onselect_fire",
-          "func": "menus2020.extras"
+          "func": "menus2020.replays"
         }
       ],
-      "image": "grafs_2020/menus2020/extras.bmp",
-      "image_x": 120,
+      "image": "grafs_2020/menus2020/replays.bmp",
+      "image_x": 101,
       "image_y": 7
     },
     {
@@ -244,21 +244,16 @@
       "kind": "entry",
       "name": "exit",
       "coords": {
-        "x": 4,
-        "y": 182,
-        "w": 56,
-        "h": 18
+        "x": -5,
+        "y": 181,
+        "w": 31,
+        "h": 17
       },
       "commands": [
         {
-          "op": "text",
-          "flags": "0x0",
-          "literal": "QUIT"
-        },
-        {
           "op": "colors",
           "frame_color": 0,
-          "background_color": 4
+          "background_color": 0
         },
         {
           "op": "nav",
@@ -271,14 +266,17 @@
           "op": "onselect_fire",
           "func": "menus2020.quit"
         }
-      ]
+      ],
+      "image": "grafs_2020/menus2020/quit.bmp",
+      "image_x": 0,
+      "image_y": 0
     },
     {
       "kind": "entry",
       "coords": {
-        "x": 50,
-        "y": 6,
-        "w": 262,
+        "x": 0,
+        "y": 206,
+        "w": 320,
         "h": 10
       },
       "commands": [
@@ -320,16 +318,20 @@
     {
       "kind": "entry",
       "coords": {
-        "x": 0,
-        "y": 0,
-        "w": 1,
-        "h": 1
+        "x": 50,
+        "y": 5,
+        "w": 262,
+        "h": 31
       },
       "commands": [
         {
-          "op": "invisible"
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 0
         }
-      ]
+      ],
+      "name": "logo",
+      "image": "grafs_united/logo.bmp"
     },
     {
       "kind": "entry",
@@ -389,8 +391,8 @@
       "commands": [
         {
           "op": "text",
-          "flags": "0x10",
-          "literal": "SAVE"
+          "flags": "0x8010",
+          "literal": "      SAVE"
         },
         {
           "op": "colors",
@@ -408,7 +410,10 @@
           "op": "onselect_fire",
           "func": "menus2020.saveContest"
         }
-      ]
+      ],
+      "image": "grafs_2020/menus2020/save.bmp",
+      "image_x": 6,
+      "image_y": 4
     },
     {
       "kind": "entry",
@@ -422,8 +427,8 @@
       "commands": [
         {
           "op": "text",
-          "flags": "0x10",
-          "literal": "LOAD"
+          "flags": "0x8010",
+          "literal": "   LOAD"
         },
         {
           "op": "colors",
@@ -441,15 +446,18 @@
           "op": "onselect_fire",
           "func": "menus2020.loadContest"
         }
-      ]
+      ],
+      "image": "grafs_2020/menus2020/load.bmp",
+      "image_x": 48,
+      "image_y": 4
     },
     {
       "kind": "entry",
       "name": "multiplayer",
       "coords": {
-        "x": 244,
+        "x": 281,
         "y": 182,
-        "w": 56,
+        "w": 31,
         "h": 18
       },
       "commands": [
@@ -471,21 +479,16 @@
       "kind": "entry",
       "name": "credits",
       "coords": {
-        "x": 244,
+        "x": 281,
         "y": 182,
-        "w": 56,
+        "w": 31,
         "h": 18
       },
       "commands": [
         {
-          "op": "text",
-          "flags": "0x0",
-          "str": "_aCredits"
-        },
-        {
           "op": "colors",
           "frame_color": 0,
-          "background_color": 4
+          "background_color": 0
         },
         {
           "op": "nav",
@@ -498,15 +501,18 @@
           "op": "onselect_fire",
           "func": "menus2020.credits"
         }
-      ]
+      ],
+      "image": "grafs_2020/menus2020/credits.bmp",
+      "image_x": 4,
+      "image_y": 3
     },
     {
       "kind": "entry",
       "name": "modes",
       "coords": {
-        "x": 244,
+        "x": 281,
         "y": 182,
-        "w": 56,
+        "w": 31,
         "h": 18
       },
       "commands": [

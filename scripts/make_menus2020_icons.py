@@ -15,7 +15,7 @@ overlay: bin/mods/menus2020/grafs_2020/menus2020/<name>.bmp (scripts/make_menus2
 names them).
 
 The icons are SWOS 2020's art, so like its pitches (grafs_2020) they are made on the player's
-machine and never committed (.gitignore). Without them the menu shows its buttons without icons.
+machine and never committed (.gitignore), as is the mod's pixmaps.txt (COMPETITIONS' arrows). Without them the menu shows its buttons without icons.
 """
 import argparse
 import os
@@ -25,7 +25,7 @@ import sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(REPO, "bin", "mods", "menus2020", "grafs_2020", "menus2020")
-DEFAULT_SWOS2020 = "/mnt/c/Projects/GitHub/swos-2020"
+DEFAULT_SWOS2020 = os.environ.get("SWOS2020_DIR", "/mnt/c/Projects/GitHub/swos-2020")
 DEFAULT_ASSETS = os.environ.get("SWOS_ASSETS", os.path.expanduser("~/Documents/SWOS/assets"))
 
 # main_menu_icon_v3_16x16_8x1_map: eight 16x16 icons side by side; SWOS 2020's order.
@@ -103,6 +103,59 @@ def main():
         path = os.path.join(OUT, name + ".bmp")
         write_bmp(path, pixels)
         print("  -> %s" % os.path.relpath(path, REPO))
+
+    # The small pictures of its MULTIPLAYER_MENU main menu (game.cpp): SAVE's and LOAD's floppies
+    # (disk_save_load_16x14_1x3_map, its 2nd and 3rd), the QUIT icon (drawExitIcon's
+    # kExitIconData: width, height, then the pixels) and the SWOS United logo over CREDITS
+    # (swos_united_logo_24x14_1x1_Map). All in the menu's 16 colours, 0 see-through.
+    header = os.path.join(args.swos2020, "src", "PixelmapAndStrings.h")
+
+    def char_map(name, rows):
+        with open(header, encoding="latin-1") as f:
+            src = f.read()
+        m = re.search(r"\b%s\s*\[\]\s*=\s*\{(.*?)\};" % re.escape(name), src, re.S)
+        if not m:
+            sys.exit("make_menus2020_icons: %s not found in %s" % (name, header))
+        lines = re.findall(r'"([^"]*)"', m.group(1))
+        if len(lines) < rows:
+            sys.exit("make_menus2020_icons: %s has %d rows, not %d" % (name, len(lines), rows))
+        return lines
+
+    def small(rows_of_indices, name):
+        pixels = [[(255, 0, 255) if v == 0 else pal[v] for v in row] for row in rows_of_indices]
+        path = os.path.join(OUT, name + ".bmp")
+        write_bmp(path, pixels)
+        print("  -> %s" % os.path.relpath(path, REPO))
+
+    disk = char_map("disk_save_load_16x14_1x3_map", 42)
+    for k, name in ((1, "save"), (2, "load")):
+        small([[int(c, 16) for c in row[:16]] for row in disk[14 * k:14 * (k + 1)]], name)
+    logo = char_map("swos_united_logo_24x14_1x1_Map", 14)
+    small([[int(c, 16) for c in row[:24]] for row in logo[:14]], "credits")
+    # The news lists' page arrows (tickerMenu_OnDraw: arrows_12x12_13x1_Map's 11th and 12th).
+    arrows = char_map("arrows_12x12_13x1_Map", 12)
+    for k, name in ((10, "arrow_up"), (11, "arrow_down")):
+        small([[int(c, 16) for c in row[12 * k:12 * (k + 1)]] for row in arrows[:12]], name)
+    # COMPETITIONS' yellow arrows either side of CHALLENGES (competitionMenu_OnDraw: rightArrow /
+    # leftArrow, 10x7), as character maps -- the mod's pixmaps.txt, drawn by ModApi_DrawMapAtEntry
+    # (src/mod_menu_tools.c: per map "name width height", then its rows).
+    with open(os.path.join(REPO, "bin", "mods", "menus2020", "pixmaps.txt"), "w", newline="\n") as f:
+        f.write("# SWOS 2020's pictures (src/PixelmapAndStrings.h): scripts/make_menus2020_icons.py\n")
+        for name in ("rightArrow", "leftArrow"):
+            rows = [row[:10] for row in char_map(name, 7)[:7]]
+            f.write("%s 10 7\n" % name)
+            f.write("".join(row + "\n" for row in rows))
+    print("  -> bin/mods/menus2020/pixmaps.txt")
+
+    with open(os.path.join(args.swos2020, "src", "game.cpp"), encoding="latin-1") as f:
+        src = f.read()
+    m = re.search(r"void drawExitIcon\(int x, int y\)\s*\{\s*static const unsigned char kExitIconData\[\]\s*=\s*\{(.*?)\};",
+                  src, re.S)
+    if not m:
+        sys.exit("make_menus2020_icons: drawExitIcon's kExitIconData not found")
+    data = [int(v, 0) for v in re.findall(r"0x[0-9A-Fa-f]+", m.group(1))]
+    w, h = data[0], data[1]
+    small([data[2 + r * w:2 + (r + 1) * w] for r in range(h)], "quit")
 
     # The LIVE CAST TV (game.cpp, SWOS::drawTvIcon): a 42x38 housing over one of two screens
     # (idle / live), indices into the in-game palette its developer icons carry (0 = see-through).

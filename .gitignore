@@ -212,6 +212,7 @@ include/united_secrets.h
 
 # SWOS 2020 art made on the player's machine (scripts/make_menus2020_icons.py), never in git
 bin/mods/menus2020/grafs_2020/
+bin/mods/menus2020/pixmaps.txt
 
 # The Amiga's binary of the mods' JSON (swosdata --amiga-mod; the setup writes it in a drawer)
 bin/mods/*/challenges/
