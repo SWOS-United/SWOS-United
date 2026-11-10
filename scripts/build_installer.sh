@@ -180,6 +180,9 @@ if [ -f "$SETUP_EXE" ]; then
 else
     die "no $SETUP_EXE: build it with tools/swosdata/build.bat static (the installer runs it)"
 fi
+# SWOS United's DLC Manager, beside the game (scripts/build_dlc_manager.sh; nothing if it was not
+# built -- the .iss then makes no shortcut for it).
+scripts/build_dlc_manager.sh stage-windows "$STAGE_DIR" || die "cannot stage the DLC Manager"
 # The PortMaster port, for the setup's Handheld screen: it looks for portmaster/swos.zip in
 # the folders above its own (build_dist.sh's portmaster target builds it before this).
 if [ -f dist/portmaster/swos.zip ]; then
