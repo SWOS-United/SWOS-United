@@ -25,6 +25,7 @@
 #ifdef SWOS_SDL_BUILD
 
 #include "mjson.h"
+#include "united_ticker.h"
 #include "https_client.h"
 #include "gfx.h"
 
@@ -48,23 +49,76 @@ static uint32_t next_random(void)       /* (its own: the game's numbers are the 
     return s_seed;
 }
 
-static void parse(const char *json, int len)
+/* "openswos-news"'s items, each to `add`; a bad one skipped (mjson_find tells "no more" from "not
+ * readable": mjson_get_string fails on both). */
+static int32_t each_item(const char *json, int len, void (*add)(const char *, const char *, void *), void *ctx)
 {
     char fmt[32] = "";
+    int32_t given = 0;
     mjson_get_string(json, len, "$.format", fmt, (int)sizeof fmt);
     if (strcmp(fmt, "openswos-news") != 0)
-        return;
-    for (int32_t i = 0; s_count < kMaxItems; i++) {
-        char q[48];
+        return 0;
+    for (int32_t i = 0; i < 4096; i++) {
+        char q[48], text[256], link[512];
+        const char *tok = NULL;
+        int toklen = 0;
+        snprintf(q, sizeof q, "$.items[%d]", (int)i);
+        const int kind = mjson_find(json, len, q, &tok, &toklen);
+        if (kind == MJSON_TOK_INVALID)
+            break;                              /* (no more items) */
         snprintf(q, sizeof q, "$.items[%d].text", (int)i);
-        if (mjson_get_string(json, len, q, s_text[s_count], kTextLen) < 0)
-            break;
-        for (char *c = s_text[s_count]; *c; c++)    /* (the menu fonts are capitals) */
-            if (*c >= 'a' && *c <= 'z')
-                *c = (char)(*c - 32);
-        if (s_text[s_count][0])
-            s_count++;
+        if (kind != MJSON_TOK_OBJECT || mjson_get_string(json, len, q, text, (int)sizeof text) < 0) {
+            fprintf(stderr, "[ticker] news item %d skipped (not readable)\n", (int)i);
+            continue;
+        }
+        if (!text[0])
+            continue;
+        snprintf(q, sizeof q, "$.items[%d].link", (int)i);
+        if (mjson_get_string(json, len, q, link, (int)sizeof link) < 0)
+            link[0] = 0;
+        add(text, link, ctx);
+        given++;
     }
+    return given;
+}
+
+int32_t UnitedTicker_News(void (*add)(const char *text, const char *link, void *ctx), void *ctx)
+{
+    uint32_t size = 0;
+    int32_t given = 0;
+    char *json = (char *)ModApi_LoadFile(SLUG, "news.json", &size);
+    if (json) {
+        given = each_item(json, (int)size, add, ctx);
+        free(json);
+    }
+    if (!given) {
+        char path[1200];
+        const char *dir = ModApi_ModDir(SLUG);
+        FILE *f;
+        snprintf(path, sizeof path, "%s/data_json/ticker/news.json", dir ? dir : ".");
+        f = fopen(path, "rb");
+        if (f) {
+            static char buf[65536];
+            const size_t n = fread(buf, 1, sizeof buf - 1, f);
+            fclose(f);
+            buf[n] = 0;
+            given = each_item(buf, (int)n, add, ctx);
+        }
+    }
+    return given;
+}
+
+static void keep_item(const char *text, const char *link, void *ctx)
+{
+    (void)link;
+    (void)ctx;
+    if (s_count >= kMaxItems || !text[0])
+        return;
+    snprintf(s_text[s_count], kTextLen, "%s", text);
+    for (char *c = s_text[s_count]; *c; c++)    /* (the menu fonts are capitals) */
+        if (*c >= 'a' && *c <= 'z')
+            *c = (char)(*c - 32);
+    s_count++;
 }
 
 /* ---- the feed ---- */
@@ -156,28 +210,8 @@ static void feed_step(void)
 
 static void load(void)
 {
-    uint32_t size = 0;
-    char *json;
     s_loaded = 1;
-    json = (char *)ModApi_LoadFile(SLUG, "news.json", &size);
-    if (json) {
-        parse(json, (int)size);
-        free(json);
-    }
-    if (!s_count) {
-        char path[1200];
-        const char *dir = ModApi_ModDir(SLUG);
-        FILE *f;
-        snprintf(path, sizeof path, "%s/data_json/ticker/news.json", dir ? dir : ".");
-        f = fopen(path, "rb");
-        if (f) {
-            static char buf[16384];
-            const size_t n = fread(buf, 1, sizeof buf - 1, f);
-            fclose(f);
-            buf[n] = 0;
-            parse(buf, (int)n);
-        }
-    }
+    UnitedTicker_News(keep_item, NULL);
     s_seed ^= ModApi_Ticks();
     fprintf(stderr, "[ticker] %d news items\n", (int)s_count);
 }

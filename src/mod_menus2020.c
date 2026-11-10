@@ -39,7 +39,6 @@
 #include <string.h>
 #include <strings.h>          /* strncasecmp */
 
-#include "mjson.h"
 #include "dos_graphics.h"       /* DosGfx_DecodePlanarSprite */
 #include "dos_mode.h"           /* _gDosGraphicsDir */
 #include "edit_tactics.h"       /* FillSkinColorConversionTable */
@@ -50,6 +49,7 @@
 #include "menu_system.h"
 #include "menus.h"
 #include "platform_sdl.h"       /* Platform_OpenUrl, Platform_RequestQuit */
+#include "united_ticker.h"       /* UnitedTicker_News */
 
 #define SLUG "menus2020"
 
@@ -660,49 +660,31 @@ static void tick_add(const char *text, const char *link)
     s_tickCount++;
 }
 
-/* The ticker's news.json (save/mods/ticker, else its own), each time a list opens. */
+/* SWOS 2020's own first stream (loadNewsStr), before the feed's first "STREAM:" item. */
+static const char kOwnStream[] = "STREAM: SWOS.EU LIVE BROADCAST OF ONLINE MATCHES";
+static const char kOwnLink[] = "https://swos.eu/";
+
+static void tick_news(const char *text, const char *link, void *ctx)
+{
+    (void)ctx;
+    if (s_tickStreams < 0 && (strncmp(text, "STREAM:", 7) == 0 || strncmp(text, "stream:", 7) == 0)) {
+        s_tickStreams = s_tickCount;
+        tick_add(kOwnStream, kOwnLink);
+    }
+    tick_add(text, link);
+}
+
+/* The ticker's news (src/mod_united_ticker.c: save/mods/ticker, else its own), each time a list
+ * opens. */
 static void tick_load(void)
 {
-    uint32_t size = 0;
-    char *json = (char *)ModApi_LoadFile("ticker", "news.json", &size), *own = NULL;
     s_tickCount = 0;
     s_tickStreams = -1;
-    if (!json) {
-        char path[1200];
-        const char *dir = ModApi_ModDir("ticker");
-        FILE *f;
-        snprintf(path, sizeof path, "%s/data_json/ticker/news.json", dir ? dir : ".");
-        if ((f = fopen(path, "rb")) != NULL) {
-            own = (char *)malloc(65536);
-            size = own ? (uint32_t)fread(own, 1, 65535, f) : 0;
-            if (own)
-                own[size] = 0;
-            fclose(f);
-            json = own;
-            own = NULL;
-        }
-    }
-    static const char kOwnStream[] = "STREAM: SWOS.EU LIVE BROADCAST OF ONLINE MATCHES",
-                      kOwnLink[] = "https://swos.eu/";   /* (SWOS 2020's own first stream: loadNewsStr) */
-    for (int32_t i = 0; json && s_tickCount < kTickItems; i++) {
-        char q[48], text[kTickText], link[kTickLink];
-        snprintf(q, sizeof q, "$.items[%d].text", (int)i);
-        if (mjson_get_string(json, (int)size, q, text, (int)sizeof text) < 0)
-            break;
-        snprintf(q, sizeof q, "$.items[%d].link", (int)i);
-        if (mjson_get_string(json, (int)size, q, link, (int)sizeof link) < 0)
-            link[0] = 0;
-        if (s_tickStreams < 0 && (strncmp(text, "STREAM:", 7) == 0 || strncmp(text, "stream:", 7) == 0)) {
-            s_tickStreams = s_tickCount;
-            tick_add(kOwnStream, kOwnLink);
-        }
-        tick_add(text, link);
-    }
+    UnitedTicker_News(tick_news, NULL);
     if (s_tickStreams < 0) {
         s_tickStreams = s_tickCount;
         tick_add(kOwnStream, kOwnLink);
     }
-    free(json);
 }
 
 /* The list's i-th item, or -1. */
@@ -724,26 +706,56 @@ static void tickerInit(void)
     tick_load();
     if (s_tickPage[s_tickMode] >= tick_pages())
         s_tickPage[s_tickMode] = 0;
-    SetCurrentEntry(Tick_text0 + 1);
 }
 
+/* shortenNameEx: the text up to the letter that takes it past `limit` pixels, then "...". */
+static void tick_shorten(char *s, int32_t cap, int32_t limit)
+{
+    char probe[kTickText];
+    const int32_t len = (int32_t)strlen(s);
+    for (int32_t i = 0; i < len && i + 1 < (int32_t)sizeof probe; i++) {
+        memcpy(probe, s, (size_t)(i + 1));
+        probe[i + 1] = 0;
+        if (ModApi_TextWidth(probe, 1) > limit) {
+            if (i + 3 < cap)
+                memcpy(s + i, "...", 4);
+            return;
+        }
+    }
+}
+
+/* tickerMenu_OnDraw, for its TIPS AND REVIEWS / STREAMS AND VIDEOS lists. */
 static void tickerDraw(void)
 {
-    int32_t width = 0;
+    enum { kGray = 7, kHeaderColour = 4, kLightBlue = 13 };     /* (kLightBrownWithOrangeFrame) */
+    const int32_t sel = ModApi_MenuCurrentEntry();
+    int32_t chosen = -1;
     set_text(Tick_header, s_tickMode == 1 ? "TIPS AND REVIEWS" : "STREAMS AND VIDEOS");
     set_text(Tick_no0, "NO");
     set_text(Tick_cate0, "CATEGORY");
-    set_text(Tick_text0, "LINK COLLECTION");
-    for (int32_t r = 0; r <= kTickRows; r++) {      /* (its columns for the link lists) */
-        MenuEntry *no = entry(Tick_no0 + r), *cate = entry(Tick_cate0 + r), *text = entry(Tick_text0 + r);
-        no->x = 0;
-        cate->x = 24, cate->dwWidth = 50;
-        text->x = 76, text->dwWidth = 234;
-        width = text->dwWidth - 4;
+    set_text(Tick_text0, "                         LINK COLLECTION");
+    /* Its columns for the link lists: CATEGORY at 24, 50 wide, the text at 76, 234 wide -- SWOS
+     * 2020's screen x, where NO (ticker.mnu's x -8, left as it is) is at 0. */
+    for (int32_t r = 0; r <= kTickRows; r++) {
+        const MenuEntry *no = entry(Tick_no0 + r);
+        MenuEntry *cate = entry(Tick_cate0 + r), *text = entry(Tick_text0 + r);
+        cate->x = (uint16_t)(no->x + 24);
+        cate->dwWidth = 50;
+        text->x = (uint16_t)(no->x + 76);
+        text->dwWidth = 234;
     }
+    ModApi_MenuColour(Tick_no0, kHeaderColour);
+    ModApi_MenuColour(Tick_cate0, kHeaderColour);
+    ModApi_MenuColour(Tick_text0, kHeaderColour);
+    for (int32_t r = 0; r < kTickRows; r++)            /* (getCurrentTicker: any cell of the row) */
+        if (sel == Tick_no0 + 1 + r || sel == Tick_cate0 + 1 + r || sel == Tick_text0 + 1 + r)
+            chosen = r;
     for (int32_t r = 0; r < kTickRows; r++) {
         const int32_t it = tick_item(s_tickPage[s_tickMode] * kTickRows + r);
-        s_tickNo[r][0] = s_tickCate[r][0] = s_tickRow[r][0] = 0;
+        const int32_t colour = r == chosen ? kLightBlue : kGray;
+        s_tickNo[r][0] = 0;
+        s_tickCate[r][0] = 0;
+        s_tickRow[r][0] = 0;
         if (it >= 0) {
             const char *t = s_tick[it].text, *colon = strchr(t, ':');
             snprintf(s_tickNo[r], sizeof s_tickNo[r], "%d", (int)(s_tickPage[s_tickMode] * kTickRows + r + 1));
@@ -754,19 +766,22 @@ static void tickerDraw(void)
             while (*t == ' ')
                 t++;
             snprintf(s_tickRow[r], sizeof s_tickRow[r], "%s", t);
-            for (size_t n = strlen(s_tickRow[r]); n > 0 && ModApi_TextWidth(s_tickRow[r], 1) > width; n--)
-                s_tickRow[r][n - 1] = 0;            /* (shortenNameEx) */
+            tick_shorten(s_tickRow[r], (int32_t)sizeof s_tickRow[r], 295 - 26 - 62 + 56 - 14);
         }
         set_text(Tick_no0 + 1 + r, s_tickNo[r]);
         set_text(Tick_cate0 + 1 + r, s_tickCate[r]);
         set_text(Tick_text0 + 1 + r, s_tickRow[r]);
-        nav(Tick_text0 + 1 + r, -1, Tick_up, r ? Tick_text0 + r : -1,
+        ModApi_MenuColour(Tick_no0 + 1 + r, colour);
+        ModApi_MenuColour(Tick_cate0 + 1 + r, colour);
+        ModApi_MenuColour(Tick_text0 + 1 + r, colour);
+        /* rows 1-5 go right to the page up, 6-10 to the page down */
+        nav(Tick_text0 + 1 + r, -1, r < kTickRows / 2 ? Tick_up : Tick_down, r ? Tick_text0 + r : -1,
             r + 1 < kTickRows ? Tick_text0 + 2 + r : Tick_exit);
     }
     snprintf(s_tickPageText, sizeof s_tickPageText, "(%d OF %d)", (int)s_tickPage[s_tickMode] + 1, (int)tick_pages());
     set_text(Tick_page, s_tickPageText);
     nav(Tick_up, Tick_text0 + 1, -1, -1, Tick_down);
-    nav(Tick_down, Tick_text0 + 1, -1, Tick_up, Tick_exit);
+    nav(Tick_down, Tick_text0 + kTickRows, -1, Tick_up, Tick_exit);
     nav(Tick_exit, -1, Tick_down, Tick_text0 + kTickRows, -1);
 }
 
@@ -790,16 +805,17 @@ static void tickerOpen(void)
     Platform_OpenUrl(s_tick[it].link);
 }
 
+/* tickerScrollUp_onSelect / tickerScrollDown_onSelect: round from the first page to the last. */
 static void tickerUp(void)
 {
-    if (s_tickPage[s_tickMode] > 0)
-        s_tickPage[s_tickMode]--;
+    if (--s_tickPage[s_tickMode] < 0)
+        s_tickPage[s_tickMode] = tick_pages() - 1;
 }
 
 static void tickerDown(void)
 {
-    if (s_tickPage[s_tickMode] + 1 < tick_pages())
-        s_tickPage[s_tickMode]++;
+    if (++s_tickPage[s_tickMode] >= tick_pages())
+        s_tickPage[s_tickMode] = 0;
 }
 
 static void tick_list(int32_t mode)
