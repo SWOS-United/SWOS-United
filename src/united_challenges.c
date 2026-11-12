@@ -185,7 +185,7 @@ void United_DrawRating(int32_t halves, int32_t x, int32_t y)    /* (SWOS 2020's 
 
 /* ---- the challenges, from OpenSWOS's challenges mod ---- */
 
-typedef struct { char name[32]; int32_t done, all, closed; } Cat;
+typedef struct { char name[32], needs[160]; int32_t done, all, closed; } Cat;   /* closed: 1 never, 2 waiting for needs */
 typedef struct { char id[40], label[40]; int32_t difficulty, state; } Item;    /* state: 0 open, 1 done, 2 locked */
 
 static Cat     s_cats[24];
@@ -234,6 +234,7 @@ static void fetch_categories(void)
         c->done = atoi(field(&p));
         c->all = atoi(field(&p));
         c->closed = atoi(field(&p));
+        snprintf(c->needs, sizeof c->needs, "%s", p ? field(&p) : "");
         if (strcmp(c->name, "CUSTOM") != 0)     /* (the player's own: CUSTOM CHALLENGES) */
             s_numCats++;
         line = next;
@@ -310,22 +311,27 @@ static void test_state(void)
 
 /* ---- SELECT CATEGORY ---- */
 
-/* Six categories a page in SWOS 2020's buttons (act11 .. act32), MORE (act4) when there are more,
- * then - USER CREATED CONTENT - and CUSTOM CHALLENGES (actX). */
-static const int32_t k_catSlots[6] = { SelectCategoryMenu_act11, SelectCategoryMenu_act12, SelectCategoryMenu_act21,
-                                       SelectCategoryMenu_act22, SelectCategoryMenu_act31, SelectCategoryMenu_act32 };
-static char s_catText[6][40], s_moreText[24];
+/* SWOS 2020's screen (selectCategory.mnu, selectCategoryMenu_OnDraw): the wide button at the top
+ * (act4, its SWOS MASTERS), two rows of two under it (act11 .. act22), then - USER CREATED
+ * CONTENT - and CUSTOM CHALLENGES (actX). Five categories a page, in the pack's order (SWOS 2020's
+ * pack puts SWOS MASTERS first). Only when packs bring more is there a MORE: act31, wide, under the
+ * rows (act32 is never shown). */
+enum { kPerCatPage = 5 };
+static const int32_t k_catSlots[kPerCatPage] = { SelectCategoryMenu_act4, SelectCategoryMenu_act11, SelectCategoryMenu_act12,
+                                                 SelectCategoryMenu_act21, SelectCategoryMenu_act22 };
+static char s_catText[kPerCatPage][40], s_moreText[24];
 
 static int32_t cat_shift(void) { return (int32_t)entry_at(SelectCategoryMenu_exit)->x - 112; }
 static int32_t cat_shift_y(void) { return (int32_t)entry_at(SelectCategoryMenu_exit)->y - 186; }
+static int32_t cat_pages(void) { return s_numCats ? (s_numCats + kPerCatPage - 1) / kPerCatPage : 1; }
 
 static int32_t category_complete(const Cat *c) { return c->all && c->done == c->all; }
 
 static void category_AfterDraw(MenuEntry *e)
 {
-    for (int32_t s = 0; s < 6; s++)
+    for (int32_t s = 0; s < kPerCatPage; s++)
         if (e == entry_at(k_catSlots[s])) {
-            const int32_t k = s_catPage * 6 + s;
+            const int32_t k = s_catPage * kPerCatPage + s;
             if (k >= s_numCats)
                 return;
             const Cat *c = &s_cats[k];
@@ -340,39 +346,57 @@ static void category_AfterDraw(MenuEntry *e)
         }
 }
 
+static void place(int32_t ordinal, int32_t x, int32_t y, int32_t w)
+{
+    MenuEntry *e = entry_at(ordinal);
+    e->x = (uint16_t)(x + cat_shift());
+    e->y = (uint16_t)(y + cat_shift_y());
+    if (w)
+        e->dwWidth = (uint16_t)w;
+}
+
 static void selectCategoryMenu_layout(void)
 {
-    /* rows at 34, 58 and 82 (SWOS 2020's at 34, 64, 94 with the fifth and sixth hidden), MORE
-     * under them, the user-content line and CUSTOM CHALLENGES where they were (SWOS 2020's
-     * coordinates: the loaded menu stands shifted from them, as EXIT shows) */
-    static const int16_t ys[6] = { 34, 34, 58, 58, 82, 82 };
-    const int32_t shift = cat_shift(), shiftY = cat_shift_y();
-    for (int32_t s = 0; s < 6; s++) {
-        MenuEntry *e = entry_at(k_catSlots[s]);
-        e->y = (uint16_t)(ys[s] + shiftY);
-        e->x = (uint16_t)((s & 1 ? 162 : 2) + shift);
-        e->afterDrawCb = category_AfterDraw;
-    }
-    MenuEntry *more = entry_at(SelectCategoryMenu_act4);
-    more->x = (uint16_t)(72 + shift);
-    more->y = (uint16_t)(106 + shiftY);
+    /* SWOS 2020's coordinates (the loaded menu stands shifted from them, as EXIT shows): act4 at
+     * 34, the rows at 64 and 94, the line at 126 and CUSTOM CHALLENGES at 145 -- with a MORE, it
+     * at 124 and the two under it moved down to make room. */
+    const int32_t more = cat_pages() > 1;
+    place(SelectCategoryMenu_act4, 72, 34, 160);
+    place(SelectCategoryMenu_act11, 2, 64, 0);
+    place(SelectCategoryMenu_act12, 162, 64, 0);
+    place(SelectCategoryMenu_act21, 2, 94, 0);
+    place(SelectCategoryMenu_act22, 162, 94, 0);
+    place(SelectCategoryMenu_act31, 72, 124, 160);
+    place(SelectCategoryMenu_sepaLine, -8, more ? 141 : 126, 0);
+    place(SelectCategoryMenu_actX, 72, more ? 160 : 145, 0);
+    for (int32_t s = 0; s < kPerCatPage; s++)
+        entry_at(k_catSlots[s])->afterDrawCb = category_AfterDraw;
+    /* up and down: through MORE when it is there */
+    const int8_t below = (int8_t)(more ? SelectCategoryMenu_act31 : SelectCategoryMenu_actX);
+    entry_at(SelectCategoryMenu_act21)->downEntry = below;
+    entry_at(SelectCategoryMenu_act22)->downEntry = below;
+    entry_at(SelectCategoryMenu_actX)->upEntry = (int8_t)(more ? SelectCategoryMenu_act31 : SelectCategoryMenu_act21);
+    MenuEntry *m = entry_at(SelectCategoryMenu_act31);
+    m->upEntry = SelectCategoryMenu_act21;
+    m->downEntry = SelectCategoryMenu_actX;
+    m->leftEntry = m->rightEntry = -1;
+    entry_at(SelectCategoryMenu_act32)->isInvisible = 1;
 }
 
 static void selectCategoryMenu_OnInit(void)
 {
     fetch_categories();
-    if (s_catPage * 6 >= s_numCats)
+    if (s_catPage >= cat_pages())
         s_catPage = 0;
     selectCategoryMenu_layout();
 }
 
 static void selectCategoryMenu_OnDraw(void)
 {
-    const int32_t pages = (s_numCats + 5) / 6;
     selectCategoryMenu_layout();
-    for (int32_t s = 0; s < 6; s++) {
+    for (int32_t s = 0; s < kPerCatPage; s++) {
         MenuEntry *e = entry_at(k_catSlots[s]);
-        const int32_t k = s_catPage * 6 + s;
+        const int32_t k = s_catPage * kPerCatPage + s;
         e->isInvisible = k >= s_numCats;
         if (k >= s_numCats)
             continue;
@@ -382,10 +406,11 @@ static void selectCategoryMenu_OnDraw(void)
         set_text(e, s_catText[s]);
         set_back(e, done ? kLightBlue : c->closed ? kGray : kGreen);
     }
-    MenuEntry *more = entry_at(SelectCategoryMenu_act4);
-    more->isInvisible = pages <= 1;
-    snprintf(s_moreText, sizeof s_moreText, "MORE (%d / %d)", (int)s_catPage + 1, (int)(pages ? pages : 1));
+    MenuEntry *more = entry_at(SelectCategoryMenu_act31);
+    more->isInvisible = cat_pages() <= 1;
+    snprintf(s_moreText, sizeof s_moreText, "MORE (%d / %d)", (int)s_catPage + 1, (int)cat_pages());
     set_text(more, s_moreText);
+    set_back(more, kGreen);
 }
 
 static void selectCategoryMenu_OnReturn(void) {}
@@ -402,9 +427,16 @@ static void show(const char *name)
 
 static void open_category(int32_t slot)
 {
-    const int32_t k = s_catPage * 6 + slot;
+    const int32_t k = s_catPage * kPerCatPage + slot;
     if (k >= s_numCats)
         return;
+    if (s_cats[k].closed == 2) {            /* SWOS 2020's SWOS MASTERS (showCategoryIsNotAvailableMessage 1) */
+        char text[256];
+        snprintf(text, sizeof text, "FOLLOWING CATEGORIES SHOULD BE COMPLETED TO UNLOCK %s: %s.", s_cats[k].name,
+                 s_cats[k].needs);
+        ModApi_ShowError(text);
+        return;
+    }
     if (s_cats[k].closed) {
         ModApi_ShowError("THIS CATEGORY WILL BE AVAILABLE, AFTER RELEASING LATER.");
         return;
@@ -415,18 +447,18 @@ static void open_category(int32_t slot)
     fetch_categories();                     /* (what was beaten since) */
 }
 
-static void cat2_onSelect(void) { open_category(0); }
-static void cat3_onSelect(void) { open_category(1); }
-static void cat4_onSelect(void) { open_category(2); }
-static void cat5_onSelect(void) { open_category(3); }
-static void cat6_onSelect(void) { open_category(4); }
-static void cat7_onSelect(void) { open_category(5); }
-static void cat8_onSelect(void)             /* act4: MORE */
+/* SWOS 2020's handlers by entry: act11 cat2 .. act32 cat7, act4 cat8 */
+static void cat8_onSelect(void) { open_category(0); }   /* act4: the top one */
+static void cat2_onSelect(void) { open_category(1); }
+static void cat3_onSelect(void) { open_category(2); }
+static void cat4_onSelect(void) { open_category(3); }
+static void cat5_onSelect(void) { open_category(4); }
+static void cat6_onSelect(void)             /* act31: MORE */
 {
-    const int32_t pages = (s_numCats + 5) / 6;
-    if (pages > 1)
-        s_catPage = (s_catPage + 1) % pages;
+    if (cat_pages() > 1)
+        s_catPage = (s_catPage + 1) % cat_pages();
 }
+static void cat7_onSelect(void) {}          /* act32: never shown */
 
 static void catX_onSelect(void)             /* CUSTOM CHALLENGES: SWOS 2020's CREATE / SHARE / PLAY */
 {

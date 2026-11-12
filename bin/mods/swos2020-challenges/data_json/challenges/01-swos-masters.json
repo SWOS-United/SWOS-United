@@ -1,6 +1,6 @@
 {
  "format": "openswos-challenges",
- "version": 2,
+ "version": 3,
  "category": "SWOS MASTERS",
  "challenges": [
   {
@@ -43,7 +43,12 @@
     5
    ],
    "title": "LA BESTIA NEGRA",
-   "locked": true,
+   "unlock_after": [
+    "FIFA WORLD CUP",
+    "UEFA EURO CUP",
+    "ISS DELUXE",
+    "ISS 64"
+   ],
    "win": "draw"
   },
   {
@@ -86,7 +91,12 @@
     5
    ],
    "title": "MAGPIE HUNT",
-   "locked": true,
+   "unlock_after": [
+    "FIFA WORLD CUP",
+    "UEFA EURO CUP",
+    "ISS DELUXE",
+    "ISS 64"
+   ],
    "win": "win",
    "restart": {
     "kind": "corner",
@@ -161,7 +171,12 @@
      ]
     ]
    ],
-   "locked": true,
+   "unlock_after": [
+    "FIFA WORLD CUP",
+    "UEFA EURO CUP",
+    "ISS DELUXE",
+    "ISS 64"
+   ],
    "win": "win",
    "restart": {
     "kind": "free_kick",
@@ -224,7 +239,12 @@
      ]
     ]
    ],
-   "locked": true,
+   "unlock_after": [
+    "FIFA WORLD CUP",
+    "UEFA EURO CUP",
+    "ISS DELUXE",
+    "ISS 64"
+   ],
    "win": "win",
    "restart": {
     "kind": "free_kick",
@@ -294,7 +314,12 @@
      ]
     ]
    ],
-   "locked": true,
+   "unlock_after": [
+    "FIFA WORLD CUP",
+    "UEFA EURO CUP",
+    "ISS DELUXE",
+    "ISS 64"
+   ],
    "win": "draw"
   },
   {
@@ -343,7 +368,12 @@
      9
     ]
    ],
-   "locked": true,
+   "unlock_after": [
+    "FIFA WORLD CUP",
+    "UEFA EURO CUP",
+    "ISS DELUXE",
+    "ISS 64"
+   ],
    "win": "win",
    "restart": {
     "kind": "free_kick",
@@ -391,7 +421,12 @@
     5
    ],
    "title": "KAPUTT",
-   "locked": true,
+   "unlock_after": [
+    "FIFA WORLD CUP",
+    "UEFA EURO CUP",
+    "ISS DELUXE",
+    "ISS 64"
+   ],
    "win": "win"
   },
   {
@@ -434,7 +469,12 @@
     5
    ],
    "title": "NO SAMBA",
-   "locked": true,
+   "unlock_after": [
+    "FIFA WORLD CUP",
+    "UEFA EURO CUP",
+    "ISS DELUXE",
+    "ISS 64"
+   ],
    "win": "win",
    "restart": {
     "kind": "corner",
@@ -503,7 +543,12 @@
      ]
     ]
    ],
-   "locked": true,
+   "unlock_after": [
+    "FIFA WORLD CUP",
+    "UEFA EURO CUP",
+    "ISS DELUXE",
+    "ISS 64"
+   ],
    "win": "win",
    "restart": {
     "kind": "free_kick",
@@ -566,7 +611,12 @@
      ]
     ]
    ],
-   "locked": true,
+   "unlock_after": [
+    "FIFA WORLD CUP",
+    "UEFA EURO CUP",
+    "ISS DELUXE",
+    "ISS 64"
+   ],
    "win": "win",
    "restart": {
     "kind": "free_kick",
@@ -642,7 +692,12 @@
      ]
     ]
    ],
-   "locked": true,
+   "unlock_after": [
+    "FIFA WORLD CUP",
+    "UEFA EURO CUP",
+    "ISS DELUXE",
+    "ISS 64"
+   ],
    "win": "win"
   },
   {
@@ -692,7 +747,12 @@
      11
     ]
    ],
-   "locked": true,
+   "unlock_after": [
+    "FIFA WORLD CUP",
+    "UEFA EURO CUP",
+    "ISS DELUXE",
+    "ISS 64"
+   ],
    "win": "win",
    "restart": {
     "kind": "free_kick",
