@@ -601,6 +601,8 @@ int main(int argc, char **argv)
     opts.shoulder_buttons_off = 1;
     opts.esc_presses = 1;
     memset(opts.key_bind, 0, sizeof opts.key_bind);   /* no keys of the player's own */
+    opts.p2_keyboard = 0;         /* P1 AND P2 ON KEYBOARD: not chosen */
+    memset(opts.p2_key_bind, 0, sizeof opts.p2_key_bind);   /* (player 2's: the defaults) */
     opts.fire_hold_lockout = 0;   /* default: the original's fire-hold bug is FIXED */
     /* The tweaks that start ON (include/tweaks.h TWEAKS_DEFAULT_ON: the contest fix, SWOS 2020's
      * league rules), of those this build has; [tweaks] in SWOS.ini then says otherwise. */
@@ -632,7 +634,7 @@ int main(int argc, char **argv)
     opts.reports = 0;             /* a public release: the player opts in (SEND MATCH REPORTS) */
 #endif
     opts.arcade = 0;              /* default off — normal front-end menu */
-    opts.arcade_mode = 0;         /* GOLDEN GOAL */
+    snprintf(opts.arcade_mode, sizeof opts.arcade_mode, "%s", "GOLDEN GOAL");   /* (the arcade mod's first mode) */
     opts.arcade_game_seconds = 45;
     opts.arcade_golden_goal = 1;
     opts.arcade_penalties = 1;
@@ -969,6 +971,16 @@ int main(int argc, char **argv)
         } else if ((v = match_kv(a, "slang-selftest")) != NULL) {
             extern int32_t Slang_SelfTest(const char *preset);
             return Slang_SelfTest(v) ? 0 : 1;      /* (src/slang.c: a preset for every backend) */
+        } else if ((v = match_kv(a, "cpu-repl-selftest")) != NULL) {
+            extern int32_t CpuRepl_SelfTest(int32_t file, int32_t ordinal);
+            int f = -1, o = -1;
+            if (getenv("SWOS_WORLD"))
+                World_Set(getenv("SWOS_WORLD"));
+            if (sscanf(v, "%d,%d", &f, &o) != 2) {
+                fprintf(stderr, "--cpu-repl-selftest=<team file>,<ordinal>\n");
+                return 1;
+            }
+            return CpuRepl_SelfTest(f, o) ? 1 : 0;
         } else if (strcmp(a, "--custom-team-selftest") == 0) {
             if (getenv("SWOS_WORLD"))
                 World_Set(getenv("SWOS_WORLD"));
@@ -1328,6 +1340,24 @@ int main(int argc, char **argv)
     if (TestRules_Setting())
         fprintf(stderr, "[testing] no_injuries_cards = true: offline matches book and injure nobody\n");
 
+    /* The data setup given only SWOS 2020 (no PC game, no Amiga version) makes the PC data from
+     * its install as it is (tools/swosdata, ASSETS.ini pc_swos2020): SWOS 2020's art and its
+     * pitches, three to eight times the tiles of the PC game's, which only the PC drawing path
+     * loads -- the Amiga style's map (grafs_aga/SWCPICHn.MAP) is staged through the frontbuffer
+     * and does not fit it. So draw its ARTWORK, whatever SWOS.ini says. No commentary: its lines
+     * are not there, and the commentary is silent but for a player's own (sound_dos/commentary/). */
+    {
+        extern int32_t AssetsCheck_PcFromSwos2020(void);
+        extern int swos_data_exists(const char *rel);
+        if (AssetsCheck_PcFromSwos2020()) {
+            opts.dos_graphics = 1;
+            snprintf(opts.dos_dir, sizeof opts.dos_dir, "%s",
+                     swos_data_exists("grafs_2020/pitch1.dat") ? "grafs_2020" : "grafs_dos");
+            fprintf(stderr, "[assets] the PC data was made from SWOS 2020 (no PC game or Amiga version): "
+                            "its graphics (ARTWORK = SWOS 2020), no PC commentary, its menu.mp3 for the "
+                            "menu music\n");
+        }
+    }
     /* Publish DOS-mode flags for the game code (default = Amiga graphics). */
     _gDosGraphics = opts.dos_graphics;
     JagGfx_SetEnabled(opts.jag_graphics);
@@ -1343,6 +1373,13 @@ int main(int argc, char **argv)
         TouchControls_SetMode(opts.touch_controls);     /* the phones' on-screen controls */
         for (i = 0; i < 5; i++)
             InputSDL_SetKeyBinding(i, opts.key_bind[i]);
+        {   /* P1 AND P2 ON KEYBOARD (input_sdl.c) */
+            extern void InputSDL_SetP2Keyboard(int on);
+            extern int InputSDL_SetP2KeyBinding(int which, const char *name);
+            InputSDL_SetP2Keyboard(opts.p2_keyboard);
+            for (i = 0; i < 5; i++)
+                InputSDL_SetP2KeyBinding(i, opts.p2_key_bind[i]);
+        }
     }
     {   /* SWOS 2020's CONTROLS MENU, CONTROLLER SETUP, menu cursor and MULTIPLAYER SETTINGS (agent A) */
         extern void InputSDL_Configure(const PlatformInitOptions *o);
@@ -1459,8 +1496,16 @@ int main(int argc, char **argv)
      * Before anything reads the game's data -- translations included, which a mod may carry. */
     {
         const char *env = getenv("SWOS_MODS_ENABLED");
+        const char *list = s_modsArgSet ? s_modsArg : env ? env : opts.mods;
+        static char withArcade[sizeof opts.mods + 16];
         Mods_SetRig(s_rigRun);      /* (a rig proves the original: the gameplay mods stay off) */
-        Mods_Init(s_modsArgSet ? s_modsArg : env ? env : opts.mods, opts.mods_disabled);
+        /* The arcade cabinet plays by the arcade mod's rules (src/mod_arcade.c): it is on for the
+         * run whatever the lists say -- never written to SWOS.ini. */
+        if (opts.arcade && !s_rigRun) {
+            snprintf(withArcade, sizeof withArcade, "arcade%s%s", list && list[0] ? ", " : "", list ? list : "");
+            list = withArcade;
+        }
+        Mods_Init(list, opts.mods_disabled);
     }
     /* The built-in mods that are on, set up (include/mod_api.h ModDef.init): their entries and
      * their menus' handlers -- before the menus are built from JSON, which name them. */

@@ -44,6 +44,7 @@
  */
 #include "mod_hooks.h"    /* lobbyKeepsReady */
 #include "netplay_lobby.h"
+#include "world_rules.h"     /* the host's stoppage time */
 
 #ifdef SWOS_SDL_BUILD
 
@@ -63,6 +64,7 @@
 #include "test_rules.h"     /* the host's CARDS/INJURIES switch */
 #include "chat_style.h"     /* SWOS_CHAT_DYNAMIC_FONT */
 #include "match_chat.h"     /* MatchChat_Clean: what a chat line may hold */
+#include "mod_api.h"        /* ModFriendlyRules: a gameplay mod's rules for a friendly */
 
 #include <SDL.h>                        /* SDL_GetPerformanceCounter: key entropy fallback */
 #include <time.h>
@@ -601,9 +603,10 @@ static void apply_switches(uint16_t sw)
     /* CARDS/INJURIES off: the old tester builds' rule, for this match, on both machines,
      * from the kick-off on (test_rules.h; the recording says so -- netplay_match.c). */
     TestRules_Force((sw & NETPLAY_SW_CARDS_INJURIES) ? -1 : 1);
-    fprintf(stderr, "[lobby] the host's switches: short presses %s, kick-off sync %s, cards/injuries %s\n",
+    fprintf(stderr, "[lobby] the host's switches: short presses %s, kick-off sync %s, cards/injuries %s, "
+            "stoppage time %s\n",
             (sw & NETPLAY_SW_SHORT_PRESSES) ? "ON" : "OFF", (sw & NETPLAY_SW_KICKOFF_SYNC) ? "ON" : "OFF",
-            (sw & NETPLAY_SW_CARDS_INJURIES) ? "ON" : "OFF");
+            (sw & NETPLAY_SW_CARDS_INJURIES) ? "ON" : "OFF", (sw & NETPLAY_SW_STOPPAGE) ? "ON" : "OFF");
 }
 
 static void release_switches(void)
@@ -617,10 +620,49 @@ static void release_switches(void)
     TestRules_Force(-1);
 }
 
+/* A gameplay mod's rules for the match the host offers (docs/MODS.md §36: the arcade mod's) --
+ * decided here, on the host, from its own settings, and only for a single friendly. They go to
+ * the joiner as the rest of the match does: the mod's words in the kick-off state, the slow clock
+ * and the replays in the setup. The host's own AUTO REPLAYS and GAME LENGTH are put back after. */
+static int32_t  s_modRulesHeld;
+static uint16_t s_ownReplays, s_ownLength;
+
+static void arm_mod_rules(void)
+{
+    extern uint16_t _gameLength, _autoReplays;
+    ModFriendlyRules rules;
+    ModHooks_ClearMatchState();
+    if (s_lobby.rules.mode != LOBBY_MODE_FRIENDLY || s_lobby.rules.legs != 0 || !ModHooks_FriendlyRules(&rules))
+        return;
+    if (!s_modRulesHeld) {
+        s_ownReplays = _autoReplays;
+        s_ownLength  = s_lobby.rules.gameLength;   /* (the OPTIONS length assemble_match just set) */
+    }
+    s_modRulesHeld = 1;
+    if (rules.slowClock)
+        _gameLength = 3;
+    if (rules.autoReplays >= 0)
+        _autoReplays = (uint16_t)rules.autoReplays;
+    fprintf(stderr, "[lobby] a mod's rules for this friendly: %s (slow clock %s, replays %s)\n",
+            ModHooks_MatchName() ? ModHooks_MatchName() : "?", rules.slowClock ? "on" : "off",
+            _autoReplays ? "on" : "off");
+}
+
+static void release_mod_rules(void)
+{
+    extern uint16_t _gameLength, _autoReplays;
+    if (!s_modRulesHeld)
+        return;
+    s_modRulesHeld = 0;
+    _autoReplays = s_ownReplays;
+    _gameLength  = s_ownLength;         /* (the slow clock is the match's, never the player's option) */
+}
+
 void NetplayLobby_RestoreTactics(void)
 {
     int32_t i;
     release_switches();
+    release_mod_rules();
     if (!s_lobby.tacticsSaved)
         return;
     for (i = 0; i < 6; i++)
@@ -904,6 +946,8 @@ void NetplayLobby_Begin(int32_t localPlayer, const char *localName)
             uint16_t sw = NETPLAY_SW_DEFAULT & ~NETPLAY_SW_SHORT_PRESSES;
             if (InputSDL_PressLatch())
                 sw |= NETPLAY_SW_SHORT_PRESSES;
+            if (WorldRules_On(WRULE_STOPPAGE))     /* (a world's stoppage time, as the host has it) */
+                sw |= NETPLAY_SW_STOPPAGE;
             s_lobby.rules.switches = sw;
         }
         clamp_rules(&s_lobby.rules);
@@ -1398,6 +1442,7 @@ int32_t NetplayLobby_Start(void)
         return 1;
 
     assemble_match();
+    arm_mod_rules();                    /* (before the setup and the state are taken: both carry them) */
     make_packet_key(s_lobby.packetKey);
     BE_WRITE_U32(buf, START_MAGIC);
     BE_WRITE_U16(buf + 4, LOBBY_VERSION);
@@ -1427,6 +1472,7 @@ int32_t NetplayLobby_Start(void)
         fprintf(stderr, "[lobby] no kick-off state to offer (%s); each side kicks off from its own\n",
                 StateWire_ErrorName(k));
         k = 0;
+        ModHooks_ClearMatchState();     /* (a mod's rules would be the host's alone: none, then) */
     }
     if (P2PLink_Send(CH_START, buf, (uint32_t)(START_HEADER + 4 + n + k)) != 0) {
         free(buf);

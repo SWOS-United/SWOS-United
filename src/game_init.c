@@ -12,11 +12,14 @@
 #include "dos_gameplay.h"   /* ApplyGameStyle — DOS/Amiga match tuning */
 #include "endian_helpers.h"
 #include "game_types.h"
+#include "mod_hooks.h"   /* a gameplay mod's rules for a friendly */
+#include "mod_api.h"
 #include "play_match_menu.h"
 #include "string_utils.h"
 #ifdef SWOS_SDL_BUILD
 #include "uniform.h"        /* a kit chosen for this match (UNIFORM screen) */
 #endif
+#include "world_rules.h"    /* a world's CPU cards / injuries, keeper injuries */
 
 /* ---- External globals (in SWOS2.s code/BSS sections) ---- */
 extern uintptr_t _currentScorer;
@@ -360,7 +363,8 @@ static int32_t NoLoadPause(void)
 __attribute__((used, externally_visible))
 void UpdatePlayerInjuries(TeamGame *tg, TeamFileEx *teamFileBase)
 {
-    if (teamFileBase->team.teamControls == 1)  /* TEAM_COMPUTER */
+    if (teamFileBase->team.teamControls == 1 &&    /* TEAM_COMPUTER (a world's CPU INJURIES: kept) */
+        !WorldRules_CpuOpen(WRULE_CPU_INJURIES))
         return;
 
     for (int16_t i = 15; i >= 0; i--) {
@@ -535,7 +539,8 @@ void ApplyPlayerStatusAfterSim(TeamGame *tg, TeamFileEx *teamFileBase)
     if (_trainingGame != 0)
         return;
 
-    if (teamFileBase->team.teamControls == 1)  /* TEAM_COMPUTER */
+    if (teamFileBase->team.teamControls == 1 &&    /* TEAM_COMPUTER (a world's CPU RED CARDS: kept) */
+        !WorldRules_CpuOpen(WRULE_CPU_CARDS))
         return;
 
     for (int16_t i = 15; i >= 0; i--) {
@@ -1011,27 +1016,46 @@ cancelled:
  */
 __attribute__((used, externally_visible))
 void InitAndPlayGame(TeamFileEx *team1, TeamFileEx *team2) {
+    /* A gameplay mod's rules for a friendly (docs/MODS.md §36: the arcade mod's). Offline they
+     * are decided here, from the player's settings; in an online match (and a recording played
+     * again) they came with the host's kick-off state and setup, so nothing is decided here.
+     * What a mod asks of the setup -- the slow clock, the replays -- is the player's own again
+     * after the match. */
+    extern uint16_t _gameLength, _autoReplays;
+    int32_t online = 0, ruled = 0;
+    const uint16_t keepLength = _gameLength, keepReplays = _autoReplays;
+#ifdef SWOS_SDL_BUILD
+    { extern int32_t NetplayMatch_IsLive(void); online = NetplayMatch_IsLive(); }
+#endif
+    if (!online)
+        ModHooks_ClearMatchState();
+
     /* SetupPlayers: mode=0, maxSubs=_maxSubstitutes, excludeFlags=1, allowSquadChanges=1 */
     SetupPlayers(team1, team2, (int16_t)_maxSubstitutes, 1, 1, 0);
 
     if (_exitGameFlag != 0)
         goto done;
 
+    if (!online && _trainingGame == 0) {
+        ModFriendlyRules rules;
+        ruled = ModHooks_FriendlyRules(&rules);
+        if (ruled) {
+            if (rules.slowClock)
+                _gameLength = 3;
+            if (rules.autoReplays >= 0)
+                _autoReplays = (uint16_t)rules.autoReplays;
+        }
+    }
+
     /* Set game name */
     if (_trainingGame != 0) {
         StringCopy(_aTraining, _gameName);
     } else {
         extern const char *ModMatch_Name(void);  /* a mod's match's own (mod_match.c) */
-#ifdef SWOS_SDL_BUILD
-        extern int _gArcadeMode;
-        extern uint8_t _aArcadeMatchName[];   /* "GOLDEN GOAL" (arcade.c) */
-#endif
         if (ModMatch_Name())
             StringCopy((uint8_t *)ModMatch_Name(), _gameName);
-#ifdef SWOS_SDL_BUILD
-        else if (_gArcadeMode)
-            StringCopy(_aArcadeMatchName, _gameName);
-#endif
+        else if (ModHooks_MatchName())          /* the rules it plays by ("GOLDEN GOAL") */
+            StringCopy((uint8_t *)ModHooks_MatchName(), _gameName);
         else
         StringCopy(_aFriendly_1, _gameName);
     }
@@ -1063,6 +1087,11 @@ void InitAndPlayGame(TeamFileEx *team1, TeamFileEx *team2) {
 
 done:
     _isCareer = 0;
+    if (ruled) {
+        _gameLength = keepLength;
+        _autoReplays = keepReplays;
+    }
+    ModHooks_ClearMatchState();     /* (a cup or a career match after it never sees them) */
 }
 
 /* ========================================================================
@@ -1134,6 +1163,9 @@ void InitializeInGameTeamsAndStartGame(int16_t randomizePitch, int16_t minSubs,
     int16_t allowedInjuries;
     uint32_t avail;
 
+    /* A world's computer clubs field available players (CPU RED CARDS / CPU INJURIES): their
+     * injured and suspended starters swapped out for this match, the order back after it. */
+    WorldRules_CpuLineupsBegin(0, (TeamFileEx *)team1, (TeamFileEx *)team2, paramD3);
     _hilStarted = 0;
     /* The Rand2 save stack starts empty for every match.
      *
@@ -1336,12 +1368,14 @@ void InitializeInGameTeamsAndStartGame(int16_t randomizePitch, int16_t minSubs,
     /* Process team 1 */
     AccumulateMatchGoalsIntoTeamFile(&_topTeamInGame, (TeamFileEx *)team1, (uint16_t)paramD7);
     UpdatePlayerInjuries(&_topTeamInGame, (TeamFileEx *)team1);
+    WorldRules_GkAfterMatch(&_topTeamInGame, (TeamFileEx *)team1);     /* (a world's keeper injuries) */
     ApplyPlayerStatusAfterSim(&_topTeamInGame, (TeamFileEx *)team1);
     UpdateCareerPlayerStatsAfterMatch(&_topTeamInGame, (TeamFileEx *)team1);
 
     /* Process team 2 */
     AccumulateMatchGoalsIntoTeamFile(&_bottomTeamInGame, (TeamFileEx *)team2, (uint16_t)paramD7);
     UpdatePlayerInjuries(&_bottomTeamInGame, (TeamFileEx *)team2);
+    WorldRules_GkAfterMatch(&_bottomTeamInGame, (TeamFileEx *)team2);
     ApplyPlayerStatusAfterSim(&_bottomTeamInGame, (TeamFileEx *)team2);
     UpdateCareerPlayerStatsAfterMatch(&_bottomTeamInGame, (TeamFileEx *)team2);
 
@@ -1364,5 +1398,6 @@ post_match:
     }
 
     PrepareMenuForFadeIn();
+    WorldRules_CpuLineupsEnd(0);
     /* gameCanceled is tested by caller via return/tst.w */
 }

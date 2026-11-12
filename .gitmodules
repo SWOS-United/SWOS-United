@@ -11,9 +11,6 @@
 [submodule "third_party/swos-api"]
 	path = third_party/swos-api
 	url = https://github.com/SWOS-United/SWOS-API.git
-[submodule "third_party/swos-competition-engine"]
-	path = third_party/swos-competition-engine
-	url = https://github.com/aminta/swos-competition-engine
 [submodule "third_party/glslang"]
 	path = third_party/glslang
 	url = https://github.com/KhronosGroup/glslang.git

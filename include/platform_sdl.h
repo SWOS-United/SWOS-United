@@ -143,6 +143,9 @@ typedef struct {
     char                   key_bind[5][24];  /* [input] key_up/_down/_left/_right/_fire: the player's own
                                               * keys, SDL scancode names, beside the built-in ones.
                                               * Empty = none (input_sdl.c) */
+    int                    p2_keyboard;      /* [input] p2_keyboard: P1 AND P2 ON KEYBOARD (default off) */
+    char                   p2_key_bind[5][24];/* [input] p2_key_up .. p2_key_fire: player 2's keys on it,
+                                              * empty = the default (W S A D, Left Shift) */
     int                    latch_presses;    /* [input] latch_presses: a fire press that came and went
                                               * between two reads still counts (default on) */
     int                    touch_controls;   /* [input] touch_controls: TOUCH_CONTROLS_* -- the phones'
@@ -163,7 +166,7 @@ typedef struct {
                                               * logs and ratings to the server after an online
                                               * match. include/match_report.h */
     int                    arcade;           /* 1 = arcade/coin-op mode — boot to attract. PC-only. See docs/ARCADE.md */
-    int                    arcade_mode;         /* arcade game mode index (0 = GOLDEN GOAL) */
+    char                   arcade_mode[32];     /* arcade game mode, by name: one of the arcade mod's (src/mod_arcade.c) */
     int                    arcade_game_seconds; /* arcade match length in seconds (default 45) */
     int                    arcade_golden_goal;  /* 1 = first goal wins the match (default 1) */
     int                    arcade_penalties;    /* 1 = penalty shootout when drawn (default 1) */

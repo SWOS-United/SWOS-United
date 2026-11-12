@@ -14,7 +14,6 @@
 extern const ModDef ModDef_weather;     /* src/mod_weather.c */
 extern const ModDef ModDef_hair;        /* src/mod_hair.c */
 extern const ModDef ModDef_practice;    /* src/mod_practice.c */
-extern const ModDef ModDef_petarkuPractice; /* src/mod_petarku_practice.c */
 extern const ModDef ModDef_speedrun;    /* src/mod_speedrun.c */
 extern const ModDef ModDef_challenges;  /* src/mod_challenges.c */
 extern const ModDef ModDef_classics;    /* src/mod_classics.c */
@@ -31,6 +30,7 @@ extern const ModDef ModDef_scoreboard;  /* src/mod_scoreboard.c (SDL: SWOS 2020'
 extern const ModDef ModDef_netstats;    /* src/mod_netstats.c (SDL: SWOS 2020's network quality strip, F7) */
 extern const ModDef ModDef_pitchselect; /* src/mod_pitchselect.c (SDL: SWOS 2020's SELECT PITCH) */
 extern const ModDef ModDef_display2020; /* src/mod_display2020.c (SDL: SWOS 2020's result display; launcher options, agent B) */
+extern const ModDef ModDef_arcade;      /* src/mod_arcade.c (SDL: the arcade's game modes and their rules) */
 
 #if defined(__has_include)
 #if __has_include("fork_mods.inc")
@@ -55,7 +55,6 @@ const ModDef *const g_builtinMods[] = {
     MOD_SDL(ModDef_weather)
     MOD_SDL(ModDef_hair)
     MOD_AMIGA(ModDef_practice)
-    MOD_AMIGA(ModDef_petarkuPractice)
     MOD_AMIGA(ModDef_speedrun)
     MOD_AMIGA(ModDef_challenges)
     MOD_AMIGA(ModDef_classics)
@@ -72,6 +71,7 @@ const ModDef *const g_builtinMods[] = {
     MOD_SDL(ModDef_netstats)
     MOD_SDL(ModDef_pitchselect)
     MOD_SDL(ModDef_display2020)
+    MOD_SDL(ModDef_arcade)
 #ifdef FORK_MODS
     FORK_MOD_LIST                       /* "&ModDef_<slug>," a fork's mods */
 #endif

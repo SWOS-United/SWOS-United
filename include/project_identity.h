@@ -84,6 +84,15 @@
 /* SWOS 2020's ban list, "NAME, MODE, *" a line (src/online_account_united.c): read at each log-in. */
 #define PROJECT_BAN_LIST        "https://sensiblesoccer.de/swos2020/ban-users.txt"
 
+/* Where the project hosts World 2026-27's package and its credits (scripts/make_world_package.sh
+ * writes both; OpenSWOS Setup's World row downloads the zip and links the credits): OpenSWOS on its
+ * own site since 2026-11-12 (scripts/upload_dlc.sh -> openswos.net/dlc/), a fork on its own DLC
+ * host. "" for both hides the World row (a fork that does not offer it). */
+/* SWOS United: on its DLC host (the owner, 2026-11-12; put there by the DLC-Manager session -- a new
+ * package overwrites the same two files in dlc/swosutd/world/). */
+#define PROJECT_WORLD_PACKAGE_URL "https://www.sensiblesoccer.de/swos2020/dlc/swosutd/world/OpenSWOS-World-2627.zip"
+#define PROJECT_WORLD_CREDITS_URL "https://www.sensiblesoccer.de/swos2020/dlc/swosutd/world/OpenSWOS-World-2627.txt"
+
 /* SWOS 2020's online-menu entries for features this project will not have -- the log-in's NEWS,
  * MULTIPLAYER SETTINGS' commentary and chat rows, JOIN AMIGA SUPER LEAGUE, JOIN DISCORD, HELP
  * DESK (src/online_menus.c): 1 hides them, 0 keeps them for a fork that builds them. */
@@ -127,6 +136,14 @@
  * fork lists the ones its look is built on (SWOS United: dosmenus). */
 #define PROJECT_DEFAULT_MODS    "dosmenus, display2020, scoreboard"   /* (display2020: OpenSWOS's since 2026-11-10, off
                                                                             *  there; its scoreboard part is the scoreboard mod's) */
+
+/* OFF MODS: canonical mods this game turns OFF by default whatever their manifest's "default"
+ * says -- still listed, and a player may turn them on ([mods] enabled). Slugs, separated by commas
+ * or spaces. OpenSWOS: none. A fork lists the ones its game does without (SWOS United: the
+ * challenge packs that are not SWOS 2020's). */
+/* SWOS United: SWOS 2020's challenges alone, as its SELECT CATEGORY had them (Playaveli, 2026-11-12):
+ * OpenSWOS's CLASSICS and petarku's COLLECTION are there for a player who turns them on. */
+#define PROJECT_OFF_MODS        "challenge-classics, challenge-collection"
 
 /* The menu shading mod's (dosmenus) look at start-up: 0 the PC's shading, 1 the Amiga's flat
  * menus (F5 switches it while the game runs). Both OpenSWOS and SWOS United: 1 (the owner, 2026-11-09). */
