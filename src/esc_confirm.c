@@ -62,14 +62,17 @@ static void draw(int quit, int blink)
     _menu_draw_x_offset = 0;
     Platform_HudLayerMark(bx - 4, 72, 158, 100);
     FillRectangle((uint16_t)(bx - 4), 72, 158, 100, 0);        /* (clear the last one) */
-    DrawMenuBack150x20(11, (uint16_t)bx, 78);                  /* (blue: 2 is white, the text's) */
+    /* The match's palette (gamePalette), not the menus': 13 light blue, 14 green, 10 red, 2 white
+     * -- each box keeps its colour, the frame shows the choice (Playa, 2026-11-11). */
+    DrawMenuBack150x20(13, (uint16_t)bx, 78);
     DrawMenuTextCentered((uint16_t)cx, 84, 2, (uint8_t *)"QUIT THE MATCH?", _bigCharsTable);
-    DrawMenuBack150x20(quit ? 12 : 14, (uint16_t)bx, 112);
+    DrawMenuBack150x20(14, (uint16_t)bx, 112);
     DrawMenuTextCentered((uint16_t)cx, 118, 2, (uint8_t *)"RESUME", _bigCharsTable);
-    DrawMenuBack150x20(quit ? 14 : 12, (uint16_t)bx, 142);
+    DrawMenuBack150x20(10, (uint16_t)bx, 142);
     DrawMenuTextCentered((uint16_t)cx, 148, 2, (uint8_t *)"QUIT", _bigCharsTable);
-    if (blink) {                                               /* the chosen one framed */
-        const uint16_t y = quit ? 142 : 112, c = 15;
+    if (blink) {                                               /* the chosen one framed, white as
+                                                                * the menus' cursor */
+        const uint16_t y = quit ? 142 : 112, c = 2;
         FillRectangle((uint16_t)bx, y, 150, 1, c);
         FillRectangle((uint16_t)bx, (uint16_t)(y + 19), 150, 1, c);
         FillRectangle((uint16_t)bx, y, 1, 20, c);
