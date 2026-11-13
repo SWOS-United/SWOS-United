@@ -314,8 +314,9 @@ static void test_state(void)
 /* SWOS 2020's screen (selectCategory.mnu, selectCategoryMenu_OnDraw): the wide button at the top
  * (act4, its SWOS MASTERS), two rows of two under it (act11 .. act22), then - USER CREATED
  * CONTENT - and CUSTOM CHALLENGES (actX). Five categories a page, in the pack's order (SWOS 2020's
- * pack puts SWOS MASTERS first). Only when packs bring more is there a MORE: act31, wide, under the
- * rows (act32 is never shown). */
+ * pack puts SWOS MASTERS first). MORE (act31, wide, under the rows; act32 is never shown) is always
+ * there, greyed out and passed over while there is one page (the owner, 2026-11-13: SWOS 2020's
+ * pack alone), green when packs bring more. */
 enum { kPerCatPage = 5 };
 static const int32_t k_catSlots[kPerCatPage] = { SelectCategoryMenu_act4, SelectCategoryMenu_act11, SelectCategoryMenu_act12,
                                                  SelectCategoryMenu_act21, SelectCategoryMenu_act22 };
@@ -358,17 +359,17 @@ static void place(int32_t ordinal, int32_t x, int32_t y, int32_t w)
 static void selectCategoryMenu_layout(void)
 {
     /* SWOS 2020's coordinates (the loaded menu stands shifted from them, as EXIT shows): act4 at
-     * 34, the rows at 64 and 94, the line at 126 and CUSTOM CHALLENGES at 145 -- with a MORE, it
-     * at 124 and the two under it moved down to make room. */
-    const int32_t more = cat_pages() > 1;
+     * 34, the rows at 64 and 94, MORE at 124 (always there: greyed out with one page), the line at
+     * 141 and CUSTOM CHALLENGES at 160 -- moved down from SWOS 2020's 126 / 145 to make room. */
+    const int32_t more = cat_pages() > 1;      /* (MORE works: the cursor goes through it) */
     place(SelectCategoryMenu_act4, 72, 34, 160);
     place(SelectCategoryMenu_act11, 2, 64, 0);
     place(SelectCategoryMenu_act12, 162, 64, 0);
     place(SelectCategoryMenu_act21, 2, 94, 0);
     place(SelectCategoryMenu_act22, 162, 94, 0);
     place(SelectCategoryMenu_act31, 72, 124, 160);
-    place(SelectCategoryMenu_sepaLine, -8, more ? 141 : 126, 0);
-    place(SelectCategoryMenu_actX, 72, more ? 160 : 145, 0);
+    place(SelectCategoryMenu_sepaLine, -8, 141, 0);
+    place(SelectCategoryMenu_actX, 72, 160, 0);
     for (int32_t s = 0; s < kPerCatPage; s++)
         entry_at(k_catSlots[s])->afterDrawCb = category_AfterDraw;
     /* up and down: through MORE when it is there */
@@ -407,10 +408,14 @@ static void selectCategoryMenu_OnDraw(void)
         set_back(e, done ? kLightBlue : c->closed ? kGray : kGreen);
     }
     MenuEntry *more = entry_at(SelectCategoryMenu_act31);
-    more->isInvisible = cat_pages() <= 1;
-    snprintf(s_moreText, sizeof s_moreText, "MORE (%d / %d)", (int)s_catPage + 1, (int)cat_pages());
+    more->isInvisible = 0;
+    more->isDisabled = (uint16_t)(cat_pages() <= 1);
+    if (cat_pages() > 1)
+        snprintf(s_moreText, sizeof s_moreText, "MORE (%d / %d)", (int)s_catPage + 1, (int)cat_pages());
+    else
+        snprintf(s_moreText, sizeof s_moreText, "MORE");
     set_text(more, s_moreText);
-    set_back(more, kGreen);
+    set_back(more, cat_pages() > 1 ? kGreen : kGray);
 }
 
 static void selectCategoryMenu_OnReturn(void) {}
