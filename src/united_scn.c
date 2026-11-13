@@ -21,6 +21,8 @@
 #include "7zCrc.h"
 #include "mjson.h"
 
+#include <SDL.h>                   /* SDL_strcasecmp */
+
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -129,6 +131,72 @@ static int32_t unpack(const unsigned char *data, uint32_t size, Scn *out)
     SzArEx_Free(&db, &alloc);
     free(lookBuf);
     return ok && out->ini;
+}
+
+int32_t United7z_FirstFile(const unsigned char *data, uint32_t size, const char *ext, unsigned char **out,
+                           uint32_t *outSize)
+{
+    static int crcReady;
+    ISzAlloc alloc = { SzAlloc, SzFree };
+    MemStream ms;
+    CLookToRead2 look;
+    CSzArEx db;
+    UInt32 blockIndex = 0xFFFFFFFF;
+    Byte *outBuf = NULL;
+    size_t outBufSize = 0;
+    Byte *lookBuf = (Byte *)malloc(1 << 14);
+    const size_t extLen = strlen(ext);
+    int32_t found = 0;
+    *out = NULL;
+    *outSize = 0;
+    if (!lookBuf)
+        return 0;
+    if (!crcReady) {
+        CrcGenerateTable();
+        crcReady = 1;
+    }
+    ms.vt.Read = mem_read;
+    ms.vt.Seek = mem_seek;
+    ms.data = data;
+    ms.size = size;
+    ms.pos = 0;
+    LookToRead2_CreateVTable(&look, False);
+    look.buf = lookBuf;
+    look.bufSize = 1 << 14;
+    look.realStream = &ms.vt;
+    LookToRead2_INIT(&look)
+    SzArEx_Init(&db);
+    if (SzArEx_Open(&db, &look.vt, &alloc, &alloc) != SZ_OK) {
+        SzArEx_Free(&db, &alloc);
+        free(lookBuf);
+        return 0;
+    }
+    for (UInt32 i = 0; i < db.NumFiles && !found; i++) {
+        size_t offset = 0, got = 0;
+        UInt16 wname[256];
+        char name[256];
+        if (SzArEx_IsDir(&db, i) || SzArEx_GetFileNameUtf16(&db, i, NULL) > 256)
+            continue;
+        const size_t len = SzArEx_GetFileNameUtf16(&db, i, wname);
+        for (size_t k = 0; k < len; k++)
+            name[k] = (char)(wname[k] < 128 ? wname[k] : '_');
+        name[len ? len - 1 : 0] = 0;
+        const size_t n = strlen(name);
+        if (n < extLen || SDL_strcasecmp(name + n - extLen, ext) != 0)
+            continue;
+        if (SzArEx_Extract(&db, &look.vt, i, &blockIndex, &outBuf, &outBufSize, &offset, &got, &alloc, &alloc) != SZ_OK)
+            break;
+        *out = (unsigned char *)malloc(got ? got : 1);
+        if (*out) {
+            memcpy(*out, outBuf + offset, got);
+            *outSize = (uint32_t)got;
+            found = 1;
+        }
+    }
+    ISzAlloc_Free(&alloc, outBuf);
+    SzArEx_Free(&db, &alloc);
+    free(lookBuf);
+    return found;
 }
 
 /* ---- challenge.ini ---- */

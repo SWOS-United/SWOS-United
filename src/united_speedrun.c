@@ -19,9 +19,11 @@
 
 #include "menu_load_json.h"
 #include "menu_system.h"
+#include "platform_sdl.h"         /* PlatformInitOptions (the remembered log-in name) */
 #include "swos2020_menus.h"
 #include "united_ui.h"
 
+#include <SDL.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -118,12 +120,27 @@ static void arrow_AfterDraw(MenuEntry *e)
 static char s_me[40];
 static const char *me_upper(void)
 {
+    extern PlatformInitOptions *g_arcadeOpts;
     const char *u = United_UserName();
     uint32_t i = 0;
+    /* (not logged in this session: the remembered log-in name, as the boards are read for it --
+     *  SWOS 2020 highlighted its logged-in player) */
+    if ((!u || !u[0]) && g_arcadeOpts && g_arcadeOpts->netplay_remember)
+        u = g_arcadeOpts->netplay_name;
     for (; u && u[i] && i + 1 < sizeof s_me; i++)
         s_me[i] = (char)(u[i] >= 'a' && u[i] <= 'z' ? u[i] - 32 : u[i]);
     s_me[i] = 0;
     return s_me;
+}
+
+/* SWOS 2020's drawMapEx(map, x, y, ...) on the shown menu: its pictures are the speedrun mod's
+ * (bin/mods/speedrun/pixmaps.txt), x, y SWOS 2020's screen -- its menus' entries 8 right of where
+ * they are imported here, so 8 less -- placed by the menu's first entry, at s_picX0, 0 as imported
+ * (where it is drawn has the screen's centring in it). From an onDraw that set s_picX0. */
+static int32_t s_picX0;
+static void pic(const char *name, int32_t sx, int32_t sy, int32_t ox, int32_t oy, int32_t w, int32_t h)
+{
+    ModApi_DrawMapAtEntry("speedrun", name, 0, sx - 8 - s_picX0, sy, ox, oy, w, h, 0);
 }
 
 /* ---- SPEEDRUN: the targets ---- */
@@ -162,6 +179,19 @@ static void speedrunMainMenuOnDraw(void)
     else if (sel == SpeedrunMainMenu_news)
         line = "CHECK OUT THE LATEST RUNS AND RECORDS";
     set_text(entry_at(SpeedrunMainMenu_HelpMsg), line);
+
+    /* speedrunMainMenuOnDraw's pictures: a ball by 1, 3 and 10 GOALS, a tick by MATCH; the header,
+     * the tackle and the two cards by theirs; the trophies by MY RECORDS */
+    s_picX0 = 102;                      /* (speedrunMainHeader, as imported) */
+    for (int32_t k = 0; k < 3; k++)
+        pic("ball_8x8_5x1_Map", 27, 35 + 27 * k, 0, 0, 8, 8);
+    pic("check_12x13_2x1_Map", 27, 35 + 27 * 3, 0, 0, 12, 13);
+    pic("header_and_tackle_16x22_2x1_Map", 285, 35 + 27 * 0, 0, 0, 16, 22);
+    pic("header_and_tackle_16x22_2x1_Map", 285, 35 + 27 * 1, 16, 0, 16, 22);
+    pic("cards_24x15_5x1_Map", 285, 35 + 27 * 2, 0, 0, 24, 15);
+    pic("cards_24x15_5x1_Map", 285, 35 + 27 * 3, 24, 0, 24, 15);
+    pic("trophiesMap", 105 - 70, 147, 0, 14 * 8, 16, 14);
+    pic("trophiesMap", 202 - 70, 147, 0, 14 * 0, 16, 14);
 }
 
 static void pick_target(int32_t t)
@@ -207,7 +237,19 @@ static void selectSpeedrunDifficultyMenuOnInit(void)
     for (int32_t d = 0; d < 5; d++)
         entry_at(SelectSpeedrunDifficultyMenu_beginner + d)->afterDrawCb = stars_AfterDraw;
 }
-static void selectSpeedrunDifficultyMenuOnDraw(void) { selectSpeedrunDifficultyMenuOnInit(); }
+static void selectSpeedrunDifficultyMenuOnDraw(void)
+{
+    selectSpeedrunDifficultyMenuOnInit();
+    /* its trophies by the five (the stars are the buttons' afterDraws), and FREE TEAM CHOICE's
+     * arrow under SELECT TEAMS */
+    static const int8_t kTrophy[5] = { 1, 3, 5, 4, 8 };
+    s_picX0 = 72;                       /* (selectSpeedrunDifficultyHeader, as imported) */
+    for (int32_t k = 0; k < 5; k++) {
+        const int32_t t = kTrophy[k], shift = t == 1 || t == 3;
+        pic("trophiesMap", 94 + 70 + 2 * shift, 47 + 27 * k - 2 * shift, 0, 14 * t, 16, 14);
+    }
+    pic("arrows_default_scaled_Map", 40 + 42, 44 + 20, 0, 0, 24, 24);
+}
 static void selectSpeedrunTeams_OnSelect(void) { play(-1); }
 static void beginner_OnSelect(void) { play(0); }
 static void amateur_OnSelect(void) { play(1); }
@@ -244,6 +286,7 @@ static char  s_board[65536];
 static int32_t s_boardState = -1;       /* 0 here, 1 waiting, -1 none */
 static char  s_lbStyleText[40], s_lbModeText[24], s_lbPageText[24];
 static char  s_lbCells[kBoardRows][5][24];
+static char  s_lbFiles[kBoardRows][96];  /* each row's best run's replay ("....RPL"), "" none */
 static int32_t s_lbFresh;
 
 /* SWOS 2020's order through the targets: down the left column, then the right */
@@ -265,6 +308,10 @@ static void leaderboard_fetch(void)
     s_boardState = ModApi_CallService("online-records", "speedrun.board", args, s_board, sizeof s_board);
 }
 
+static void lb_style(int32_t step);
+static int32_t play_replay(const char *file, int32_t style);
+static void lb_mode(int32_t step);
+static void lb_diff(int32_t step);
 static void leaderboardMenuOnInit(void) { s_boardState = 1; s_lbFresh = 0; }
 static void leaderboardMenuOnReturn(void) {}
 
@@ -291,8 +338,11 @@ static void leaderboardMenuOnDraw(void)
     /* the rows of this difficulty, in place order */
     int32_t n = 0, shown = 0;
     for (int32_t r = 0; r < kBoardRows; r++)
+    {
         for (int32_t c = 0; c < 5; c++)
             s_lbCells[r][c][0] = 0;
+        s_lbFiles[r][0] = 0;
+    }
     if (s_boardState == 0) {
         static char copy[65536];
         snprintf(copy, sizeof copy, "%s", s_board);
@@ -306,6 +356,7 @@ static void leaderboardMenuOnDraw(void)
                 if (n >= s_lbPage * kBoardRows && shown < kBoardRows) {
                     char *rank = field(&p), *date = field(&p), *user = field(&p), *played = field(&p);
                     const int32_t frames = atoi(field(&p));
+                    snprintf(s_lbFiles[shown], sizeof s_lbFiles[shown], "%s", field(&p));
                     snprintf(s_lbCells[shown][0], 24, "%s", rank);
                     snprintf(s_lbCells[shown][1], 24, "%s", date);
                     snprintf(s_lbCells[shown][2], 24, "%.14s", user);
@@ -336,6 +387,56 @@ static void leaderboardMenuOnDraw(void)
     entry_at(LeaderboardMenu_leaderboard_ScrollUp)->afterDrawCb = arrow_AfterDraw;
     entry_at(LeaderboardMenu_leaderboard_ScrollDown)->afterDrawCb = arrow_AfterDraw;
     entry_at(LeaderboardMenu_makeRecordFrame)->isInvisible = 1;
+
+    /* SWOS 2020's yellow arrows either side of the style, the target and the difficulty
+     * (arrows_12x12_13x1_Map: left 6, right 2; its entries stay to be clicked) ... */
+    static const int32_t ay[3] = { 1 + 4, 28 + 5 - 15 + 4, 28 + 5 + 4 }, axl[3] = { 95 - 10 + 2, 95 + 2, 95 + 2 },
+                         axr[3] = { 215 + 10 - 2 + 1, 215 - 2 + 1, 215 - 2 + 1 };
+    s_picX0 = 92;                       /* (gameStyle, as imported) */
+    for (int32_t k = 0; k < 3; k++) {
+        pic("arrows_12x12_13x1_Map", axl[k], ay[k], 12 * 6, 0, 12, 12);
+        pic("arrows_12x12_13x1_Map", axr[k], ay[k], 12 * 2, 0, 12, 12);
+    }
+    /* ... and LEFT / RIGHT on one of the three steps it as its arrows do (SWOS 2020's
+     * finalControlsStatus 6 / 2 in leaderboardMenuOnDraw) */
+    {
+        extern uint16_t _menuControlsDirection;
+        const int32_t sel = selected_ordinal(), step = _menuControlsDirection == 2 ? 1 : _menuControlsDirection == 6 ? -1 : 0;
+        if (step && sel == LeaderboardMenu_gameStyle)
+            lb_style(step);
+        else if (step && sel == LeaderboardMenu_gameMode)
+            lb_mode(step);
+        else if (step && sel == LeaderboardMenu_difficulty)
+            lb_diff(step);
+    }
+    /* SWOS 2020's links (leaderboardMenuOnDraw, "menu navi"): the BEST column a list of its own,
+     * reached from the difficulty and left for the scroll arrows -- the times to be chosen with the
+     * keys and the pad, not the mouse alone (Playa) */
+    for (int32_t r = 0; r < kBoardRows; r++) {
+        const int32_t best = LeaderboardMenu_best_00 + 1 + r;
+        ModApi_MenuNav4(best, -1, r < 5 ? LeaderboardMenu_leaderboard_ScrollUp : LeaderboardMenu_leaderboard_ScrollDown,
+                        r ? best - 1 : LeaderboardMenu_difficulty, r + 1 < kBoardRows ? best + 1 : LeaderboardMenu_exit);
+    }
+    ModApi_MenuNav4(LeaderboardMenu_difficulty, -1, -1, LeaderboardMenu_gameMode, LeaderboardMenu_best_00 + 1);
+    ModApi_MenuNav4(LeaderboardMenu_leaderboard_ScrollUp, LeaderboardMenu_best_00 + 1, -1, -1,
+                    LeaderboardMenu_leaderboard_ScrollDown);
+    ModApi_MenuNav4(LeaderboardMenu_leaderboard_ScrollDown, LeaderboardMenu_best_00 + kBoardRows, -1,
+                    LeaderboardMenu_leaderboard_ScrollUp, LeaderboardMenu_exit);
+    ModApi_MenuNav4(LeaderboardMenu_exit, LeaderboardMenu_difficulty_Dec, LeaderboardMenu_difficulty_Inc,
+                    LeaderboardMenu_best_00 + kBoardRows, -1);
+
+    /* SWOS_SPEEDRUN_REPLAY_TEST=1 (--menu=swos2020/leaderboardMenu): once the board is here, the
+     * second place's run downloaded and played, then the game quits -- 0 when it played */
+    {
+        static int32_t tested;
+        if (!tested && s_boardState == 0 && getenv("SWOS_SPEEDRUN_REPLAY_TEST")) {
+            tested = 1;
+            const int32_t rc = play_replay(s_lbFiles[1], s_lbStyle);
+            fprintf(stdout, "SPEEDRUN REPLAY TEST %s: %s\n", rc == 0 ? "PASS" : "FAIL", s_lbFiles[1]);
+            fflush(stdout);
+            exit(rc == 0 ? 0 : 1);
+        }
+    }
 }
 
 static void lb_style(int32_t step)
@@ -368,7 +469,59 @@ static void gameMode_Inc_onSelect(void) { lb_mode(1); }
 static void difficulty_onSelect(void) { lb_diff(1); }
 static void difficulty_Dec_onSelect(void) { lb_diff(-1); }
 static void difficulty_Inc_onSelect(void) { lb_diff(1); }
-static void bestRecordInLeaderboard_OnSelect(void) {}     /* (SWOS 2020 played the run's replay) */
+/* A best time: that run's replay, as SWOS 2020's bestRecordInLeaderboard_OnSelect -- asked first,
+ * downloaded from the records site (a .7z of its .RPL; the online-records service), played whole
+ * in the highlights viewer at its own style's rate (the .RPL's game style). */
+static void bestRecordInLeaderboard_OnSelect(void)
+{
+    static const char *const kYesExit[2] = { "YES", "EXIT" }, *const kOk[1] = { "OK" };
+    const int32_t row = selected_ordinal() - (LeaderboardMenu_best_00 + 1);
+    if (row < 0 || row >= kBoardRows)
+        return;
+    if (!s_lbFiles[row][0]) {
+        ModApi_ShowDialog("SPEEDRUN REPLAY", "NO REPLAY FOR THIS PLACE", kOk, 1, 0);
+        return;
+    }
+    if (ModApi_ShowDialog("SPEEDRUN REPLAY", "ARE YOU SURE TO REPLAY|THE RECORDED REPLAY FILE?", kYesExit, 2, 0) != 0)
+        return;
+    if (play_replay(s_lbFiles[row], s_lbStyle) != 0)
+        ModApi_ShowDialog("SPEEDRUN REPLAY", "REPLAY FILE IS NOT AVAILABLE", kOk, 1, 0);
+}
+
+/* A board's run (its .RPL's name): downloaded, then played whole in the highlights viewer at the
+ * board's style's rate (SWOS 2020's g_CustomFPS = the board's game style: the .RPL's own style
+ * byte is not one of ours). 0 played. */
+static int32_t play_replay(const char *file, int32_t style)
+{
+    extern void ShowHighlights(void);
+    extern void DosReplay_ClearRpl(void);
+    extern int  DosReplay_LoadRpl(uint8_t *filename);
+    extern void ReplayV2_Unload(void);
+    extern int  swos_io_save(const uint8_t *name, const uint8_t *buf, uint32_t size);
+    char args[200], f[160];
+    snprintf(args, sizeof args, "{\"file\":\"%s\"}", ModApi_JsonEscape(file, f, sizeof f));
+    int32_t rc = 1;
+    for (int32_t waited = 0; rc == 1 && waited < 30000; waited += 20) {
+        rc = ModApi_CallService("online-records", "speedrun.replay", args, NULL, 0);
+        if (rc == 1)
+            SDL_Delay(20);
+    }
+    uint32_t size = 0;
+    uint8_t *data = rc == 0 ? (uint8_t *)ModApi_LoadFile("speedrun2020", "run.RPL", &size) : NULL;
+    const int32_t saved = data && swos_io_save((const uint8_t *)"SPEEDRUN.RPL", data, size) == 0;
+    free(data);
+    DosReplay_ClearRpl();
+    ReplayV2_Unload();
+    if (!saved || DosReplay_LoadRpl((uint8_t *)"SPEEDRUN.RPL") != 0)
+        return -1;
+    {
+        extern int _replayPlaybackFps;
+        _replayPlaybackFps = style_fps(style);
+    }
+    ShowHighlights();
+    DosReplay_ClearRpl();
+    return 0;
+}
 static void leaderboard_ScrollUp_onSelect(void) { if (s_lbPage > 0) s_lbPage--; }
 static void leaderboard_ScrollDown_onSelect(void) { s_lbPage++; }
 static void leaderboardExit_OnSelect(void) { SetExitMenuFlag(); }
