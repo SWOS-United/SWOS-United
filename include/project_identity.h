@@ -144,7 +144,9 @@
  * says -- still listed, and a player may turn them on ([mods] enabled). Slugs, separated by commas
  * or spaces. OpenSWOS: none. A fork lists the ones its game does without (SWOS United: the
  * challenge packs that are not SWOS 2020's). */
-#define PROJECT_OFF_MODS        ""
+/* SWOS United: SWOS 2020's challenges alone, as its SELECT CATEGORY had them (Playaveli, 2026-11-12):
+ * OpenSWOS's CLASSICS and petarku's COLLECTION are there for a player who turns them on. */
+#define PROJECT_OFF_MODS        "challenge-classics, challenge-collection"
 
 /* The menu shading mod's (dosmenus) look at start-up: 0 the PC's shading, 1 the Amiga's flat
  * menus (F5 switches it while the game runs). Both OpenSWOS and SWOS United: 1 (the owner, 2026-11-09). */
