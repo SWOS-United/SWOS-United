@@ -557,6 +557,8 @@ typedef struct {
                              * is the score; a challenge's "2-1, 70th minute" names who scored */
     /* the match's own rules (G9: SWOS 2020's training and challenges) */
     uint8_t  quickRestarts; /* a break restarts at once: no wait for the ball, the CPU never waits */
+    uint8_t  restartInBreaks; /* ModApi_Restart in a break too (the kick-off's wait, a set piece; not a
+                             * goal, a penalty or the match's end) -- SWOS 2020's training keys */
     uint8_t  straightReds;  /* every foul that is carded is a red (noCards still wins) */
     uint8_t  noTackles;     /* nobody slides in */
     /* what is not drawn (G13, G5): only the picture, the match plays as ever */
@@ -580,7 +582,10 @@ enum { MODRESTART_KICK_OFF, MODRESTART_CORNER, MODRESTART_FREE_KICK, MODRESTART_
        MODRESTART_THROW_IN,     /* (a throw-in: x the touchline -- < 336 the left -- y where) */
        MODRESTART_GOAL_KICK };  /* (wing as for a corner: 0 his left as he attacks) */
 enum { MODHUD_RESULT = 1,       /* the score / result banner (a goal's, half and full time) */
-       MODHUD_PLAYER_NAME = 2   /* the name of the player on the ball */ };
+       MODHUD_PLAYER_NAME = 2,  /* the name of the player on the ball */
+       MODHUD_SCORES = 4,       /* the result banner without its HALF TIME / FULL TIME title: the
+                                 * names, the score, the scorers, the grid */
+       MODHUD_SCOREBOARD = 8    /* the scoreboard mod's clock and score box (ModApi_HudHidden) */ };
 
 enum { MODLINE_DEFENCE = 1, MODLINE_MIDFIELD = 2, MODLINE_ATTACK = 4 };   /* (backs and defenders;
                                                                            * wings and midfielders; attackers) */
@@ -622,6 +627,8 @@ typedef struct {
     uint8_t passing, shooting, heading, tackling, control, speed, finishing;   /* 0..7 each */
 } ModTeamPlayer;
 int32_t ModApi_TeamPlayer(uint16_t teamId, int32_t slot, ModTeamPlayer *out);
+/* One player (by line-up slot, 0..15) of a team given whole (a setup's teamData): 1 when there. */
+int32_t ModApi_TeamDataPlayer(const struct TeamFileEx *team, int32_t slot, ModTeamPlayer *out);
 int32_t ModApi_ChosenTeamPlayer(int32_t team, int32_t slot, ModTeamPlayer *out);
 /* A random national team's id (its own random numbers: the match's are not taken), or 0. */
 uint16_t ModApi_RandomTeam(void);
@@ -660,6 +667,10 @@ struct ModMatchResult {
 int32_t ModApi_PlayMatch(const char *slug, const ModMatchSetup *setup, ModMatchResult *result);
 int32_t ModApi_ModMatch(const char *slug);      /* this mod's match is the one being played */
 void    ModApi_EndMatch(void);                  /* the final whistle now, on the score as it is */
+/* The match's MODHUD_* bits from now (a setup's hideHud, changed while it is played). */
+void    ModApi_SetHideHud(int32_t bits);
+/* Does the match being played hide any of these MODHUD_* bits? (For a mod's own HUD: the scoreboard.) */
+int32_t ModApi_HudHidden(int32_t bits);
 /* The referee's final whistle now (G10: a golden or silver goal, a speedrun's target): the match
  * ends as a shoot-out's does -- `winner` (0 / 1; -1 by the score, a level one the top team's)
  * celebrates, the other team mourns -- then the players leave and the result is told as ever. */

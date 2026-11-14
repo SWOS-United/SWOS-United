@@ -23,6 +23,8 @@
  *   custom.download       {"file"}: the file, saved as the challenges mod's download.scn
  *   galore.chart          {"month"}: SWOS Galore's chart, all time ("") or a month ("2026-10")
  *   galore.download       {"user","file"}: a highlight, saved as the galore save folder's view.HIL
+ *   speedrun.replay       {"file"}: a board's run (its .RPL, from the board's last field), saved
+ *                         as the speedrun2020 save folder's run.RPL
  *
  * The network is SWOS-API's client (third_party/swos-api: include/united_records.h, the requests
  * and their answers); this file is the game's side -- who, a worker thread and its queue (a call
@@ -40,6 +42,7 @@
 #include "mjson.h"
 #include "united_api.h"
 #include "united_records.h"
+#include "united_scn.h"           /* United7z_FirstFile (a speedrun replay's .7z) */
 #include "platform_sdl.h"
 
 #include <SDL.h>
@@ -73,7 +76,8 @@ static void who(char *out, uint32_t cap, int32_t mustBeLoggedIn)
 
 /* ---- the worker and its queue ---- */
 
-enum { J_TALLY = 1, J_WON, J_SPEEDRUN, J_BOARD, J_MINE, J_NEWS, J_SCNLIST, J_SCNINFO, J_SCNFILE, J_GALORE, J_HIL };
+enum { J_TALLY = 1, J_WON, J_SPEEDRUN, J_BOARD, J_MINE, J_NEWS, J_SCNLIST, J_SCNINFO, J_SCNFILE, J_GALORE, J_HIL,
+       J_RPL };
 typedef struct {
     int32_t        kind;
     char           user[64];
@@ -83,7 +87,7 @@ typedef struct {
 } Job;
 
 /* The boards' answers (under s_lock): each the last one asked for, by what was asked. */
-enum { F_BOARD, F_MINE, F_NEWS, F_SCNLIST, F_SCNINFO, F_SCNFILE, F_GALORE, F_HIL, kFetches };
+enum { F_BOARD, F_MINE, F_NEWS, F_SCNLIST, F_SCNINFO, F_SCNFILE, F_GALORE, F_HIL, F_RPL, kFetches };
 typedef struct { char key[96]; int32_t state; char *text; uint32_t size; } Fetch;   /* state: 1 asking,
                                                                               * 2 here, 3 failed */
 static Fetch s_fetch[kFetches];
@@ -180,6 +184,22 @@ static void run_job(Job *j)
         if (!ok)
             free(data);
         fprintf(stderr, "[online-records] highlight %s/%s: %s (%u bytes)\n", j->user, j->name,
+                ok ? "downloaded" : "NOT downloaded", (unsigned)size);
+    } else if (j->kind == J_RPL) {
+        unsigned char *packed = NULL, *data = NULL;
+        uint32_t packedSize = 0, size = 0;
+        const int32_t ok = UnitedRecords_SpeedrunReplay(j->name, &packed, &packedSize) &&
+                           United7z_FirstFile(packed, packedSize, ".rpl", &data, &size);
+        free(packed);
+        SDL_LockMutex(s_lock);
+        free(s_fetch[F_RPL].text);
+        s_fetch[F_RPL].text = ok ? (char *)data : NULL;
+        s_fetch[F_RPL].size = ok ? size : 0;
+        s_fetch[F_RPL].state = ok ? 2 : 3;
+        SDL_UnlockMutex(s_lock);
+        if (!ok)
+            free(data);
+        fprintf(stderr, "[online-records] speedrun replay %s: %s (%u bytes)\n", j->name,
                 ok ? "downloaded" : "NOT downloaded", (unsigned)size);
     } else if (j->kind == J_SCNFILE) {
         unsigned char *data = NULL;
@@ -333,6 +353,30 @@ static int32_t service(const char *method, const char *args, char *out, uint32_t
         json_str(args, "$.month", j.category, 8);
         snprintf(key, sizeof key, "chart/%s", j.category);
         return fetch(F_GALORE, J_GALORE, key, &j, json_bool(args, "$.fresh"), out, cap);
+    }
+    if (!strcmp(method, "speedrun.replay")) {
+        Job j;
+        memset(&j, 0, sizeof j);
+        json_str(args, "$.file", j.name, (int32_t)sizeof j.name);
+        if (!j.name[0] || strchr(j.name, '/') || strchr(j.name, '\\') || strstr(j.name, ".."))
+            return -1;
+        SDL_LockMutex(s_lock);
+        Fetch *f = &s_fetch[F_RPL];
+        if (strcmp(f->key, j.name) != 0 || f->state == 0) {
+            snprintf(f->key, sizeof f->key, "%s", j.name);
+            f->state = 1;
+            SDL_UnlockMutex(s_lock);
+            j.kind = J_RPL;
+            push(&j);
+            return 1;
+        }
+        int32_t rc = f->state == 1 ? 1 : f->state == 3 ? -1 : 0;
+        if (rc == 0)
+            rc = ModApi_SaveFile("speedrun2020", "run.RPL", f->text, f->size) == 0 ? 0 : -1;
+        if (rc == -1)
+            f->state = 0;               /* (asked again, it is fetched again) */
+        SDL_UnlockMutex(s_lock);
+        return rc;
     }
     if (!strcmp(method, "galore.download")) {
         Job j;
