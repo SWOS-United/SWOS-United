@@ -50,6 +50,10 @@ sounds and `SWOS.log` says so.
 The web build does not carry the folder (9 MB more to download), so it always plays the
 Amiga's sounds. The Amiga build has none of this.
 
+Two more folders under `sound_dos/` belong to the PC game's career cutscenes, not to a match:
+`flc/` (the dressing room's six sounds) and `chairman/english/` (the chairmen's and the
+president's voices, 92 files). Same format; docs/DOS_VIDEO.md.
+
 ## Your own commentary
 
 A folder per category under `sound_dos/commentary/`, any number of `.wav`, `.mp3` or `.raw`
@@ -140,6 +144,14 @@ yet.
 
 It is rendered on the audio thread, inside the mixer's tick, under the master volume the
 menus fade. A match's sounds stop it, as they stop the Amiga's menu song.
+
+Without `menu.xmi` or `sample.ad` the menus play `sound_dos/menu.mp3` when it is there (the
+recording, as `menu_music = mp3` does), and only then the Amiga's song. That is the data OpenSWOS
+Setup makes from SWOS 2020 alone (no PC game, no Amiga version; ASSETS.ini `pc_swos2020`): its
+`menu.mp3` and its "PC DOS - Goalscoringsuperstarhero.mp3" as `title.mp3`, its 17 effects and 11
+crowd sounds (`audio/fx`, the PC game's format: 22,050 Hz unsigned 8-bit; 10 of the 28 are the PC
+game's own, 18 SWOS 2020's -- the chants, longer, and others), no commentary and no other crowd. `--dos-sound-selftest` then requires only
+`fx/` and says how many of the rest are missing, as expected.
 
 ## The CD track
 

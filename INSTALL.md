@@ -81,9 +81,12 @@ Then, if you play somewhere else as well:
    - If Windows says *"Windows protected your PC"*, click **More info**, then **Run anyway**.
      OpenSWOS isn't signed by Microsoft, which is why it asks.
 2. Click **Next** through the installer.
-3. On the last page, leave **"Set up the game data from your copy of Sensible World of
-   Soccer"** ticked and click **Finish**. OpenSWOS Setup opens: go to
-   [step 4](#4-run-openswos-setup).
+3. On the last page, leave **"Make the game data automatically from your copy of Sensible
+   World of Soccer"** ticked and click **Finish**. If your copy is found (GOG's game, the CD,
+   SWOS 2020, an Amiga copy in your Downloads -- or, after a short search of your drives,
+   anywhere a few folders down), the game data is made with no questions and the game starts.
+   If it is not, OpenSWOS Setup opens and says so: go to [step 4](#4-run-openswos-setup).
+   Tick **"Open OpenSWOS Setup"** too to choose for yourself what is made.
 
 Later, you can open the setup again from the Start menu: **OpenSWOS → OpenSWOS Setup**.
 
@@ -160,6 +163,9 @@ none, so with a copy like that the setup looks in your CD drives by itself, and 
 there it shows one more screen, *Add the PC game's commentary* (optional): put the CD in, or
 drag a copy of the CD or its image (`.iso`, `.img`, `.bin` or `.cue`) onto the window. Skip it
 and the game plays without the PC commentary (its other sounds, and the Amiga's, still play).
+The CD (and GOG's game) also has the PC game's **cutscenes** -- the dressing room after a big
+win or loss, the chairman at his desk -- which the setup copies the same way when they are there
+(about 86 MB); a career plays them with the *PC cutscenes* mod (OPTIONS -> MODS), on by default.
 
 **Game options.** How the game looks and plays the first time you start it: the gameplay,
 graphics, sound, music, screen, language and more. Not sure? Leave them: you can change any

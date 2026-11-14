@@ -78,6 +78,17 @@ int32_t Mods_IsOn(const char *slug)
             return 1;
     return 0;
 }
+int32_t Mods_ChangesMatch(const char *slug)
+{
+    for (int32_t i = 0; i < s_count; i++)
+        if (strcmp(s_ids[i], slug) == 0)
+#ifdef SWOS_SDL_BUILD
+            return s_online[i] != 0;
+#else
+            return 1;
+#endif
+    return 0;
+}
 
 #ifdef SWOS_SDL_BUILD
 static uint32_t fnv(uint32_t h, const void *data, uint32_t n)
@@ -227,15 +238,23 @@ int32_t Mods_SlugIsStatic(const char *slug)
     return 0;
 }
 
-/* A slug PROJECT_DEFAULT_MODS names: on by default in this game, whatever its manifest says. */
-static int fork_default_on(const char *slug)
+static int slug_listed(const char *list, const char *slug)
 {
     char x[MODS_ID_MAX];
     int star;
-    for (const char *p = PROJECT_DEFAULT_MODS; (p = next_id(p, x, sizeof x, &star)) != NULL;)
+    for (const char *p = list; (p = next_id(p, x, sizeof x, &star)) != NULL;)
         if (strcmp(x, slug) == 0)
             return 1;
     return 0;
+}
+
+/* A canonical mod's default in this game: off when PROJECT_OFF_MODS names it, on when
+ * PROJECT_DEFAULT_MODS does, else its manifest's "default". */
+static int fork_default(const char *slug, int manifest)
+{
+    if (slug_listed(PROJECT_OFF_MODS, slug))
+        return 0;
+    return manifest || slug_listed(PROJECT_DEFAULT_MODS, slug);
 }
 
 static int known(const char *id)
@@ -319,6 +338,7 @@ static struct { char id[MODS_ID_MAX]; char uuid[40]; uint8_t byDefault, cosmetic
  * the run names itself (--mods) is still on (docs/MODS.md §26). */
 static int32_t s_rig;
 void Mods_SetRig(int32_t on) { s_rig = on; }
+int32_t Mods_IsRig(void) { return s_rig; }
 static int32_t s_canonCount;
 
 static int in_list(const char *list, const char *id)
@@ -372,8 +392,10 @@ static const char *read_manifest(const char *dir, int canonical, ModInfo *info)
     b = 0;
     info->cosmetic = (uint8_t)(strcmp(info->changes, "gameplay") != 0 && strcmp(info->changes, "data") != 0);
     (void)canonical;
-    info->byDefault = (uint8_t)((mjson_get_bool(json, len, "$.default", &b) && b) ||
-                                (canonical && fork_default_on(info->slug)));
+    {
+        const int manifest = mjson_get_bool(json, len, "$.default", &b) && b;
+        info->byDefault = (uint8_t)(canonical ? fork_default(info->slug, manifest) : manifest);
+    }
     const int uuidOk = mjson_get_string(json, len, "$.uuid", info->uuid, (int)sizeof info->uuid) >= 0 &&
                        uuid_ok(info->uuid);
     const int sdl = has_target(json, len, "sdl");
@@ -494,8 +516,7 @@ void Mods_Init(const char *enabled, const char *disabled)
             snprintf(s_canon[s_canonCount].id, sizeof s_canon[0].id, "%s", e->d_name);
             if (mjson_get_string(json, len, "$.uuid", s_canon[s_canonCount].uuid, (int)sizeof s_canon[0].uuid) < 0)
                 s_canon[s_canonCount].uuid[0] = '\0';
-            s_canon[s_canonCount].byDefault = (mjson_get_bool(json, len, "$.default", &b) && b) ||
-                                              fork_default_on(e->d_name);
+            s_canon[s_canonCount].byDefault = fork_default(e->d_name, mjson_get_bool(json, len, "$.default", &b) && b);
             {
                 char changes[24] = "";
                 mjson_get_string(json, len, "$.changes", changes, (int)sizeof changes);

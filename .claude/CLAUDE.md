@@ -205,8 +205,12 @@ so world code reads a club's country through `World_FileCountry` and indexes clu
 -> `dist/OpenSWOS-World-2627.zip`, made after every import whose output changed: its WORLD.ini
 fingerprint must be the one `world_import.py` baked into `src/world_data.c`), which OpenSWOS Setup
 installs as a DLC **mod**, `mods/world2627/` (docs/MODS.md §17: `data_json/worlds/2627/` for the PC,
-`amiga/data/` for the Amiga; uuid `15ea9117-...` for ever). 96/97 is the default
-world: a run plays `--world`, else `SWOS_WORLD`, else SWOS.ini's `[general] world`, else 96/97 (a
+`amiga/data/` for the Amiga; uuid `15ea9117-...` for ever). **Europe 1984-85** (`8485`, DaniSwos's
+database, docs/WORLD_2026_27.md §6g) is a world the same way: `world_from_mod.py --world 8485`,
+`world_import.py --tag 8485` -> `src/world_data_8485.c` (one baked file a world, `src/world_baked.c`
+picks the current one), `make_world_package.sh 8485` (mod `world8485`, uuid `48496e1d-...`). 96/97 is the default
+world: a run plays `--world`, else `SWOS_WORLD`, else SWOS.ini's `[general] world` (96/97 when
+`[general] original_main_menu`), else 96/97 (a
 world without its WORLD.ini installed -- the mod off -- falls back to 96/97, said in `[world]` lines);
 the Amiga plays the world's mod's `data/WORLD`, in a drawer only when the player ticks the world on the
 Amiga tab. **Online, mods whose `"changes"` is `gameplay` or `data` must be alike in both games**
@@ -225,19 +229,19 @@ transfers or saves**; `--update` records a deliberate change, `--twice` re-prove
 `scripts/career_golden_diff.py A B` names what changed. A save must hold no address -- the test
 found two (`namePtr` in the competition blobs, now written as a set/unset marker).
 
-**The season-end and cup rules are a library shared with the SWOS 96/97 Mod** (docs/RULES_LIBRARY.md):
-`third_party/swos-competition-engine` (submodule, Davide Lorigliola's repo), its `rules/` built as
-`src/swos_rules_*.c` on every target -- the Italian play-offs, every pack's knockouts, the career
-club's play-off contests, B teams and the season's moves, the cups' clubs, the Coppa D's later
-seasons, the parallel groups (`sr_pg_season`; `league_groups.c` the game's side) -- at the tag **v1**
-(87b6527, 2026-11-02: the Mod 4.0.5's rules, 4.0.6's pg_a2 guard; docs/RULES_LIBRARY.md §10-11).
-**v1 is frozen**: struct layouts, signatures and results stay; additions are 1.x, a change to what
-exists is a v2 agreed with Davide. `league_playoffs.c`,
-`world_cups.c` and `world_cupd.c` are the game's side of them; it gives the library each spec's length
-(`spec_len`, required) and the B teams' `b_in_ko` / `base` / `levels`. A rule
-change goes there as a pull request with its comparison against the Mod's C (`make rules-check
-MOD=...` there); `scripts/league_playoffs_check.sh` here runs ours through it (MOD= a 4.0.5 checkout). Freestanding C99, no
-libc, one caller-owned state (`sr_state`): the Mod links the same code into the DOS exe.
+**The season-end and cup rules are OpenSWOS's own, in `src/rules/`** (docs/RULES_LIBRARY.md,
+src/rules/README.md), built as `src/swos_rules_*.c` on every target -- the Italian play-offs, every
+pack's knockouts, the career club's play-off contests, B teams and the season's moves, the cups'
+clubs, the Coppa D's later seasons, the parallel groups (`sr_pg_season`; `league_groups.c` the game's
+side). Until 2026-11-11 a library shared with Davide Lorigliola's SWOS 96/97 Mod (the submodule
+`third_party/swos-competition-engine`, its tag v1 = 87b6527): the owner moved it in, so our work stays
+GPL. The files came under MIT (Copyright Davide Lorigliola: `src/rules/LICENSE-MIT`, kept with them);
+what we change from here on is ours. **No pull requests to his repo any more**: a Mod release's rule
+change is ported here from his public repo (the release notes, the diff between its tags), and
+`scripts/league_playoffs_check.sh` (MOD= a checkout of the Mod at that tag) builds the Mod's own C
+beside ours and compares them. `league_playoffs.c`, `world_cups.c` and `world_cupd.c` are the game's
+side; it gives the rules each spec's length (`spec_len`, required) and the B teams' `b_in_ko` /
+`base` / `levels`. Freestanding C99, no libc, one caller-owned state (`sr_state`).
 
 **Whole-match replays** (`.SRP`, `src/replay_v2.c`, docs/REPLAY_FORMAT_V2.md) are SDL-only and
 recorded from every match that is not training, the arcade cabinet or the rig: `LATEST.SRP` in the
@@ -659,7 +663,12 @@ all save types are proven."
 > first and beside the binary second (`swos_data_path()`); `make WASM=1` preloads
 > `bin/` plus `$(SWOS_ASSETS)`. Without the Amiga disks the game plays the PC
 > sound/music and skips the Amiga loading screens (`_gNoAmigaSound`,
-> `_gNoAmigaScreens`, main.c). What stays tracked in the trees below is the
+> `_gNoAmigaScreens`, main.c). With NEITHER the PC game nor the Amiga version, only SWOS 2020,
+> the setup makes the PC data from SWOS 2020's install as it is (`SdSources_PcFromSwos2020`,
+> ASSETS.ini `[sources] pc_swos2020`): its art and pitches, the 96/97 teams of its `MP/DB/96_97`,
+> its 28 effects/crowd sounds, its title/menu mp3s; no commentary, no menu.xmi. The game then
+> draws ARTWORK = SWOS 2020 whatever SWOS.ini says (those pitches only fit the PC drawing path),
+> and the setup will not make an Amiga drawer from it. What stays tracked in the trees below is the
 > project's own (LOADER76, credits photos, 1UP.WAV, `bin/setup/`);
 > the rest is `.gitignore`d, so a developer's `bin/` can still hold it (the
 > FS-UAE harness needs it there). **Every drop is staged from git-tracked files

@@ -470,7 +470,7 @@ have comes from the first.
 
 **Static mods** (2026-11-07, Playa's request for SWOS United) are canonical mods that are part of
 the game rather than a choice. `PROJECT_STATIC_MODS` in `include/project_identity.h` names them
-`PROJECT_DEFAULT_MODS` (same file) is the softer one: canonical mods a fork turns ON by default -- still listed, a player may turn them off (SWOS United: dosmenus).
+`PROJECT_DEFAULT_MODS` (same file) is the softer one: canonical mods a fork turns ON by default -- still listed, a player may turn them off (SWOS United: dosmenus). `PROJECT_OFF_MODS` (2026-11-12) is its opposite: canonical mods a fork turns OFF by default, still listed, a player may turn them on (SWOS United: `challenge-classics`, `challenge-collection`).
 by slug.
 - **Always on**, in the place a default mod takes, whatever their `"default"` and
   `[mods] disabled` say. A rig still takes only the cosmetic ones (§26), as for the defaults.
@@ -573,7 +573,7 @@ it. `init` runs at start-up (after the mod list, before the menus are built from
 | a menu overlay (H5) | `menuDrawn` | `menu_system.c`: each menu frame, before it is shown (a whole redraw: DrawMenu; else MenuProc's frame) |
 | entries (H1, H6) | `ModApi_AddEntry(point, slug, label, fn)` in `init` | `MODPOINT_MODES`: the main menu's **MODES** button (entry 16, above CREDITS; shown only while an entry is there, never on the Amiga) opens `openswos/modEntriesMenu`, the list; `MODPOINT_AFTER_MATCH`: the same list after a friendly the player played (`game_loop.c`, after its REPLAY / EXIT). `ModApi_ShowEntries(point)` shows any point's list from a fork's own screen |
 | its own menus (H10) | `ModApi_RegisterHandlers(slug, {name, fn}[], n)` in `init`; `ModApi_ShowMenu(path)` | handlers named `<slug>.<name>` in the menus' JSON, resolved only while the mod is on; a mod's replacement of one of the game's menus names its own onInit, never the engine's |
-| settings (H7) | mod.json `"settings"`; `ModApi_Setting / SettingInt / SetSetting` | SWOS.ini `[mod.<slug>]` (Settings_Save keeps sections it does not know); the mod's page: OPTIONS -> MODS, fire on its name (`openswos/modPageMenu`), fire cycles a choice. The weather mod's two |
+| settings (H7) | mod.json `"settings"`; `ModApi_Setting / SettingInt / SetSetting` | SWOS.ini `[mod.<slug>]` (Settings_Save keeps sections it does not know); the mod's page: OPTIONS -> MODS, fire on its name (`openswos/modPageMenu`), fire cycles a choice; up to 32 settings, eight rows at a time with the MODS screen's scroll arrows. The weather mod's two |
 | save data (H8) | `ModApi_SaveFile / LoadFile(slug, name, ...)` | the save folder's `mods/<slug>/<name>`, durable as a save (`Resload_SaveFileAt`: the web's sync, the Switch's commit); named fields, never dumps |
 | a match of its own (H2, H4) | `ModApi_DefaultSetup`, `ModApi_PlayMatch(slug, &setup, &result)` -- blocks until it is over; then `ModApi_EndMatch`, `StartShootout`, `Score`, `MatchFrames`, `ModMatch(slug)` | `src/mod_match.c`: a friendly without its menus, as the arcade cabinet plays one -- the teams by id (file << 8 \| ordinal), each side CPU / player 1 / player 2 (`SetupPlayers` asks no one), pitch, length, subs, extra time / penalties / straight to a shoot-out, replays, the stadium screen and the REPLAY menu or not, the match's name, the score and the minute (0-44) at kick-off (`InitGameRestoreTeams`' end); the friendly's own settings put back after. What comes after (retry, its menu) is the mod's own code, after PlayMatch returns |
 | match events (H3) | `matchStart`, `matchFrame`, `matchEvent`, `matchEnded` | every match: kick-off; each frame after the clock; goal / own goal / penalty goal (`GoalScored`), foul, yellow, second yellow, red, injury (`tackle_foul.c`), half time, second half, full time, extra time, shoot-out, each shoot-out kick (`NextPenalty`, in or not), the final whistle; the result. Each with its team (0 top, 1 bottom), the player's index, the minute and the frame. Never for a frame GGPO re-simulates (`NetplayMatch_Resimulating`) |
@@ -653,6 +653,10 @@ its own generator.
   data is not MIT (its LICENSE §2) -- the owner asks Davide and Marco first.
 
 ## 17. Worlds as mods; mods online (2026-11-04)
+
+(**Europe 1984-85** is one too, `world8485`, uuid `48496e1d-27d7-49d8-acff-c428814a1bc6` for ever:
+docs/WORLD_2026_27.md §6g. The setup installs every world package it is given; an Amiga drawer takes
+one world mod.)
 
 **World 2026-27 is a DLC mod, `world2627`** (uuid `15ea9117-6aa0-4968-a293-6cf33092ff33`, for
 ever; `"changes": "data"`, both targets). Its code stays in the engine -- the league splits, the
@@ -767,15 +771,14 @@ default -- so the main menu's MODES button is there): MODES -> PRACTICE opens it
   `InitPlayersBeforeEnteringPitch`'s end and put in the tunnel, as a sent-off man is -- the AI,
   possession and team control already play around `sentAway`), `clockStopped` (the start minute
   put back each frame, as SWOS 2020 does), `noCards` (`_cardsDisallowed`), `noInjuries` (no roll
-  in `PlayerTackled`). Menus of a mod's own: `ModApi_MenuText / MenuVisible / MenuNav`. Still to
-  come: the drills (F1-F12: forced restarts, G6), ghost players (G5), the manual keeper (G8).
+  in `PlayerTackled`). Menus of a mod's own: `ModApi_MenuText / MenuVisible / MenuNav`. Built since:
+  the drills (F1-F12, Left Alt, 9 0 - =: forced restarts, G6 -- TEAM TRAINING only, as SWOS 2020's
+  controls.cpp gates them on g_TrainingMode), ghost players (CPU GHOSTED, G5), the manual keeper (the
+  shoot-out's, G8).
 
-**`petarku-practice`** (`src/mod_petarku_practice.c`, `bin/mods/petarku-practice`: canonical,
-`"modes"`, on by default; split out of `practice` on 2026-11-09 -- SWOS 2020's features are never
-built on petarku's, nor his on SWOS 2020's): MODES -> PETARKU PRACTICE, his PENALTY SHOOTOUT (the
-friendly's team screen, each player's side's SHOOTING ORDER, `shootoutOrder`, his keeper
-`manualKeeper`) and SHOOTING PRACTICE (you against the CPU's keeper, its defenders and midfield on or
-off, no clock, every kick-off yours; `SWOS_SHOOTING_TEST=1` plays it headless).
+**`petarku-practice`** was removed on 2026-11-11: petarku, its author, said SWOS 2020's practice
+covers it -- its shoot-out lets you choose the shooting order (in a friendlier way), and its team
+training is the same as his shooting practice (Playaveli agreed).
 
 Checked: the menus draw from the mod's JSON; DEMO GAME plays two random teams;
 `SWOS_MOD_MATCH_TEST=shootout` plays a shoot-out from kick-off (every kick an event, 4-2);
@@ -857,6 +860,21 @@ read in file-name order ACROSS the mods (a pack's categories come where its file
 SWOS 2020's `01-...` before `challenges.json`). A shoot-out challenge gives the keeper to the
 player (`manualKeeper`, SWOS 2020's "MANUAL GK CONTROL"). Progress of a challenge whose pack is
 off is kept as read and written back (it was dropped by the next save).
+
+**Format version 3 (2026-11-12): `"unlock_after"`.** A challenge's `"unlock_after": [categories]`
+(up to four) closes its whole category until every challenge of those categories is completed --
+SWOS 2020's SWOS MASTERS, open once FIFA WORLD CUP, UEFA EURO CUP, ISS DELUXE and ISS 64 are done
+(its confirmCategory). Our list says LOCKED, and picking it "COMPLETE <them> FIRST"; the service's
+`categories` line is `<name>\t<done>\t<all>\t<closed>\t<needs>`, closed 1 for `"locked"`, 2 for
+waiting, needs the categories it waits for. The binary is version 3 (`unlockAfter[4][32]` at the
+record's end; 1 and 2 still read). The converter (pack 1.1) now writes SWOS 2020's screen as it
+was: SWOS MASTERS first and waiting for the four, EUROPEAN CUPS, DOMESTIC COMPETITIONS and FANTASY
+CUPS (never released there) left out -- 73 challenges in 5 categories. Checked:
+`SWOS_MOD_MATCH_TEST=challenge:categories` prints the service's lines (SWOS MASTERS 2 with no
+progress, 0 with the four completed); every pack through the binary and back, field for field.
+**CLASSICS is a pack mod of its own** (2026-11-12): `challenge-classics` (OpenSWOS's six, from HOLD
+ON to THE COMEBACK, the same file and ids: progress is kept), no longer inside the `challenges`
+mod, which is now the engine alone -- so a fork can do without the pack (`PROJECT_OFF_MODS`).
 
 ## 19. Team packs (2026-11-04)
 
@@ -1432,3 +1450,98 @@ orange) -- but CGA, whose green pitch is white by hue and the remembered cyan-an
 brightness. A palette: its colours in palette_to_lut.py, a line in make_paletteq.sh, a row in
 mod_paletteq.c's table and mod.json's choices. Checked: `--slang-selftest` compiles the preset for
 GLSL 410 / ES 300, Metal and HLSL; the algorithm run on a match frame for every palette (by eye).
+
+## 36. Gameplay mods: rules in the match state; the arcade mod (2026-11-12)
+
+The first canonical **gameplay** mod is `arcade` (`src/mod_arcade.c`, docs/ARCADE.md "Game modes --
+the arcade mod"): the arcade cabinet's game modes (GOLDEN GOAL so far) played in any friendly. The
+owner's decision, 2026-11-12: the cabinet stays in the core and uses the mod; the modes and their
+rules are the mod's. What it needed of the engine is general -- any mod that changes how a match
+plays uses the same:
+
+| what | how | where |
+|---|---|---|
+| state of its own in the match | `ModDef.matchWords` (n 32-bit words), `ModApi_MatchState(slug, &n)` | `g_modMatchWords` (`src/mod_hooks.c`, 32 words between the mods that are on), a `SIM_OPTIONAL` region of `src/sim_state.c`: saved and loaded by a rollback, sent in a resync and the lobby's kick-off state, recorded in a `.SRP`. Handed out at start-up, in the built-in list's order, only to a mod that is on and whose `"changes"` is `gameplay` / `data` -- both online players have the same such mods, so the same words are the same mod's. **With no such mod on the region is not there at all**: not in the state, its hash, nor the layout hash the handshake and the recordings compare -- a build with it off is, online, the build it always was |
+| rules decided where a friendly is set up | `ModDef.friendlyRules(ModFriendlyRules *out)` | offline at `InitAndPlayGame` (the FRIENDLY menu's, the cabinet's, a mod's own `ModApi_PlayMatch`; not training); online on the HOST in `NetplayLobby_Start`, for a single friendly (lobby mode FRIENDLY, no legs), before the setup and the kick-off state are taken. The mod arms its words from the player's settings and asks the setup for the slowest clock and/or its replays (`ModFriendlyRules`); the game puts the player's own GAME LENGTH / AUTO REPLAYS back after the match. Never on the joiner, nor for a recording played again |
+| the match's name | `ModDef.matchName()` | `InitAndPlayGame`, every machine, from the words: the stadium's title in place of FRIENDLY |
+| the rules, each frame | `ModDef.matchStep()` | `src/game_loop.c`, after the clock, on **every frame simulated** -- an online match's re-simulations too (unlike `matchFrame`): the one hook that may change the match, through `ModApi_EndMatch`, `ModApi_StartShootout`; it reads where the match is with `ModApi_MatchPhase` (in play, a shoot-out, a goal's celebration, a replay) and `ModApi_Score` |
+
+The words are cleared before each offline friendly is set up, before the host offers a match, and
+after every friendly, so a cup, a league or a career match never sees them set.
+
+**Online, the host's settings are the match's** -- without a word on the wire: the host's words
+travel in the kick-off state the START message already carries (both players load it before the
+match is set up), the slow clock and the replays in the setup it already carries. The joiner's own
+settings are never read. If the host has no kick-off state to send, it clears its words, so the two
+play the same (plain) rules. Both players need the mod alike (§17's signature); a new mode or rule
+is a new `version`. **NETPLAY_COMPAT was not raised**: nothing on the wire changed, and a plain match
+is bit for bit what it was (`check_netplay_compat.sh` unchanged).
+
+The rigs play without it (§26: a gameplay mod is off in a rig unless the run names it). A recording
+of an online arcade friendly plays again with `--srp-resim=<file> --mods=arcade` (the layout hash
+then includes the words).
+
+`SWOS_MOD_MATCH_TEST=arcade[:seconds]` (`--mods=arcade`, `SWOS_HARNESS_TURBO=1 SWOS_SKIP_INTRO=1`)
+plays one GOLDEN GOAL friendly CPU v CPU headless and passes when the rules decided it: a golden goal
+or, level at the limit, a shoot-out.
+
+## 37. The PC cutscenes: the dosvideos mod and careerEvent (2026-11-12)
+
+**`dosvideos`** ("PC cutscenes", canonical, `"changes": "cosmetic"`, `"targets": ["sdl"]`, on by
+default as `dosmenus` is: with no PC data it plays nothing; `src/mod_dosvideos.c`) plays the PC
+game's career cutscenes -- FLIC clips, decoded by our own `src/flic.c` -- at the moments the PC
+game plays them. The clips, their sounds, the decoder and how a clip is shown: docs/DOS_VIDEO.md.
+
+**The hook.** `ModDef careerEvent(const ModCareerEvent *)` (include/mod_api.h; `ModHooks_CareerEvent`,
+core, both targets -- nothing on the Amiga listens), told where swos.asm calls its cutscenes.
+Display only: what runs there may show something and wait for the player, never change the career,
+its saves or the game's random numbers.
+
+| kind | our place | the PC game's (swos.asm) | the clip |
+|---|---|---|---|
+| `MODCAREER_MATCH` | `DIY_PlayOrSimulateLeagueFixture`'s end (src/diy_competition.c, `career_result_event`) | `cseg_88A12`'s end (`cseg_89147`, ~121465): `selTeamNumber != -1`, the mode it was called with (`dseg_180586`) not RESULT, not the off-season (`dseg_10E848`), won or lost by 3+ | WIN / LOSE, the first time and then every third such result (`dseg_180588`) |
+| `MODCAREER_CUP_FINAL` | `DIY_PlayCupMatchAndAdvance`, the winner decided (and, `hasGroups` 2, each stage's end) | `cseg_28E76`'s `cseg_295B0` (~30075): `[esi+47h]` -- `hasGroups` -- 0 or 2, the same career/mode/off-season tests, not a draw | WCUP / LCUP |
+| `MODCAREER_NEW_SEASON` | `ContinueCareerNextSeason` (src/career_init.c), staying, before `InitializeNewSeason` | `PlayNewSeasonAnimations` (~102208), from `ContinueCareerNextSeason`'s no-job branch | WCUP if `playWinCupAnimation`, else PROM if promoted, else RELE if relegated |
+| `MODCAREER_CHAIRMAN` | `ShowChairmanMessage` (src/chairman_memo.c), before the memo's menu | `PlayChairmanScene` (~82804), the first thing `ShowChairmanMessage` does | `CH<n>_<id>` / `CHP_<id>`, id = `dseg_17BB14[currentMessage]` |
+
+The PC game tests the career team in each: WIN when the winner is `careerTeam`, LOSE otherwise --
+ours tells only results with the career team in them (a career's played or watched match always
+has it). A cup final drawn and decided on penalties plays nothing (the match's goals are equal),
+as in the PC game.
+
+**The rules the mod keeps** (its own, in memory -- display only):
+- The result counter (`dseg_180588`): -1 at a new career (`InitNewSeason`, from the new career's
+  menu: ours `careerNew`), never saved -- the PC game does not reset it on a load, nor do we. A 3+
+  result with -1 plays and sets 3; else it counts down and plays at 0, setting 3 again.
+- The chairman's scenes (`PlayChairmanScene`): only with the CHAIRMAN SCENES option on (here the
+  mod's "Chairman scenes", on: `SetDefaultOptions` sets `g_chairmanScenes = ON`) and the sound on;
+  memo 0 has no scene; scene ids 24-26 -- memos 24-26, the frequent ones: `TRIAL_PLAYER_LEFT_CLUB`,
+  `RESERVE_PLAYER_LEFT_CLUB`, `PLAYER_JOINED_CLUB_ON_TRIAL` -- only every fourth time
+  (`dseg_17BB8E`, never saved).
+- Which of the three chairmen (`chairmanIndex`, CH1..CH3, voices ECA..ECC): picked again at every
+  welcome memo (19, 20, 33, 34: `ShowGreetingMessage` / `ShowLastSeasonMessage`) as
+  `(rand & 7) / 3`, never the one before -- the PC game with `Rand2`, the mod with a generator of
+  its own (never the game's). The PC game kept `chairmanIndex` in the career file; we save nothing,
+  so a loaded career starts with the first chairman until its next welcome memo.
+- A national team's memos (27-38) are the president's: `CHP_<id>`, a frame every 6/70 s.
+
+**Settings** (`[mod.dosvideos]`): `room` (Dressing room: WIN, LOSE, WCUP, LCUP, PROM, RELE) and
+`chairman` (Chairman scenes), both `on` by default.
+
+**Never played** (`ModApi_CutsceneBlocked`): under the career autopilot (the golden careers), a rig
+(`--replay-test`, `--srp-resim`, `--career-golden`), online, in a match, with no sound, with the
+intro skipped (the PC game's `skipIntro`: `SWOS_SKIP_INTRO`, `[general] skip_intro`), or with no
+window. The counters still count (the PC game counts before it looks at `skipIntro`). Each moment
+logs one line: `[dosvideos] <clip>: <why> (...)`, `... -- not played (<rule>)`, or the count.
+
+**Checked:** `SWOS_DOSVIDEO_TEST=rules` runs the rules on made-up events (21 checks: the counter's
+1st and 4th, the cup final drawn, the season's order, the scenes' every fourth, the president's,
+300 welcome memos never giving the same chairman twice) -- `DOSVIDEOS RULES PASS`.
+`SWOS_DOSVIDEO_TEST=<clip>,...` plays clips at the main menu. `scripts/career_golden_test.sh` passes
+unchanged with the mod on (it is cosmetic, so on in the rig): its careers tell the mod their moments
+-- the chairmen's scenes, WCUP / PROM / RELE at the seasons' ends -- and it plays none ("not played
+(the career autopilot)"). `SWOS_DOSVIDEO_TEST=career` lets the autopilot's moments play: ENG1-WOLVES,
+two seasons, 32 chairman's scenes played inside the career's own flow, and its three season saves
+the golden record's byte for byte. The autopilot answers RESULT for every fixture, so it never
+reaches MATCH or CUP_FINAL (a played or watched match): those two are checked by the rules test and
+by reading, not yet in a played career.

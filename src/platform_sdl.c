@@ -165,6 +165,7 @@ static uint32_t     *s_frame_rgba;
  * block; a full second 336x272 upload every frame is exactly the kind of cost
  * that made the D3D path crawl before the single-bulk-upload rework. */
 static int           s_subpixel_scroll = 1;   /* [video] subpixel_scroll — see present_frame_copy */
+static int           s_cut_on;                /* a cutscene is up (Platform_CutsceneShow) */
 
 Uint64 Platform_NowMs(void);           /* defined below; used by the freshness stamp */
 static uint8_t      *s_hud_layer;      /* 8bpp, same geometry as the frontbuffer */
@@ -240,7 +241,7 @@ void Platform_KeepFrameFresh(void)
  * instead of leaving a stale clock floating over the frontend. */
 static int hud_layer_pending(void)
 {
-    return s_hud_layer && s_subpixel_scroll && s_hud_stamp &&
+    return s_hud_layer && s_subpixel_scroll && s_hud_stamp && !s_cut_on &&
            (Platform_NowMs() - s_hud_stamp) <= 100 &&
            s_hud_x1 > s_hud_x0 && s_hud_y1 > s_hud_y0;
 }
@@ -1495,8 +1496,78 @@ void Platform_PaletteColour(uint8_t index, uint8_t *r, uint8_t *g, uint8_t *b)
     *b = s_palette[index].b;
 }
 
+/* ---- a cutscene over the whole picture (the PC cutscenes mod: ModApi_Cutscene*, src/mod_api.c) ----
+ * While one is up, the presenter shows its picture and palette instead of the game's frame and
+ * copper palette: the game's frame buffers and palette are never touched, so the menu under it is
+ * there again, as it was, the moment it ends. Nothing drawn over the game's frame is drawn over
+ * it either (the mods' frameDrawn, the menus' backdrop and opacity, the HUD layer, the overlays of
+ * the online menus and the credits): the CRT effects, the FPS counter and the touch controls are. */
+static uint8_t *s_cut_buf;
+static size_t   s_cut_cap;
+static SDL_Color s_cut_pal[256];
+
+static void cutscene_show_locked(const uint8_t *pixels, int w, int h, const uint8_t *rgb, int level);
+
+void Platform_CutsceneShow(const uint8_t *pixels, int w, int h, const uint8_t *rgb, int level)
+{
+    if (s_render_mtx)
+        SDL_LockMutex(s_render_mtx);    /* (the timer thread's fallback render reads it too) */
+    cutscene_show_locked(pixels, w, h, rgb, level);
+    if (s_render_mtx)
+        SDL_UnlockMutex(s_render_mtx);
+}
+
+static void cutscene_show_locked(const uint8_t *pixels, int w, int h, const uint8_t *rgb, int level)
+{
+    if (!pixels) {
+        s_cut_on = 0;
+        return;
+    }
+    const int sw = _screen_width, sh = _screen_height, stride = FRONTBUFFER_ROW_STRIDE_BYTES;
+    const size_t need = (size_t)stride * (size_t)sh;
+    if (need > s_cut_cap) {
+        uint8_t *nb = (uint8_t *)realloc(s_cut_buf, need);
+        if (!nb)
+            return;
+        s_cut_buf = nb;
+        s_cut_cap = need;
+    }
+    if (level < 0) level = 0; else if (level > 256) level = 256;
+    int black = 0, dark = 1 << 30;      /* (around the picture: its darkest colour) */
+    for (int i = 0; i < 256; i++) {
+        const int d = rgb[i * 3] + rgb[i * 3 + 1] + rgb[i * 3 + 2];
+        if (d < dark) { dark = d; black = i; }
+        s_cut_pal[i].r = (uint8_t)(rgb[i * 3] * level / 256);
+        s_cut_pal[i].g = (uint8_t)(rgb[i * 3 + 1] * level / 256);
+        s_cut_pal[i].b = (uint8_t)(rgb[i * 3 + 2] * level / 256);
+        s_cut_pal[i].a = 255;
+    }
+    memset(s_cut_buf, black, need);
+    {   /* centred, 1:1; a picture larger than the screen shows its middle */
+        const int dx = (sw - w) / 2, dy = (sh - h) / 2;
+        for (int y = 0; y < h; y++) {
+            const int ty = dy + y;
+            if (ty < 0 || ty >= sh)
+                continue;
+            const int x0 = dx < 0 ? -dx : 0, x1 = dx + w > sw ? sw - dx : w;
+            if (x1 > x0)
+                memcpy(s_cut_buf + (size_t)ty * stride + dx + x0, pixels + (size_t)y * w + x0, (size_t)(x1 - x0));
+        }
+    }
+    s_cut_on = 1;
+}
+
+/* Key presses, mouse buttons, pad buttons and touches since the start (the pump counts them):
+ * a cutscene is skipped when this moves. */
+static volatile uint32_t s_press_count;
+uint32_t Platform_PressCount(void) { return s_press_count; }
+
 static void refresh_palette_from_copper(void)
 {
+    if (s_cut_on) {
+        memcpy(s_palette, s_cut_pal, sizeof s_palette);
+        return;
+    }
     /* DOS graphics use the full 256-colour DOS palette, but ONLY during a
      * match. The intro, title and menu screens are still Amiga graphics and
      * need their normal Amiga (copper) palette — otherwise they render with the
@@ -1626,7 +1697,7 @@ static int backdrop_shown(void)
 {
     extern int32_t ModApi_InMenus(void);
     extern int _gArcadeMode;
-    return s_bd && !_gArcadeMode && ModApi_InMenus();
+    return s_bd && !_gArcadeMode && ModApi_InMenus() && !s_cut_on;
 }
 
 /* The backdrop at w x h, covering it (cropped to its aspect, centred): ARGB, for SDL's renderer. */
@@ -1693,7 +1764,7 @@ static int menu_alpha_now(void)
 {
     extern int32_t ModApi_InMenus(void);
     extern int _gArcadeMode;
-    if (s_menu_alpha >= 255 || _gArcadeMode || !ModApi_InMenus())
+    if (s_menu_alpha >= 255 || _gArcadeMode || !ModApi_InMenus() || s_cut_on)
         return 255;
     return s_menu_alpha;
 }
@@ -1716,6 +1787,8 @@ static uint32_t blend_argb(SDL_Color c, uint32_t under, int a)
 
 static const uint8_t *frame_source(void)
 {
+    if (s_cut_on)
+        return s_cut_buf;
     if (_usePlaneOffsetFlag != 0)
         return _frontbufferMaskBuffer;
     if (_useAltBaseFlag != 0)
@@ -1840,8 +1913,9 @@ static void write_screenshot(const uint32_t *argb)
         rgba[i * 4 + 2] = (uint8_t)(p >>  0); /* B */
         rgba[i * 4 + 3] = 0xFF;               /* A (opaque) */
     }
-    char path[64];
-    snprintf(path, sizeof(path), "swos_shot%03d.png", s_screenshot_index++);
+    char path[512];
+    const char *dir = getenv("SWOS_SCREENSHOT_DIR");     /* (tests running side by side: each its own) */
+    snprintf(path, sizeof(path), "%s%sswos_shot%03d.png", dir ? dir : "", dir ? "/" : "", s_screenshot_index++);
     if (stbi_write_png(path, _screen_width, _screen_height, 4,
                        rgba, _screen_width * 4))
         fprintf(stderr, "[screenshot] wrote %s\n", path);
@@ -1998,6 +2072,9 @@ static void pump_events_any_thread(void)
 {
     SDL_Event ev;
     while (SDL_PollEvent(&ev)) {
+        if ((ev.type == SDL_KEYDOWN && !ev.key.repeat) || ev.type == SDL_MOUSEBUTTONDOWN ||
+            ev.type == SDL_CONTROLLERBUTTONDOWN || ev.type == SDL_JOYBUTTONDOWN || ev.type == SDL_FINGERDOWN)
+            s_press_count++;            /* (Platform_PressCount: what skips a cutscene) */
         /* An online match's chat: TAB, F3, the quick keys, and everything typed into an open
          * line -- the game never sees those (src/match_chat.c). */
         if ((ev.type == SDL_KEYDOWN || ev.type == SDL_KEYUP || ev.type == SDL_TEXTINPUT ||
@@ -2448,7 +2525,7 @@ static SDL_Texture *scale_target_for(int n)
 static void present_frame_copy(SDL_Texture *tex)
 {
     uint16_t fx = 0, fy = 0;
-    int shift = s_subpixel_scroll && Render_ScrollSubpixel(&fx, &fy) && (fx || fy);
+    int shift = s_subpixel_scroll && !s_cut_on && Render_ScrollSubpixel(&fx, &fy) && (fx || fy);
 
     int          n  = scale_pass_factor();
     SDL_Texture *rt = n ? scale_target_for(n) : NULL;
@@ -2529,14 +2606,17 @@ static void draw_overlays(void)
 {
     /* The built-in mods' drawing over the frame (src/mod_hooks.c: the weather), before the
      * CRT effects so the grille and the glass sit on top of it too. */
-    ModHooks_FrameDrawn();
+    if (!s_cut_on)
+        ModHooks_FrameDrawn();
     /* CRT effects go on LAST, over the finished frame and its HUD, so the
      * grille and the glass edge sit on the picture rather than under it. */
     CrtEffects_Apply();
     MatchChat_Draw();                /* (an online match's chat: over the CRT, to be read) */
     { extern void FpsOverlay_Draw(void); FpsOverlay_Draw(); }   /* ([video] show_fps: src/fps_overlay.c) */
-    { extern void OnlineMenus_DrawOverlay(void); OnlineMenus_DrawOverlay(); }   /* (the lobby's chat) */
-    { extern void CreditsMenu_DrawOverlay(void); CreditsMenu_DrawOverlay(); }   /* (FULL CREDITS' scrolling text) */
+    if (!s_cut_on) {
+        { extern void OnlineMenus_DrawOverlay(void); OnlineMenus_DrawOverlay(); }   /* (the lobby's chat) */
+        { extern void CreditsMenu_DrawOverlay(void); CreditsMenu_DrawOverlay(); }   /* (FULL CREDITS' scrolling text) */
+    }
 #ifdef SWOS_MOBILE_BUILD
     TouchControls_Draw();            /* (the phones' on-screen controls, over everything) */
 #endif
@@ -2620,7 +2700,7 @@ static void render_frame_gpu(int pump_full)
         f.hud = s_hud_layer;
         f.hudPitch = _screen_width;
     }
-    if (!s_subpixel_scroll || !Render_ScrollSubpixel(&f.fracX, &f.fracY))
+    if (!s_subpixel_scroll || s_cut_on || !Render_ScrollSubpixel(&f.fracX, &f.fracY))
         f.fracX = f.fracY = 0;
     f.subpixel = s_subpixel_scroll;
     f.smooth = s_scaling_smooth;
@@ -2824,8 +2904,27 @@ void Platform_SetFrameHook(void (*hook)(void))
  * Escape, Up, Down, Left, Right, Space ...). For driving a menu with nobody at the
  * keyboard: pair it with SWOS_PRESENT_CAPTURE to see what the keys did. Frame counts
  * depend on load times, so leave generous gaps. */
-enum { kKeyScriptMax = 128 };
-static struct { uint32_t frame; SDL_Keycode key; char text[32]; } s_key_script[kKeyScriptMax];
+enum { kKeyScriptMax = 256 };
+/* typed: a character as a real keyboard types it (`type=`): the key's KEYDOWN -- with SHIFT held
+ * for a shifted symbol -- and its SDL_TEXTINPUT, the key let go two frames on. */
+static struct { uint32_t frame; SDL_Keycode key; char text[32]; uint8_t typed, shift; } s_key_script[kKeyScriptMax];
+
+/* The key a US keyboard types `c` with, and whether SHIFT is held for it. */
+static SDL_Keycode typed_key(char c, uint8_t *shift)
+{
+    static const char kShifted[] = "!@#$%^&*()_+:\"<>?~{}|", kBase[] = "1234567890-=;',./`[]\\";
+    const char *at;
+    *shift = 0;
+    if (c >= 'A' && c <= 'Z') {
+        *shift = 1;
+        return (SDL_Keycode)(c - 'A' + 'a');
+    }
+    if (c && (at = strchr(kShifted, c)) != NULL) {
+        *shift = 1;
+        return (SDL_Keycode)kBase[at - kShifted];
+    }
+    return (SDL_Keycode)(uint8_t)c;            /* (a-z, 0-9, space and the unshifted symbols) */
+}
 static int      s_key_script_len = -1;      /* -1 = not read yet */
 static uint32_t s_key_script_frame;
 
@@ -2839,6 +2938,8 @@ static void push_key(SDL_Keycode key, int down)
     ev.key.keysym.scancode = SDL_GetScancodeFromKey(key);
     SDL_PushEvent(&ev);
 }
+
+void Platform_TestKey(int32_t key, int32_t down) { push_key((SDL_Keycode)key, down); }   /* (a test's: career_autopilot.c) */
 
 static void key_script_tick(void)
 {
@@ -2858,6 +2959,30 @@ static void key_script_tick(void)
                 break;
             s_key_script[s_key_script_len].frame = frame;
             s_key_script[s_key_script_len].text[0] = '\0';
+            if (strncmp(name, "type=", 5) == 0) {
+                /* typed characters, one every 4 frames, as a real keyboard sends them; %XX for a
+                 * character the script cannot hold (%20 a space, %2C a comma) */
+                const char *t = name + 5;
+                uint32_t at = frame;
+                while (*t && s_key_script_len < kKeyScriptMax) {
+                    char c = *t++;
+                    unsigned hex;
+                    if (c == '%' && sscanf(t, "%2x", &hex) == 1) {
+                        c = (char)hex;
+                        t += 2;
+                    }
+                    s_key_script[s_key_script_len].frame = at;
+                    s_key_script[s_key_script_len].text[0] = c;
+                    s_key_script[s_key_script_len].text[1] = '\0';
+                    s_key_script[s_key_script_len].typed = 1;
+                    s_key_script[s_key_script_len].key = typed_key(c, &s_key_script[s_key_script_len].shift);
+                    s_key_script_len++;
+                    at += 4;
+                }
+                spec += used;
+                continue;
+            }
+            s_key_script[s_key_script_len].typed = 0;
             if (strncmp(name, "text=", 5) == 0) {
                 /* typed text (SDL_TEXTINPUT), '_' for a space: the chat (match_chat.c) */
                 char *t = s_key_script[s_key_script_len].text;
@@ -2879,6 +3004,26 @@ static void key_script_tick(void)
     if (s_key_script_len == 0)
         return;
     for (int i = 0; i < s_key_script_len; i++) {
+        if (s_key_script[i].typed) {
+            if (s_key_script[i].frame == s_key_script_frame) {
+                SDL_Event ev;
+                if (s_key_script[i].shift)
+                    push_key(SDLK_LSHIFT, 1);
+                push_key(s_key_script[i].key, 1);
+                memset(&ev, 0, sizeof ev);
+                ev.type = SDL_TEXTINPUT;
+                snprintf(ev.text.text, sizeof ev.text.text, "%s", s_key_script[i].text);
+                SDL_PushEvent(&ev);
+                fprintf(stderr, "[keys] frame %u: typed '%s'%s\n", (unsigned)s_key_script_frame,
+                        s_key_script[i].text, s_key_script[i].shift ? " (shift)" : "");
+            }
+            if (s_key_script[i].frame + 2 == s_key_script_frame) {
+                push_key(s_key_script[i].key, 0);
+                if (s_key_script[i].shift)
+                    push_key(SDLK_LSHIFT, 0);
+            }
+            continue;
+        }
         if (s_key_script[i].text[0]) {
             if (s_key_script[i].frame == s_key_script_frame) {
                 SDL_Event ev;

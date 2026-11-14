@@ -28,11 +28,18 @@ cd "$(dirname "$0")/.."
 N=${1:-20000}
 MOD=${MOD:-/mnt/d/Projects/GitHub/swos-9697-mod}
 DATA=bin/data_json/worlds/2627/mod
+# (world_from_mod.py writes the Mod's own full pack format -- pack.json "format", "files", "squads";
+# clubs.csv's file, country, kits; players.csv's role, skills -- so every section runs the Mod's own
+# code, mkseason.Pack included, over the conversion of the installed game: docs/WORLD_2026_27.md 6d)
+DATA=$(cd "$DATA" 2>/dev/null && pwd || echo "$DATA")
 T=tests/league_playoffs
 OUT=$(mktemp -d)
 trap 'rm -rf "$OUT"' EXIT
 if [ ! -d "$DATA" ] || [ ! -f "$MOD/tools/gplay.c" ]; then
     echo "SKIP: needs $DATA and the Mod's tools ($MOD)"; exit 0
+fi
+if ! grep -q '"format"' "$DATA/packs/eng/pack.json"; then
+    echo "FAIL: $DATA holds slim packs (an older world_from_mod.py): convert the installed Mod again"; exit 1
 fi
 python3 -I - "$MOD" "$OUT" <<'PY'
 import importlib.util, sys
@@ -63,6 +70,10 @@ for c in gcc clang /usr/lib/llvm-14/bin/clang; do
         break
     fi
 done
+# The Mod 4.1's gp_forcecfb (a test build's forced place, never called here) swaps a split league's
+# rows by its build's offsets (gplay.py passes split.py's ST / OFF / MAGIC): any values compile it.
+GP41="-DGP_SPST=0 -DGP_SPGRP=0 -DGP_SPPRE=0 -DGP_SPMAGIC=0"
+MC="$MC $GP41"
 $MC -DGPLAY_C="\"$MOD/tools/gplay.c\"" -c -o "$OUT/mod_gp.o" $T/mod_gp.c
 $MC -DDPLAY_C="\"$MOD/tools/dplay.c\"" -c -o "$OUT/mod_dp.o" $T/mod_dp.c
 $CC $M32 -c -o "$OUT/mod_main.o" $T/mod_main.c
@@ -272,7 +283,7 @@ PY
 # The mid-season splits (scripts/world_split.py): every split league's table, its spec as the Mod's
 # mkseason.splits makes it from the same pack and its bytes as its split.entry makes them; the odd
 # pair tables as its oddtables'.
-if python3 -I $T/split_check.py "$MOD/tools" bin/data_json/worlds/2627/mod/packs > "$OUT/split.txt"; then
+if python3 -I $T/split_check.py "$MOD/tools" "$DATA/packs" > "$OUT/split.txt"; then
     echo "PASS: the splits, $(grep -c '^PASS' "$OUT/split.txt") divisions' tables byte for byte the Mod's" \
          "($(grep -c '^SKIP' "$OUT/split.txt") skipped)"
 else
@@ -290,12 +301,12 @@ fi
 # Italy's, v4, "files" "league2": its file holds 256; it has no states, splits or other
 # confederation's cups)
 mod_packs() {
-    for d in "$PWD"/bin/data_json/worlds/2627/mod/packs/*/; do
+    for d in "$DATA"/packs/*/; do
         [ -f "$d/pack.json" ] && ! grep -q '"league2"' "$d/pack.json" && printf '%s,' "${d%/}"
     done
 }
 SPACKS=$(mod_packs)
-SEASON_PACKS="${SPACKS%,}" python3 -I - "$MOD" "$OUT" "$PWD/bin/data_json/worlds/2627/mod/packs" <<'PY' > /dev/null
+SEASON_PACKS="${SPACKS%,}" python3 -I - "$MOD" "$OUT" "$DATA/packs" <<'PY' > /dev/null
 import json, os, sys
 mod, out, packs = sys.argv[1:4]
 sys.path.insert(0, os.path.abspath("scripts")); sys.path.insert(1, mod + "/tools")
@@ -346,7 +357,7 @@ with open(out + "/sr.txt", "w") as o:
             words += [w[0], "%x" % (len(w) - 1)] + w[1:]
         o.write(" ".join(words) + "\n")
 PY
-$CC $M32 -w -fno-builtin -DMOD -DGPLAY_C="\"$MOD/tools/gplay.c\"" -o "$OUT/ri_mod" $T/pools_drv.c
+$CC $M32 $GP41 -w -fno-builtin -DMOD -DGPLAY_C="\"$MOD/tools/gplay.c\"" -o "$OUT/ri_mod" $T/pools_drv.c
 $CC -w -Iinclude -include include/swos_platform.h -DSWOS_WORLDS=1 -o "$OUT/ri_ours" $T/pools_drv.c
 "$OUT/ri_mod" "$OUT/ri_tab.bin" "$OUT/sr.txt" > "$OUT/ri_mod.txt"
 "$OUT/ri_ours" "$OUT/ri_tab.bin" "$OUT/sr.txt" > "$OUT/ri_ours.txt"
@@ -402,10 +413,10 @@ $CC -Iinclude -include include/swos_platform.h -DSWOS_SDL_BUILD -o "$OUT/lp_chec
 # The other confederations' cups (src/world_conti.c, the Mod's conti.c as it is): the world's
 # cups packed by the Mod's own conti.load over the world's data, both C files over random
 # seasons of a synthetic world -- every round's entrants and draw, every winner the Mod's.
-PACKS="$PWD/bin/data_json/worlds/2627/mod/packs"
+PACKS="$DATA/packs"
 SPACKS=$(mod_packs)
 SEASON_PACKS="${SPACKS%,}" \
-    python3 -I - "$MOD" "$OUT" "$PWD/bin/data_json/worlds/2627/mod/conti" <<'PY' > /dev/null
+    python3 -I - "$MOD" "$OUT" "$DATA/conti" <<'PY' > /dev/null
 import sys
 mod, out, data = sys.argv[1:4]
 sys.path.insert(0, mod + "/tools")
@@ -418,8 +429,16 @@ open(out + "/conti.spec", "wb").write(spec)
 sys.path.insert(0, "scripts")
 import world_conti                      # (ours: the same bytes, with and without the team files)
 files = {k: 100 + i for i, k in enumerate(assocs)}
+# (the Mod 4.1.1's ranking by 'assoc/club': every ranked club a word of its association's file)
+words = {}
+for conf in conti.CONFS:
+    for i, k in enumerate(sorted(((conti._read(conf, "access") or {}).get("ranking") or {}))):
+        a = k.split("/", 1)[0]
+        if a in files:
+            words[tuple(k.split("/", 1))] = files[a] | (i % 200) << 8
 if world_conti.load(world_conti.CONFS) != (spec, assocs, cups) or \
-        world_conti.load(world_conti.CONFS, files=files) != conti.load(conti.CONFS, files=files):
+        world_conti.load(world_conti.CONFS, files=files) != conti.load(conti.CONFS, files=files) or \
+        world_conti.load(world_conti.CONFS, files=files, words=words) != conti.load(conti.CONFS, files=files, words=words):
     open(out + "/conti.spec", "wb").write(b"")
 PY
 if [ ! -s "$OUT/conti.spec" ]; then

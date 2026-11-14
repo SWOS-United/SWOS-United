@@ -343,7 +343,9 @@ int main(int argc, char **argv)
                job.src.hdf[0] && !(job.src.adf1[0] && job.src.adf2[0]) && job.src.hdfDir[0] ? ", game in " : "",
                job.src.hdf[0] && !(job.src.adf1[0] && job.src.adf2[0]) ? job.src.hdfDir : "");
     }
-    printf("PC game:      %s\n", job.src.dosDir[0] ? job.src.dosDir : "(not found)");
+    printf("PC game:      %s\n", job.src.dosDir[0] ? job.src.dosDir
+                                  : SdSources_PcFromSwos2020(&job.src) ? "(not found: made from SWOS 2020, below)"
+                                  : "(not found)");
     if (job.src.dosFloppy1[0] || job.src.dosFloppy2[0])
         printf("PC floppies:  %s, %s\n", job.src.dosFloppy1[0] ? job.src.dosFloppy1 : "(disk 1 not found)",
                job.src.dosFloppy2[0] ? job.src.dosFloppy2 : "(disk 2 not found)");
@@ -353,6 +355,9 @@ int main(int argc, char **argv)
     printf("Jaguar:       %s\n", job.src.jagRom[0] ? job.src.jagRom : "(not found)");
     printf("SWOS 2020:    %s\n", job.src.s2020Dir[0] ? job.src.s2020Dir : "(not found)");
     printf("World:        %s\n", job.src.world[0] ? job.src.world : "(not found)");
+    for (int32_t i = 0; i < SD_WORLDS_MORE; i++)
+        if (job.src.worldMore[i][0])
+            printf("World:        %s\n", job.src.worldMore[i]);
     if (!job.outDir[0])
         return 0;       /* no --out: only say what was found */
     if (!job.resDir[0])

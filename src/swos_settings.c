@@ -48,10 +48,6 @@
 #include <string.h>
 #include <stdlib.h>
 
-/* Arcade game-mode name<->index (defined in arcade.c) for [arcade] mode. */
-extern const char *Arcade_ModeName(int idx);
-extern int         Arcade_ModeFromName(const char *name);
-
 static int eqi(const char *a, const char *b)
 {
     while (*a && *b) {
@@ -313,6 +309,9 @@ static int handler(void *user, const char *section,
         } else if (eqi(name, "latch_presses")) {
             int b;
             if (parse_bool(value, &b)) opts->latch_presses = b;
+        } else if (eqi(name, "p2_keyboard")) {
+            int b;
+            if (parse_bool(value, &b)) opts->p2_keyboard = b;
         } else if (eqi(name, "touch_controls")) {
             if      (eqi(value, "auto"))   opts->touch_controls = TOUCH_CONTROLS_AUTO;
             else if (eqi(value, "always")) opts->touch_controls = TOUCH_CONTROLS_ALWAYS;
@@ -320,9 +319,14 @@ static int handler(void *user, const char *section,
         } else {
             static const char *const keys[5] = { "key_up", "key_down", "key_left", "key_right", "key_fire" };
             int i;
-            for (i = 0; i < 5; i++)
+            static const char *const p2keys[5] = { "p2_key_up", "p2_key_down", "p2_key_left", "p2_key_right",
+                                                   "p2_key_fire" };
+            for (i = 0; i < 5; i++) {
                 if (eqi(name, keys[i]))
                     snprintf(opts->key_bind[i], sizeof opts->key_bind[i], "%s", value);
+                if (eqi(name, p2keys[i]))
+                    snprintf(opts->p2_key_bind[i], sizeof opts->p2_key_bind[i], "%s", value);
+            }
         }
     } else if (eqi(section, "replays")) {
         int b;
@@ -406,9 +410,8 @@ static int handler(void *user, const char *section,
     } else if (eqi(section, "arcade")) {
         int b;
         if (eqi(name, "enabled") && parse_bool(value, &b)) opts->arcade = b;
-        else if (eqi(name, "mode") && value && value[0]) {
-            int m = Arcade_ModeFromName(value); if (m >= 0) opts->arcade_mode = m;
-        }
+        else if (eqi(name, "mode") && value && value[0])   /* (a mode of the arcade mod's: the cabinet checks it) */
+            snprintf(opts->arcade_mode, sizeof opts->arcade_mode, "%s", value);
         else if (eqi(name, "game_seconds")) {
             int v = atoi(value); if (v >= 10 && v <= 600) opts->arcade_game_seconds = v;
         }
@@ -434,6 +437,10 @@ static int handler(void *user, const char *section,
             snprintf(opts->arcade_key_p2_start, sizeof opts->arcade_key_p2_start, "%s", value);
         else if (eqi(name, "key_service") && value && value[0])
             snprintf(opts->arcade_key_service, sizeof opts->arcade_key_service, "%s", value);
+    } else if (eqi(section, "career")) {
+        int b;
+        if (eqi(name, "exact_continuation") && parse_bool(value, &b))
+            opts->career_exact_continuation = b;
     } else if (eqi(section, "testing")) {
         int b;
         if (eqi(name, "no_injuries_cards") && parse_bool(value, &b))
@@ -466,6 +473,8 @@ static int handler(void *user, const char *section,
             snprintf(opts->assets_reminder_off, sizeof opts->assets_reminder_off, "%s", value ? value : "");
         else if (eqi(name, "world") && value && value[0])
             snprintf(opts->world, sizeof opts->world, "%s", value);
+        else if (eqi(name, "original_main_menu"))
+            opts->original_main_menu = value && (eqi(value, "true") || eqi(value, "on") || eqi(value, "1"));
         else if (eqi(name, "file_sort") && value && (eqi(value, "name") || eqi(value, "date")))
             snprintf(opts->file_sort, sizeof opts->file_sort, "%s", value);
         else if (eqi(name, "quick_access")) {
@@ -708,6 +717,19 @@ static int settings_build(const PlatformInitOptions *opts, IniEntry *items, char
         "; button or three taps (both), the taps alone, or the button alone (offline matches; the\n"
         "; Amiga style has no second button and keeps the taps).",
         opts->call_bench == 1 ? "taps" : opts->call_bench == 2 ? "button" : "both" };
+    SETTING(n) = (IniEntry){ "input", "p2_keyboard",
+        "; p2_keyboard: true | false. P1 AND P2 ON KEYBOARD (OPTIONS -> CONTROLS): player 2\n"
+        "; plays on this keyboard too, with p2_key_up, p2_key_down, p2_key_left, p2_key_right,\n"
+        "; p2_key_fire (empty: W, S, A, D and Left Shift). Player 1 keeps all his keys. Many\n"
+        "; keyboards cannot read many keys held at once: if a key of one player does not\n"
+        "; answer while both press a lot, choose player 2's keys far from player 1's.\n"
+        "; Offline only: online each game plays its own player 1. Default false.",
+        opts->p2_keyboard ? "true" : "false" };
+    SETTING(n) = (IniEntry){ "input", "p2_key_up",    NULL, opts->p2_key_bind[0] };
+    SETTING(n) = (IniEntry){ "input", "p2_key_down",  NULL, opts->p2_key_bind[1] };
+    SETTING(n) = (IniEntry){ "input", "p2_key_left",  NULL, opts->p2_key_bind[2] };
+    SETTING(n) = (IniEntry){ "input", "p2_key_right", NULL, opts->p2_key_bind[3] };
+    SETTING(n) = (IniEntry){ "input", "p2_key_fire",  NULL, opts->p2_key_bind[4] };
     SETTING(n) = (IniEntry){ "gameplay", "fire_hold_lockout",
         "; fire_hold_lockout: true | false — true restores a BUG IN THE ORIGINAL\n"
         "; AMIGA GAME: an OPPONENT's tackle wipes your held fire button's shot charge,\n"
@@ -877,7 +899,7 @@ static int settings_build(const PlatformInitOptions *opts, IniEntry *items, char
         "; and does not follow the sprites setting.\n",
         opts->kit_art ? "jaguar" : "amiga" };
     SETTING(n) = (IniEntry){ "arcade", "enabled",    "; enabled: true | false — boot straight to attract mode, no main menu", opts->arcade ? "true" : "false" };
-    SETTING(n) = (IniEntry){ "arcade", "mode",       "; mode: arcade game mode (F2 service menu). Currently: GOLDEN GOAL", Arcade_ModeName(opts->arcade_mode) };
+    SETTING(n) = (IniEntry){ "arcade", "mode",       "; mode: arcade game mode (F2 service menu), one of the arcade mod's. Currently: GOLDEN GOAL", opts->arcade_mode[0] ? opts->arcade_mode : "GOLDEN GOAL" };
     SETTING(n) = (IniEntry){ "arcade", "game_seconds", "; game rules (F2 service menu). game_seconds 10..600;  golden_goal/penalties_on_draw/goal_replay: true | false", vbuf[2] };
     SETTING(n) = (IniEntry){ "arcade", "golden_goal", NULL, opts->arcade_golden_goal ? "true" : "false" };
     SETTING(n) = (IniEntry){ "arcade", "penalties_on_draw", NULL, opts->arcade_penalties ? "true" : "false" };
@@ -891,6 +913,11 @@ static int settings_build(const PlatformInitOptions *opts, IniEntry *items, char
     SETTING(n) = (IniEntry){ "arcade", "key_p2_credit", NULL, opts->arcade_key_p2_credit[0] ? opts->arcade_key_p2_credit : "6" };
     SETTING(n) = (IniEntry){ "arcade", "key_p2_start", NULL, opts->arcade_key_p2_start[0]  ? opts->arcade_key_p2_start  : "2" };
     SETTING(n) = (IniEntry){ "arcade", "key_service", NULL, opts->arcade_key_service[0]   ? opts->arcade_key_service   : "F2" };
+    SETTING(n) = (IniEntry){ "career", "exact_continuation",
+        "; exact_continuation: true | false -- a career's saves also keep its random state and clock,\n"
+        "; so a loaded career plays on exactly as it would have. Off: as the original (a load plays\n"
+        "; on differently).",
+        opts->career_exact_continuation ? "true" : "false" };
 #ifdef SWOS_TEST_RULES
     SETTING(n) = (IniEntry){ "testing", "no_injuries_cards",
         "; no_injuries_cards: true | false -- FOR TESTING A CAREER: nobody is booked, sent off,\n"
@@ -905,10 +932,15 @@ static int settings_build(const PlatformInitOptions *opts, IniEntry *items, char
         "; an older " PROJECT_SETUP_NAME " -- the data versions it was about. Empty: remind (src/assets_check.c).",
         opts->assets_reminder_off };
     SETTING(n) = (IniEntry){ "general","world",
-        "; world: 9697 | 2627 -- the football world: its countries, clubs and competitions\n"
-        "; (docs/WORLD_2026_27.md): SWOS 96/97, or World 2026-27 once " PROJECT_SETUP_NAME " has\n"
-        "; imported its data. A save is played in the world it was made in.",
+        "; world: 9697 | 2627 | 8485 -- the football world: its countries, clubs and competitions\n"
+        "; (docs/WORLD_2026_27.md): SWOS 96/97, World 2026-27 or Europe 1984-85 once " PROJECT_SETUP_NAME "\n"
+        "; has imported its data. A save is played in the world it was made in.",
         opts->world[0] ? opts->world : "9697" };
+    SETTING(n) = (IniEntry){ "general","original_main_menu",
+        "; original_main_menu: true | false -- the main menu as 96/97's (no WORLD button, CAREER in\n"
+        "; the middle) and 96/97 the world played, whatever world says (the SWOS 96/97 Mod 4.1's\n"
+        "; \"Original main menu\", Marco's idea). world is kept for when it is off again.",
+        opts->original_main_menu ? "true" : "false" };
     SETTING(n) = (IniEntry){ "general","file_sort",
         "; file_sort: name | date -- the order of the LOAD and SAVE screens' files (SWOS 2020's SORT\n"
         "; OPTION; their SORTED BY button switches it): by name, as the game always had them, or the\n"

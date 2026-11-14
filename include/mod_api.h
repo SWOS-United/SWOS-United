@@ -46,6 +46,15 @@ typedef struct ModPlayerMove ModPlayerMove;
 typedef struct ModPlayerCreated ModPlayerCreated;
 typedef struct ModJsonWriter ModJsonWriter;
 typedef struct ModPlayerRow ModPlayerRow;
+typedef struct ModCareerEvent ModCareerEvent;
+
+/* What a gameplay mod's friendlyRules asks of the friendly's setup (the game sets it, and puts the
+ * player's own back after the match): */
+typedef struct ModFriendlyRules {
+    uint8_t slowClock;      /* the slowest match clock (GAME LENGTH 10 minutes): half time and full
+                             * time come late, after the mod's own end of the match */
+    int8_t  autoReplays;    /* the goals' instant replays: 1 on, 0 off, -1 as the player has them */
+} ModFriendlyRules;
 
 typedef struct ModDef {
     const char *slug;                   /* its folder: bin/mods/<slug> (canonical) */
@@ -160,10 +169,41 @@ typedef struct ModDef {
     void (*careerSave)(ModJsonWriter *out);
     void (*careerLoad)(const char *json, int32_t len);
 
+    /* -- gameplay: rules a match is PLAYED by (a "gameplay" mod's; docs/MODS.md §36) --
+     * Unlike every hook above, matchStep runs on every frame SIMULATED -- an online match's
+     * re-simulations too -- so it may change the match (end it, go to penalties: ModApi_EndMatch,
+     * ModApi_StartShootout). What it keeps from one frame to the next must then be match state:
+     * matchWords asks for that many 32-bit words of it (ModApi_MatchState; up to MOD_MATCH_WORDS
+     * between the mods that are on), saved and loaded by a rollback, sent in a resync, recorded in
+     * a .SRP. Only a mod whose "changes" is "gameplay" gets them (both online players have it then).
+     *   friendlyRules  a friendly is being set up where its rules are decided: offline at
+     *                  InitAndPlayGame (the FRIENDLY menu's, the arcade cabinet's, a mod's own
+     *                  ModApi_PlayMatch -- check ModApi_ModMatch/AnyModMatch), online on the HOST
+     *                  as it offers a single friendly (NetplayLobby_Start). Arm the rules from this
+     *                  player's settings into the words and say what the setup must be (*out);
+     *                  1 when armed, 0 not. Never on the online joiner, nor for a recording played
+     *                  again: the host's words come to them in the kick-off state, its setup in the
+     *                  setup -- that is how the host's settings are the match's.
+     *   matchName      the name the screens give the match (the stadium's "FRIENDLY"), from the
+     *                  words; NULL none. Every machine, InitAndPlayGame.
+     *   matchStep      each frame simulated, after the clock (where Arcade_MatchTick ran).
+     * The words are zero outside a friendly the mod armed (cleared after each), so a cup, a
+     * career or a plain friendly never sees them set. */
+    uint8_t matchWords;
+    int32_t (*friendlyRules)(struct ModFriendlyRules *out);
+    const char *(*matchName)(void);
+    void (*matchStep)(void);
+
     /* -- a player's row in a list screen, filled and not yet drawn (docs/MODS.md §29): the
      * hook may rewrite its cells' text (ModApi_MenuText, the text kept by the mod), show or hide
      * them, move them (ModApi_SetMenuEntryRect). Display only: no game state. -- */
     void (*playerRowDrawn)(const ModPlayerRow *row);
+
+    /* -- the career's moments the PC game shows a cutscene at (docs/MODS.md §37; the PC cutscenes
+     * mod) -- told in a career's menus, never in a match, never online. Display only: what runs
+     * here may show something and wait for the player, never change the career, its saves or the
+     * game's random numbers (ModCareerEvent says where each is told). -- */
+    void (*careerEvent)(const ModCareerEvent *event);
 } ModDef;
 
 /* playerRowDrawn's argument */
@@ -202,6 +242,35 @@ struct ModCompetitionResult {
     uint8_t  kind;          /* ModCompKind */
     uint8_t  division;      /* a league's division (0 the top); 0 for a cup */
     uint16_t winner;        /* the winning team: file (country) << 8 | ordinal */
+};
+/* A career moment (ModDef careerEvent), where the PC game (swos.asm) would show a cutscene:
+ *   MODCAREER_MATCH       a league fixture of the career team the player PLAYED or WATCHED (not a
+ *                         VIEW RESULT, not the off-season's other countries): its result.
+ *                         DIY_PlayOrSimulateLeagueFixture's end (swos.asm cseg_88A12's)
+ *   MODCAREER_CUP_FINAL   a cup's last match (a cup without groups, or with groups and a final:
+ *                         as the PC game, at the end of every stage of the latter), the career
+ *                         team in it, played or watched: its result. DIY_PlayCupMatchAndAdvance
+ *                         (cseg_28E76's end)
+ *   MODCAREER_NEW_SEASON  the next season set up, before its first menu, when the manager stays
+ *                         (no job taken): what the season was -- a cup won, promoted, relegated.
+ *                         ContinueCareerNextSeason (where the PC game calls PlayNewSeasonAnimations)
+ *   MODCAREER_CHAIRMAN    a memo from the chairman (or the president) about to be shown: which.
+ *                         ShowChairmanMessage (PlayChairmanScene's place) */
+typedef enum {
+    MODCAREER_MATCH = 1,
+    MODCAREER_CUP_FINAL,
+    MODCAREER_NEW_SEASON,
+    MODCAREER_CHAIRMAN
+} ModCareerEventKind;
+#define MODCAREER_WON_CUP   0x01    /* (NEW_SEASON's flags: the game's playWinCupAnimation ...) */
+#define MODCAREER_PROMOTED  0x02
+#define MODCAREER_RELEGATED 0x04
+struct ModCareerEvent {
+    uint8_t  kind;          /* ModCareerEventKind */
+    uint8_t  national;      /* the career is a national team's (the memos are the president's) */
+    int16_t  goalDiff;      /* MATCH, CUP_FINAL: the career team's goals minus the other side's */
+    uint16_t message;       /* CHAIRMAN: the memo's number (1..38, chairman_memo.c's table) */
+    uint8_t  flags;         /* NEW_SEASON: MODCAREER_WON_CUP | PROMOTED | RELEGATED */
 };
 struct ModPlayerMove {
     uint16_t fromTeam, toTeam;  /* team ids, file << 8 | ordinal */
@@ -344,6 +413,30 @@ void    ModApi_ShowError(const char *text);
  * point -- never during a match. */
 int32_t ModApi_ShowDialog(const char *title, const char *text, const char *const *buttons, int32_t count,
                           int32_t defaultButton);
+/* A cutscene over the whole screen (SDL; the PC cutscenes mod, docs/DOS_VIDEO.md), from the menus
+ * -- a careerEvent, a mod's entry --, never in a match. ModApi_CutsceneBlocked says first whether
+ * one may play: NULL when it may, else why not (the one rule for every cutscene: the career
+ * autopilot, a rig, an online match or lobby, no sound, the intro skipped as the PC game's
+ * skipIntro, a run with no window). `test` 1 (a test's own clip) lets the skipped intro and a
+ * windowless run through; 2 (a test driving a career with the autopilot) the autopilot and the
+ * rig too. Then:
+ *   Begin          the game's picture fades to black; its music and sounds are held
+ *   Frame          shows a picture (w x h palette indices, centred 1:1, the rest its darkest colour)
+ *                  in its own palette (768 bytes, R G B 0-255) at `level` (0 black .. 256 full) and
+ *                  waits for the next frame (the game's pace): 1 when the player pressed a key, a
+ *                  mouse or pad button or touched the screen since Begin (a skip) or closed the game
+ *   Sound          plays unsigned 8-bit mono samples at `rate` Hz (the caller keeps them) alone
+ *   SoundPlaying   1 while it plays
+ *   End            the game's picture and sound back; the press that skipped dropped; the menu
+ *                  fades in on its next frame (as the PC game's menuFade) */
+const char *ModApi_CutsceneBlocked(int32_t test);
+void    ModApi_CutsceneBegin(void);
+int32_t ModApi_CutsceneFrame(const uint8_t *pixels, int32_t w, int32_t h, const uint8_t *rgb, int32_t level);
+void    ModApi_CutsceneSound(const uint8_t *pcm, uint32_t len, int32_t rate);
+int32_t ModApi_CutsceneSoundPlaying(void);
+void    ModApi_CutsceneEnd(void);
+/* The game's language ([general] language: "en", "fr", "de", "it" ...). */
+const char *ModApi_Language(void);
 /* Every file in a folder (an absolute path: ModApi_ModDir(slug) + "/..."), not the dot ones:
  * `each` is called with its name (stop by returning nonzero); how many there were. */
 /* The player's assets folder (where the setup put the game's data from their own copy): a mod
@@ -687,6 +780,17 @@ int32_t ModApi_ControlledPlayer(int32_t side, int16_t *x, int16_t *y);
 void    ModApi_StartShootout(void);             /* to penalties now */
 void    ModApi_Score(int16_t goals[2]);         /* the score now */
 uint32_t ModApi_MatchFrames(void);              /* frames played from kick-off */
+/* A gameplay mod's words of the match state (ModDef matchWords; docs/MODS.md §36): NULL when it
+ * has none (off, not a gameplay mod, or the pool full), else *count of them. */
+uint32_t *ModApi_MatchState(const char *slug, int32_t *count);
+/* Where the match is, as the simulation has it (for matchStep): */
+typedef struct {
+    uint8_t inPlay;         /* the game in progress: kicked off and the ball live or about to be */
+    uint8_t shootout;       /* a penalty shoot-out is on */
+    uint8_t goalCelebration;/* a goal's celebration (the goal camera) is running */
+    uint8_t replay;         /* an instant replay is showing */
+} ModMatchPhase;
+int32_t ModApi_MatchPhase(ModMatchPhase *out);  /* 0 outside a match */
 
 /* A shoot-out as it stands (SWOS 2020's scoreboard draws from it): 0 when none is being played.
  * Team 0 is team 1 (the banner's left), 1 team 2. */

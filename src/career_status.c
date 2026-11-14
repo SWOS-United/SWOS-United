@@ -28,6 +28,10 @@
  * GetExpectedLeagueRankIndex.
  */
 
+#include <stdlib.h>
+#include "long_bench.h"
+#include "squad_extras.h"
+#include "bteam.h"
 #include "career_status.h"
 #include "teams.h"
 #include "league_phase.h"
@@ -38,6 +42,7 @@
 #include "diy_competition.h"
 #include "endian_helpers.h"
 #include "career_teams.h"
+#include "world_rules.h"     /* a world's CPU RED CARDS / CPU INJURIES countdowns */
 #include "game_types.h"
 #include "menu_system.h"
 #include "auto_skip_debug.h"
@@ -50,6 +55,7 @@ extern uint16_t Rand2(void);
 extern TeamFileEx *VerifyTeamLoaded(uint16_t teamNum);
 extern uint16_t GetAveragePlayerPrice(TeamFileEx *team);
 #include "career_params.h"
+#include "world_finance.h"      /* a world's TV income and UEFA prizes */
 extern uint16_t CalcGateReceiptsBaseFromTeamValue(uint16_t avgPrice);
 extern uint16_t GetTeamValueBase(uint16_t avgPrice);
 
@@ -317,8 +323,8 @@ static void maybeDecayPlayerStatusBucket(uint16_t bucketBits, PlayerFile *player
  * for those with nonzero status bucket bits.
  * ================================================================ */
 static void maybeDecayPlayerStatusBucketForTeam(TeamFileEx *team) {
-    /* Skip computer-controlled teams */
-    if (team->team.teamControls == 1)
+    /* Skip computer-controlled teams (a world's CPU INJURIES: counted down too, world_rules.c) */
+    if (team->team.teamControls == 1 && !WorldRules_CpuCountdown(WRULE_CPU_INJURIES))
         return;
 
     if (team == &_careerTeam) {
@@ -354,8 +360,8 @@ static void cyclePlayerStatusFlagsForTeam(TeamFileEx *team, uint16_t mode) {
     /* Skip if training game or computer-controlled team */
     if (_trainingGame != 0)
         return;
-    if (team->team.teamControls == 1)
-        return;
+    if (team->team.teamControls == 1 && !WorldRules_CpuCountdown(WRULE_CPU_CARDS))
+        return;     /* (a world's CPU RED CARDS: counted down too, world_rules.c) */
 
     uint8_t *playerList;
     int16_t count;
@@ -407,6 +413,14 @@ static void cyclePlayerStatusFlagsForTeam(TeamFileEx *team, uint16_t mode) {
             pf->cardsInjuries = ci;
         }
     }
+}
+
+/* A team's injury and card countdowns, once (world_rules.c: a world's computer clubs on each
+ * calendar day). */
+void CareerStatus_CountdownTeam(TeamFileEx *team, uint16_t mode)
+{
+    maybeDecayPlayerStatusBucketForTeam(team);
+    cyclePlayerStatusFlagsForTeam(team, mode);
 }
 
 /* ================================================================
@@ -587,6 +601,30 @@ uint16_t IsPlayerInjuredForDisplay(PlayerFile *playerFile, int16_t mode) {
     return player_injury_status(playerFile, mode);
 }
 
+/* A friendly club's long bench (long_bench.c, the Mod's fr_a2 / fr_a1): the checks read the order
+ * on the pre-match screen -- its 16 and its players 17.. -- not the record's. 0: the record's. */
+static int32_t fr_list(TeamFileEx *team, uint8_t **list, uint16_t *count)
+{
+    uint16_t n = 0;
+    const uint8_t *order = LongBench_FrOrder(PACK_BE_U16(team->team.countryNumber, team->team.teamOrdinal), &n);
+    if (!order || team == &_careerTeam || team == &_currentTeam)
+        return 0;
+    *list = (uint8_t *)order;
+    *count = n;
+    return 1;
+}
+
+static PlayerFile *fr_player(TeamFileEx *team, int16_t idx)
+{
+    if (idx >= 16) {
+        PlayerFile *x = SquadExtras_BenchRecord(PACK_BE_U16(team->team.countryNumber, team->team.teamOrdinal),
+                                                (uint16_t)idx);
+        if (x)
+            return x;
+    }
+    return &team->players[idx];
+}
+
 /* ================================================================
  * GetNumberOfSubstitutes
  * Counts players with position == 0 (goalkeeper) in the team.
@@ -604,12 +642,14 @@ uint16_t GetNumberOfSubstitutes(TeamFileEx *team, uint16_t numPl) {
         playerList = _playerPositions;
     } else {
         playerList = team->team.playerNumbers;
+        uint16_t frN;
+        fr_list(team, &playerList, &frN);
     }
 
     uint16_t count = 0;
     for (; iter >= 0; iter--) {
         int16_t idx = (int8_t)playerList[iter];
-        PlayerFile *pf = &team->players[idx];
+        PlayerFile *pf = fr_player(team, idx);
         uint16_t position = ((uint16_t)pf->positionAndFace & PF_POSITION_MASK) >> PF_POSITION_SHIFT;
         if (position == 0)
             count++;
@@ -632,12 +672,14 @@ uint16_t GetNumberOfSubstitutesInSelectionList(TeamFileEx *team, uint16_t extraC
         playerList = _playerPositions;
     } else {
         playerList = team->team.playerNumbers;
+        uint16_t frN;
+        fr_list(team, &playerList, &frN);
     }
 
     uint16_t count = 0;
     for (; iter >= 11; iter--) {
         int16_t idx = (int8_t)playerList[iter];
-        PlayerFile *pf = &team->players[idx];
+        PlayerFile *pf = fr_player(team, idx);
         uint16_t position = ((uint16_t)pf->positionAndFace & PF_POSITION_MASK) >> PF_POSITION_SHIFT;
         if (position == 0)
             count++;
@@ -715,6 +757,7 @@ uint32_t GetNumberOfAvailablePlayers(TeamFileEx *team, int16_t excludeCardsFlag,
     } else {
         playerList = team->team.playerNumbers;
         totalCount = 16;
+        fr_list(team, &playerList, &totalCount);
     }
 
     if (numPl != 0)
@@ -726,7 +769,7 @@ uint32_t GetNumberOfAvailablePlayers(TeamFileEx *team, int16_t excludeCardsFlag,
 
     for (; iter >= 0; iter--) {
         int16_t idx = (int8_t)playerList[iter];
-        PlayerFile *pf = &team->players[idx];
+        PlayerFile *pf = fr_player(team, idx);
         if (isPlayerDisabled(pf, excludeCardsFlag)) {
             disabled++;
             available--;
@@ -755,6 +798,7 @@ uint32_t GetNumberOfAvailableSubstitutes(TeamFileEx *team, int16_t flag) {
     } else {
         playerList = team->team.playerNumbers;
         totalCount = 16;
+        fr_list(team, &playerList, &totalCount);
     }
 
     uint16_t disabled = 0;
@@ -763,7 +807,7 @@ uint32_t GetNumberOfAvailableSubstitutes(TeamFileEx *team, int16_t flag) {
 
     for (; iter >= 0; iter--) {
         int16_t idx = (int8_t)playerList[iter];
-        PlayerFile *pf = &team->players[idx];
+        PlayerFile *pf = fr_player(team, idx);
 
         /* Check if goalkeeper (position == 0) */
         uint16_t position = ((uint16_t)pf->positionAndFace & PF_POSITION_MASK) >> PF_POSITION_SHIFT;
@@ -797,6 +841,7 @@ uint32_t GetNumberOfAvailableStartingPlayers(TeamFileEx *team, int16_t flag) {
     } else {
         playerList = team->team.playerNumbers;
         totalCount = 16;
+        fr_list(team, &playerList, &totalCount);
     }
 
     uint16_t disabled = 0;
@@ -805,7 +850,7 @@ uint32_t GetNumberOfAvailableStartingPlayers(TeamFileEx *team, int16_t flag) {
 
     for (; iter >= 0; iter--) {
         int16_t idx = (int8_t)playerList[iter];
-        PlayerFile *pf = &team->players[idx];
+        PlayerFile *pf = fr_player(team, idx);
 
         /* Check if NOT goalkeeper (position != 0) */
         uint16_t position = ((uint16_t)pf->positionAndFace & PF_POSITION_MASK) >> PF_POSITION_SHIFT;
@@ -1320,6 +1365,8 @@ increment_count:
     _seasonMatchReceiptsCount++;
 
 final_update:
+    if (WorldFinance_On() && d7 > 0xFFFF)
+        d7 = 0xFFFF;                    /* (a world's gate saturates, not wraps: the Mod's finance.py) */
     d7 &= 0xFFFF;
     d7 <<= 4;
     if (leagueGate && _careerParams.league_gate_mult > 1 && team == &_careerTeam) {
@@ -1329,7 +1376,9 @@ final_update:
         _newBalance = careerSaturatingAdd(_newBalance, credit);
         _seasonGateReceiptsAccum2 = careerSaturatingAdd(_seasonGateReceiptsAccum2, credit);
         _seasonGateReceiptsAccum = careerSaturatingAdd(_seasonGateReceiptsAccum, credit);
+        Ffp_Gate((int32_t)(credit > INT32_MAX ? INT32_MAX : credit));
     } else {
+    Ffp_Gate((int32_t)d7);              /* (a world's financial fair play counts the season's gates) */
     _gateReceipts += (int32_t)d7;
     _newBalance += (int32_t)d7;
     _seasonGateReceiptsAccum2 += (int32_t)d7;
@@ -1370,6 +1419,13 @@ void MaybeSackManagerAfterSeasonReview(void) {
 
     if (randVal > threshold)
         return;
+#ifdef SWOS_SDL_BUILD
+    {   /* SWOS_TEST_NATIONAL_JOB (the golden careers, job_offers.c): the national coach is kept --
+         * his cycle's competitions played out (the draw above taken all the same) */
+        if (_isNationalSelector && getenv("SWOS_TEST_NATIONAL_JOB"))
+            return;
+    }
+#endif
 
     _currentMessage = CHAIRMAN_WE_DIDNT_RENEW_YOUR_CONTRACT;
     ShowChairmanMessage();
@@ -1633,6 +1689,7 @@ void ApplyWeeklyFinancialDeductions(void) {
         _seasonRunningCostsAccum += running;
         _seasonRunningCostsAccum2 += running;
         _seasonWeeksDeducted++;
+        WorldFinance_Charge();          /* (a world's TV and commercial income, world_finance.c) */
     }
 
 save_week_and_clamp:
@@ -2350,8 +2407,9 @@ void Career_UpdatePlayerWeeklyWageCache(uint16_t playerIndex)
     if (someFlag == PLAYER_FORM_TRIALIST) {
         /* Trialist: reduce wage (default 33%) */
         avgBase = (uint16_t)((uint32_t)avgBase * _careerParams.wage_trialist_pct / 100);
-    } else if (someFlag == PLAYER_FORM_RESERVE) {
-        /* Youth: reduce wage (default 66%) */
+    } else if (someFlag == PLAYER_FORM_RESERVE || SquadExtras_IsOwnExtra(pf)) {
+        /* Youth: reduce wage (default 66%) -- and a world club's own players 17.. while they are
+         * its (squad_extras.c: the Mod's xtra_wage) */
         avgBase = (uint16_t)((uint32_t)avgBase * _careerParams.wage_reserve_pct / 100);
     }
 
@@ -2364,6 +2422,8 @@ void Career_UpdatePlayerWeeklyWageCache(uint16_t playerIndex)
     if (_careerParams.wage_pct != 100)  /* (career_params: Career+'s 40%) */
         wage = wage * _careerParams.wage_pct / 100u;
 
+    if (BTeam_CalledKind(pf) == 1)      /* (a world's B-team call-up for one match: no wages, bteam.c) */
+        wage = 0;
     _weeklyWageByPlayerIndex[playerIndex] = (int32_t)wage;
 
     recalcTotalWeeklyWages();
@@ -2866,7 +2926,16 @@ static void formatNewBalanceEntry(MenuEntry *e, int32_t balance) {
  * 3) stayingInOldClub → extended with sponsorship info
  * ================================================================ */
 __attribute__((used, externally_visible))
+static void clubBusinessWorldRows(void);
+
 void ClubBusinessInit(void)
+{
+    extern void clubBusinessInitOriginal(void);
+    clubBusinessInitOriginal();
+    clubBusinessWorldRows();
+}
+
+void clubBusinessInitOriginal(void)
 {
     if (_contractNegotiationActive) {
         /* ---- Path 1: Full financial summary ---- */
@@ -2885,6 +2954,40 @@ void ClubBusinessInit(void)
 
         /* Compute total profit/loss */
         int32_t total = computeTotalProfitLoss();
+
+        /* A world's rows (world_finance.c; the Mod's finance.py fi_stmt and uprize.py up_stmt):
+         * SPONSORS + TV RIGHTS on the hidden sponsorship row, the rows below it 15 down; UEFA
+         * PRIZE MONEY on the competition bonuses' row 15 below the old balance, the rows below
+         * it 10 down (the total 5: its gap is the others' then). */
+        int32_t tvShow = 0;
+        const int32_t tv = WorldFinance_PeriodTv(total, &tvShow);
+        if (tvShow) {
+            static char tvRow[] = "SPONSORS AND TV RIGHTS:";   /* (the Mod's "+": not every font has it) */
+            _menuEntries[6].isInvisible = 0;
+            _menuEntries[6].fg = (uintptr_t)tvRow;
+            _menuEntries[16].isInvisible = 0;
+            WriteAccountBalance(tv, (uint8_t *)_menuEntries[16].fg);
+            for (int16_t i = 7; i <= 11; i++) {
+                _menuEntries[i].y += 15;
+                _menuEntries[i + 10].y += 15;
+            }
+            total += tv;
+        }
+        if (UefaPrize_ShowRow()) {
+            static char prizeRow[] = "UEFA PRIZE MONEY:";
+            _menuEntries[3].isInvisible = 0;
+            _menuEntries[3].fg = (uintptr_t)prizeRow;
+            _menuEntries[3].y = _menuEntries[2].y + 15;
+            _menuEntries[13].isInvisible = 0;
+            _menuEntries[13].y = _menuEntries[3].y;
+            WriteAccountBalance(_competitionBonuses, (uint8_t *)_menuEntries[13].fg);
+            for (int16_t i = 4; i <= 10; i++) {
+                const int16_t dy = i == 10 ? 5 : 10;
+                _menuEntries[i].y += dy;
+                _menuEntries[i + 10].y += dy;
+            }
+        }
+
         if (total < 0) {
             _menuEntries[10].fg = (uintptr_t)_aTotalLoss;
         }
@@ -3055,6 +3158,74 @@ void ClubBusinessInit(void)
     formatNewBalanceEntry(e498, _newBalance);
 }
 
+/* A world's rows and switches on CLUB BUSINESS (the Mod 4.1's ffp.py ff_biz and uprize.py up_biz):
+ * the season-start statement's FINANCIAL FAIR PLAY FINE row (on the wages' row, hidden there);
+ * the wages / last season's income row above the old balance, and the rule's switch beside it in
+ * the new balance's column (UP from CONTINUE); the UEFA prizes' switch left of CONTINUE. */
+static char s_ffpOn[] = "FFP: ON", s_ffpOff[] = "FFP: OFF";
+static char s_upOn[] = "UEFA PRIZES: ON", s_upOff[] = "UEFA PRIZES: OFF";
+
+static void clubBusinessWorldRows(void)
+{
+    if (!_contractNegotiationActive && _stayingInOldClub && g_ffp.fine && Ffp_Shown()) {
+        static char fineRow[] = "FINANCIAL FAIR PLAY FINE:";
+        MenuEntry *label = &_menuEntries[9], *value = &_menuEntries[19];
+        label->isInvisible = 0;
+        label->fg = (uintptr_t)fineRow;
+        label->y = (uint16_t)(_menuEntries[8].y + 15);
+        value->isInvisible = 0;
+        value->y = (uint16_t)(_menuEntries[18].y + 15);
+        WriteAccountBalance(-g_ffp.fine, (uint8_t *)value->fg);
+        _menuEntries[10].y += 10;
+        _menuEntries[11].y += 10;
+        _menuEntries[20].y += 10;
+        _menuEntries[21].y += 10;
+        const int32_t total = _newBalance - _old_balance;       /* (the total with the fine: new - old) */
+        if (total < 0)
+            _menuEntries[10].fg = (uintptr_t)_aTotalLoss;
+        WriteAccountBalance(total, (uint8_t *)_menuEntries[20].fg);
+    }
+    if (Ffp_Shown()) {
+        MenuEntry *ratio = &_menuEntries[22], *sw = &_menuEntries[23];
+        ratio->isInvisible = 0;
+        ratio->x = _menuEntries[2].x;
+        ratio->dwWidth = _menuEntries[2].dwWidth;
+        ratio->y = (uint16_t)(_menuEntries[2].y - 15);
+        Ffp_RatioText((char *)ratio->fg, 70);
+        sw->isInvisible = 0;
+        sw->x = _menuEntries[21].x;
+        sw->dwWidth = _menuEntries[21].dwWidth;
+        sw->y = (uint16_t)(ratio->y - 1);
+        sw->fg = (uintptr_t)(g_ffp.on ? s_ffpOn : s_ffpOff);
+        _menuEntries[1].upEntry = 23;
+    }
+    if (UefaPrize_Shown()) {
+        MenuEntry *sw = &_menuEntries[24];
+        sw->isInvisible = 0;
+        sw->y = _menuEntries[1].y;
+        sw->dwHeight = _menuEntries[1].dwHeight;
+        sw->fg = (uintptr_t)(g_uefaPrize.off ? s_upOff : s_upOn);
+        _menuEntries[1].leftEntry = 24;
+    }
+}
+
+/* Fire on the switches: the rule / the prizes on or off for this career (saved with it). */
+__attribute__((used, externally_visible))
+void ClubBusinessFfpSwitch(void)
+{
+    g_ffp.on ^= 1;
+    _menuEntries[23].fg = (uintptr_t)(g_ffp.on ? s_ffpOn : s_ffpOff);
+    DrawMenuItem(&_menuEntries[23]);
+}
+
+__attribute__((used, externally_visible))
+void ClubBusinessUefaPrizesSwitch(void)
+{
+    g_uefaPrize.off ^= 1;
+    _menuEntries[24].fg = (uintptr_t)(g_uefaPrize.off ? s_upOff : s_upOn);
+    DrawMenuItem(&_menuEntries[24]);
+}
+
 /* ================================================================
  * Career_InitializeNewSeasonFinances  (SWOS2.s line 83433)
  *
@@ -3072,6 +3243,7 @@ void Career_InitializeNewSeasonFinances(void)
 
     /* Transfer newBalance → old_balance and clear accumulators */
     _old_balance = _newBalance;
+    WorldFinance_PeriodStart();
     _playerPurchases = 0;
     _playerSales = 0;
     _playerWagesBill = 0;
@@ -3139,7 +3311,8 @@ skipSponsorship:
     /* Competition bonuses */
     _competitionBonuses = 0;
 
-    if (_stayingInOldClub && _quaternaryCompetitionPtr != 0) {
+    if (_stayingInOldClub && _quaternaryCompetitionPtr != 0 &&
+        !UefaPrize_SkipSeasonStartTerm(_euroCupSlotIndex)) {   /* (a world's UEFA prizes pay it instead) */
         int16_t bonus = (int8_t)_euroCupsCompetitionContextBuf.tourn.header.trophyBonusValue;
         uint32_t d0;
 

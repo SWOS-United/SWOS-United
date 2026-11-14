@@ -44,6 +44,7 @@ void        Mods_Init(const char *enabled, const char *disabled);
 /* Before Mods_Init: a rig runs (main.c), so the default-on canonical mods that are not cosmetic
  * stay off (a mod the run names is still on). SDL. */
 void        Mods_SetRig(int32_t on);
+int32_t     Mods_IsRig(void);              /* (a rig runs: --replay-test, --srp-resim, --career-golden) */
 
 int32_t     Mods_Count(void);
 const char *Mods_Id(int32_t i);
@@ -54,6 +55,9 @@ int32_t     Mods_CountListed(void);             /* the mods on that a player can
 int32_t     Mods_SlugIsStatic(const char *slug);
 /* Whether the mod of that slug is on in this run (a built-in mod's code asks: src/mod_hooks.c). */
 int32_t     Mods_IsOn(const char *slug);
+/* ... and changes the match ("changes": "gameplay" or "data": both online players have it alike).
+ * The Amiga, which reads no manifest: on. */
+int32_t     Mods_ChangesMatch(const char *slug);
 /* The mod's folder, no trailing slash: SDL "<Mods_Root()>/<id>", Amiga "mods/<id>". */
 const char *Mods_Dir(int32_t i);
 /* Where mods are found (SDL): $SWOS_MODS, else "mods" in the player's game folder. */

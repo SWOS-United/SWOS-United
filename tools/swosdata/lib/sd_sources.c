@@ -486,6 +486,13 @@ static int32_t add_zip(SdSources *s, const char *path)
 
 /* ---- a world's package ------------------------------------------------------- */
 
+static void take_world(SdSources *s, const char *path);   /* (below) */
+
+void SdSources_AddWorld(SdSources *s, const char *path)
+{
+    take_world(s, path);
+}
+
 typedef struct {
     char    name[260];
     uint8_t isDir;
@@ -779,7 +786,7 @@ static int32_t dos_missing(const char *dir, char *first, uint32_t cap)
     first[0] = '\0';
     for (int32_t i = 0; g_sdDosCopy[i].dest; i++) {
         const char *d = g_sdDosCopy[i].dest;
-        if (!strncmp(d, "sound_dos/fx/", 13) || !strncmp(d, "sound_dos/hard/", 15) || !strncmp(d, "sound_dos/pierce/", 17))
+        if (SdManifest_DosOptional(d))
             continue;
         char p[1100];
         if (find_dos_at(dir, NULL, g_sdDosCopy[i].src, p, sizeof p) == 0)
@@ -844,8 +851,7 @@ int32_t SdSources_AddFile(SdSources *s, const char *path)
     if (ends_with_nocase(path, ".zip")) {
         SdWorldInfo w;
         if (SdSources_OpenWorld(path, &w, NULL, 0) == 0) {
-            if (!s->world[0])
-                snprintf(s->world, sizeof s->world, "%s", path);
+            take_world(s, path);
             return 0;
         }
         return add_zip(s, path);
@@ -925,8 +931,7 @@ int32_t SdSources_AddFile(SdSources *s, const char *path)
         }
         SdWorldInfo w;
         if (SdSources_OpenWorld(path, &w, game, sizeof game) == 0) {
-            if (!s->world[0])
-                snprintf(s->world, sizeof s->world, "%s", game);
+            take_world(s, game);
             return 0;
         }
         if (has_commentary_dir(path))       /* the PC game's CD, or its sounds */
@@ -955,14 +960,38 @@ int32_t SdSources_AddFile(SdSources *s, const char *path)
         }
         SdWorldInfo w;               /* (its WORLD.ini, or a file beside it) */
         if (SdSources_OpenWorld(dir, &w, game, sizeof game) == 0 && strcmp(game, dir) == 0) {
-            if (!s->world[0])
-                snprintf(s->world, sizeof s->world, "%s", game);
+            take_world(s, game);
             return 0;
         }
         if (has_commentary_dir(dir))
             return SdSources_AddDosCd(s, dir);
     }
     return -1;
+}
+
+/* A world's package found: the first one, or another world's (by its WORLD.ini tag) beside it --
+ * one package a world, the first found of each kept. */
+static void take_world(SdSources *s, const char *path)
+{
+    SdWorldInfo w, o;
+    if (!s->world[0]) {
+        snprintf(s->world, sizeof s->world, "%s", path);
+        return;
+    }
+    if (SdSources_OpenWorld(path, &w, NULL, 0) != 0)
+        return;
+    if (strcmp(s->world, path) == 0 ||
+        (SdSources_OpenWorld(s->world, &o, NULL, 0) == 0 && strcmp(o.tag, w.tag) == 0))
+        return;
+    for (int32_t i = 0; i < SD_WORLDS_MORE; i++) {
+        if (!s->worldMore[i][0]) {
+            snprintf(s->worldMore[i], sizeof s->worldMore[i], "%s", path);
+            return;
+        }
+        if (strcmp(s->worldMore[i], path) == 0 ||
+            (SdSources_OpenWorld(s->worldMore[i], &o, NULL, 0) == 0 && strcmp(o.tag, w.tag) == 0))
+            return;
+    }
 }
 
 static int32_t count_found(const SdSources *s)
@@ -982,6 +1011,7 @@ typedef struct {
     void          *user;
     int32_t        folders;
     int32_t        stopped;
+    int32_t        maxDepth;   /* SCAN_MAX_DEPTH, or a drive scan's few levels */
 } ScanCtx;
 
 /* Everything there is to find. An Amiga hard disk image does not end the search while
@@ -1148,8 +1178,7 @@ static void scan_dir(SdSources *s, const char *dir, int32_t depth, ScanCtx *ctx)
         SdWorldInfo w;               /* (an unpacked world package) */
         char root[1024];
         if (SdSources_OpenWorld(dir, &w, root, sizeof root) == 0) {
-            if (!s->world[0])
-                snprintf(s->world, sizeof s->world, "%s", root);
+            take_world(s, root);
             gameDir = 1;
         }
     } else if (has_entry(list, n, "swos", 1) || has_entry(list, n, "swos-port-Release.exe", 0)) {
@@ -1165,15 +1194,23 @@ static void scan_dir(SdSources *s, const char *dir, int32_t depth, ScanCtx *ctx)
         Sg_PathJoin(p, sizeof p, dir, list[i].name);
         if (!list[i].isDir)
             scan_file(s, p, list[i].name);
-        else if (!gameDir && depth < SCAN_MAX_DEPTH && !skip_folder(list[i].name))
+        else if (!gameDir && depth < ctx->maxDepth && !skip_folder(list[i].name))
             scan_dir(s, p, depth + 1, ctx);
     }
     free(list);
 }
 
+int32_t SdSources_ScanDepthEx(SdSources *s, const char *dir, int32_t maxDepth, SdScanProgress progress,
+                              void *user)
+{
+    ScanCtx ctx = { progress, user, 0, 0, maxDepth < SCAN_MAX_DEPTH ? maxDepth : SCAN_MAX_DEPTH };
+    scan_dir(s, dir, 0, &ctx);
+    return ctx.stopped ? -1 : count_found(s);
+}
+
 int32_t SdSources_ScanEx(SdSources *s, const char *dir, SdScanProgress progress, void *user)
 {
-    ScanCtx ctx = { progress, user, 0, 0 };
+    ScanCtx ctx = { progress, user, 0, 0, SCAN_MAX_DEPTH };
     scan_dir(s, dir, 0, &ctx);
     return ctx.stopped ? -1 : count_found(s);
 }
@@ -1334,7 +1371,8 @@ static int32_t is_dos_cd_image(const char *path)
 }
 
 /* The game's own files off an image of the CD into a folder of the setup's own under the system's
- * temporary folder, once -- not SFX/ (read off the image as it is needed), nor the videos (ARC/),
+ * temporary folder, once -- not SFX/ nor the cutscenes (ARC/), both read off the image as they are
+ * needed (SdSources_ReadDos),
  * the boot disk or the sound card drivers: that folder, a PC game folder, in `out`. 0 when the
  * image has the game on it. */
 static int32_t cd_image_game(const char *image, char *out, uint32_t cap)
@@ -1351,7 +1389,7 @@ static int32_t cd_image_game(const char *image, char *out, uint32_t cap)
         char done[1200];
         snprintf(out, cap, "%s/" PROJECT_SETUP_PROGRAM "/%s.game", temp_root(), base);
         snprintf(done, sizeof done, "%s/.copied", out);         /* (a copy cut short is made again) */
-        static const char *const kSkip[] = { "SFX", "ARC", "BOOT", "ENSONIQ", NULL };   /* (ARC: the videos) */
+        static const char *const kSkip[] = { "SFX", "ARC", "BOOT", "ENSONIQ", NULL };   /* (ARC: the cutscenes) */
         if (Sg_IsFile(done) || (CdImage_ExtractTree(cd, out, kSkip, err) == 0 &&
                                 Sg_WriteFile(done, "", 0, err) == 0))
             rc = is_dos_dir(out) ? 0 : -1;
@@ -1506,4 +1544,46 @@ int32_t SdSources_ReadDos(SdSources *s, const char *rel, SgBuf *out, char *err)
     }
     snprintf(err, 256, "%s is not in the PC game folder%s", rel, s->dosCd[0] ? " or on its CD" : "");
     return -1;
+}
+
+/* ---- the PC data from SWOS 2020 (no PC game, no Amiga version) ---------- */
+
+int32_t SdSources_PcFromSwos2020(const SdSources *s)
+{
+    return s->s2020Dir[0] && !s->dosDir[0] && !SdSources_HaveAmiga(s);
+}
+
+/* The 96/97 teams SWOS 2020 keeps for its online play: its own DATA/ is a later season. */
+#define S2020_TEAMS_9697 "MP/DB/96_97"
+
+int32_t SdSources_Swos2020Has9697Teams(const SdSources *s)
+{
+    char p[1024];
+    return s->s2020Dir[0] && Sg_FindNoCase(s->s2020Dir, S2020_TEAMS_9697 "/DATA/TEAM.000", p, sizeof p) == 0;
+}
+
+int32_t SdSources_ReadSwos2020Pc(SdSources *s, const char *rel, SgBuf *out, char *err)
+{
+    char p[1024], alt[300];
+    const char *name = strrchr(rel, '/');
+    name = name ? name + 1 : rel;
+    /* The PC game's CD, when there is one, for the sounds: the originals and the commentary. */
+    if (s->dosCd[0] && (!strncmp(rel, "SFX/", 4) || !strncmp(rel, "HARD/", 5)) &&
+        SdSources_ReadDos(s, rel, out, err) == 0)
+        return 0;
+    if (!strncmp(rel, "SFX/PIERCE/", 11)) {           /* the commentary: SWOS 2020 has none */
+        snprintf(err, 256, "%s: SWOS 2020 has no commentary", rel);
+        return -1;
+    }
+    if (!strncmp(rel, "SFX/FX/", 7) || !strncmp(rel, "HARD/", 5))
+        snprintf(alt, sizeof alt, "audio/fx/%s", name);   /* its effects and crowd, in one folder */
+    else if (!strncmp(rel, "DATA/", 5) && SdSources_Swos2020Has9697Teams(s))
+        snprintf(alt, sizeof alt, S2020_TEAMS_9697 "/%s", rel);
+    else
+        snprintf(alt, sizeof alt, "%s", rel);
+    if (Sg_FindNoCase(s->s2020Dir, alt, p, sizeof p) != 0) {
+        snprintf(err, 256, "%.200s is not in SWOS 2020's game folder", alt);
+        return -1;
+    }
+    return Sg_ReadFile(p, out, err);
 }

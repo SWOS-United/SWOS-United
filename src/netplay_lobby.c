@@ -42,8 +42,10 @@
  * their six slots from before the match and put it back afterwards
  * (NetplayLobby_RestoreTactics): playing online never changes a player's library.
  */
+#include "squad_extras.h"
 #include "mod_hooks.h"    /* lobbyKeepsReady */
 #include "netplay_lobby.h"
+#include "world_rules.h"     /* the host's stoppage time */
 
 #ifdef SWOS_SDL_BUILD
 
@@ -63,6 +65,7 @@
 #include "test_rules.h"     /* the host's CARDS/INJURIES switch */
 #include "chat_style.h"     /* SWOS_CHAT_DYNAMIC_FONT */
 #include "match_chat.h"     /* MatchChat_Clean: what a chat line may hold */
+#include "mod_api.h"        /* ModFriendlyRules: a gameplay mod's rules for a friendly */
 
 #include <SDL.h>                        /* SDL_GetPerformanceCounter: key entropy fallback */
 #include <time.h>
@@ -601,9 +604,10 @@ static void apply_switches(uint16_t sw)
     /* CARDS/INJURIES off: the old tester builds' rule, for this match, on both machines,
      * from the kick-off on (test_rules.h; the recording says so -- netplay_match.c). */
     TestRules_Force((sw & NETPLAY_SW_CARDS_INJURIES) ? -1 : 1);
-    fprintf(stderr, "[lobby] the host's switches: short presses %s, kick-off sync %s, cards/injuries %s\n",
+    fprintf(stderr, "[lobby] the host's switches: short presses %s, kick-off sync %s, cards/injuries %s, "
+            "stoppage time %s\n",
             (sw & NETPLAY_SW_SHORT_PRESSES) ? "ON" : "OFF", (sw & NETPLAY_SW_KICKOFF_SYNC) ? "ON" : "OFF",
-            (sw & NETPLAY_SW_CARDS_INJURIES) ? "ON" : "OFF");
+            (sw & NETPLAY_SW_CARDS_INJURIES) ? "ON" : "OFF", (sw & NETPLAY_SW_STOPPAGE) ? "ON" : "OFF");
 }
 
 static void release_switches(void)
@@ -617,10 +621,49 @@ static void release_switches(void)
     TestRules_Force(-1);
 }
 
+/* A gameplay mod's rules for the match the host offers (docs/MODS.md §36: the arcade mod's) --
+ * decided here, on the host, from its own settings, and only for a single friendly. They go to
+ * the joiner as the rest of the match does: the mod's words in the kick-off state, the slow clock
+ * and the replays in the setup. The host's own AUTO REPLAYS and GAME LENGTH are put back after. */
+static int32_t  s_modRulesHeld;
+static uint16_t s_ownReplays, s_ownLength;
+
+static void arm_mod_rules(void)
+{
+    extern uint16_t _gameLength, _autoReplays;
+    ModFriendlyRules rules;
+    ModHooks_ClearMatchState();
+    if (s_lobby.rules.mode != LOBBY_MODE_FRIENDLY || s_lobby.rules.legs != 0 || !ModHooks_FriendlyRules(&rules))
+        return;
+    if (!s_modRulesHeld) {
+        s_ownReplays = _autoReplays;
+        s_ownLength  = s_lobby.rules.gameLength;   /* (the OPTIONS length assemble_match just set) */
+    }
+    s_modRulesHeld = 1;
+    if (rules.slowClock)
+        _gameLength = 3;
+    if (rules.autoReplays >= 0)
+        _autoReplays = (uint16_t)rules.autoReplays;
+    fprintf(stderr, "[lobby] a mod's rules for this friendly: %s (slow clock %s, replays %s)\n",
+            ModHooks_MatchName() ? ModHooks_MatchName() : "?", rules.slowClock ? "on" : "off",
+            _autoReplays ? "on" : "off");
+}
+
+static void release_mod_rules(void)
+{
+    extern uint16_t _gameLength, _autoReplays;
+    if (!s_modRulesHeld)
+        return;
+    s_modRulesHeld = 0;
+    _autoReplays = s_ownReplays;
+    _gameLength  = s_ownLength;         /* (the slow clock is the match's, never the player's option) */
+}
+
 void NetplayLobby_RestoreTactics(void)
 {
     int32_t i;
     release_switches();
+    release_mod_rules();
     if (!s_lobby.tacticsSaved)
         return;
     for (i = 0; i < 6; i++)
@@ -904,6 +947,8 @@ void NetplayLobby_Begin(int32_t localPlayer, const char *localName)
             uint16_t sw = NETPLAY_SW_DEFAULT & ~NETPLAY_SW_SHORT_PRESSES;
             if (InputSDL_PressLatch())
                 sw |= NETPLAY_SW_SHORT_PRESSES;
+            if (WorldRules_On(WRULE_STOPPAGE))     /* (a world's stoppage time, as the host has it) */
+                sw |= NETPLAY_SW_STOPPAGE;
             s_lobby.rules.switches = sw;
         }
         clamp_rules(&s_lobby.rules);
@@ -1265,6 +1310,19 @@ static struct {
     int32_t       tries;            /* > 0 while an answer is awaited */
 } s_check;
 
+/* The players 17.. (a world's long bench brings them on; team_proto.h TEAMCHECK_PROTOCOL_EXTRAS):
+ * asked once the teams' answer is in -- the server's answer is one packet deep here -- for each
+ * team that has them, two tries; no answer (a server from before) leaves them unverified. */
+enum { kExtrasTries = 2 };
+static struct {
+    TeamCheckTeam asked[2];
+    int32_t       has[2];
+    uint32_t      nonce;
+    uint32_t      sentAt;
+    int32_t       tries;            /* > 0 while an answer is awaited */
+    int32_t       due;              /* the teams' answer is in: ask about their players 17.. */
+} s_xcheck;
+
 static int32_t refused(const LobbyPlayer *p)
 {
     return p->verified == LOBBY_TEAM_REFUSED_UNKNOWN || p->verified == LOBBY_TEAM_REFUSED_CHANGED;
@@ -1276,7 +1334,47 @@ static int32_t refused(const LobbyPlayer *p)
  * that did not wait would begin on a team whose refusal was still on its way. */
 static int32_t team_blocks(const LobbyPlayer *p)
 {
-    return refused(p) || (P2PLink_HasServer() && p->hasTeam && p->verified == LOBBY_TEAM_UNASKED);
+    return refused(p) || (P2PLink_HasServer() && p->hasTeam &&
+                          (p->verified == LOBBY_TEAM_UNASKED || s_xcheck.due || s_xcheck.tries > 0));
+}
+
+static void xcheck_send(void)
+{
+    uint8_t packet[TEAMCHECK_MAX_LEN];
+    TeamCheck c;
+    memset(&c, 0, sizeof c);
+    c.protocol = TEAMCHECK_PROTOCOL_EXTRAS;
+    c.type = TEAMCHECK_ASK;
+    c.nonce = s_xcheck.nonce;
+    for (int32_t p = 0; p < 2; p++)
+        if (s_xcheck.has[p])
+            c.team[c.count++] = s_xcheck.asked[p];
+    if (c.count)
+        P2PLink_AskServer(packet, TeamCheck_Write(packet, &c));
+    s_xcheck.sentAt = SDL_GetTicks();
+}
+
+/* The players 17.. of both teams: asked when the teams' own answer is in. */
+static void xcheck_start(void)
+{
+    s_xcheck.due = 0;
+    s_xcheck.tries = 0;
+    for (int32_t p = 0; p < 2; p++) {
+        s_xcheck.has[p] = 0;
+        if (!s_check.has[p])
+            continue;
+        const TeamFileEx *t = &s_lobby.players[p].team;
+        s_xcheck.asked[p] = s_check.asked[p];
+        s_xcheck.has[p] = SquadExtras_Checksum(PACK_BE_U16(t->team.countryNumber, t->team.teamOrdinal),
+                                               s_xcheck.asked[p].checksum);
+        if (s_xcheck.has[p] && p != s_lobby.me - 1 && getenv("SWOS_TEAMCHECK_CORRUPT_EXTRAS"))
+            s_xcheck.asked[p].checksum[0] ^= 0x5A;     /* (test: the other's players 17.. doctored) */
+    }
+    if (s_xcheck.has[0] || s_xcheck.has[1]) {
+        s_xcheck.nonce = s_check.nonce * 1103515245u + 12345u;
+        s_xcheck.tries = 1;
+        xcheck_send();
+    }
 }
 
 static void team_check_send(void)
@@ -1327,6 +1425,7 @@ static void team_check(void)
         }
     }
     if (changed) {
+        s_xcheck.due = s_xcheck.tries = 0;
         s_check.nonce = s_check.nonce * 1664525u + 1013904223u + SDL_GetTicks();
         s_check.tries = (s_check.has[0] || s_check.has[1]) ? 1 : 0;
         if (s_check.tries)
@@ -1334,8 +1433,39 @@ static void team_check(void)
     }
 
     n = P2PLink_ServerAnswer(TEAMCHECK_MAGIC, packet, (int32_t)sizeof packet);
+    if (n > 0 && TeamCheck_Read(packet, n, &c) == 0 && c.type == TEAMCHECK_ANSWER &&
+        c.protocol == TEAMCHECK_PROTOCOL_EXTRAS && c.nonce == s_xcheck.nonce && s_xcheck.tries > 0) {
+        for (i = 0; i < c.count; i++)
+            for (p = 0; p < 2; p++) {
+                LobbyPlayer *pl = &s_lobby.players[p];
+                if (!s_xcheck.has[p] || memcmp(c.team[i].uuid, s_xcheck.asked[p].uuid, 16) != 0 ||
+                    memcmp(c.team[i].checksum, s_xcheck.asked[p].checksum, 8) != 0)
+                    continue;
+                fprintf(stderr, "[lobby] team check: player %d's %.16s (its players 17..) is %s\n", (int)p + 1,
+                        (const char *)pl->team.team.teamName,
+                        c.team[i].status == TEAMCHECK_OK ? "canonical" :
+                        c.team[i].status == TEAMCHECK_UNKNOWN ? "not on the server's list: unverified" :
+                        "REFUSED: the server's copy of them is other data");
+                if (c.team[i].status == TEAMCHECK_CHANGED) {
+                    pl->verified = LOBBY_TEAM_REFUSED_CHANGED;
+                    drop_my_ready();
+                }
+            }
+        s_xcheck.tries = 0;
+        n = 0;
+    } else if (s_xcheck.tries > 0 && SDL_GetTicks() - s_xcheck.sentAt >= (uint32_t)kCheckResendMs) {
+        if (s_xcheck.tries >= kExtrasTries) {
+            fprintf(stderr, "[lobby] team check: no answer about the players 17.. (an older server): unverified\n");
+            s_xcheck.tries = 0;
+        } else {
+            s_xcheck.tries++;
+            xcheck_send();
+        }
+    }
+    if (s_xcheck.due)
+        xcheck_start();
     if (n > 0 && TeamCheck_Read(packet, n, &c) == 0 && c.type == TEAMCHECK_ANSWER && c.nonce == s_check.nonce &&
-        s_check.tries > 0) {
+        c.protocol == TEAMCHECK_PROTOCOL && s_check.tries > 0) {
         for (i = 0; i < c.count; i++)
             for (p = 0; p < 2; p++) {
                 LobbyPlayer *pl = &s_lobby.players[p];
@@ -1355,6 +1485,7 @@ static void team_check(void)
                     drop_my_ready();
             }
         s_check.tries = 0;
+        s_xcheck.due = 1;           /* (now their players 17..: xcheck_start, the next poll) */
     } else if (s_check.tries > 0 && SDL_GetTicks() - s_check.sentAt >= (uint32_t)kCheckResendMs) {
         if (s_check.tries >= kCheckTries) {
             for (p = 0; p < 2; p++)
@@ -1398,6 +1529,7 @@ int32_t NetplayLobby_Start(void)
         return 1;
 
     assemble_match();
+    arm_mod_rules();                    /* (before the setup and the state are taken: both carry them) */
     make_packet_key(s_lobby.packetKey);
     BE_WRITE_U32(buf, START_MAGIC);
     BE_WRITE_U16(buf + 4, LOBBY_VERSION);
@@ -1427,6 +1559,7 @@ int32_t NetplayLobby_Start(void)
         fprintf(stderr, "[lobby] no kick-off state to offer (%s); each side kicks off from its own\n",
                 StateWire_ErrorName(k));
         k = 0;
+        ModHooks_ClearMatchState();     /* (a mod's rules would be the host's alone: none, then) */
     }
     if (P2PLink_Send(CH_START, buf, (uint32_t)(START_HEADER + 4 + n + k)) != 0) {
         free(buf);

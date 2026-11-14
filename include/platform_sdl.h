@@ -143,6 +143,9 @@ typedef struct {
     char                   key_bind[5][24];  /* [input] key_up/_down/_left/_right/_fire: the player's own
                                               * keys, SDL scancode names, beside the built-in ones.
                                               * Empty = none (input_sdl.c) */
+    int                    p2_keyboard;      /* [input] p2_keyboard: P1 AND P2 ON KEYBOARD (default off) */
+    char                   p2_key_bind[5][24];/* [input] p2_key_up .. p2_key_fire: player 2's keys on it,
+                                              * empty = the default (W S A D, Left Shift) */
     int                    latch_presses;    /* [input] latch_presses: a fire press that came and went
                                               * between two reads still counts (default on) */
     int                    touch_controls;   /* [input] touch_controls: TOUCH_CONTROLS_* -- the phones'
@@ -159,11 +162,12 @@ typedef struct {
     char                   chat_quick[10][101]; /* [chat] quick1..quick0: the keys 1..0 in an online
                                               * match send these (include/match_chat.h); "" = off */
     int                    no_injuries_cards; /* [testing] no_injuries_cards: offline only (test_rules.h) */
+    int                    career_exact_continuation; /* [career] exact_continuation: saves keep the random state */
     int                    reports;          /* [netplay] reports: SEND MATCH REPORTS -- both players'
                                               * logs and ratings to the server after an online
                                               * match. include/match_report.h */
     int                    arcade;           /* 1 = arcade/coin-op mode — boot to attract. PC-only. See docs/ARCADE.md */
-    int                    arcade_mode;         /* arcade game mode index (0 = GOLDEN GOAL) */
+    char                   arcade_mode[32];     /* arcade game mode, by name: one of the arcade mod's (src/mod_arcade.c) */
     int                    arcade_game_seconds; /* arcade match length in seconds (default 45) */
     int                    arcade_golden_goal;  /* 1 = first goal wins the match (default 1) */
     int                    arcade_penalties;    /* 1 = penalty shootout when drawn (default 1) */
@@ -186,6 +190,7 @@ typedef struct {
     int                    quick_access;     /* [general] quick_access: SWOS 2020's QUICK ACCESS after a
                                               * friendly (src/quick_access.c), 0 off (default) */
     char                   world[8];         /* [general] world: the football world (include/world.h), "" = 9697 */
+    int                    original_main_menu; /* [general] original_main_menu: 96/97's main menu, 96/97 the world */
     char                   mods[256];        /* [mods] enabled: the mods to play with (include/mods.h), "" = none */
     char                   mods_disabled[256];   /* [mods] disabled: canonical mods turned off, "" = none */
     uint32_t               tweaks;           /* [tweaks]: TWEAK_* bits switched on (include/tweaks.h), 0 = none */
@@ -310,6 +315,14 @@ void Platform_ShowProgress(int permille);
  * empty), NULL when the HUD is drawn in the frame itself ([video] subpixel_scroll off). */
 const uint8_t *Platform_FrameShown(void);
 uint8_t       *Platform_HudLayerBuffer(void);
+
+/* A cutscene over the whole picture (src/mod_api.c ModApi_Cutscene*, the PC cutscenes mod):
+ * `pixels` (w x h palette indices) centred 1:1 on the screen, the rest its darkest colour, in its
+ * own `rgb` palette (768 bytes, 0-255) at `level` (0 black .. 256 full) -- shown by the next
+ * presents in place of the game's frame and palette, which are left as they are. NULL: the game's
+ * picture again. Platform_PressCount: key, mouse, pad and touch presses so far (a skip). */
+void     Platform_CutsceneShow(const uint8_t *pixels, int w, int h, const uint8_t *rgb, int level);
+uint32_t Platform_PressCount(void);
 
 /* Run the Amiga Level-3 VBlank ISR body, throttled to ~50 Hz max and
  * mutex-guarded so concurrent calls from the timer thread and the main

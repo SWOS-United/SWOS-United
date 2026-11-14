@@ -11,6 +11,7 @@
  * numbers are its own (seeded by the caller), so a season replays the same.
  */
 #include "league_phase.h"
+#include "cup_record.h"
 #include "uefa_coef.h"
 
 #define N   LEAGUE_PHASE_CLUBS
@@ -461,6 +462,7 @@ void LeaguePhase_Rank(const LeaguePhaseRow *row, const uint8_t (*cal)[2], int32_
 #include "world.h"
 #include "random.h"
 #include "competition_data.h"   /* _europeTable, the 96/97 cups (LeaguePhase_InstallCups) */
+#include "world_finance.h"      /* the UEFA prize money (UefaPrize_*) */
 
 extern DIYCompetitionEx _diyCompetitionStart;
 extern DIYTournamentState _diyFileBufferCopy;
@@ -485,6 +487,8 @@ static int32_t ours_id(uint8_t compId)
 {
     return SWOS_WORLDS && s_installed && compId <= CONFERENCE;
 }
+
+int32_t LeaguePhase_IsCup(uint8_t compId) { return ours_id(compId); }
 
 int32_t LeaguePhase_StageDays(uint8_t compId, uint16_t groups, uint16_t perGroup)
 {
@@ -637,6 +641,19 @@ void LeaguePhase_Result(uint8_t *team1, uint8_t *team2, uint16_t goals1, uint16_
         discipline(home, away);
     if (home >= 0 && home < N)
         UefaCoef_Result((uint8_t)_diyCompetitionStart.base.field_2E, lp_word(home), lp_word(away), goals1, goals2);
+    if (home >= 0 && home < N && UefaPrize_On()) {     /* (the career club's prizes: uprize.c up_res) */
+        extern uint16_t _selTeamNumber;
+        const int32_t me = lp_word(home) == _selTeamNumber ? home : lp_word(away) == _selTeamNumber ? away : -1;
+        if (me >= 0) {
+            uint16_t w[N];
+            for (int32_t r = 0; r < N; r++)
+                w[r] = lp_word(r);
+            const uint16_t gf = me == home ? goals1 : goals2, ga = me == home ? goals2 : goals1;
+            const DIYTeamStats *s = lp_row(me);
+            UefaPrize_Result((uint8_t)_diyCompetitionStart.base.field_2E, me, s->gamesPlayed, s->wins, s->draws,
+                             gf > ga, gf == ga, w);
+        }
+    }
 }
 
 /* The table's order, rows best first (finished: the phase over -- the full criteria). */
@@ -693,6 +710,13 @@ void LeaguePhase_GroupsEnd(uint8_t *diy, int32_t after)
             for (int32_t p = 0; p < N; p++)
                 w[p] = lp_word(s_final[p]);
             UefaCoef_PhaseEnd((uint8_t)_diyCompetitionStart.base.field_2E, w);
+            UefaPrize_PhaseEnd((uint8_t)_diyCompetitionStart.base.field_2E, w);   /* (the ranking pillar) */
+            {   /* (the cups' SUMMARY: the final table, its points -- cup_record.c) */
+                uint16_t pts[N];
+                for (int32_t p = 0; p < N; p++)
+                    pts[p] = lp_row(s_final[p])->points;
+                CupRecord_LeaguePhaseEnd((uint8_t)_diyCompetitionStart.base.field_2E, w, pts, N);
+            }
         }
         return;
     }
@@ -748,6 +772,7 @@ int32_t LeaguePhase_KnockoutDraw(uint8_t *diy, uint16_t numTeams)
     for (int32_t i = 0; i < n; i++)
         w[i] = BE_READ_U16((const uint8_t *)&t->teamIds[t->teamIndexOrder[i]]);
     UefaCoef_Draw((uint8_t)t->header.field_2E, t->header.roundComplete, w, n);
+    UefaPrize_Stage((uint8_t)t->header.field_2E, t->header.roundComplete, n, w);   /* (a stage reached) */
     return 1;
 }
 

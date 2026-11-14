@@ -10,6 +10,7 @@
  * Chunk 90: Career competition team selection (12 functions).
  */
 
+#include "bteam.h"
 #include "career_teams.h"
 #include <stdio.h>    /* (Career_PeekTeam) */
 #include <stdlib.h>   /* (Career_ForEachClub) */
@@ -22,6 +23,7 @@
 #include "world_playoff.h"
 #include "world_cups.h"
 #include "world_cupd.h"
+#include "world_supercup.h"
 #include "translations.h"
 #include "endian_helpers.h"
 #include "game_types.h"
@@ -32,6 +34,8 @@
 #include "diy_competition.h"
 #include "file_io.h"
 #include "world.h"
+#include "world_europe.h"
+#include "world_rules.h"   /* a world's computer clubs' countdowns */
 
 /* ---- Constants ---- */
 /* Bytes parked by SaveSelectedTeams: numSelectedTeams + the records. The original parked 32
@@ -130,6 +134,15 @@ static int16_t findTeamInCache(uint16_t teamNum, TeamFileEx **teamOut, uint16_t 
         ptr++;
     }
     return 1;
+}
+
+/* findTeamInCache for the season end (league_playoffs.c: the Mod 4.1's gp_champ, a title play-off's
+ * winner from outside the top 9): its record, or NULL when it is not in the cache. */
+TeamFileEx *CareerTeams_FindInCache(uint16_t teamNum)
+{
+    TeamFileEx *team;
+    uint16_t index;
+    return findTeamInCache(teamNum, &team, &index) == 0 ? team : NULL;
 }
 
 /* ================================================================
@@ -787,6 +800,67 @@ void LoadSomeEuroCup(uint8_t *whichCup)
     _careerFileBuffer += loadedCount;
 
     SetTeamGlobalNumbers(loadedCount, (uint8_t *)dest);
+}
+
+/* ================================================================
+ * Career_LoadWorldEuropeTmd
+ *
+ * A world's first-season foreign clubs (include/career_teams.h): what LoadSomeEuroCup's three
+ * calls do for 96/97, the SWOS 96/97 Mod does for its world with one file, data\world05.tmd --
+ * the three league phases' 36 clubs, in their lists' order, each its team file's record as it
+ * is (the installed WORLD05.TMD equals TMW5.nnn record for record). Ours has no such file: the
+ * lists are the world's league-phase records (World_LeaguePhaseCups' teamSeedList), the records
+ * come from its team files. 96/97's EUROCUP / EUROCWC / UEFACUP.TMD hold 96/97's clubs under
+ * 96/97's ids: in a world those ids name other clubs, or none at all where the world's file is
+ * smaller -- VARTEKS VARAZDIN (0x040B) against World 2026-27's Croatia of 10 clubs was offered as
+ * a job, and GetTeamLeague walked off the team file (USA2627-LAGALAXY, season 2).
+ * ================================================================ */
+int32_t Career_LoadWorldEuropeTmd(void)
+{
+    const uint8_t (*places)[4];
+    int32_t n;
+    if (World_Current() == WORLD_9697)
+        return 0;
+    if (WorldEurope_Active()) {                 /* (a classic world's knockouts: include/world_europe.h) */
+        const WorldEuropeKO *ko = World_EuropeKnockouts();
+        _teamsLoaded = 0;
+        for (int32_t k = 0; k < 3; k++) {
+            const CompetitionCup *c = ko->cup[k];
+            for (int32_t i = 0; i < c->header.teams; i++) {     /* (a list past 32 runs on after it) */
+                const uint16_t id = TEAMID_PACK(c->teamSeedList[i]);
+                _skipLeagueNumbers = 1;
+                LoadTeamFile((uint16_t)(id >> 8));
+                _skipLeagueNumbers = 0;
+                const uint8_t *rec = findTeamInTeamFileBuffer(id);
+                if (!rec) {
+                    _panicReasonCode = 0x3446;
+                    PanicHaltLoop();
+                }
+                Career_AppendTeamToTmdTeamPool((TeamFileEx *)rec);
+            }
+        }
+        _teamsLoaded = 0;
+        return 1;
+    }
+    CompetitionLeaguePhase *cups = World_LeaguePhaseCups(&places, &n);
+    if (!cups)
+        return 0;
+    _teamsLoaded = 0;                           /* (a file loaded before has its league numbers) */
+    for (int32_t k = 0; k < 3; k++)
+        for (int32_t i = 0; i < LEAGUE_PHASE_CLUBS; i++) {
+            const uint16_t id = TEAMID_PACK(cups[k].teamSeedList[i]);
+            _skipLeagueNumbers = 1;             /* (a .TMD record is the file's: no league numbers) */
+            LoadTeamFile((uint16_t)(id >> 8));
+            _skipLeagueNumbers = 0;
+            const uint8_t *rec = findTeamInTeamFileBuffer(id);
+            if (!rec) {                         /* (the world's own list names a club its file lacks) */
+                _panicReasonCode = 0x3445;
+                PanicHaltLoop();
+            }
+            Career_AppendTeamToTmdTeamPool((TeamFileEx *)rec);
+        }
+    _teamsLoaded = 0;                           /* (the last one was loaded without them) */
+    return 1;
 }
 
 /* ================================================================
@@ -1788,10 +1862,16 @@ void Career_UpdateCareerFinishedFlag(void)
 __attribute__((used, externally_visible))
 void Career_AdvanceToNextTeamSelectionKeyCacheEntry(void)
 {
+    /* a world's B-team call-ups for one match go back (bteam.c: the Mod's bt_adv) */
+    BTeam_ReturnMatch();
+    /* a world's computer clubs' injuries and suspensions counted down, once a day (CPU RED
+     * CARDS / CPU INJURIES, world_rules.c) */
+    WorldRules_CpuDay();
     /* the Coppa Italia Serie D's rounds that have come (world_cupd.c): the entry just
      * played is the current one */
     if (_teamSelectionKeyCacheCount) {
         CupD_Step(((TeamSelectionKeyCacheEntry *)(_teamSelectionKeyCache + _teamSelectionKeyCacheOffset))->sortKey);
+        SuperCup_Step(((TeamSelectionKeyCacheEntry *)(_teamSelectionKeyCache + _teamSelectionKeyCacheOffset))->sortKey);
         UefaQual_Daily();       /* (a world's: the career club's qualifying tie decided) */
         Conti_Daily();          /* (or its tie in another confederation's cup) */
         WorldPlayoff_Advance(((TeamSelectionKeyCacheEntry *)(_teamSelectionKeyCache + _teamSelectionKeyCacheOffset))->sortKey);
@@ -1970,7 +2050,8 @@ void Career_ProcessCurrentCompetitionSlotAfterMatch(void)
         if (((DIYCompetitionEx *)slotPtr)->minSubstitutes != 0)
             return;
         if (!WorldPlayoff_CareerLeagueEnded() &&   /* a world's play-off the club plays (world_playoff.c), */
-            !CupD_InSlot4())                       /* a Coppa Italia Serie D tie's slot (world_cupd.c) */
+            !CupD_InSlot4() &&                     /* a Coppa Italia Serie D tie's slot (world_cupd.c), */
+            !SuperCup_InSlot4())                   /* a Super Cup tie's (world_supercup.c) */
             DIY_RebuildCompetitionAndTeamSelectionCaches();
     }
 }
@@ -2093,7 +2174,8 @@ void Career_OpenCompetitionSlotMenuAndApplyChanges(uint16_t d2)
     if (((DIYCompetitionEx *)slotPtr)->minSubstitutes != 0)
         return;
     if (!WorldPlayoff_CareerLeagueEnded() &&    /* a world's play-off the club plays (world_playoff.c), */
-        !CupD_InSlot4())                        /* a Coppa Italia Serie D tie's slot (world_cupd.c) */
+        !CupD_InSlot4() &&                      /* a Coppa Italia Serie D tie's slot (world_cupd.c), */
+        !SuperCup_InSlot4())                    /* a Super Cup tie's (world_supercup.c) */
         DIY_RebuildCompetitionAndTeamSelectionCaches();
 }
 

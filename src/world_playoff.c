@@ -9,6 +9,7 @@
 #include "world_playoff.h"
 #include "world_cups.h"
 #include "world_cupd.h"
+#include "world_supercup.h"
 #include "league_playoffs.h"
 #include "league_groups.h"
 #include "world.h"
@@ -464,6 +465,20 @@ static void c_next_round(int32_t pr, const uint8_t *t, int32_t pairs)
     lay_out(pairs);
 }
 
+/* Place k of a Serie C group of n relegated or in a play-out place (the Mod 4.1's dplay.c cup_out,
+ * as src/rules/sr_dplay.c's: the season end's and the career club's contest must agree). The
+ * play-outs n-5 v n-2 and n-4 v n-3, each not played when 8+ points apart. */
+static int32_t cup_out(const TableRow *t, int32_t n, int32_t k)
+{
+    if (n < 6 || k < n - 5)
+        return 0;
+    if (k == n - 5)
+        return (int32_t)t[n - 5].r.pts - (int32_t)t[n - 2].r.pts < 8;
+    if (k == n - 4)
+        return (int32_t)t[n - 4].r.pts - (int32_t)t[n - 3].r.pts < 8;
+    return 1;
+}
+
 /* Serie C's play-off, built: the career club 2nd-10th of its group, or its group's 11th
  * standing in for the Coppa Italia Serie C winner (dplay.c c_lend). */
 static int32_t c_playoff(const LeaguePlayoffs *lp, const TableRow *own, int32_t nown, int32_t mine)
@@ -492,8 +507,9 @@ static int32_t c_playoff(const LeaguePlayoffs *lp, const TableRow *own, int32_t 
         if (n[g] < 11)
             return 0;
     /* the Coppa Italia Serie C winner's place (dplay.c cup_place): the winner itself when it
-     * finished 11th or lower, the 11th of its group when promoted or already in; unknown:
-     * the best 11th. A career club not in the cup has it played now (world_cups.c). */
+     * finished 11th or lower, the 11th of its group when promoted or already in, or -- the Mod
+     * 4.1, src/rules/sr_dplay.c cup_out -- relegated or in a play-out place; unknown: the best
+     * 11th. A career club not in the cup has it played now (world_cups.c). */
     const uint8_t country = World_FileCountry((uint8_t)_careerTeam.team.countryNumber);
     WorldCups_PlayLeagueCupEarly(country);
     const uint16_t cupw = WorldCups_LeagueCupWinner(country);
@@ -502,7 +518,7 @@ static int32_t c_playoff(const LeaguePlayoffs *lp, const TableRow *own, int32_t 
         for (int32_t k = 0; k < n[g]; k++)
             if (tab[g][k].team == cupw) {
                 cg = g;
-                cp = k >= 10 ? k : 10;
+                cp = k >= 10 && !cup_out(tab[g], n[g], k) ? k : 10;
             }
     if (cg < 0) {
         cg = 0;
@@ -1073,6 +1089,28 @@ static int32_t same_text(const char *a, const char *b)
     return *a == *b;
 }
 
+/* 4.1.2 (Enzo, Davide 12/11; the Mod's gplay.c gp_stwins_c, split.py zp_bonus): the stage titles
+ * (Apertura, Clausura, Trofeo) the career club won this season, for the chairman's season-end
+ * opinion in a league in zones (each one counts as a cup won). The same sources as the record's
+ * lines: the stage titles decided before, and the stage knockout still under way. Read only. */
+int32_t WorldPlayoff_StageWins(void)
+{
+    const uint8_t season = (uint8_t)(g_worldCups.seasons + 1);
+    const int32_t live = g_worldPlayoff.kind == WORLD_PLAYOFF_SPEC && g_worldPlayoff.season == season;
+    const uint8_t *ks = live ? k_spec() : 0;
+    const int32_t kstage = ks && ks[0] == 8 ? ks[3] & 3 : -1;
+    int32_t n = 0;
+    for (int32_t st = 0; st < 3; st++) {
+        const WorldStageTitle *x = &g_worldStageTitle[st];
+        if (st == kstage || x->season != season || !x->done || !x->pidx1)
+            continue;
+        n += x->clubResult == 1;
+    }
+    if (kstage >= 0 && k_club_res() == 1)
+        n++;
+    return n;
+}
+
 void WorldPlayoff_RecordLines(void)
 {
     extern uint16_t _gameType;
@@ -1137,6 +1175,8 @@ void WorldPlayoff_RecordLines(void)
     for (int32_t st = 0; st < 3; st++)
         if (wmask & 1 << st) RL_ADD(wname[st], 1);
     if (kr) RL_ADD(kn, kr);
+    RL_ADD(SuperCup_RecordLine(0), 1);          /* (a national Super Cup won: gplay.c sc_rline) */
+    RL_ADD(SuperCup_RecordLine(1), 1);          /* (the UEFA Super Cup won: usc_rline) */
 #undef RL_ADD
     if (!rl_n)
         return;
@@ -1271,7 +1311,7 @@ void WorldPlayoff_Advance(uint16_t week)
     const uint8_t *s = LeaguePlayoffs_SpecAt(s_pendStage.country, s_pendStage.pidx);
     if (!s || (g_worldPlayoff.kind && !g_worldPlayoff.winner))
         return;                                 /* (a contest under way in slot 4: none) */
-    if (_diyCompetitionPtr && !g_worldPlayoff.kind && CupD_InSlot4() != 1)
+    if (_diyCompetitionPtr && !g_worldPlayoff.kind && CupD_InSlot4() != 1 && SuperCup_InSlot4() != 1)
         return;
     if (!k_make(s_pendStage.country, s_pendStage.division, s_pendStage.table, s_pendStage.n, s_pendStage.pidx,
                 s[3] & 3))
@@ -1518,8 +1558,9 @@ static int32_t league_ended(void)
     if (g_worldPlayoff.kind && !(g_worldPlayoff.kind == WORLD_PLAYOFF_SPEC && g_worldPlayoff.winner))
         return 1;                               /* (built already: slot 4 is ours; a decided stage
                                                    title's contest gives way) */
-    if (_diyCompetitionPtr && CupD_InSlot4() != 1)
-        return 0;                               /* (slot 4 is 96/97's; a decided Coppa D tie gives way) */
+    if (_diyCompetitionPtr && CupD_InSlot4() != 1 && SuperCup_InSlot4() != 1)
+        return 0;                               /* (slot 4 is 96/97's; a decided Coppa D or Super Cup
+                                                   tie gives way) */
     for (int32_t i = 0; i < count; i++)
         if (all[i].country == World_FileCountry((uint8_t)_careerTeam.team.countryNumber))
             lp = &all[i];

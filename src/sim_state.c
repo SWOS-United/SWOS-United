@@ -43,6 +43,7 @@
  * _s_pitchFullPtrs (pitch.c) mirrors the fan tile slots of _pitchDatBuffer at full
  * pointer width for the renderer; SimState_Load rebuilds it from the slots.
  */
+#include "long_bench.h"
 #ifdef SWOS_SDL_BUILD
 #include <stdio.h>      /* SimState_DescribePortableByte only; the m68k build has no stdio */
 #include "goal_ring.h"
@@ -54,6 +55,8 @@
 #include "sim_state_ids.h"
 #include "match_step.h"
 #include "endian_helpers.h"
+#include "stoppage.h"         /* a world's stoppage time: match state */
+#include "mod_hooks.h"        /* g_modMatchWords: a gameplay mod's own match state (SIM_OPTIONAL) */
 
 #include <stdlib.h>
 #include <string.h>
@@ -397,6 +400,7 @@ const SimStateRegion g_simStateRegions[] = {
     REGION(_currentGameTick, S, k_word16), REGION(_currentTick, S, k_word16), REGION(_lastGameTick, S, k_word16),
     REGION(_lastFrameTicks, S, k_word16), REGION(_frameCount, S, k_word16), REGION(_inGameCounter, S, k_word16),
     REGION(_gameSeconds, S, k_word16), REGION(_secondsSwitchAccumulator, S, k_word16), REGION(_gameTime, S, k_bytes),
+    REGION(g_stoppageB, S, k_bytes), REGION(g_stoppageW, S, k_word16), REGION(g_stoppageL, S, k_word32),
     REGION(_playGame, S, k_word16),
 
     /* input edges: what turning the players' inputs into game events remembers (match_step.h) */
@@ -505,6 +509,9 @@ const SimStateRegion g_simStateRegions[] = {
     REGION(_subsMenuHighlightColor, S, k_word16),
     REGION(_plComingX, S, k_word16), REGION(_plComingY, S, k_word16), REGION(_plComingYTmp, S, k_word16), REGION(_plLeavingX, S, k_word16),
     REGION(_plNamesLengthTableCopy, S, k_bytes), REGION(_plOrdinalsTable, S, k_bytes),
+    /* a long bench's places 17.. and their names (long_bench.c): only while the match has one */
+    REGION(g_lbExtra, S | SIM_LONGBENCH, k_bytes),
+    REGION(g_lbOrdinals, S | SIM_LONGBENCH, k_bytes), REGION(g_lbNameLenCopy, S | SIM_LONGBENCH, k_bytes),
     REGION(_plPositions, S, k_ptrTactics), REGION(_teamThatSubstitutes, S, k_ptrTeamInfo),
     REGION(_plSubstitutedX, S, k_word16), REGION(_plSubstitutedY, S, k_word16), REGION(_substitutedPlSprite, S, k_ptrSprite),
     REGION(_initialSubsState, S, k_word16), REGION(_selectedPlayerInSubs, S, k_word16), REGION(_showingUserStats, S, k_word16),
@@ -591,6 +598,9 @@ const SimStateRegion g_simStateRegions[] = {
     REGION(_currentTimeSprite, S, k_hudSprite), REGION(_cornerFlagSprite2, S, k_sprite),
     REGION(_copyTimeSprite, S, k_word16),
     REGION(_overlayFlagBackup, S, k_word16), REGION(_currentPlayerIndicatorPosition, S, k_word16),
+
+    /* a gameplay mod's own (the arcade rules: docs/MODS.md §36) -- only while one is on */
+    REGION(g_modMatchWords, S | SIM_OPTIONAL, k_word32),
 };
 
 #undef S
@@ -608,6 +618,10 @@ _Static_assert(sizeof g_simStateRegions / sizeof g_simStateRegions[0] <= MAX_REG
 
 int SimState_RegionActive(int32_t i, uint32_t tiers)
 {
+    if ((g_simStateRegions[i].flags & SIM_OPTIONAL) && !ModHooks_MatchWordsUsed())
+        return 0;
+    if ((g_simStateRegions[i].flags & SIM_LONGBENCH) && !LongBench_On())
+        return 0;
     return !s_disabled[i] && (SIM_REGION_TIER(&g_simStateRegions[i]) & tiers) != 0;
 }
 
@@ -1258,6 +1272,10 @@ uint64_t SimState_LayoutHash(void)
     for (int32_t i = 0; i < g_simStateRegionCount; i++) {
         const SimStateRegion *r = &g_simStateRegions[i];
         const SimLayout *l = r->layout;
+        if ((r->flags & SIM_OPTIONAL) && !ModHooks_MatchWordsUsed())
+            continue;               /* (not there: the layout is the one without it) */
+        if (r->flags & SIM_LONGBENCH)
+            continue;               /* (a long bench's: the teams decide it, both games alike) */
         h = mix_bytes(h, r->name, (uint32_t)strlen(r->name) + 1);
         h = mix_u32(h, SimState_RegionPortableSize(i));
         h = mix_u32(h, r->flags);

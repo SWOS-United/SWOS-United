@@ -25,7 +25,7 @@
 
 #define ASSETS_PARTS(X)                                                                 \
     X(AMIGA_FILES, "amiga_files", 1)  /* data/, grafs/, sound/ from the Amiga disks */  \
-    X(DOS_FILES,   "dos_files",   1)  /* grafs_dos/, sound_dos/ from the PC game */     \
+    X(DOS_FILES,   "dos_files",   2)  /* grafs_dos/, sound_dos/, video_dos/: PC game */  \
     X(AGA_PC,      "aga_pc",      2)  /* grafs_aga/ backdrops, banks, pitches, credits */\
     X(AGA_AMIGA,   "aga_amiga",   1)  /* grafs_aga/ loading and disk screens */         \
     X(TEAMS,       "teams",       1)  /* data_json/teams/ (and data/ teams) */          \
@@ -45,5 +45,9 @@
 #define ASSETS_SRC_JAGUAR      "jaguar"
 #define ASSETS_SRC_SWOS2020    "swos2020"
 #define ASSETS_SRC_WORLD       "world"          /* a world's package (OpenSWOS-World-<tag>.zip) */
+/* Set when the PC part (dos_files, aga_pc, teams) was made from SWOS 2020's install, there being
+ * no PC game and no Amiga version: SWOS 2020's game folder. Its art and pitches, no commentary, no
+ * menu.xmi (src/assets_check.c AssetsCheck_PcFromSwos2020). Not written otherwise. */
+#define ASSETS_SRC_PC_SWOS2020 "pc_swos2020"
 
 #endif /* ASSETS_INI_H */

@@ -4,6 +4,10 @@
  * SWOS DOS Reversed by Zlatko Karakaš (https://github.com/zlatkok)
  */
 #include "transfer_market.h"
+#include "world_finance.h"
+#include "cpu_repl.h"
+#include "squad_extras.h"
+#include "bteam.h"
 #include "endian_helpers.h"
 #include "game_types.h"
 #include "menu_system.h"
@@ -738,17 +742,22 @@ retry:
     rand = Rand2();
     playerOrd = rand & 0xF;                                 /* andi.w #$F,d0 */
     /* Now d0 = teamNum, d1 = playerOrd (after exg) */
+    /* (a world career: the club's players 17.. as likely as its 16 -- squad_extras.c, the Mod's xt_pick) */
+    playerOrd = SquadExtras_MarketPick(teamNum, playerOrd);
 
     /* If not first attempt (attemptsLeft was > 0), check price range */
     if (attemptsLeft != 0) {
         TeamFileEx *teamEx = (TeamFileEx *)teamEntry;
-        uint8_t price = (uint8_t)teamEx->players[playerOrd].price;
+        const PlayerFile *pick = playerOrd < 16 ? &teamEx->players[playerOrd] : SquadExtras_Player(teamNum, playerOrd);
+        if (!pick)
+            goto retry;
+        uint8_t price = (uint8_t)pick->price;
         if (lowestPrice > price)                            /* cmp.b ... bhi retry */
             goto retry;
         if (highestPrice < price)                           /* cmp.b ... bcs retry */
             goto retry;
         /* Check position bit 2 (goalkeeper flag?) */
-        if (teamEx->players[playerOrd].positionAndFace & PF_TRIALIST)
+        if (pick->positionAndFace & PF_TRIALIST)
             goto retry;                                     /* btst #2,... bne retry */
     }
 
@@ -1426,6 +1435,7 @@ void Career_CommitNewBalanceAndResetFinanceTotals(void)
 
     _financeTotalsNeedResetFlag = 0;
     _old_balance = _newBalance;
+    WorldFinance_PeriodStart();         /* (a world's TV share: the statement's period, world_finance.c) */
     _playerPurchases = 0;
     _playerSales = 0;
     _playerWagesBill = 0;
@@ -1866,6 +1876,7 @@ void BuyPlayerInit(void)
         _menuEntries[6].downEntry = 8;
         _menuEntries[7].upEntry = 8;
     }
+    CpuRepl_MenuInit();     /* (a world's CPU REPL. button right of EXIT: cpu_repl.c) */
 }
 
 /* The TRANSFER MARKET's list rows: the original's five are entries 9-13; rows 6-10 (entries
@@ -2216,6 +2227,42 @@ void ProcessOfferExpiryCountdown(void)
 extern TeamFileEx *_buyOtherPlayersTeamPtr;
 extern uint8_t *_buyOtherPlayersTitlePtr;
 
+/* A world club's second page: its players 17.. (squad_extras.c; the Mod's xbrowse.py) -- entry 31,
+ * NEXT PAGE / PREV PAGE right of EXIT. The screen also shows a B team to call up from
+ * (bteam.c: BTeam_Browsing). */
+#define BOP_EXIT  2
+#define BOP_ROW0  3
+#define BOP_ROWS  16
+#define BOP_PAGE  31
+static uint8_t  s_bopPage;              /* 0 the record's 16, 1 the extras */
+static uint16_t s_bopTeam;
+
+static void bop_page_layout(void)
+{
+    extern uint8_t _currentMenu[];
+    if (((const Menu *)_currentMenu)->numEntries <= BOP_PAGE)
+        return;
+    MenuEntry *page = &_menuEntries[BOP_PAGE];
+    const int32_t has = SquadExtras_Nth(s_bopTeam, 0) >= 0;
+    if (!has)
+        s_bopPage = 0;                  /* (the last one gone: page 1 again) */
+    page->isInvisible = (uint16_t)!has;
+    page->fg = (uintptr_t)(s_bopPage ? "PREV PAGE" : "NEXT PAGE");
+    _menuEntries[BOP_EXIT].rightEntry = has ? BOP_PAGE : -1;
+    int32_t n = BOP_ROWS;
+    if (s_bopPage) {
+        n = 0;
+        while (n < BOP_ROWS && SquadExtras_Nth(s_bopTeam, n) >= 0)
+            n++;
+    }
+    for (int32_t r = 0; r < BOP_ROWS; r++) {
+        MenuEntry *e = &_menuEntries[BOP_ROW0 + r];
+        e->isInvisible = (uint16_t)(r >= n);
+        e->downEntry = (int8_t)(r + 1 < n ? BOP_ROW0 + r + 1 : BOP_EXIT);
+    }
+    _menuEntries[BOP_EXIT].upEntry = (int8_t)(BOP_ROW0 + (n > 0 ? n - 1 : 0));
+}
+
 /* BuyOtherPlayersFinish: set menu entry 0 title and entry 1 team name */
 __attribute__((used, externally_visible))
 void BuyOtherPlayersFinish(void)
@@ -2223,14 +2270,27 @@ void BuyOtherPlayersFinish(void)
     _menuEntries[0].fg = (uintptr_t)_buyOtherPlayersTitlePtr;
     uint8_t *teamName = _buyOtherPlayersTeamPtr->team.teamName;
     _menuEntries[1].fg = (uintptr_t)teamName;
+    bop_page_layout();
 }
 
 /* BuyOtherPlayersInit: get team pointer from offerOrdinals.teamOffering, store it, then finish */
 __attribute__((used, externally_visible))
 void BuyOtherPlayersInit(void)
 {
-    _buyOtherPlayersTeamPtr = GetTeamPointer(_offerOrdinals.teamOffering);
+    s_bopTeam = BTeam_Browsing() ? BTeam_BrowseTeam() : (uint16_t)_offerOrdinals.teamOffering;
+    s_bopPage = 0;
+    _buyOtherPlayersTeamPtr = GetTeamPointer(s_bopTeam);
     BuyOtherPlayersFinish();
+}
+
+/* NEXT PAGE / PREV PAGE (entry 31) */
+__attribute__((used, externally_visible))
+void BuyOtherPlayersPage(void)
+{
+    s_bopPage ^= 1;
+    bop_page_layout();
+    SetCurrentEntry(BOP_PAGE);
+    DrawMenu();
 }
 
 /* ================================================================
@@ -2432,7 +2492,7 @@ void BuyPlayerMenu(void)
         slots = (uint16_t)(room > 32767u ? 32767u : room);
     } else
         slots = GetRemainingTransferPoolSlots();
-    if (slots < 2) {
+    if (slots < 2 || Ffp_PurchasesBlocked()) {     /* (a world's financial fair play: world_finance.c) */
         _currentMessage = CLUB_UNWILLING_TO_PURCHASE_PLAYERS;
         ShowChairmanMessage();
         return;
@@ -3014,6 +3074,11 @@ void PlayerMarketItemBeforeDraw(MenuEntry *entry)
             extra = (uint8_t *)teamData->team.teamName; /* team name area */
             uint8_t ordinal = item[2];
             player = (uint8_t *)teamData + (uint16_t)ordinal * 0x26;
+            if (ordinal >= 16) {        /* (a world club's player 17..: squad_extras.c, the Mod's mp_a6) */
+                uint8_t *x = SquadExtras_GetPlayer(teamNum, ordinal);
+                if (x)
+                    player = x;
+            }
         } else {
             /* Foreign player */
             uint16_t teamNum = PACK_BE_U16(item[0], item[1]);
@@ -3078,8 +3143,22 @@ void BuyOtherPlayersCommon(void *entryPtr)
     uint16_t relIdx = a5->ordinal - entry3->ordinal;
 
     uint16_t outSlot, outPlayerIndex;
-    GetPlayerInfoBreakPosition((uint8_t *)_buyOtherPlayersTeamPtr, relIdx, &outSlot, &outPlayerIndex);
+    if (s_bopPage) {                    /* (page 2: the club's players 17.. still there) */
+        const int32_t x = SquadExtras_Nth(s_bopTeam, relIdx);
+        if (x < 0)
+            return;
+        outPlayerIndex = (uint16_t)x;
+    } else
+        GetPlayerInfoBreakPosition((uint8_t *)_buyOtherPlayersTeamPtr, relIdx, &outSlot, &outPlayerIndex);
 
+    if (BTeam_Browsing()) {             /* (a B team: the call-up page, bteam.c) */
+        BTeam_PickPlayer(outPlayerIndex);
+        _buyOtherPlayersTeamPtr = GetTeamPointer(s_bopTeam);
+        bop_page_layout();
+        SetCurrentEntry(a5->ordinal);
+        DrawMenu();
+        return;
+    }
     ShowPlayerOfferMenuForPlayer(_offerOrdinals.teamOffering, outPlayerIndex);
 
     if (_transferCompleted) {
@@ -3102,14 +3181,22 @@ void BuyOtherPlayersAfterDrawCommon(void *entryPtr)
     d6++;
 
     uint16_t outSlot, outPlayerIndex;
-    uint8_t *player = GetPlayerInfoBreakPosition((uint8_t *)_buyOtherPlayersTeamPtr,
-                                                    d1, &outSlot, &outPlayerIndex);
+    uint8_t *player;
+    if (s_bopPage) {                    /* (page 2: the club's players 17.., numbered from 17) */
+        const int32_t x = SquadExtras_Nth(s_bopTeam, d1);
+        outPlayerIndex = (uint16_t)(x < 0 ? 0 : x);
+        player = x < 0 ? (uint8_t *)0 : SquadExtras_GetPlayer(s_bopTeam, (uint16_t)x);
+        d6 = (uint16_t)(x < 0 ? d6 : x + 1);
+    } else
+        player = GetPlayerInfoBreakPosition((uint8_t *)_buyOtherPlayersTeamPtr, d1, &outSlot, &outPlayerIndex);
+    /* (a B team's player already called up: shown as the squad view shows one on the list) */
+    const uint16_t style = BTeam_Browsing() && BTeam_Holds(s_bopTeam, outPlayerIndex) ? 0xD : 0;
 
     uint16_t yCoord = a5->y;
     TransferRow_Identity(PACK_BE_U16(_buyOtherPlayersTeamPtr->team.countryNumber, _buyOtherPlayersTeamPtr->team.teamOrdinal),
-                  outPlayerIndex, (int16_t)(d6 - 1));     /* (another club's squad) */
+                  outPlayerIndex, (int16_t)d1);           /* (another club's squad) */
     BuildTransferPlayerMenuEntry(&_menuEntries[19], player, yCoord,
-                                   (int16_t)d6, 0, 0);
+                                   (int16_t)d6, style, 0);
     DrawMultipleItems(12, &_menuEntries[19]);
 }
 
@@ -4143,6 +4230,9 @@ void Career_BuildForeignMarketPoolFromSelectedTeam(void)
     uint8_t *src, *dst;
     int16_t i, j;
 
+    /* (a world club's players 17.. about to be written into its record: never back as such) */
+    SquadExtras_JobChange();
+
     /* Copy careerTeam (0x2AC bytes) to tempTeamBuffer */
     src = (uint8_t *)&_careerTeam;
     dst = _tempTeamBuffer;
@@ -4418,6 +4508,18 @@ void Career_AcceptOffer_BuyPlayer(void)
     PrunePlayerOffersAgainstRosterLimits();
 }
 
+/* Where a new player of the career squad goes in its order (Career_RemovePlayerAndAddAsTrialist's
+ * rule: after the match's 11 and its bench -- the primary competition's substitutes, a tournament's
+ * numTeamsInStage -- at most at the end): for the B-team call-ups (bteam.c). */
+uint16_t Career_NewPlayerSquadPos(void)
+{
+    DIYCompetitionEx *comp = (DIYCompetitionEx *)&_primaryCompetitionBuf;
+    uint16_t at = comp->base.competitionType == 2 ? (uint16_t)comp->base.numTeamsInStage
+                                                  : comp->matchData.league.leagueMaxSubstitutes;
+    at += 11;
+    return at < _careerNumPlayers ? at : _careerNumPlayers;
+}
+
 /* ================================================================
  * Career_RemovePlayerAndAddAsTrialist  (SWOS2.s line 63815)
  *
@@ -4522,8 +4624,13 @@ void Career_RemovePlayerAndAddAsTrialist(uint16_t sourceTeam, uint16_t playerOrd
     /* (bought: his club's player is now yours; his old slot gets a new player, below) */
     ModHooks_PlayerMoved(savedTeam, (uint8_t)savedOrd, _selTeamNumber, (uint8_t)freeSlot);
 
+    /* (a world club's player 17..: listed as gone, and no replacement -- squad_extras.c) */
+    if (SquadExtras_Bought(savedTeam, savedOrd, ((const PlayerFile *)(dstBase + PF_OFF))->playerName))
+        return;
     /* Convert player to trialist using source name */
     Career_ConvertPlayerToTrialistFromName(savedTeam, savedOrd);
+    /* (a world's CPU REPL.: FROM SQUAD -- one of the club's squad players 17.. instead: cpu_repl.c) */
+    CpuRepl_AfterSale(savedTeam, savedOrd);
 }
 
 /* ================================================================
@@ -5064,8 +5171,9 @@ void TrainingMatch_AdjustSelectedTeamRosterForTrialists(uint16_t excludeFlags, u
                 PlayerFile *pf = (PlayerFile *)(p + PF_OFF);
                 uint16_t pos = ((uint16_t)pf->positionAndFace & PF_POSITION_MASK) >> 5;
                 if (pos == 0) {
-                    /* GK — check if trialist (bit 1 of positionAndFace) */
-                    if (pf->positionAndFace & PF_LOAN)
+                    /* GK — check if trialist (bit 1 of positionAndFace); a world's B-team
+                     * call-up is no filler to drop (bteam.c: the Mod's bt_gen) */
+                    if ((pf->positionAndFace & PF_LOAN) && !BTeam_CalledKind(pf))
                         goto removeAndRecheck1;
                 }
                 d2--;
@@ -5091,7 +5199,7 @@ void TrainingMatch_AdjustSelectedTeamRosterForTrialists(uint16_t excludeFlags, u
                     d2--;
                     continue;
                 }
-                if (pf->positionAndFace & PF_LOAN)
+                if ((pf->positionAndFace & PF_LOAN) && !BTeam_CalledKind(pf))
                     goto removeAndRecheck2;
                 d2--;
                 continue;
@@ -5392,6 +5500,11 @@ void PlayerMarketBuildVisiblePlayerList(void)
             TeamFileEx *teamData = VerifyTeamLoaded(teamNum);
             uint16_t ordinal = (uint16_t)(uint8_t)a1[2];
             uint8_t *blockPtr = (uint8_t *)teamData + (uint32_t)ordinal * 38;  /* mulu #$26 */
+            if (ordinal >= 16) {        /* (a world club's player 17..: squad_extras.c, the Mod's mp_a1) */
+                uint8_t *x = SquadExtras_GetPlayer(teamNum, ordinal);
+                if (x)
+                    blockPtr = x;
+            }
             if (playerMarketPlayerMatchesFilters(blockPtr, ratingThreshold,
                                                   countryRange, positionList,
                                                   skillBitIndex) == 0) {
@@ -5498,6 +5611,24 @@ static int16_t domesticBuyerEligible(TeamFileEx *team, uint16_t refSkill)
     return 1;
 }
 
+/* A world's outgoing offers rule A (the SWOS 96/97 Mod 4.0.6's tools/sella.py, MIT, Davide
+ * Lorigliola; Francesco's report: a Serie D player bought by Roma): a club bids for one of the
+ * career club's players only if he would be among its 12 best -- fewer than 12 of its 16 priced
+ * above his price + 2. The Mod plays it in every world; OpenSWOS in a world other than 96/97, whose
+ * market stays the original's. 1 = the candidate stays. */
+#define OFFER_RULE_N      12
+#define OFFER_RULE_MARGIN 2
+static int32_t offerRuleA(const TeamFileEx *team, uint16_t refSkill)
+{
+    if (!SWOS_WORLDS || World_Current() == WORLD_9697)
+        return 1;
+    const uint32_t above = (uint32_t)(uint8_t)refSkill + OFFER_RULE_MARGIN;
+    int32_t n = 0;
+    for (int32_t i = 0; i < 16; i++)
+        n += (uint8_t)team->players[i].price > above;
+    return n < OFFER_RULE_N;
+}
+
 __attribute__((used, externally_visible))
 void CreateRandomTransferOfferForPlayer(uint16_t playerOrdinal)
 {
@@ -5542,7 +5673,8 @@ void CreateRandomTransferOfferForPlayer(uint16_t playerOrdinal)
         uint8_t selTeamByte = (uint8_t)(_selTeamNumber >> 8);
         while (d4 < _numSelectedTeams) {
             if (selTeamByte == *a0) {
-                if (domesticBuyerEligible((TeamFileEx *)a0, refSkill) == 0) {
+                if (domesticBuyerEligible((TeamFileEx *)a0, refSkill) == 0 &&
+                    offerRuleA((const TeamFileEx *)a0, refSkill)) {
                     _offerCandidateTeamIndexBuffer[d5] = (uint8_t)d4;
                     d5++;
                 }
@@ -5567,7 +5699,8 @@ void CreateRandomTransferOfferForPlayer(uint16_t playerOrdinal)
         uint8_t selTeamByte = (uint8_t)(_selTeamNumber >> 8);
         while (d4 < numCareerTeams) {
             if (selTeamByte != *a0) {
-                if (IsTeamEligibleForOfferByRefSkill((TeamFileEx *)a0, refSkill) == 0) {
+                if (IsTeamEligibleForOfferByRefSkill((TeamFileEx *)a0, refSkill) == 0 &&
+                    offerRuleA((const TeamFileEx *)a0, refSkill)) {
                     _offerCandidateTeamIndexBuffer[d5] = (uint8_t)d4;
                     d5++;
                 }

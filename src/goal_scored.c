@@ -11,6 +11,7 @@
 
 #include "goal_scored.h"
 #include "game_types.h"
+#include "stoppage.h"
 
 /* ---- external asm globals ---- */
 extern uint16_t _goalScored;
@@ -166,11 +167,8 @@ skip_if_penalties:
     if (_playingPenalties != 0)
         return;
 
-#ifdef SWOS_SDL_BUILD
-    /* Arcade golden goal: the first (non-penalty) goal ends the match. No-op
-     * unless _gArcadeMode + golden-goal is armed (checked inside). */
-    { extern void Arcade_GoalScored(void); Arcade_GoalScored(); }
-#endif
+    /* (A golden goal -- the arcade mod's -- is seen by its rules at this frame's step, from the
+     * score: src/mod_arcade.c.) */
 
     /* null check scorer sprite */
     if (scorerSprite == (Sprite *)0) {
@@ -311,7 +309,7 @@ team_ptrs_done:
             gi->goalType = goalType;
 
             /* copy game time and convert digits to ASCII */
-            gi->time[0] = (int8_t)_gameTime[0];
+            gi->time[0] = (int8_t)Stoppage_GoalMinute();   /* (unused by the game: a world's added minute) */
             gi->time[1] = (int8_t)_gameTime[1];
             gi->time[2] = (int8_t)_gameTime[2];
             gi->time[3] = (int8_t)_gameTime[3];
@@ -377,6 +375,21 @@ team_ptrs_done:
                     renderStart++;
                     if (*renderStart == '0')
                         renderStart++;
+                }
+
+                /* A goal in a world's added time: "45+2" -- the minute, '+', then the rest */
+                if (curGoal->time[0] > 0 && curGoal->time[0] <= 9) {
+                    static char added[24];
+                    int32_t n = 0;
+                    const uint8_t *p = renderStart;
+                    while (p < (uint8_t *)templateStr + 4)
+                        added[n++] = (char)*p++;
+                    added[n++] = '+';
+                    added[n++] = (char)('0' + curGoal->time[0]);
+                    while (*p && n < (int32_t)sizeof added - 1)
+                        added[n++] = (char)*p++;
+                    added[n] = 0;
+                    renderStart = (uint8_t *)added;
                 }
 
                 /* render time string into sprite */

@@ -8,8 +8,12 @@
  * Chunk 60: 16 functions ported from SWOS2.s.
  */
 
+#include "long_bench.h"
 #include "world.h"
+#include "world_europe.h"
 #include "diy_competition.h"
+#include "cup_record.h"
+#include "world_finance.h"      /* UefaPrize_CupWon */
 #include "comp_identity.h"
 #include "translations.h"
 #include "auto_skip_debug.h"
@@ -19,6 +23,7 @@
 #include "world_playoff.h"
 #include "world_cups.h"
 #include "world_cupd.h"
+#include "world_supercup.h"
 #include "string_utils.h"
 #include "random.h"
 #include "deterministic.h"
@@ -35,6 +40,8 @@
 #include "uefa_coef.h"
 #include "conti_season.h"
 #include "states.h"
+#include "mod_api.h"        /* ModCareerEventKind */
+#include "mod_hooks.h"      /* ModHooks_CareerEvent: the PC cutscenes' moments */
 #include <string.h>   /* memcpy — used by the tournament field-map copies */
 
 /* ---- Constants ---- */
@@ -2854,6 +2861,7 @@ void DIY_UpdateCompetitionProgress(void)
     WorldPlayoff_ArrangeNextRound();
     WorldCups_ArrangeNextRound();   /* a world cup's first season: the real bracket (world_cups.c) */
     CupD_ArrangeNextRound();        /* the Coppa Italia Serie D's slot-2 cup: by its table (world_cupd.c) */
+    WorldEurope_RoundPlayed();      /* a classic world's European cups: round 2 no same-country tie */
 
     {
         uint8_t *grid = comp->teamGridPairings;
@@ -4839,6 +4847,15 @@ __attribute__((used, externally_visible))
 void OpenDiyPreset3(void)
 {
     ShowDiyCompetitionForSource((uint8_t *)&_euroCupsCompetitionContextBuf);
+}
+
+/* OpenDiySlot4 -- OpenSWOS: VIEW COMPETITIONS' entry 9, the career's slot 4 (a world's Super Cup:
+ * menus.c ViewCompetitionsWorldEntries shows it only then) */
+__attribute__((used, externally_visible))
+void OpenDiySlot4(void)
+{
+    extern CompetitionSlotBuffer _diyCompetitionContextBuf;
+    ShowDiyCompetitionForSource((uint8_t *)&_diyCompetitionContextBuf);
 }
 
 /* ================================================================
@@ -9417,6 +9434,7 @@ void InitDIYCupFromRecord(uint8_t *cupRec)
     if (compHdr->seedReorderFlag == 0)
         DIY_ShuffleTeamGridPairs();
     WorldCups_CupMade(cupRec);   /* a world cup: its byes, a later season's draw (world_cups.c) */
+    WorldEurope_DrawMade((uint8_t)compHdr->compId);   /* a classic world's cups: no same-country tie */
 }
 
 __attribute__((used, externally_visible))
@@ -10015,8 +10033,13 @@ league_search:
             uint16_t teamIdx = (uint16_t)((uint32_t)(int32_t)rawIdx / 18u);
             /* leagueTeamIds is BE-packed (295c9f3) — compare against
              * host-native teamNo via BE_READ_U16. */
-            if (BE_READ_U16(&leagueTeamIds[teamIdx]) == teamNo)
+            if (BE_READ_U16(&leagueTeamIds[teamIdx]) == teamNo) {
+                /* (a world's league in zones, the career league's slot: the place in the
+                 * club's zone, scaled to the league -- the Mod 4.1.2's zp_find; league_split.c) */
+                if ((uint8_t *)comp == (uint8_t *)&_primaryCompetitionBuf)
+                    return LeagueSplit_ZoneFind(comp, i);
                 return i;
+            }
         }
         goto not_found;
     }
@@ -10291,6 +10314,13 @@ uint16_t GetMoreExpensiveTeamsCount(uint16_t teamNo, DIYCompetition *comp)
     TeamFileEx *myTeam = VerifyTeamLoaded(teamNo);
     uint16_t myPrice = GetAveragePlayerPrice(myTeam);
 
+    /* A world's league in zones, the career league's slot: its own zone's clubs only, the count
+     * scaled to the league (the Mod 4.1.2's zp_skip / zp_escale; league_split.c). */
+    const uint8_t *zones = 0;
+    int32_t zoneRows = 0, myRow = -1;
+    if (compType == 0 && (uint8_t *)comp == (uint8_t *)&_primaryCompetitionBuf)
+        myRow = LeagueSplit_ZoneOfTeam(comp, teamNo, &zones, &zoneRows);
+
     /* Count teams with higher average price.
      * teamIds points at competitionFileBuffer +0x12E/+0x24E/+0x9A — all
      * BE-packed `{country, ordinal}` per the 295c9f3 convention. Use
@@ -10301,11 +10331,15 @@ uint16_t GetMoreExpensiveTeamsCount(uint16_t teamNo, DIYCompetition *comp)
         uint16_t otherId = BE_READ_U16(&teamIds[i]);
         if (otherId == teamNo)
             continue;
+        if (myRow >= 0 && i < zoneRows && zones[i] != zones[myRow])
+            continue;
         TeamFileEx *otherTeam = VerifyTeamLoaded(otherId);
         uint16_t otherPrice = GetAveragePlayerPrice(otherTeam);
         if (otherPrice > myPrice)
             count++;
     }
+    if (myRow >= 0)
+        count = LeagueSplit_ZoneScale(zones, zoneRows, myRow, count);
     return count;
 }
 
@@ -10579,6 +10613,7 @@ void ProcessDIYLeagueMatchResultAndCareerUpdates(TeamFileEx *team1, TeamFileEx *
         d7 |= 0x82;    /* bits 7 and 1 set */
     }
 
+    CupRecord_Match(team1, team2, d1, d2, d7, 0, 0, 1);   /* (a world's cups' SUMMARY: cup_record.c) */
     /* Career updates (form, contract negotiation, loss flag) */
     updateCareerAfterResult(team1, team2, d1, d2, d7);
 
@@ -10816,6 +10851,9 @@ setDecisive:
         CupD_TieDecided(PACK_BE_U16(team1->team.countryNumber, team1->team.teamOrdinal),
                         PACK_BE_U16(team2->team.countryNumber, team2->team.teamOrdinal),
                         d7 & 1);
+        SuperCup_TieDecided(PACK_BE_U16(team1->team.countryNumber, team1->team.teamOrdinal),
+                            PACK_BE_U16(team2->team.countryNumber, team2->team.teamOrdinal),
+                            d7 & 1);
         UefaQual_TieDecided(PACK_BE_U16(team1->team.countryNumber, team1->team.teamOrdinal),
                             PACK_BE_U16(team2->team.countryNumber, team2->team.teamOrdinal),
                             d7 & 1);
@@ -10825,6 +10863,7 @@ setDecisive:
     }
 
 careerUpdate:
+    CupRecord_Match(team1, team2, d1, d2, d7, d5, d6, 0);  /* (a world's cups' SUMMARY: cup_record.c) */
     updateCareerAfterResult(team1, team2, d1, d2, d7);
 
     /* Pack results: d6=(d5<<8)+d6, d4=(d3<<8)+d4, d5=d4, d4=(d1<<8)+d2 */
@@ -10960,6 +10999,8 @@ uint16_t PlayDIYLeagueMatchAndCacheResult(TeamFileEx *team1, TeamFileEx *team2,
     DIYCompetition *diy = &_diyCompetitionStart.base;
 
     /* Call SetupPlayers: d1=diyCompetitionStart.matchData.league.leagueMaxSubstitutes, d2=substitutesCount */
+    LongBench_LeagueMatch(1);       /* (a world's long bench: a league's by the club's division; the
+                                     *  cups' path clears it) */
     SetupPlayers(team1, team2, (int16_t)_diyCompetitionStart.matchData.league.leagueMaxSubstitutes,
                   diy->substitutesCount, allowSquadChanges, mode);
 
@@ -11036,6 +11077,7 @@ uint16_t PlayDIYLeagueMatchAndCacheResult(TeamFileEx *team1, TeamFileEx *team2,
 __attribute__((used, externally_visible))
 uint16_t PlayDIYCupFixtureAndCacheResult(TeamFileEx *team1, TeamFileEx *team2,
                                            int16_t allowSquadChanges, int16_t mode) {
+    LongBench_LeagueMatch(0);       /* (a cup's: by its name, else the country's bench) */
     /* d1 = diyCompetitionStart.pointsForAWin (word), d2 = substitutesCount → SetupPlayers */
     DIYCompetition *diyStart = &_diyCompetitionStart.base;
     SetupPlayers(team1, team2, (int16_t)_diyCompetitionStart.pointsForAWin,
@@ -11271,6 +11313,25 @@ extern TeamFileEx *_diyCupLastMatchTeam1Ptr;
 extern TeamFileEx *_diyCupLastMatchTeam2Ptr;
 extern uint16_t _diyCupLastMatchScoreTeam1;
 extern uint16_t _diyCupLastMatchScoreTeam2;
+
+/* A career result the player played or watched (`mode`/`selector` != 0: MATCH, VIEW MATCH,
+ * VIEW HIGHLIGHTS -- not RESULT), not one of the off-season's (_seasonUpdateInProgress), with the
+ * career team in it: told to the mods (ModHooks_CareerEvent), where the PC game plays its dressing
+ * room's cutscenes (swos.asm cseg_88A12's end, a league fixture; cseg_28E76's end, a cup's last
+ * match). The PC game tests exactly these: selTeamNumber != -1 (a career), its own copy of the
+ * mode, dseg_10E848 (the off-season's flag: our _seasonUpdateInProgress), then which side is
+ * careerTeam. Display only: nothing here changes the career. */
+static void career_result_event(uint8_t kind, int16_t mode, const TeamFileEx *team1, const TeamFileEx *team2,
+                                uint16_t goals1, uint16_t goals2)
+{
+    extern volatile uint16_t _seasonUpdateInProgress;
+    if (mode == 0 || _selTeamNumber == 0xFFFF || _seasonUpdateInProgress != 0)
+        return;
+    if (team1 == &_careerTeam)
+        ModHooks_CareerEvent(kind, (int16_t)((int32_t)goals1 - (int32_t)goals2), 0, 0);
+    else if (team2 == &_careerTeam)
+        ModHooks_CareerEvent(kind, (int16_t)((int32_t)goals2 - (int32_t)goals1), 0, 0);
+}
 
 /* DIY_PlayCupMatchAndAdvance
  *
@@ -11577,8 +11638,14 @@ final_or_groups:
         DIYCompetition *bufCopyS2 = &_diyFileBufferCopy.header;
         uint16_t bufCopyCurRound = (uint16_t)bufCopyS2->roundComplete;   /* 0x54 */
         uint16_t bufCopyTotalRounds = (uint16_t)bufCopyS2->totalMatchesInRound; /* 0x52 */
-        if (bufCopyCurRound + 1 != bufCopyTotalRounds)
+        if (bufCopyCurRound + 1 != bufCopyTotalRounds) {
+            /* (the PC game goes to its cutscene test from here too -- cseg_28E76's jnz cseg_295B0 --
+             * so a stage of a cup with groups and a final (hasGroups 2) ends with one) */
+            if (baseS->hasGroups == 2)
+                career_result_event(MODCAREER_CUP_FINAL, mode, team1, team2,
+                                    _diyCupLastMatchScoreTeam1, _diyCupLastMatchScoreTeam2);
             return 0; /* groups stage not done yet */
+        }
     }
 
     /* Determine competition winner from grid bracket */
@@ -11591,8 +11658,14 @@ final_or_groups:
          * with BE_READ_U16 so resultCode holds the packed value
          * downstream comparisons expect. */
         baseS->resultCode = (int16_t)BE_READ_U16(&a3Ex->cupTeamIds[slotWord]);
+        UefaPrize_CupWon((uint8_t)baseS->field_2E, (uint16_t)baseS->resultCode);   /* (a world's UEFA prize) */
     }
 
+    /* The cup's last match: the PC game's WIN CUP / LOSE CUP cutscene here (cseg_295B0: a cup
+     * without groups, or with groups and a final) */
+    if (baseS->hasGroups == 0 || baseS->hasGroups == 2)
+        career_result_event(MODCAREER_CUP_FINAL, mode, team1, team2,
+                            _diyCupLastMatchScoreTeam1, _diyCupLastMatchScoreTeam2);
     return 0;
 }
 
@@ -11839,5 +11912,7 @@ uint16_t DIY_PlayOrSimulateLeagueFixture(int16_t allowSquadChanges, int16_t sele
     _diyLeftTeamResult = goals1;
     _diyRightTeamResult = goals2;
 
+    /* the PC game's WIN / LOSE dressing-room cutscene here (cseg_89147: won or lost by three) */
+    career_result_event(MODCAREER_MATCH, selector, team1, team2, goals1, goals2);
     return 0;
 }

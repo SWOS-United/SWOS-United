@@ -6,17 +6,22 @@
 #ifdef SWOS_SDL_BUILD
 #include <stdlib.h>
 #endif
+#include "player_looks.h"
 #include "swos_fixed_team_name.h"   /* SWOS_CopyTeamName17 */
 #include "game_init.h"
+#include "long_bench.h"
 #include "league_phase.h"
 #include "dos_gameplay.h"   /* ApplyGameStyle — DOS/Amiga match tuning */
 #include "endian_helpers.h"
 #include "game_types.h"
+#include "mod_hooks.h"   /* a gameplay mod's rules for a friendly */
+#include "mod_api.h"
 #include "play_match_menu.h"
 #include "string_utils.h"
 #ifdef SWOS_SDL_BUILD
 #include "uniform.h"        /* a kit chosen for this match (UNIFORM screen) */
 #endif
+#include "world_rules.h"    /* a world's CPU cards / injuries, keeper injuries */
 
 /* ---- External globals (in SWOS2.s code/BSS sections) ---- */
 extern uintptr_t _currentScorer;
@@ -263,6 +268,8 @@ void InitGameSaveTeams(TeamGame *leftTeam, TeamGame *rightTeam)
         *dst2++ = *src2++;
     }
 
+    LongBench_SaveKickOff();             /* (a long bench's places 17..) */
+
     /* Save team pointers */
     _topTeamPtr = leftTeam;
     _bottomTeamPtr = rightTeam;
@@ -360,11 +367,12 @@ static int32_t NoLoadPause(void)
 __attribute__((used, externally_visible))
 void UpdatePlayerInjuries(TeamGame *tg, TeamFileEx *teamFileBase)
 {
-    if (teamFileBase->team.teamControls == 1)  /* TEAM_COMPUTER */
+    if (teamFileBase->team.teamControls == 1 &&    /* TEAM_COMPUTER (a world's CPU INJURIES: kept) */
+        !WorldRules_CpuOpen(WRULE_CPU_INJURIES))
         return;
 
-    for (int16_t i = 15; i >= 0; i--) {
-        PlayerInfo *pi = &tg->players[i];
+    for (int16_t i = (int16_t)LongBench_Places() - 1; i >= 0; i--) {
+        PlayerInfo *pi = LongBench_Player(tg, (uint16_t)i);
         if (pi->skip != 0)     /* substituted */
             continue;
         if (pi->isInjured == 0)
@@ -373,7 +381,9 @@ void UpdatePlayerInjuries(TeamGame *tg, TeamFileEx *teamFileBase)
         /* Get the player in the team file.
          * GetPlayer returns a base pointer; PlayerFile starts sizeof(TeamFile) bytes in. */
         uint16_t teamNum = PACK_BE_U16(teamFileBase->team.countryNumber, teamFileBase->team.teamOrdinal);
-        uint8_t *playerBase = GetPlayer(teamNum, (uint16_t)(int8_t)pi->playerIndex);
+        uint8_t *playerBase = LongBench_Record(teamFileBase, pi->playerIndex);   /* (a long bench's 17..) */
+        if (!playerBase)
+            continue;
         PlayerFile *pf = (PlayerFile *)(playerBase + sizeof(TeamFile));
 
         /* Merge injury bitfield: keep low 5 bits, replace high 3 bits */
@@ -398,14 +408,16 @@ void AccumulateMatchGoalsIntoTeamFile(TeamGame *tg, TeamFileEx *teamFileBase,
 {
     teamFileBase->team.writesZeroHere += (uint8_t)tg->numOwnGoals;
 
-    for (int16_t i = 15; i >= 0; i--) {
-        PlayerInfo *pi = &tg->players[i];
+    for (int16_t i = (int16_t)LongBench_Places() - 1; i >= 0; i--) {
+        PlayerInfo *pi = LongBench_Player(tg, (uint16_t)i);
         int8_t goals = pi->goalsScored;
         if (goals == 0)
             continue;
 
         uint16_t teamNum = PACK_BE_U16(teamFileBase->team.countryNumber, teamFileBase->team.teamOrdinal);
-        uint8_t *playerBase = GetPlayer(teamNum, (uint16_t)(int8_t)pi->playerIndex);
+        uint8_t *playerBase = LongBench_Record(teamFileBase, pi->playerIndex);   /* (a long bench's 17..) */
+        if (!playerBase)
+            continue;
         PlayerFile *pf = (PlayerFile *)(playerBase + sizeof(TeamFile));
         pf->goalStats[statOffset] += (uint8_t)goals;
     }
@@ -468,6 +480,7 @@ void InitInGamePlayer(uint16_t playerIndex, uint16_t playerSlot,
 #endif
     pi->blond = face == 3;              /* (face 3: a black player, blond: player_face3.c) */
     pi->face = (int8_t)(face == 3 ? 2 : face);
+    PlayerLooks_NotePlayer(pi, pf);     /* (his look, drawing only: player_looks.c) */
 
     /* Position: bits 5-7 of positionAndFace */
     uint16_t pos = (uint16_t)(pf->positionAndFace & PF_POSITION_MASK) >> 5;
@@ -535,18 +548,21 @@ void ApplyPlayerStatusAfterSim(TeamGame *tg, TeamFileEx *teamFileBase)
     if (_trainingGame != 0)
         return;
 
-    if (teamFileBase->team.teamControls == 1)  /* TEAM_COMPUTER */
+    if (teamFileBase->team.teamControls == 1 &&    /* TEAM_COMPUTER (a world's CPU RED CARDS: kept) */
+        !WorldRules_CpuOpen(WRULE_CPU_CARDS))
         return;
 
-    for (int16_t i = 15; i >= 0; i--) {
-        PlayerInfo *pi = &tg->players[i];
+    for (int16_t i = (int16_t)LongBench_Places() - 1; i >= 0; i--) {
+        PlayerInfo *pi = LongBench_Player(tg, (uint16_t)i);
         if (pi->skip != 0)        /* substituted */
             continue;
         if (pi->numYellowCards == 0)  /* cards field */
             continue;
 
         uint16_t teamNum = PACK_BE_U16(teamFileBase->team.countryNumber, teamFileBase->team.teamOrdinal);
-        uint8_t *playerBase = GetPlayer(teamNum, (uint16_t)(int8_t)pi->playerIndex);
+        uint8_t *playerBase = LongBench_Record(teamFileBase, pi->playerIndex);   /* (a long bench's 17..) */
+        if (!playerBase)
+            continue;
 
         uint8_t cardVal = (uint8_t)pi->numYellowCards;
         PlayerFile *pf = (PlayerFile *)(playerBase + sizeof(TeamFile));
@@ -593,15 +609,17 @@ void UpdateCareerPlayerStatsAfterMatch(TeamGame *tg, TeamFileEx *teamFileBase)
     if (teamFileBase != &_careerTeam)
         return;
 
-    for (int16_t i = 15; i >= 0; i--) {
-        PlayerInfo *pi = &tg->players[i];
+    for (int16_t i = (int16_t)LongBench_Places() - 1; i >= 0; i--) {
+        PlayerInfo *pi = LongBench_Player(tg, (uint16_t)i);
         if (pi->skip != 0)      /* substituted */
             continue;
         if (pi->halfPlayed != 2)  /* didn't play full match */
             continue;
 
         uint16_t teamNum = PACK_BE_U16(teamFileBase->team.countryNumber, teamFileBase->team.teamOrdinal);
-        uint8_t *playerBase = GetPlayer(teamNum, (uint16_t)(int8_t)pi->playerIndex);
+        uint8_t *playerBase = LongBench_Record(teamFileBase, pi->playerIndex);   /* (a long bench's 17..) */
+        if (!playerBase)
+            continue;
         Career_UpdateSinglePlayerPostMatchStats(playerBase);
     }
 }
@@ -707,6 +725,10 @@ void InitInGameTeamStructure(TeamFileEx *teamFileBase, TeamGame *tg,
         pi->finishing = 0;
         pi->goalieSkill = 0;
     }
+
+    /* A long bench's places 17.. (long_bench.c, the Mod's bx_next) */
+    for (uint16_t d2 = 16; d2 < LongBench_Places(); d2++)
+        LongBench_InitPlace(teamFileBase, tg, d2);
 
     /* Copy team name */
     uint8_t *nameSource;
@@ -1011,27 +1033,46 @@ cancelled:
  */
 __attribute__((used, externally_visible))
 void InitAndPlayGame(TeamFileEx *team1, TeamFileEx *team2) {
+    /* A gameplay mod's rules for a friendly (docs/MODS.md §36: the arcade mod's). Offline they
+     * are decided here, from the player's settings; in an online match (and a recording played
+     * again) they came with the host's kick-off state and setup, so nothing is decided here.
+     * What a mod asks of the setup -- the slow clock, the replays -- is the player's own again
+     * after the match. */
+    extern uint16_t _gameLength, _autoReplays;
+    int32_t online = 0, ruled = 0;
+    const uint16_t keepLength = _gameLength, keepReplays = _autoReplays;
+#ifdef SWOS_SDL_BUILD
+    { extern int32_t NetplayMatch_IsLive(void); online = NetplayMatch_IsLive(); }
+#endif
+    if (!online)
+        ModHooks_ClearMatchState();
+
     /* SetupPlayers: mode=0, maxSubs=_maxSubstitutes, excludeFlags=1, allowSquadChanges=1 */
     SetupPlayers(team1, team2, (int16_t)_maxSubstitutes, 1, 1, 0);
 
     if (_exitGameFlag != 0)
         goto done;
 
+    if (!online && _trainingGame == 0) {
+        ModFriendlyRules rules;
+        ruled = ModHooks_FriendlyRules(&rules);
+        if (ruled) {
+            if (rules.slowClock)
+                _gameLength = 3;
+            if (rules.autoReplays >= 0)
+                _autoReplays = (uint16_t)rules.autoReplays;
+        }
+    }
+
     /* Set game name */
     if (_trainingGame != 0) {
         StringCopy(_aTraining, _gameName);
     } else {
         extern const char *ModMatch_Name(void);  /* a mod's match's own (mod_match.c) */
-#ifdef SWOS_SDL_BUILD
-        extern int _gArcadeMode;
-        extern uint8_t _aArcadeMatchName[];   /* "GOLDEN GOAL" (arcade.c) */
-#endif
         if (ModMatch_Name())
             StringCopy((uint8_t *)ModMatch_Name(), _gameName);
-#ifdef SWOS_SDL_BUILD
-        else if (_gArcadeMode)
-            StringCopy(_aArcadeMatchName, _gameName);
-#endif
+        else if (ModHooks_MatchName())          /* the rules it plays by ("GOLDEN GOAL") */
+            StringCopy((uint8_t *)ModHooks_MatchName(), _gameName);
         else
         StringCopy(_aFriendly_1, _gameName);
     }
@@ -1063,6 +1104,11 @@ void InitAndPlayGame(TeamFileEx *team1, TeamFileEx *team2) {
 
 done:
     _isCareer = 0;
+    if (ruled) {
+        _gameLength = keepLength;
+        _autoReplays = keepReplays;
+    }
+    ModHooks_ClearMatchState();     /* (a cup or a career match after it never sees them) */
 }
 
 /* ========================================================================
@@ -1111,6 +1157,8 @@ extern void UpdatePlayerInjuries(TeamGame *tg, TeamFileEx *teamFileBase);
 extern void ApplyPlayerStatusAfterSim(TeamGame *tg, TeamFileEx *teamFileBase);
 extern void UpdateCareerPlayerStatsAfterMatch(TeamGame *tg, TeamFileEx *teamFileBase);
 
+static int16_t _lbGameBench;     /* (the game's bench, for the old skill: never over 5) */
+
 /* InitializeInGameTeamsAndStartGame
  *
  * Sets up teams for a match, displays stadium menu, plays match,
@@ -1134,6 +1182,9 @@ void InitializeInGameTeamsAndStartGame(int16_t randomizePitch, int16_t minSubs,
     int16_t allowedInjuries;
     uint32_t avail;
 
+    /* A world's computer clubs field available players (CPU RED CARDS / CPU INJURIES): their
+     * injured and suspended starters swapped out for this match, the order back after it. */
+    WorldRules_CpuLineupsBegin(0, (TeamFileEx *)team1, (TeamFileEx *)team2, paramD3);
     _hilStarted = 0;
     /* The Rand2 save stack starts empty for every match.
      *
@@ -1151,6 +1202,16 @@ void InitializeInGameTeamsAndStartGame(int16_t randomizePitch, int16_t minSubs,
     { extern uint8_t _savedRandState[]; extern uint8_t *_savedRandStatePtr;
       _savedRandStatePtr = _savedRandState; }
     _plgD0Param = (uint16_t)randomizePitch;
+    /* A world's long bench (long_bench.c, the Mod's bx_max / bx_min): the competition's named
+     * substitutes and changes in place of the game's; the old skill below reads the game's bench */
+    {
+        const int16_t gameBench = maxSubs;
+        LongBench_MatchStart(team1, team2, &minSubs, &maxSubs);
+        if (LongBench_On())
+            _lbGameBench = gameBench < 5 ? gameBench : 5;
+        else
+            _lbGameBench = maxSubs;
+    }
     _maxSubsPerTeam = (uint16_t)minSubs;
     _gameMaxSubstitutes = (uint16_t)maxSubs;
     _plgD3Param = (uint16_t)paramD3;
@@ -1159,8 +1220,8 @@ void InitializeInGameTeamsAndStartGame(int16_t randomizePitch, int16_t minSubs,
     LeaguePhase_GameStarting(team1, team2);     /* (a world's league phase: its cards, league_phase.c) */
 
     /* Compute old player skill for view result (for both teams) */
-    ComputeOldPlayerSkillForViewResult((TeamFileEx *)team1, (uint16_t)maxSubs);
-    ComputeOldPlayerSkillForViewResult((TeamFileEx *)team2, (uint16_t)maxSubs);
+    ComputeOldPlayerSkillForViewResult((TeamFileEx *)team1, (uint16_t)_lbGameBench);
+    ComputeOldPlayerSkillForViewResult((TeamFileEx *)team2, (uint16_t)_lbGameBench);
 
     _teamsLoaded = 0;
     _poolplyrLoaded = 0;
@@ -1301,6 +1362,10 @@ void InitializeInGameTeamsAndStartGame(int16_t randomizePitch, int16_t minSubs,
         for (i = ModMatch_SkipStadium() || NoLoadPause() ? -1 : 0x95; i >= 0; i--) {
             WaitForVSync();
         }
+        {   /* a long bench's further pages of the line-ups (menus.c, the Mod's bx_stad) */
+            extern void Stadium_LongBenchPages(int32_t waitFrames);
+            Stadium_LongBenchPages(!ModMatch_SkipStadium() && !NoLoadPause() ? 0x95 : -1);
+        }
     }
 
     _deadVarAlways0 = 0;
@@ -1336,12 +1401,14 @@ void InitializeInGameTeamsAndStartGame(int16_t randomizePitch, int16_t minSubs,
     /* Process team 1 */
     AccumulateMatchGoalsIntoTeamFile(&_topTeamInGame, (TeamFileEx *)team1, (uint16_t)paramD7);
     UpdatePlayerInjuries(&_topTeamInGame, (TeamFileEx *)team1);
+    WorldRules_GkAfterMatch(&_topTeamInGame, (TeamFileEx *)team1);     /* (a world's keeper injuries) */
     ApplyPlayerStatusAfterSim(&_topTeamInGame, (TeamFileEx *)team1);
     UpdateCareerPlayerStatsAfterMatch(&_topTeamInGame, (TeamFileEx *)team1);
 
     /* Process team 2 */
     AccumulateMatchGoalsIntoTeamFile(&_bottomTeamInGame, (TeamFileEx *)team2, (uint16_t)paramD7);
     UpdatePlayerInjuries(&_bottomTeamInGame, (TeamFileEx *)team2);
+    WorldRules_GkAfterMatch(&_bottomTeamInGame, (TeamFileEx *)team2);
     ApplyPlayerStatusAfterSim(&_bottomTeamInGame, (TeamFileEx *)team2);
     UpdateCareerPlayerStatsAfterMatch(&_bottomTeamInGame, (TeamFileEx *)team2);
 
@@ -1364,5 +1431,7 @@ post_match:
     }
 
     PrepareMenuForFadeIn();
+    WorldRules_CpuLineupsEnd(0);
+    LongBench_MatchEnd();               /* (the state between matches is the game's) */
     /* gameCanceled is tested by caller via return/tst.w */
 }

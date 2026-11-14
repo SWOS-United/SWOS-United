@@ -1,8 +1,8 @@
 /*
  * mod_practice.c -- the practice mod (canonical, bin/mods/practice; docs/MODS.md §18): SWOS 2020's
  * PRACTICE (its practice.mnu, game.cpp ChallengeGame), ported onto the mod API. Both targets.
- * SWOS 2020's alone: petarku's modes are their own mod (src/mod_petarku_practice.c), and neither is
- * built on the other (the owner, 2026-11-09).
+ * SWOS 2020's alone (petarku's own practice mod was removed on 2026-11-11: this covers it, its author
+ * said).
  *
  * MODES -> PRACTICE opens its menu (bin/mods/practice/data_json/menus/practice/practiceMenu.json,
  * its handlers practice.<name>):
@@ -17,8 +17,10 @@
  *                     yours and the CPU's, on or off, the goal you attack; START, the team screen,
  *                     then a match whose clock stays at 0 -- no half time, no end but leaving it
  *                     (ESC) -- with no cards and no injuries (trainingModePractice_OnSelect)
- * Each match returns here (the menu again), as SWOS 2020's do. Training's drills (F1-F12) and ghost
- * players are next (docs/MODS.md §18).
+ * Each match returns here (the menu again), as SWOS 2020's do. Training's drills (F1-F12, Left Alt,
+ * 9 0 - =: set pieces on demand, as SWOS 2020's controls.cpp has them -- training only, as there:
+ * its gate is g_TrainingMode) are below (TEAM TRAINING CONTROLS), and CPU GHOSTED (ghost players)
+ * on its settings page (docs/MODS.md §18).
  *
  * "changes": "modes": its matches are its own, a normal one untouched -- never matters online.
  */

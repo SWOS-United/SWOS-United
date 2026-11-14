@@ -570,6 +570,20 @@ void ModApi_Score(int16_t goals[2])
 
 uint32_t ModApi_MatchFrames(void) { return s_frames; }
 
+int32_t ModApi_MatchPhase(ModMatchPhase *out)
+{
+    extern volatile uint16_t _goalCameraMode;
+    extern uint16_t _replayState;
+    memset(out, 0, sizeof *out);
+    if (!_playGame)
+        return 0;
+    out->inPlay = (uint8_t)(_gameStatePl == ST_GAME_IN_PROGRESS);
+    out->shootout = (uint8_t)(_playingPenalties != 0);
+    out->goalCelebration = (uint8_t)(_goalCameraMode != 0);
+    out->replay = (uint8_t)(_replayState != 0);
+    return 1;
+}
+
 /* ---- the engine asks (include/mod_hooks.h) ---- */
 
 /* SetupPlayers: the sides, as the arcade cabinet sets them -- no prompts. 1 when it did. */
@@ -1367,16 +1381,80 @@ static int32_t s_testShootout;          /* SWOS_MOD_MATCH_TEST=shootout */
 
 static void test_entry(void) { play_test_match(0); }
 
+/* SWOS_TEST_FRIENDLY=<hex id>,<hex id>: a friendly the game's own way from the main menu -- the
+ * first team the player's (its pre-match screen comes up, SWOS_KEY_SCRIPT drives it), the second
+ * the computer's -- then quit. For looking at the pre-match screen and the line-ups (a world's long
+ * bench: long_bench.c); not a mod's match. */
+static void test_friendly(const char *ids)
+{
+    extern uint16_t _gameType, _numSelectedTeams;
+    extern void InitAndPlayGame(TeamFileEx *team1, TeamFileEx *team2);
+    const uint16_t a = (uint16_t)strtoul(ids, NULL, 16);
+    const char *comma = strchr(ids, ',');
+    const uint16_t b = comma ? (uint16_t)strtoul(comma + 1, NULL, 16) : 0;
+    if (load_team(a, 0, TEAM_PLAYER_COACH) != 0 || load_team(b, 1, TEAM_COMPUTER) != 0)
+        exit(1);
+    _numSelectedTeams = 2;
+    _gameType = 0;
+    fprintf(stderr, "[test] a friendly: %.16s v %.16s\n", (const char *)_selectedTeams[0].team.teamName,
+            (const char *)_selectedTeams[1].team.teamName);
+    InitAndPlayGame(&_selectedTeams[0], &_selectedTeams[1]);
+    fprintf(stdout, "TEST FRIENDLY DONE\n");
+    fflush(stdout);
+    exit(0);
+}
+
+/* (the menus' frame, menu_system.c: on the main menu, once it has faded in -- a match started at its
+ *  init plays on a black palette) */
+void ModMatch_TestFriendlyTick(void)
+{
+    extern uint8_t _currentMenu[];
+    extern void SWOSMainMenuInit(void), PlayMatchMenuInit(void), PlayMatchOnSelect30(void);
+    extern void Platform_RequestScreenshot(void);
+    static int32_t frames, done, pm;
+    /* (SWOS_TEST_PREMATCH_ROTATE=n: on the pre-match screen, n turns of the box that brings the next
+     *  place to row 17 -- a long bench's players 17.. scrolled into view -- a screenshot after each) */
+    if (done && getenv("SWOS_TEST_PREMATCH_ROTATE") &&
+        ((const Menu *)_currentMenu)->onInit == (MenuVoidFn)PlayMatchMenuInit) {
+        const int32_t n = atoi(getenv("SWOS_TEST_PREMATCH_ROTATE"));
+        ++pm;
+        if (pm % 40 == 0 && pm / 40 <= n) {
+            if (pm / 40 > 1)
+                PlayMatchOnSelect30();
+            Platform_RequestScreenshot();
+            fprintf(stderr, "[test] pre-match screen: turn %d of the box\n", (int)(pm / 40 - 1));
+        }
+        if (pm / 40 > n) {              /* (then PLAY MATCH, the screen's own entry) */
+            extern volatile uint16_t _shortFire;
+            extern uint8_t _pl1Fire;
+            _shortFire = 1;
+            _pl1Fire = 1;
+        }
+        return;
+    }
+    if (done || !getenv("SWOS_TEST_FRIENDLY") ||
+        ((const Menu *)_currentMenu)->onInit != (MenuVoidFn)SWOSMainMenuInit || ++frames < 25)
+        return;
+    done = 1;
+    test_friendly(getenv("SWOS_TEST_FRIENDLY"));
+}
+
 void ModMatch_SelfTest(void)
 {
     static int done;
     const char *how = getenv("SWOS_MOD_MATCH_TEST");
+
     if (done || !how)
         return;
     done = 1;
     if (strncmp(how, "challenge:", 10) == 0) {  /* (the challenges mod's, src/mod_challenges.c) */
         extern void ModChallenges_Test(const char *id);
         ModChallenges_Test(how + 10);
+        return;
+    }
+    if (strncmp(how, "arcade", 6) == 0) {       /* (the arcade mod's rules: arcade[:seconds], src/mod_arcade.c) */
+        extern void ModArcade_Test(int32_t seconds);
+        ModArcade_Test(how[6] == ':' ? atoi(how + 7) : 0);
         return;
     }
     if (strncmp(how, "speedrun:", 9) == 0) {    /* (the speedrun mod's run, src/mod_speedrun.c) */
@@ -1421,7 +1499,7 @@ static void play_test_match(int32_t thenQuit)
     setup.score[0] = 2;
     setup.score[1] = 1;
     setup.minute = 40;
-    setup.stadium = 0;
+    setup.stadium = getenv("SWOS_TEST_LONGBENCH") != NULL;  /* (the long bench's test: the line-ups' pages) */
     setup.replayMenu = 0;
     setup.autoReplays = 0;
     setup.name = "mod match test";
