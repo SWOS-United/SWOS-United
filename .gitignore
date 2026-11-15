@@ -213,9 +213,10 @@ data/SWOS2.REL
 .test-accounts
 include/united_secrets.h
 
-# SWOS 2020 art made on the player's machine (scripts/make_menus2020_icons.py), never in git
-bin/mods/menus2020/grafs_2020/
-bin/mods/menus2020/pixmaps.txt
+# (bin/mods/menus2020/grafs_2020/ and pixmaps.txt -- SWOS 2020's menu icons and COMPETITIONS'
+#  arrows, scripts/make_menus2020_icons.py -- ARE committed since 2026-11-14: SWOS United ships them
+#  by default; a drop is staged from git, and without them every release had a main menu with no
+#  icons. Playa.)
 
 # The Amiga's binary of the mods' JSON (swosdata --amiga-mod; the setup writes it in a drawer)
 bin/mods/*/challenges/

@@ -14,8 +14,10 @@ a 24-bit BMP in the PC palette's colours, magenta where SWOS 2020 drew nothing, 
 overlay: bin/mods/menus2020/grafs_2020/menus2020/<name>.bmp (scripts/make_menus2020.py's menu
 names them).
 
-The icons are SWOS 2020's art, so like its pitches (grafs_2020) they are made on the player's
-machine and never committed (.gitignore), as is the mod's pixmaps.txt (COMPETITIONS' arrows). Without them the menu shows its buttons without icons.
+The icons and the mod's pixmaps.txt (COMPETITIONS' arrows) are COMMITTED (since 2026-11-14:
+SWOS United ships them by default, Playa): a release is staged from git, so made only on a
+developer's machine they were in no release. Run this again after changing what it draws, and
+commit what it writes. Without them the menu shows its buttons without icons.
 """
 import argparse
 import os
