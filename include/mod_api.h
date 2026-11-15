@@ -39,6 +39,13 @@ struct SpriteGraphics;
 typedef struct ModMatchEvent ModMatchEvent;
 /* A pitch cell's tile (ModDef pitchTiles). */
 typedef const uint8_t *(*ModPitchTileFn)(int32_t cell, const uint8_t *engineTile);
+/* How a bench's figures are laid out from its point (the benchPoint hook): the engine's values
+ * when a mod says nothing. seatStep: y between seats (7); columnSeats: places in the back column
+ * after the coach on a long bench (7); columnStep, columnDy: the front column's x and y from the
+ * back one (9, -53); arrowDx: the front column's arrow, mirrored, right of it (41). */
+typedef struct ModBenchSteps {
+    int16_t seatStep, columnSeats, columnStep, columnDy, arrowDx;
+} ModBenchSteps;
 struct TeamFileEx;                              /* (include/game_types.h: a team as its file has it) */
 typedef struct ModMatchResult ModMatchResult;
 typedef struct ModCompetitionResult ModCompetitionResult;
@@ -72,11 +79,18 @@ typedef struct ModDef {
                         int16_t x, int16_t y);      /* a player sprite just drawn at screen x, y */
     void (*replayFrameBegin)(int32_t first, int32_t fresh);         /* a replay's pitch drawn */
     void (*replaySprite)(uint16_t image, int16_t left, int16_t top); /* each recorded sprite */
+    /* A replay's sprite about to be drawn (the in-match replay and VIEW's .SRP), in the order it is
+     * drawn: its image, its world top-left and where on the frame (ModApi_Frame) it goes. 1 leaves
+     * it out of the picture -- a mod draws its own there (spriteDraw's twin for a replay). */
+    int32_t (*replaySpriteDraw)(uint16_t image, int16_t left, int16_t top, int16_t screenX, int16_t screenY);
     void (*menuDrawn)(void);            /* a menu frame drawn (ModApi_Frame), before it is shown */
     /* A frame's sprites (src/sprites.c DrawQueuedSprites): spritesBegin before the first, then
      * spriteDraw before each is drawn at screen x, y -- move it (*x, *y) or return 1 to leave it
      * out of the picture. Drawing only: the sprite itself is match state and is never changed. */
     void (*spritesBegin)(void);
+    /* After a frame's sprites, live or a replay's (the last drawn, before the statistics): what a
+     * mod draws among the sprites and has left -- below every one of them. Drawing only. */
+    void (*spritesEnd)(void);
     int32_t (*spriteDraw)(const struct Sprite *sprite, const struct SpriteGraphics *gfx,
                           int16_t *x, int16_t *y);
     void (*frameKept)(void);            /* the match is paused: the frame shown again, as drawn */
@@ -93,6 +107,12 @@ typedef struct ModDef {
     void (*pitchDropped)(void);
     ModPitchTileFn (*pitchTiles)(void);
     int32_t (*pitchCondition)(int32_t pitchType, uint8_t *entry, uint8_t (*rgb)[3], int32_t max);
+    /* Where a bench is drawn (the pitchmaps mod: a map's "bench-top" / "bench-bottom" point): `top`
+     * 1 the top bench (a training game's: the top half), *x, *y the engine's base point -- the
+     * coach 15 above it, the seats below -- and *steps its layout, all the engine's on the way in.
+     * 1 when changed. DRAWING ONLY: the bench camera, when the bench shows, and a substitute's walk
+     * on stay the engine's (they are match state). */
+    int32_t (*benchPoint)(int32_t top, int16_t *x, int16_t *y, ModBenchSteps *steps);
     /* The menus' backdrop as a true-colour image (SDL; the backgrounds mod): asked each time the
      * game loads a menu backdrop (menubg / menubg2). 1 with *rgba (R, G, B, A bytes, w x h,
      * kept by the mod until the next call) -- the backdrop is then that image behind every menu,
@@ -425,6 +445,11 @@ int32_t ModApi_ShowDialog(const char *title, const char *text, const char *const
  *                  in its own palette (768 bytes, R G B 0-255) at `level` (0 black .. 256 full) and
  *                  waits for the next frame (the game's pace): 1 when the player pressed a key, a
  *                  mouse or pad button or touched the screen since Begin (a skip) or closed the game
+ *   FrameHD        as Frame, for a true-colour picture at a higher resolution: `rgba` (w x h, R G B
+ *                  A bytes, kept by the caller until the next call) drawn at the window's own
+ *                  resolution where an `origW` x `origH` picture would be shown by Frame (centred,
+ *                  scaled as the game's picture is), black around it; `changed` 1 when its pixels
+ *                  are new since the last call (else the uploaded copy is drawn again)
  *   Sound          plays unsigned 8-bit mono samples at `rate` Hz (the caller keeps them) alone
  *   SoundPlaying   1 while it plays
  *   End            the game's picture and sound back; the press that skipped dropped; the menu
@@ -432,6 +457,8 @@ int32_t ModApi_ShowDialog(const char *title, const char *text, const char *const
 const char *ModApi_CutsceneBlocked(int32_t test);
 void    ModApi_CutsceneBegin(void);
 int32_t ModApi_CutsceneFrame(const uint8_t *pixels, int32_t w, int32_t h, const uint8_t *rgb, int32_t level);
+int32_t ModApi_CutsceneFrameHD(const uint8_t *rgba, int32_t w, int32_t h, int32_t origW, int32_t origH,
+                               int32_t level, int32_t changed);
 void    ModApi_CutsceneSound(const uint8_t *pcm, uint32_t len, int32_t rate);
 int32_t ModApi_CutsceneSoundPlaying(void);
 void    ModApi_CutsceneEnd(void);
@@ -912,6 +939,12 @@ int32_t  ModApi_ReplayPlayerFeet(uint16_t image, int16_t left, int16_t top, int1
 
 /* ---- the screen ---- */
 void     ModApi_Camera(int16_t *x, int16_t *y);     /* the world point at screen 0,0 */
+/* Draws a pitch cell (0..2309: row * 42 + column) again in this frame, as the crowd draws a fan it
+ * flipped: into the frame and the clean pitch sprites are undrawn from, its tile from the
+ * pitchTiles hook. For a mod whose own crowd changes cells (the pitchmaps mod): call it from
+ * spritesBegin / replayFrameBegin, and again the next frame (the other of the two buffers). Off
+ * screen, nothing. Drawing only. */
+void     ModApi_RedrawPitchCell(int32_t cell);
 void     ModApi_ScreenSize(int32_t *w, int32_t *h);
 /* The 8bpp frame being drawn and its row stride; only at a hook that says it may be drawn into. */
 uint8_t *ModApi_Frame(int32_t *stride);

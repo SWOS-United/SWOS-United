@@ -191,6 +191,16 @@ int32_t ModApi_ReplayPlayerFeet(uint16_t image, int16_t left, int16_t top, int16
 
 /* ---- the screen ---- */
 
+void ModApi_RedrawPitchCell(int32_t cell)
+{
+#ifdef SWOS_SDL_BUILD
+    extern void AnimatedPatterns_RedrawCell(int32_t cell);
+    AnimatedPatterns_RedrawCell(cell);
+#else
+    (void)cell;                         /* (the Amiga: no pitch-map mods) */
+#endif
+}
+
 void ModApi_Camera(int16_t *x, int16_t *y)
 {
     *x = (int16_t)Render_CameraX();
@@ -797,6 +807,16 @@ int32_t ModApi_CutsceneFrame(const uint8_t *pixels, int32_t w, int32_t h, const 
 {
     extern uint16_t _quitToDos;
     Platform_CutsceneShow(pixels, w, h, rgb, level);
+    if (Platform_VBlank() || _quitToDos)
+        return 1;
+    return Platform_PressCount() != s_cutPresses;
+}
+
+int32_t ModApi_CutsceneFrameHD(const uint8_t *rgba, int32_t w, int32_t h, int32_t origW, int32_t origH,
+                               int32_t level, int32_t changed)
+{
+    extern uint16_t _quitToDos;
+    Platform_CutsceneShowHD(rgba, w, h, origW, origH, level, changed);
     if (Platform_VBlank() || _quitToDos)
         return 1;
     return Platform_PressCount() != s_cutPresses;

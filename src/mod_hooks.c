@@ -151,6 +151,11 @@ void ModHooks_SpritesBegin(void)
     EACH(spritesBegin) (*m_)->spritesBegin();
 }
 
+void ModHooks_SpritesEnd(void)
+{
+    EACH(spritesEnd) (*m_)->spritesEnd();
+}
+
 int32_t ModHooks_SpriteDraw(const Sprite *sprite, const SpriteGraphics *gfx, int16_t *x, int16_t *y)
 {
     int32_t out = 0;
@@ -172,6 +177,20 @@ void ModHooks_ReplayFrameBegin(int32_t first, int32_t fresh)
 void ModHooks_ReplaySprite(uint16_t image, int16_t left, int16_t top)
 {
     EACH(replaySprite) (*m_)->replaySprite(image, left, top);
+}
+
+int32_t ModHooks_BenchPoint(int32_t top, int16_t *x, int16_t *y, ModBenchSteps *steps)
+{
+    int32_t out = 0;
+    EACH(benchPoint) out |= (*m_)->benchPoint(top, x, y, steps);
+    return out;
+}
+
+int32_t ModHooks_ReplaySpriteDraw(uint16_t image, int16_t left, int16_t top, int16_t screenX, int16_t screenY)
+{
+    int32_t out = 0;
+    EACH(replaySpriteDraw) out |= (*m_)->replaySpriteDraw(image, left, top, screenX, screenY);
+    return out;
 }
 
 void ModHooks_MenuDrawn(void)

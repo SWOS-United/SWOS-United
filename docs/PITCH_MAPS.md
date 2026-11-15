@@ -75,20 +75,150 @@ differ; it has no fans in the map, and the engine animates none in a training ga
 tiles 1..22 are ordinary ground that the engine WOULD toggle if a real match were played
 there; the map would not.)
 
-## What is left for the map to take over
+## Stage 2: over the players, among the sprites, the benches (2026-11-14)
 
-Each is in Tile Agent's `docs/OPENSWOS.md` §3, with the runtime call that replaces the
-engine's code. All of them change what the simulation holds or when it draws, so they are
-not stage 1:
+Everything here is **drawing only**. The engine still decides when and where: its sprites,
+its adverts' dice, its camera and its substitutions are match state and stay exactly as they
+are. A match, a replay and a netplay peer are the same with the mod on or off (the replay rig,
+`check_netplay_compat.sh`). The map's own time is the game's frame counter (`_frameCount`,
+unwrapped), so animations that run "always" are in step with the engine's.
 
-| | today | from the map |
+| | how | the map's |
 |---|---|---|
-| the crowd's rates and rhythms | `DrawAnimatedPatterns`' `d6`/`d0` per state | swap tracks keyed on `match-start`, `play-on`, `stoppage`, `goal-top`/`goal-bottom` |
-| which cells are fans | tile indices 1..22 in the game's bank | the cells where both layers of a swap pair have a tile |
-| the adverts | `ManageAdvertisements` + three sprites | a masked block on the `adverts` layer |
-| the corner flags | `UpdateCornerFlagSprite` | a four-cel flipbook on `flags` |
-| the goals | two sprites | blocks on `goals` (and, later, animated ones) |
-| layers over the players | none | `depth` above — the example's `clouds` |
+| **layers over the players** | `frameDrawn`: each `depth: above` layer drawn from the camera into a buffer of the picture's size (`ta_draw_layer32`, solid) and blended over the frame at the layer's opacity (`ta_player_layer_pose`) through gfx.h, on either presenter, over the match and its replays | the example's `clouds` (0.2, drifting, its own wind each match): the `clouds` event on a frozen, muddy, wet or soft pitch, `clear-sky` on a normal, dry or hard one, to go with the Weather mod's rain and snow |
+| **the goals' fronts** | `spriteDraw` / `replaySpriteDraw`: where the engine draws sprite 1091 or 1092, the nearest block of the `goals` layer is drawn instead, in the same place in the drawing order (the net over a ball that crossed the line) | `top goal`, `bottom goal` |
+| **the corner flags** | the same, for 1070–1073: the block of `flags` nearest the engine's flag | `wave`, four cels on the engine's beat |
+| **the adverts** | the mod follows the engine's `_advertIndex`: `advert-N` when it starts one, with the head start that puts the map's 8-frame steps on the engine's (`((frameCount − 1) & 7) + 1`), `adverts-off` when it stops; where the engine draws its eight strips (113–136), the `adverts` block is drawn once. Live only: a replay keeps its recorded strips | `advert-1..3`, the masked block |
+| **the benches** | `benchPoint` (bench_subs.c `bench_geom`): the coach, the seats and the selection arrow drawn from the map's point and layout; the bench camera, when the bench shows (`_benchXLimit + 8`) and a substitute's walk-on stay the engine's | `bench-top`, `bench-bottom` on the topmost shown object layer (the training ground's layout its own: both at 27,456); `swos:seat-step`, `swos:column-seats`, `swos:column-step`, `swos:column-dy`, `swos:arrow-dx` |
 
-The first two need the Tile Agent player's state in the rollback registry and a way for
-two netplay peers to agree that both play from the map.
+The engine's hooks for these (include/mod_api.h): `frameDrawn`, `spritesBegin`, `spriteDraw`,
+`replayFrameBegin`, `replaySpriteDraw` (new: a replay's sprite, which a mod may leave out and
+draw its own) and `benchPoint` (new). A layer's name says what it stands for (`goals`, `flags`,
+`adverts`, Tile Agent's docs/SWOS_UNITED.md §3.4–3.8); a map without one leaves that to the
+engine.
+
+**Where a map is found:** `grafs_dos/pitch<N>.tmj`, then `grafs_dos/pitch.tmj`, through
+`swos_data_path`: each enabled mod's folder first (a pitch a player made and shipped as a mod),
+then the assets folder, then beside the game. Its images are read from the folder it was found
+in. (Before 2026-11-14 it was read from the game's own `grafs_dos/` only, so a map in the assets
+folder or a mod was never seen, and a mod's map took its images from the game's folder.)
+
+**No map ships.** The game's pitches as a map are cut from the game's own art, so they are a
+developer's (Tile Agent's `examples/swos-pitch.tmj` and its BMPs, copied into a `grafs_dos/`);
+pitches made in the format come from players, as mods.
+
+**Checked** with that example in a scratch assets folder (`SWOS_PITCH_MAP_CHECK=1`, PC graphics):
+- A corpus match (`tests/dos/2xcpu-08030320`, `--replay-test`): each corner-flag cel, 1070–1073,
+  drawn from the map is 0 of its 19–23 pixels from the engine's sprite. That holds since the map
+  runs on `_frameCount`; on a clock of its own the cels were out of phase, 7–12 pixels off.
+- The goals' fronts drawn from the map: 0 of 1126 (bottom) and 0 of 429 (top) pixels from the
+  engine's sprites, in three corpus matches.
+- The adverts with `SWOS_TEST_ADVERTS=1` (every chance shows one; the same `Rand()` drawn), which
+  the corpus needs because one is rare (one 50% chance a stoppage at the top end, and five corpus
+  matches lost every one): the map's `advert-2` fired on the engine's start and `adverts-off` on
+  its end, and over the 640 strips drawn, 0 of 61,440 pixels differ from the engine's -- its
+  scrolling, its 40-frame pause and its end, on the engine's 8-frame beat.
+- The benches come from the map at the engine's values: top 27,389 and bottom 27,485.
+- Clouds show on a muddy pitch with the Weather mod's rain, and a normal pitch has neither.
+- The ground is unchanged: 0 of 2310 cells, 0 fans' standing tiles and 0 condition channels
+  differ.
+
+## Stage 3: the crowd, the map's own (2026-11-15)
+
+With a map that has a crowd (a layer with a swap track: the example's `crowd-sit` /
+`crowd-stand`), **the fans are the map's**: which cells are fans, how many stand, how often and
+in what rhythm, all from the map, picked from **the map's own random numbers**
+(`ta_player_set_auto_swaps(player, 1)`), never the match's.
+
+The engine's crowd is **left exactly as it is**. `DrawAnimatedPatterns` still runs on the
+match's `Rand()`, fills its slot table and is rolled back and hashed. It is only unseen: when it
+redraws a cell, the pitch-map hook answers with the map's state for that cell. So the random
+stream, a recording, a replay, a resim and two netplay peers are bit for bit what they are with
+the mod off. Pitch maps stays a cosmetic mod, and two players online may even use different
+pitches. The original game's crowd, pick for pick, is what plays whenever no map draws the crowd.
+
+What the map's crowd follows is the match's **mood**, read and never changed: the engine's crowd
+state (`_animPatternsState`), each change an event of the map's (Tile Agent's
+docs/SWOS_UNITED.md §3.3):
+
+| the engine's state | the map's event |
+|---|---|
+| 6 the game has not started | `match-start` |
+| 7 in play | `play-on` |
+| 1 the ball out of play | `stoppage` |
+| 2, 3, 4, 5 a goal (entered from another state) | `goal-top` when the fans in the top stand (`_fansSidesSwapped` says whose) are the scorers', else `goal-bottom`; aged by the goal clock (`_patternsGoalCounter − 1`), in a replay by its phase (0, 24, 199) |
+
+The seed is taken from the match as it starts (`_seed`, `_randXorIndex`, the pitch), so two
+peers see the same crowd and the same clouds. Nothing requires it.
+
+**Drawing.** The pitch is not drawn whole each frame: a fan that changes is drawn into the frame
+and the mask buffer, then again next frame for the other buffer, as the engine does its own. The
+mod finds each map fan whose state changed since it was last drawn and redraws it at
+`spritesBegin` / `replayFrameBegin`, before the sprites, through the new
+`ModApi_RedrawPitchCell` (the engine's `drawPatternFromIndex`, SDL only: no slot, no `Rand()`).
+Cells scrolled into view are drawn by `DrawChunkyPitch` through the same hook, so they show the
+map's state too.
+
+**Checked:**
+- `check_netplay_compat.sh` with PC graphics and the pitchmaps mod on, through `SWOS.ini` in its
+  `HOME`, with the example map in the assets folder: **30 unchanged, 0 changed**, NETPLAY_COMPAT
+  15. A corpus match under that `HOME` confirms the rig ran the map's crowd ("crowd the map's own
+  (its random numbers, not the match's)").
+- In a match's pre-kick-off view of the top stand, the stand's pixels change by 2,000–6,000 from
+  one capture to the next with the camera still, and the cells are the map's sitting and standing
+  fans.
+
+## Stage 4: everything the format draws (2026-11-15)
+
+The renderer now draws every feature of Tile Agent's format a pitch can use. All of it is
+picture only (the match, its replays and two netplay peers are what they are without the mod):
+
+| | how |
+|---|---|
+| **the ground, live** | Each frame (`spritesBegin`, `replayFrameBegin`) the cells around the camera, two cells of margin, are composed again from every visible layer under the players through the runtime's own drawing (`ta_draw_layer8`): swap tracks (the crowd's among them), layer tracks (a layer that moves, drifts or fades), blit tracks (animated blocks on the ground), and layers an event shows or hides. Each cell is treated as the bake treats it (the Jaguar tier's donated entries, the fans' kits from the cell's own engine tile). A cell that changed is drawn again into the frame and the mask buffer, now and next frame (both buffers), with `ModApi_RedrawPitchCell`. Cells scrolled into view are drawn by `DrawChunkyPitch` through `pitchTiles`. This replaced the crowd-only redraw of stage 3. |
+| **the palette** | The presenter rebuilds the PC palette every frame and asks `pitchCondition` (`DosGfx_BuildPalette`, which now takes up to 256 entries). While a match or a replay shows the map, the mod adds the map's colour cycles as turned this frame and the entries of a palette variant an event put in force (`ta_player_palette`, `ta_player_palette_choice`). Every place an entry a cycle turns is used changes, as on any paletted screen. |
+| **any sorted layer** | Layers whose `depth` is `sorted`, besides `goals`, `flags` and `adverts`, an author's own (a ball boy, a camera tower...): their blocks of the frame, by anchor y, are drawn among the engine's sprites. Each is drawn just before the first sprite standing lower on the pitch, all before the HUD's screen-pinned sprites, and the rest at the new `spritesEnd` hook (called after `DrawQueuedSprites` and after both replay sprite loops). |
+
+**Not in the format, so not here:** image layers. Tile Agent reads them but does not draw them
+(its docs/FORMAT.md: "does not understand (image layers ...)").
+
+**A pitch map is the game's grid:** 42 x 55 cells of 16 x 16, indexed in the game's palette.
+That is fixed by the match, not the renderer: the camera, the crowd's slots and every sprite's
+position are in that space.
+
+### Row 0
+
+Row 0 (world y 0-15) is **never on screen**: the camera's top stops at y 16 (`MoveCamera`'s
+clamp, `targetY <= 0x10`). The engine still uses its own `PITCHn.DAT`'s row 0, as the table of
+the 42 fan tiles its recolouring starts from (`pitch.c`), but that is the engine's file, never the
+map. **In a map, row 0 is unused.** The mod never composes it, and an author may leave it empty.
+The row stays in the grid and is not removed from the format, so that a map's pixels stay the
+engine's world pixels: the goals at 300,129, the benches at 27,389, the flags, the adverts, every
+anchor and named point is where the engine's own coordinates say. A 54-row map would put all of
+them 16 pixels out and need a second coordinate system for nothing (the row costs 42 cells).
+
+**Checked** with a test copy of the example map (scratch only): a colour cycle on the grass
+(entries 78-81, a step every 8 frames), a ground layer with an animated block moving 160 pixels
+and back over 100 frames, and a sorted layer with a flag block on the centre circle.
+- In a match, `SWOS_PITCH_MAP_SHOT` frames 40 and 80 show the grass in different colours. At
+  frames 200 and 230 the block has moved about 48 pixels along the ground under the players, with
+  no trail left, and the flag stands among the players.
+- `SWOS_PITCH_MAP_CHECK` over the first 500 frames: 228 ground cells changed by the map, and 500
+  blocks of the sorted layer drawn. The cells as first composed: 476, 0 different from the bake,
+  which is itself 0 of 2310 from the engine's pitch.
+- `check_netplay_compat.sh` with the mod and that map on: see the commit.
+
+Test switches: `SWOS_PITCH_MAP_CHECK=1` (all the checks above),
+`SWOS_PITCH_MAP_SHOT=<frames>[,...]` (the game's frame, 8-bit, written as `pitchmap_shot_<n>.ppm`
+that many frames into the match: a picture at a known moment however long the start-up takes),
+and `SWOS_TEST_ADVERTS=1`.
+
+## What is left
+
+- **A crowd that stays the game's.** With the map's crowd on, the game's pitches drawn from the
+  example map have the same character of crowd but not the same fans, cell for cell. That is the
+  price of keeping the match's random stream. A map that wants the engine's picks exactly could
+  carry a property for it (the stage-2 behaviour); left out until someone asks.
+- **A goal undone by a rollback** (online): the crowd follows what is drawn, so a celebration
+  may start and stop. It is cosmetic, like the rest of the picture. The goal events could wait for
+  `netConfirmed` at the cost of the input delay.
