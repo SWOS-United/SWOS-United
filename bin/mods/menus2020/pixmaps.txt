@@ -1,0 +1,17 @@
+# SWOS 2020's pictures (src/PixelmapAndStrings.h): scripts/make_menus2020_icons.py
+rightArrow 10 7
+.....6F...
+......6F..
+4455566F2.
+455566FFF8
+.888886F88
+.....6F88.
+......88..
+leftArrow 10 7
+..F6......
+.F688.....
+2F6655544.
+FFF6655548
+.F68888888
+..F6......
+...88.....

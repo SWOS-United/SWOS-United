@@ -145,7 +145,7 @@ LOAD, QUIT (asks), CREDITS.
 - **The review's fixes (2026-11-10).** Pictures placed by SWOS 2020's screen pixels are put at that
   x - the entry's x - 8 (ConvertMenu's shift: SAVE/LOAD's floppies, the logo, QUIT's icon, the news
   lists' page arrows); COMPETITIONS' arrows come from the mod's `pixmaps.txt` (made by
-  `make_menus2020_icons.py`, gitignored) through `ModApi_DrawMapAtEntry`. TIPS AND REVIEWS /
+  `make_menus2020_icons.py`, committed with the icons since 2026-11-14) through `ModApi_DrawMapAtEntry`. TIPS AND REVIEWS /
   STREAMS AND VIDEOS follow `tickerMenu_OnDraw`: rows 6-10 go right to the page down, pages go
   round, its colours, EXIT first, the text cut at 249 px with "..."; the news is read by the ticker
   mod (`UnitedTicker_News`, include/united_ticker.h: a bad item is skipped, the mod's own news.json
