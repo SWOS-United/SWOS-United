@@ -923,7 +923,17 @@ void ShowStadiumInit(void)
             }
             d[k] = 0;
             _menuEntries[60].isInvisible = 0;
-            _menuEntries[60].y -= 2;        /* (in the 7 rows between the bars and the first line-up row) */
+            /* at the very top, a line above the competition's name (entry 0), in its font, centred
+             * as it is and as far from it as the round (entry 1) is -- under the bars it was the
+             * small font squeezed into 7 rows (Playa, 2026-11-14) */
+            _menuEntries[60].x = _menuEntries[0].x;
+            _menuEntries[60].dwWidth = _menuEntries[0].dwWidth;
+            _menuEntries[60].dwHeight = _menuEntries[0].dwHeight;
+            _menuEntries[60].stringFlags = _menuEntries[0].stringFlags;
+            {   /* (no round: entry 1 hidden and the name moved 5 down -- the row's own spacing) */
+                const int16_t dy = (int16_t)(_menuEntries[1].y - _menuEntries[0].y) + (_menuEntries[1].isInvisible ? 5 : 0);
+                _menuEntries[60].y = (uint16_t)(_menuEntries[0].y - dy);
+            }
         }
     }
 

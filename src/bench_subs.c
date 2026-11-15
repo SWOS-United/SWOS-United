@@ -253,8 +253,8 @@ static void drawOpponentsBench(void);
  * only: it is worked out from the cursor, no state of its own. */
 static uint16_t bench_window_first(void)
 {
-    if (!LongBench_On() || _trainingGame || LongBench_TwoRows())
-        return 1;               /* (two rows: everyone seated, no window) */
+    if (!LongBench_On() || _trainingGame || LongBench_FrontRow())
+        return 1;               /* (the front row: everyone shown, no window) */
     return (uint16_t)(_benchPlayerIndex > 5 ? _benchPlayerIndex - 4 : 1);
 }
 static void drawBenchPlayersAndCoach(TeamGame *teamGame, TeamGeneralInfo *team, uint16_t x, uint16_t y);
@@ -667,8 +667,6 @@ activate_bench:
 
         d1 = 389;   /* top bench Y */
         d2 = 485;   /* bottom bench Y */
-        if (LongBench_TwoRows())
-            d1 = LB_TOP_BENCH_Y;    /* (the long top dugout grew a row upwards: the Mod's bx_benchy) */
 
         if (_trainingGame != 0) {
             d1 += 67;    /* training game bench coordinates */
@@ -1751,7 +1749,7 @@ static int bench_occupants_visible(void)
 static void draw_bench_occupants_only(void)
 {
     /* Bench Y bases and the side convention, mirroring the activation block. */
-    uint16_t topY = LongBench_TwoRows() ? LB_TOP_BENCH_Y : 389, botY = 485;
+    uint16_t topY = 389, botY = 485;
     if ((uint8_t)_topTeamInGame.teamName[0] & 2) {
         uint16_t t = topY; topY = botY; botY = t;
     }
@@ -1759,7 +1757,12 @@ static void draw_bench_occupants_only(void)
      * menu seats it. Without it, whenever _topTeamPtr is not _topTeamInGame the menu put
      * each team on one bench and play on the other: the benches swapped as the substitute
      * came on (ReportBot 0049). */
-    if (_topTeamPtr != &_topTeamInGame) {
+    /* The bench team is _topTeamData with ITS OWN team's record -- inGameTeamPtr, as the menu takes
+     * a team's by its number. _topTeamData is team 2 whenever team 2 plays up (the second half:
+     * InitTeamsData), and pairing it with _topTeamPtr then drew each bench in the other team's kit
+     * until the bench was called (Playa, 2026-11-14). */
+    TeamGame *benchGame = (TeamGame *)_topTeamData.inGameTeamPtr;
+    if (benchGame != &_topTeamInGame) {
         uint16_t t = topY; topY = botY; botY = t;
     }
 
@@ -1772,7 +1775,7 @@ static void draw_bench_occupants_only(void)
     _benchY          = topY;
     _opponentBenchY  = botY;
     _benchTeam       = (uintptr_t)&_topTeamData;
-    _benchTeamGame   = (uintptr_t)_topTeamPtr;
+    _benchTeamGame   = (uintptr_t)benchGame;
     _initialSubsState = 0;      /* idle: neutral coach frames, no selection */
 
     drawOpponentsBench();
@@ -1949,10 +1952,10 @@ skip_opponent_1:
 
     if (_goToSubsTimer == 0 && _substituteInProgress == 0 && _subsState == 0) {
         uint16_t save_d1 = d1;
-        if (LongBench_TwoRows() && _benchPlayerIndex > LB_BACK_ROW)
-            /* (the front row's: the arrow mirrored, right of the row, at its seat -- the Mod's bx_arrow) */
+        if (LongBench_FrontRow() && _benchPlayerIndex > LB_SEATED)
+            /* (the front row's: the arrow mirrored, right of the row, at its place) */
             DrawSpriteInCameraView((uint16_t)LongBench_MirroredArrow(SPR_SELECT_SUBSTITUTE_ARROW),
-                                   (uint16_t)(d1 + LB_ARROW_DX), (uint16_t)(d2 - 53));
+                                   (uint16_t)(d1 + LB_ARROW_DX), (uint16_t)(d2 - LB_FRONT_DY));
         else
             DrawSpriteInCameraView(SPR_SELECT_SUBSTITUTE_ARROW, d1, d2);
         d1 = save_d1;
@@ -2087,10 +2090,11 @@ skip_coach:
         place += 4; /* advance by 4 more players = player 15 */
     }
 
-    /* (a long bench's two rows: every place seated -- the coach and places 1..7 at the game's seats,
-     *  8.. in front, a column to the right; the window of five only without them) */
-    const uint16_t twoRows = (uint16_t)LongBench_TwoRows();
-    const uint16_t last = twoRows ? (uint16_t)(first + LongBench_Last() - 1) : (uint16_t)(first + 4);
+    /* (a long bench's front row: the coach and places 1..5 seated as the game's, 6.. standing in
+     *  front of the dugout, a column towards the pitch, place 6 level with the coach; the window of
+     *  five only without it) */
+    const uint16_t frontRow = (uint16_t)LongBench_FrontRow();
+    const uint16_t last = frontRow ? (uint16_t)(first + LongBench_Last() - 1) : (uint16_t)(first + 4);
     const uint16_t backY = d2;
     for (d7 = first; d7 <= last; d7++) {
         pi = LongBench_Player(teamGame, (uint16_t)place);
@@ -2154,17 +2158,18 @@ skip_coach:
         } else {
             d3 = (uint16_t)(int16_t)(int8_t)pi->face;
         }
+        if (frontRow && d7 > LB_SEATED) {
+            /* standing: the selected (standing) figure whether or not he is the cursor's */
+            uint16_t base = (uint16_t)d0;
+            if (base == 0x4AF) base = 0x4B5;
+            else if (base == 0x4AC) base = 0x4B2;
+            DrawSpriteHotspotInCameraView((uint16_t)(base + d3 + d6), (uint16_t)(d1 + LB_FRONT_X),
+                                          (uint16_t)(backY + 7 * (d7 - 1) - LB_FRONT_DY));
+            goto next_player;
+        }
         d0 += d3;
         d0 += d6;
-        if (twoRows) {                  /* (the Mod's bx_seat) */
-            const int32_t front = d7 > LB_BACK_ROW;
-            const uint16_t y = (uint16_t)(backY + 7 * (d7 - 1) - (front ? 53 : 0));
-            /* a figure standing up from the back row stands in front of the front row */
-            const uint16_t base = (uint16_t)(d0 - d3 - d6);
-            const int32_t standing = base == 0x4B2 || base == 0x4B5;
-            DrawSpriteHotspotInCameraView(d0, (uint16_t)(d1 + (front || standing ? LB_FRONT_X : 0)), y);
-        } else
-            DrawSpriteHotspotInCameraView(d0, d1, d2);
+        DrawSpriteHotspotInCameraView(d0, d1, d2);
 
     next_player:
         d2 += 7;
@@ -2428,6 +2433,10 @@ draw_name:
         uint16_t nameX = _subsMenuX - Render_CameraX() + 9;
         if (_useIndividualPlayerSkinColor != 0)
             nameX += 9;
+        /* a two-digit shirt number (centred where one digit was) ran into the name: "23S. BOEY"
+         * (Playa, 2026-11-14) -- the name a gap further on */
+        if ((uint8_t)pi->shirtNumber >= 10 && (uint8_t)pi->shirtNumber < 100)
+            nameX += 4;
         DrawMenuText(nameX, y, 2, (uint8_t *)pi->shortName, charsTable);
     }
 
@@ -2774,7 +2783,7 @@ static void drawOpponentList(void)
             num[k++] = (uint8_t)('0' + n % 10);
             num[k] = 0;
             DrawMenuTextCentered((uint16_t)(x0 + 4), (uint16_t)(y + 1), 2, num, chars);
-            DrawMenuText((uint16_t)(x0 + 9), (uint16_t)(y + 1), 2, (uint8_t *)pi->shortName, chars);
+            DrawMenuText((uint16_t)(x0 + (n >= 10 ? 13 : 9)), (uint16_t)(y + 1), 2, (uint8_t *)pi->shortName, chars);
             DrawMenuTextCentered((uint16_t)(x0 + 116), (uint16_t)(y + 1), 2,
                                  (uint8_t *)_playerPositionsStringTable[(uint16_t)(int16_t)(int8_t)pi->position], chars);
             y += 10;
