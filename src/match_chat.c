@@ -66,7 +66,9 @@ static int32_t s_scale = 0, s_closeS = 5;
 
 void MatchChat_SetScale(int32_t scale) { s_scale = scale < 0 ? 0 : scale > MATCHCHAT_SCALE_MAX ? MATCHCHAT_SCALE_MAX : scale; }
 int32_t MatchChat_Scale(void) { return s_scale; }
-void MatchChat_SetAutoClose(int32_t seconds) { s_closeS = seconds < 1 ? 1 : seconds > 5 ? 5 : seconds; }
+/* 0: NEVER -- the box stays once a line is in it, until F3 hides it (SWOS United, Playa 2026-11-16: it
+ * should stay visible after a line is sent; SWOS 2020 only had 1 .. 5 s) */
+void MatchChat_SetAutoClose(int32_t seconds) { s_closeS = seconds < 0 ? 0 : seconds > 5 ? 5 : seconds; }
 int32_t MatchChat_AutoClose(void) { return s_closeS; }
 
 #define WIRE_MARK '\x02'
@@ -373,6 +375,9 @@ static void open_input(void)            /* the match's line */
 {
     line_open(send_line);
     C.typing = 1;
+    /* (a player typing wants the box: F3's hidden -- kept from match to match -- went with the
+     *  ENTER that sent the line, and the box with it, at once: Playa, 2026-11-16) */
+    C.hidden = 0;
 }
 
 void ChatLine_Open(void (*onSend)(const char *utf8))
@@ -589,9 +594,9 @@ void MatchChat_Draw(void)
             return;
         const uint32_t age = now - C.shownAt;
         const uint32_t showMs = (uint32_t)s_closeS * 1000u;
-        if (age >= showMs + FADE_MS)
+        if (s_closeS > 0 && age >= showMs + FADE_MS)
             return;
-        if (age > showMs)
+        if (s_closeS > 0 && age > showMs)
             alpha = 1.0f - (float)(age - showMs) / FADE_MS;
     }
 
