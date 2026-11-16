@@ -1,0 +1,562 @@
+{
+  "name": "replayControlsMenu",
+  "source": {
+    "project": "swos-2020",
+    "file": "src/menus/replayControls.mnu",
+    "commit": "df38d20"
+  },
+  "menu_flags": {
+    "dos_redraw": true
+  },
+  "onInit": null,
+  "onReturn": null,
+  "onDraw": "menus2020.replayControlsDraw",
+  "defaultEntry": 24,
+  "exports": {},
+  "items": [
+    {
+      "kind": "entry",
+      "name": "header",
+      "coords": {
+        "x": 92,
+        "y": 0,
+        "w": 125,
+        "h": 15
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "REPLAY CONTROLS"
+        },
+        {
+          "op": "colors",
+          "frame_color": 1,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "desc00",
+      "coords": {
+        "x": 2,
+        "y": 99,
+        "w": 142,
+        "h": 9
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "TOGGLE FRAME OVERLAY"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "desc01",
+      "coords": {
+        "x": 2,
+        "y": 110,
+        "w": 142,
+        "h": 9
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "PAUSE OR RESUME"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "desc02",
+      "coords": {
+        "x": 2,
+        "y": 121,
+        "w": 142,
+        "h": 9
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "REPLAY SPEED +, -"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "desc03",
+      "coords": {
+        "x": 2,
+        "y": 132,
+        "w": 142,
+        "h": 9
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "REWIND, FORWARD"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "desc04",
+      "coords": {
+        "x": 2,
+        "y": 143,
+        "w": 142,
+        "h": 9
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "GO TO FIRST, LAST FRAME"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "desc05",
+      "coords": {
+        "x": 2,
+        "y": 154,
+        "w": 142,
+        "h": 9
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "REWIND, FORWARD (10% SKIP)"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "desc06",
+      "coords": {
+        "x": 2,
+        "y": 165,
+        "w": 142,
+        "h": 9
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "STOP REPLAY"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "kInfoTitle",
+      "coords": {
+        "x": 146,
+        "y": 88,
+        "w": 80,
+        "h": 9
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "KEYBOARD"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "kInfo00",
+      "coords": {
+        "x": 146,
+        "y": 99,
+        "w": 80,
+        "h": 9
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "I"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 13
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "kInfo01",
+      "coords": {
+        "x": 146,
+        "y": 110,
+        "w": 80,
+        "h": 9
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "P"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 13
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "kInfo02",
+      "coords": {
+        "x": 146,
+        "y": 121,
+        "w": 80,
+        "h": 9
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "UP, DOWN"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 13
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "kInfo03",
+      "coords": {
+        "x": 146,
+        "y": 132,
+        "w": 80,
+        "h": 9
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "LEFT, RIGHT"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 13
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "kInfo04",
+      "coords": {
+        "x": 146,
+        "y": 143,
+        "w": 80,
+        "h": 9
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "HOME, END"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 13
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "kInfo05",
+      "coords": {
+        "x": 146,
+        "y": 154,
+        "w": 80,
+        "h": 9
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "PGDN, PGUP"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 13
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "kInfo06",
+      "coords": {
+        "x": 146,
+        "y": 165,
+        "w": 80,
+        "h": 9
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "FIRE (CTRL)"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 13
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "cInfoTitle",
+      "coords": {
+        "x": 228,
+        "y": 88,
+        "w": 80,
+        "h": 9
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "CONTROLLER"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "cInfo00",
+      "coords": {
+        "x": 228,
+        "y": 99,
+        "w": 80,
+        "h": 9
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "-"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 3
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "cInfo01",
+      "coords": {
+        "x": 228,
+        "y": 110,
+        "w": 80,
+        "h": 9
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "(Y)"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 3
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "cInfo02",
+      "coords": {
+        "x": 228,
+        "y": 121,
+        "w": 80,
+        "h": 9
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "UP, DOWN"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 3
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "cInfo03",
+      "coords": {
+        "x": 228,
+        "y": 132,
+        "w": 80,
+        "h": 9
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "LEFT, RIGHT"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 3
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "cInfo04",
+      "coords": {
+        "x": 228,
+        "y": 143,
+        "w": 80,
+        "h": 9
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "-"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 3
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "cInfo05",
+      "coords": {
+        "x": 228,
+        "y": 154,
+        "w": 80,
+        "h": 9
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "-"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 3
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "cInfo06",
+      "coords": {
+        "x": 228,
+        "y": 165,
+        "w": 80,
+        "h": 9
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "(A), (B)"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 3
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "exit",
+      "coords": {
+        "x": 92,
+        "y": 185,
+        "w": 125,
+        "h": 15
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "str": "_aExit"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 12
+        },
+        {
+          "op": "onselect_fire",
+          "func": "SetExitMenuFlag"
+        }
+      ]
+    }
+  ]
+}

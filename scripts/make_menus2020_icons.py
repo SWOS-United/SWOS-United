@@ -143,9 +143,10 @@ def main():
     # (src/mod_menu_tools.c: per map "name width height", then its rows).
     with open(os.path.join(REPO, "bin", "mods", "menus2020", "pixmaps.txt"), "w", newline="\n") as f:
         f.write("# SWOS 2020's pictures (src/PixelmapAndStrings.h): scripts/make_menus2020_icons.py\n")
-        for name in ("rightArrow", "leftArrow"):
-            rows = [row[:10] for row in char_map(name, 7)[:7]]
-            f.write("%s 10 7\n" % name)
+        # (and REPLAY CONTROLS' keys: replaysControlsMenu_OnDraw's replay_controls_300x56_1x1_map)
+        for name, w, h in (("rightArrow", 10, 7), ("leftArrow", 10, 7), ("replay_controls_300x56_1x1_map", 300, 56)):
+            rows = [row[:w] for row in char_map(name, h)[:h]]
+            f.write("%s %d %d\n" % (name, w, h))
             f.write("".join(row + "\n" for row in rows))
     print("  -> bin/mods/menus2020/pixmaps.txt")
 

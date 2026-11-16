@@ -543,6 +543,7 @@ static void menus_selftest(void)
     static const char *const kMenus[] = {
         "swosMainMenu", SLUG "/competitionMenu", SLUG "/practiceMenu", SLUG "/editingMenu",
         SLUG "/extrasMenu", SLUG "/quitMenu", SLUG "/tickerMenu", SLUG "/liveMenu",
+        SLUG "/replaysMenu", SLUG "/replayControlsMenu",
     };
     int32_t failed = 0;
     for (uint32_t i = 0; i < sizeof kMenus / sizeof kMenus[0]; i++) {
@@ -603,12 +604,12 @@ static void open_screen(const char *menu)
 static void compete(void)  { open_screen(SLUG "/competitionMenu"); }
 static void practice(void) { open_screen(SLUG "/practiceMenu"); }
 static void editing(void)  { open_screen(SLUG "/editingMenu"); }
+static void replays(void)  { open_screen(SLUG "/replaysMenu"); }
 static void extras(void)   { open_screen(SLUG "/extrasMenu"); }
 
 /* The game's own handlers, each ending in CommonMenuExit, and then this menu's layout. */
 #define GAME_BUTTON(name, fn) static void name(void) { fn(); main_refresh(); }
 GAME_BUTTON(multiplayer, MultiplayerMenuSelected)
-GAME_BUTTON(replays, HighlightsMenu)
 GAME_BUTTON(options, OptionsMenuSelected)
 GAME_BUTTON(continueContest, StartContest)
 GAME_BUTTON(saveContest, SaveContest)
@@ -763,7 +764,8 @@ static void career(void) { choose(CareerMenu); }
 /* ======================================================================================
  * PRACTICE (swos-2020 practice.mnu): FRIENDLY MATCH; TEAM TRAINING, PENALTY SHOOTOUT and DEMO GAME
  * are OpenSWOS's practice mod's (practice.training / .shootout / .demo, named in the JSON), shown
- * while it is on; MODES (ours, the mods' entries) when a mod other than practice has one.
+ * while it is on. (MODES -- ours, the mods' entries -- hidden for good: obsolete, Playa 2026-11-15;
+ * the entry stays in the menu so the ordinals do not move.)
  * ====================================================================================== */
 enum { Prac_header, Prac_friendly, Prac_training, Prac_shootout, Prac_demo, Prac_help, Prac_exit,
        Prac_modes };
@@ -771,21 +773,86 @@ enum { Prac_header, Prac_friendly, Prac_training, Prac_shootout, Prac_demo, Prac
 static void practiceInit(void)
 {
     const int32_t practice = ModApi_FindEntry(MODPOINT_MODES, "practice") >= 0;
-    const int32_t modes = ModApi_EntryCount(MODPOINT_MODES) > (practice ? 1 : 0);
-    const int32_t last = modes ? Prac_modes : practice ? Prac_demo : Prac_friendly;
+    const int32_t last = practice ? Prac_demo : Prac_friendly;
 
     show(Prac_training, practice);
     show(Prac_shootout, practice);
     show(Prac_demo, practice);
-    show(Prac_modes, modes);
-    nav(Prac_friendly, -1, -1, -1, practice ? Prac_training : modes ? Prac_modes : Prac_exit);
-    nav(Prac_demo, -1, -1, Prac_shootout, modes ? Prac_modes : Prac_exit);
-    nav(Prac_modes, -1, -1, practice ? Prac_demo : Prac_friendly, Prac_exit);
+    show(Prac_modes, 0);
+    nav(Prac_friendly, -1, -1, -1, practice ? Prac_training : Prac_exit);
+    nav(Prac_demo, -1, -1, Prac_shootout, Prac_exit);
     nav(Prac_exit, -1, -1, last, -1);
 }
 
 static void friendly(void) { choose(FriendlyMenu); }
 static void modes(void)    { choose(ModesMenuSelected); }
+
+/* ======================================================================================
+ * REPLAYS (replaysMain.mnu, replaysMenu.cpp): SWOS GALORE (the galore2020 mod's screen -- until
+ * 2026-11-15 a MODES entry under PRACTICE --, hidden while that mod is off), HIGHLIGHTS (the game's
+ * own screen), MATCH REPLAYS (that screen with the last match's whole replay loaded, LATEST.SRP:
+ * VIEW plays it, SAVE keeps it -- SWOS 2020's full-length match replays), REPLAY CONTROLS. Each
+ * opens over this screen and comes back to it, as SWOS 2020's. Ordinals: menus2020/replaysMenu.json.
+ * ====================================================================================== */
+enum { Rep_header, Rep_galore, Rep_highlights, Rep_matchReplays, Rep_controls, Rep_desc, Rep_exit };
+
+static int32_t galore_entry(void) { return ModApi_FindEntry(MODPOINT_MODES, "galore2020"); }
+
+static void replaysInit(void)
+{
+    const int32_t galore = galore_entry() >= 0;
+    show(Rep_galore, galore);
+    nav(Rep_highlights, -1, -1, galore ? Rep_galore : -1, Rep_matchReplays);
+    if (!galore)
+        SetCurrentEntry(Rep_highlights);
+}
+
+/* The line under the buttons: what the chosen one does (replaysMainMenu_OnDraw). */
+static void replaysDraw(void)
+{
+    const int32_t m = ModApi_MenuCurrentEntry();
+    ModApi_MenuText(Rep_desc, m == Rep_highlights ? "GO TO THE HIGHLIGHTS MENU TO PROCEED"
+                            : m == Rep_galore ? "RATE AND CHART THE HIGHLIGHTS ONLINE"
+                            : m == Rep_matchReplays ? "VIEW AND SAVE THE FULL LENGTH MATCH REPLAYS"
+                            : m == Rep_controls ? "VIEW INSTRUCTION OF REPLAY CONTROLS"
+                            : "BACK TO THE PREVIOUS MENU");
+}
+
+static void galore(void)
+{
+    const int32_t i = galore_entry();
+    if (i >= 0)
+        ModApi_RunEntry(MODPOINT_MODES, i);
+}
+
+static void highlights(void)
+{
+    extern uint8_t _highlightsMenu[];
+    ShowMenu(_highlightsMenu);
+}
+
+static void matchReplays(void)
+{
+    extern uint8_t _highlightsMenu[];
+    extern int32_t ReplayV2_Load(const uint8_t *name);
+    extern void    ReplayV2_Unload(void);
+    ReplayV2_Unload();
+    if (ReplayV2_Load((const uint8_t *)"LATEST.SRP") != 0) {
+        ModApi_ShowError("NO MATCH REPLAY RECORDED YET");
+        return;
+    }
+    ShowMenu(_highlightsMenu);
+    ReplayV2_Unload();                  /* (HIGHLIGHTS: no whole match behind it) */
+}
+
+static void replayControls(void) { ModApi_ShowMenu(SLUG "/replayControlsMenu"); }
+
+/* REPLAY CONTROLS' picture of the keys (replaysControlsMenu_OnDraw: drawReplayControlsLayout(5, 23),
+ * screen pixels -- its header's x is the .mnu's 92 + ConvertMenu's 8). */
+static void replayControlsDraw(void)
+{
+    ModApi_DrawMapAtEntry(SLUG, "replay_controls_300x56_1x1_map", 0, 5 - 100, 23, 0, 0, 300, 56, 0);
+}
 
 /* ======================================================================================
  * EDITING (editing.mnu) and EXTRAS (extrasEx.mnu)
@@ -1099,6 +1166,9 @@ static void init(void)
         { "liveCast", liveCast }, { "liveInit", liveInit }, { "liveWatch", liveWatch },
         { "liveRefresh", liveRefresh },
         { "compete", compete }, { "practice", practice }, { "replays", replays },
+        { "replaysInit", replaysInit }, { "replaysDraw", replaysDraw }, { "galore", galore },
+        { "highlights", highlights }, { "matchReplays", matchReplays }, { "replayControls", replayControls },
+        { "replayControlsDraw", replayControlsDraw },
         { "options", options }, { "editing", editing }, { "extras", extras },
         { "continueContest", continueContest }, { "saveContest", saveContest },
         { "loadContest", loadContest }, { "quit", quit }, { "credits", credits },
