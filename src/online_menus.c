@@ -19,6 +19,7 @@
  * own "server not connected" state, from where SETTINGS and RANKINGS open.
  */
 #include "test_rules.h"
+#include "world.h"            /* World_OnlineEnter / _Leave: online is 96/97 */
 #include "online_menus.h"
 #include "conti_view.h"
 #include "dos_mode.h"           /* the gameplay style: OPEN asks it, the lobby shows it */
@@ -49,7 +50,7 @@
 #include "uniform.h"          /* the UNIFORM screen, from the lobby's team screen */
 #include "custom_team.h"      /* MY CUSTOM TEAM */
 #include "online_account.h"   /* accounts: none here; a fork's (SWOS United's) */
-#include "chat_style.h"       /* SWOS_CHAT_DYNAMIC_FONT: the chat font, or the game's */
+#include "chat_style.h"       /* SWOS_LOBBY_CHAT_DYNAMIC_FONT: the chat font, or the game's */
 #include "chat_font.h"        /* the lobby's chat, drawn at the window's own pixels */
 #include "match_chat.h"       /* ChatLine_*: the line typed into the chat field */
 #include "gfx.h"
@@ -179,7 +180,9 @@ void OnlineMenus_Show(const char *name)
         return;
     }
     TestRules_Online(1);        /* test_rules.h: the testers' rule stops at this door */
+    World_OnlineEnter();        /* (online is 96/97, whatever world is played offline: world_online.c) */
     ShowMenu(menu);
+    World_OnlineLeave();
 }
 
 /* ======================================================================
@@ -1078,7 +1081,7 @@ static void lobby_test_knobs(void)
 
     if (say && say[0])
         (void)NetplayLobby_Say(say);
-#if SWOS_CHAT_DYNAMIC_FONT
+#if SWOS_LOBBY_CHAT_DYNAMIC_FONT
     if (getenv("SWOS_LOBBY_CHAT_OPEN")) {           /* the chat field open, for SWOS_KEY_SCRIPT to type */
         extern void OnlineMenus_LobbyChatOpen(void);
         OnlineMenus_LobbyChatOpen();
@@ -1293,7 +1296,7 @@ enum { CHAT_ROWS = 10 };                /* chatMsg00..09: a line is two rows, it
 static int32_t  s_lobbyPane;
 static int32_t  s_chatScroll;           /* lines back from the newest */
 static uint32_t s_chatSeen;             /* NetplayLobby_ChatSerial when last drawn */
-#if !SWOS_CHAT_DYNAMIC_FONT
+#if !SWOS_LOBBY_CHAT_DYNAMIC_FONT
 static char     s_chatRow[CHAT_ROWS][LOBBY_CHAT_TEXT + 1];     /* (the game's font: chat_style.h) */
 static char     s_chatInput[LOBBY_CHAT_TEXT + 1];
 #endif
@@ -1418,7 +1421,7 @@ static void lobby_layout(void)
     set_entry(MpGameSetupMenu_scrollDown, "-", 1, kRed);
     set_entry(MpGameSetupMenu_liveCastUrlBtn, s_lobbyPane == LOBBY_PANE_CHAT ? "SWITCHES" : "CHAT", 1,
               kLightBlue);
-#if SWOS_CHAT_DYNAMIC_FONT
+#if SWOS_LOBBY_CHAT_DYNAMIC_FONT
     set_text(MpGameSetupMenu_inputChatMsg, "");     /* (drawn in the chat font: OnlineMenus_DrawOverlay) */
 #else
     set_text(MpGameSetupMenu_inputChatMsg, s_chatInput);
@@ -1436,7 +1439,7 @@ static void lobby_layout(void)
 
 enum { kWhiteText2 = 2, kGreenText = 14, kYellowText = 15, kLeftAligned = 1 << 15 };
 
-#if SWOS_CHAT_DYNAMIC_FONT
+#if SWOS_LOBBY_CHAT_DYNAMIC_FONT
 /* The chat's rows (chatMsg00..09) and its field (inputChatMsg) keep their boxes but draw no
  * text of the game's font: lobby_chat_overlay draws the lines over them in the chat font --
  * small letters, accents, sharp at the window's size (chat_font.h). */
@@ -1691,7 +1694,7 @@ static void matchMaking_chat_scrollDown_onSelect(void)
         s_chatScroll--;
 }
 
-#if SWOS_CHAT_DYNAMIC_FONT
+#if SWOS_LOBBY_CHAT_DYNAMIC_FONT
 /* The line to type in (the chat's shared line, match_chat.h): ENTER says it, ESC drops it.
  * Typed in the chat font -- small letters, accents -- with the phone's keyboard on a phone. */
 static void lobby_say(const char *utf8)
@@ -2730,7 +2733,10 @@ static void mms_chat_rows_draw(void)
     const int32_t comm = g_arcadeOpts ? g_arcadeOpts->commentary : 2;
     const int32_t secs = MatchChat_AutoClose(), esc = InputSDL_EscPresses(), sc = MatchChat_Scale();
     set_text(MmSettingsMenu_commentary, k_comm[comm >= 0 && comm <= 2 ? comm : 2]);
-    snprintf(s_mmsChatbox, sizeof s_mmsChatbox, "AFTER %d SECOND%s", (int)secs, secs > 1 ? "S" : "");
+    if (secs <= 0)
+        snprintf(s_mmsChatbox, sizeof s_mmsChatbox, "NEVER");
+    else
+        snprintf(s_mmsChatbox, sizeof s_mmsChatbox, "AFTER %d SECOND%s", (int)secs, secs > 1 ? "S" : "");
     set_text(MmSettingsMenu_chatboxTimeout, s_mmsChatbox);
     snprintf(s_mmsEsc, sizeof s_mmsEsc, "%d TIME%s", (int)esc, esc > 1 ? "S" : "");
     set_text(MmSettingsMenu_escPressingMax, s_mmsEsc);
@@ -2749,11 +2755,11 @@ static void mmsSelectCommentary(void)
     mms_save();
 }
 
-static void mmsSelectChatboxTimeout(void)       /* (SWOS 2020 counts down: 5, 4 ... 1, 5) */
+static void mmsSelectChatboxTimeout(void)       /* (SWOS 2020 counts down: 5, 4 ... 1, 5; here NEVER first) */
 {
     extern PlatformInitOptions *g_arcadeOpts;
-    int32_t secs = MatchChat_AutoClose() - 1;
-    MatchChat_SetAutoClose(secs < 1 ? 5 : secs);
+    const int32_t secs = MatchChat_AutoClose();
+    MatchChat_SetAutoClose(secs == 0 ? 5 : secs - 1);   /* (NEVER, 5, 4 ... 1, NEVER) */
     if (g_arcadeOpts)
         g_arcadeOpts->chat_auto_close = MatchChat_AutoClose();
     mms_save();
@@ -3101,10 +3107,12 @@ int32_t OnlineMenus_ShowStartMenu(void)
      * Driving the lobby under gdb does not work -- a process stopped at a
      * breakpoint sends no ENET keepalives and the server times it out -- so this
      * is how the real menu gets looked at. */
-    if (s_autoLogin[0]) {
+    const int32_t online = s_autoLogin[0] != 0;
+    if (online) {
         const char *au = getenv("SWOS_MM_AUTO");
         s_mmAuto = (au && !strcmp(au, "host")) ? MM_AUTO_HOST :
                    (au && !strcmp(au, "join")) ? MM_AUTO_JOIN : MM_AUTO_OFF;
+        World_OnlineEnter();        /* (96/97 before the log-in: the server's tag is taken there) */
         MmClient_Connect(mm_host(), mm_port(), s_autoLogin, NULL);
         s_autoLogin[0] = '\0';
     }
@@ -3129,6 +3137,8 @@ int32_t OnlineMenus_ShowStartMenu(void)
     }
     else
         OnlineMenus_Show(name);
+    if (online)
+        World_OnlineLeave();
     return 1;
 }
 
