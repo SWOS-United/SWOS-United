@@ -184,6 +184,13 @@ void FrontEndPreLoopSetup(void)
         TacticsJson_InstallAll();
       } }
     World_SnapshotWorld();              /* (the world's, as every install of the start left them) */
+#ifdef SWOS_SDL_BUILD
+    if (getenv("SWOS_TEST_CUP_ENTRY")) {    /* (each world cup's divisions: world_cups.c) */
+        extern void WorldCups_EntryReport(void);
+        WorldCups_EntryReport();
+        exit(0);
+    }
+#endif
 #else
     /* Amiga: no runtime JSON parse, so install the BAKED Copa Libertadores
        (competition_data_copa_baked.c) here — the analog of the SDL dynamic
