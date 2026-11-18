@@ -258,6 +258,26 @@ const char *ModApi_ModDir(const char *slug)
     return NULL;
 }
 
+/* A mod's downloaded data, built-in mods' too: <player folder>/moddata/<slug> (the owner,
+ * 2026-11-16: "Any data downloaded from DLC should go into the user's SWOS data folder"). Not
+ * mods/<slug>: a folder there IS a downloaded mod of that name, and would hide a canonical one. */
+const char *ModApi_DataDir(const char *slug)
+{
+    static char path[1100];
+#ifdef SWOS_SDL_BUILD
+    const char *user = swos_user_dir();
+#else
+    const char *user = "";              /* (the Amiga: the drawer -- PROGDIR:'s moddata/) */
+#endif
+    if (!slug || !slug[0])
+        return NULL;
+    if (user && user[0])
+        snprintf(path, sizeof path, "%s/moddata/%s", user, slug);
+    else
+        snprintf(path, sizeof path, "moddata/%s", slug);
+    return path;
+}
+
 /* ---- settings: SWOS.ini [mod.<slug>] (Settings_Save keeps sections it does not know) ---- */
 
 #ifdef SWOS_SDL_BUILD
@@ -664,9 +684,11 @@ char *ModApi_JsonEscape(const char *in, char *out, uint32_t cap)
 #ifdef SWOS_SDL_BUILD
 #include "gpu_present.h"
 #include "gpu_slang.h"
+static int32_t s_modShader;             /* a mod chose the preset (Mods_Reload puts the run's back) */
 int32_t ModApi_SetShaderPreset(const char *path)
 {
 #ifdef SWOS_SHADERCC
+    s_modShader = 1;
     GpuPresent_SetShaderPreset(path);
     return 1;
 #else
@@ -851,3 +873,18 @@ const char *ModApi_Language(void)
     return g_arcadeOpts && g_arcadeOpts->language[0] ? g_arcadeOpts->language : "en";
 }
 #endif
+
+/* Mods_Reload: what the mods' inits registered, cleared -- each mod on registers again. */
+void ModApi_ResetForReload(void)
+{
+    s_numServices = 0;
+#ifdef SWOS_SDL_BUILD
+    s_hotkeyCount = 0;
+#ifdef SWOS_SHADERCC
+    if (s_modShader) {                  /* (the run's own: SWOS_SHADER, else none) */
+        GpuPresent_SetShaderPreset(getenv("SWOS_SHADER"));
+        s_modShader = 0;
+    }
+#endif
+#endif
+}
