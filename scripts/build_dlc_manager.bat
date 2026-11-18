@@ -52,12 +52,15 @@ if exist %BUILD_DIR%\CMakeCache.txt (
   if errorlevel 1 rmdir /s /q %BUILD_DIR%
 )
 
+rem (ntdll.lib, synchronization.lib: a static Slint's Rust std calls NtCreateFile... and WaitOnAddress /
+rem  WakeByAddress*, which a Rust from 1.9x links through them; the static Slint declares neither)
 rem The player's folder, as the game's (include/project_identity.h): build_dlc_manager.sh sets these.
 if "%SWOS_USER_DIR%"=="" (echo build_dlc_manager.bat: SWOS_USER_DIR not set ^(run it from build_dlc_manager.sh^) & exit /b 1)
 cmake -S . -B %BUILD_DIR% -A x64 ^
   -DCMAKE_TOOLCHAIN_FILE=%VCPKG_ROOT%\scripts\buildsystems\vcpkg.cmake ^
   -DVCPKG_TARGET_TRIPLET=x64-windows-static ^
   -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded ^
+  -DCMAKE_EXE_LINKER_FLAGS="/machine:x64 ntdll.lib synchronization.lib" ^
   -DSWOS_USER_DIR=%SWOS_USER_DIR% -DSWOS_USER_DOT_DIR=%SWOS_USER_DOT_DIR% ^
   -DSlint_DIR=%SLINT_STATIC_ROOT%\lib\cmake\Slint
 if errorlevel 1 exit /b 1
