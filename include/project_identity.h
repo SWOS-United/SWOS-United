@@ -23,6 +23,12 @@
 /* Its data setup (tools/swosdata): the window, and what messages tell the player to run. */
 #define PROJECT_SETUP_NAME      PROJECT_NAME " Setup"
 #define PROJECT_SETUP_PROGRAM   "swosunited-setup"    /* (its executable, its temp folder) */
+/* The Windows installer (packaging/windows/swos.iss, through scripts/build_installer.sh): the
+ * publisher it names (Program Files\<this>, the uninstall list) and its AppId -- what makes a new
+ * install an UPGRADE of an earlier one. SWOS United's since its first installer (2026-11-14:
+ * "SWOS United 8304cb22"); never change it, never give it to another product. */
+#define PROJECT_PUBLISHER       PROJECT_NAME
+#define PROJECT_WIN_APPID       "B773EA6E-B9C3-56DA-BD39-4E84B8ED22CB"
 
 /* Online. The matchmaking server lists a game only to players with the same tag
  * (VERSION:<tag>/<NETPLAY_COMPAT>, mm_client.c; the server's Connections.cpp), the web

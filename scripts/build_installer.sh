@@ -71,6 +71,24 @@ DATA_DIRS="data grafs grafs_aga grafs_dos grafs_2020 grafs_arcade grafs_jag soun
 # The data setup's window (tools/swosdata/build.bat static): the installer runs
 # it when it finishes, because the game cannot start without the player's data.
 SETUP_EXE="${SETUP_EXE:-tools/swosdata/build_win_static/bin/Release/openswos-setup.exe}"
+
+# The project's identity (include/project_identity.h, docs/FORKING.md), read through the C
+# preprocessor so a macro built from another (PROJECT_PUBLISHER PROJECT_NAME) comes out whole: the
+# installer's name, publisher, web page, the setup's file name -- the one the game looks for
+# beside it (src/assets_check.c) -- and a fork's own AppId. A header without one of them leaves
+# the .iss's own (OpenSWOS's).
+ident() {
+    printf '#include "project_identity.h"\nV=%s\n' "$1" | cpp -P -w -I "$ROOT/include" - 2>/dev/null |
+        sed -n 's/^V= *"\(.*\)" *$/\1/p' | head -1
+}
+ID_NAME="$(ident PROJECT_NAME)"
+ID_PUBLISHER="$(ident PROJECT_PUBLISHER)"
+ID_URL="$(ident PROJECT_URL)"
+ID_SETUP="$(ident PROJECT_SETUP_PROGRAM)"
+ID_APPID="$(ident PROJECT_WIN_APPID)"
+case "$ID_URL" in ""|http://*|https://*) ;; *) ID_URL="https://$ID_URL" ;; esac
+SETUP_NAME="$(basename "$SETUP_EXE")"
+[ -n "$ID_SETUP" ] && SETUP_NAME="$ID_SETUP.exe"
 # Cygwin runtime for SWOS.exe — mirrors FULL_DLLS in build_dist.sh.
 # FIVE files, and only some of them are visible to
 # cygcheck on the exe:
@@ -176,7 +194,8 @@ fi
 # of it in a developer's bin/ must never be packaged.
 STAGED_DIRS="$(scripts/stage_runtime.sh "$STAGE_DIR" $DATA_DIRS)" || die "cannot stage bin/"
 if [ -f "$SETUP_EXE" ]; then
-    cp "$SETUP_EXE" "$STAGE_DIR/" || die "cannot stage $SETUP_EXE"
+    rm -f "$STAGE_DIR/$(basename "$SETUP_EXE")"     # (an earlier stage's, under the build's own name)
+    cp "$SETUP_EXE" "$STAGE_DIR/$SETUP_NAME" || die "cannot stage $SETUP_EXE"
 else
     die "no $SETUP_EXE: build it with tools/swosdata/build.bat static (the installer runs it)"
 fi
@@ -198,7 +217,8 @@ find "$STAGE_DIR" -name '*.uaem' -delete 2>/dev/null
 
 echo "-- runtime: SWOS.exe$DLL_OK"
 echo "-- data: $STAGED_DIRS"
-echo "-- setup: $(basename "$SETUP_EXE")"
+echo "-- setup: $SETUP_NAME"
+echo "-- identity: ${ID_NAME:-default name}, publisher ${ID_PUBLISHER:-default}, ${ID_URL:-default page}${ID_APPID:+, AppId $ID_APPID}"
 echo "-- staged $(du -sh "$STAGE_DIR" 2>/dev/null | cut -f1) in $STAGE_DIR"
 
 [ "$STAGE_ONLY" = 1 ] && { echo "-- --stage-only: not compiling"; exit 0; }
@@ -240,17 +260,24 @@ if command -v wslpath >/dev/null 2>&1; then
     ISS_ARG="$(wslpath -w "$ROOT/$ISS" 2>/dev/null || echo "$ISS")"
 fi
 
-ISCC_ARGS=""
-[ -n "$VERSION" ] && ISCC_ARGS="/DAppVersion=$VERSION"
+# A fork with an AppId of its own names each install by the commit its game is (the build stamp,
+# include/swos_build.h: "SWOS United 4cf61487" in the uninstall list); OpenSWOS keeps the .iss's
+# version. --version wins over both.
+if [ -z "$VERSION" ] && [ -n "$ID_APPID" ]; then
+    VERSION="$(sed -n 's/^#define SWOS_BUILD_ID  *"\(.*\)"/\1/p' include/swos_build.h 2>/dev/null)"
+fi
+ISCC_ARGS=(/Q)
+[ -n "$VERSION" ]      && ISCC_ARGS+=("/DAppVersion=$VERSION")
+[ -n "$ID_NAME" ]      && ISCC_ARGS+=("/DAppName=$ID_NAME")
+[ -n "$ID_PUBLISHER" ] && ISCC_ARGS+=("/DAppPublisher=$ID_PUBLISHER")
+[ -n "$ID_URL" ]       && ISCC_ARGS+=("/DAppURL=$ID_URL")
+[ -n "$ID_APPID" ]     && ISCC_ARGS+=("/DAppIdGuid=$ID_APPID")
+ISCC_ARGS+=("/DSetupExeName=$SETUP_NAME")
 
 rm -f "$OUTPUT"
 # /Q is quiet-but-not-silent: errors still print. Anything ISCC writes to stdout
 # on a good run is noise we don't want in the build_dist summary.
-if [ -n "$ISCC_ARGS" ]; then
-    "$ISCC" /Q "$ISCC_ARGS" "$ISS_ARG"
-else
-    "$ISCC" /Q "$ISS_ARG"
-fi
+"$ISCC" "${ISCC_ARGS[@]}" "$ISS_ARG"
 RC=$?
 
 # ISCC writes dist\SWOS-Setup.exe (OutputDir + OutputBaseFilename in the .iss).
