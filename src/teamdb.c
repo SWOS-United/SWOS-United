@@ -362,6 +362,13 @@ static int8_t   s_ruleCupSubs[kRuleFiles][2];
 static uint8_t  s_ruleSaved[kRuleFiles];
 static uint8_t  s_ruleSnapped;
 
+/* A world or season switch (world_switch.c): the leagues are installed again, then snapped again. */
+void TeamDb_Reset(void)
+{
+    memset(&s_db, 0, sizeof s_db);
+    s_ruleSnapped = 0;
+}
+
 static CompetitionLeague *rule_league(int32_t file, void ***entryOut)
 {
     void **entry = (void **)_competitionsTable[file];

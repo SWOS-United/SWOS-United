@@ -308,6 +308,9 @@ static Competition *s_tables[WORLD_CUP_COUNTRIES][12];
 static uint8_t s_tableCountry[WORLD_CUP_COUNTRIES];
 static int32_t s_tables_n;
 
+/* A world or season switch (world_switch.c): the tables made are the world's before. */
+void WorldCups_ResetTables(void) { s_tables_n = 0; }
+
 static Competition **own_table(uint8_t country)
 {
     for (int32_t i = 0; i < s_tables_n; i++)

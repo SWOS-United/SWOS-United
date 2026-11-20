@@ -291,6 +291,14 @@ void mainC(void)
     /* No Amiga disk screens installed (main.c). */
     { extern int _gNoAmigaScreens; if (_gNoAmigaScreens) goto skip_title_screens; }
 #endif
+    /* (the game's disk pictures, "Old Disk 1" / "Disk 2", while it loads: SWOS United's intro is its
+     *  two pictures alone (Playa, 2026-11-20: loader_intro.c), the second here, while it loads --
+     *  after the logo, two seconds at least; OCS keeps the disks) */
+#ifdef AGA
+    DoubleBufferSwapSequence();
+    _paletteIndex = 0;
+    { extern void LoaderIntro_ShowPowered(void); LoaderIntro_ShowPowered(); }
+#else
     DoubleBufferSwapSequence();
     _paletteIndex = 0;
     LoadOverlayToFrontbuffer((const uint8_t *)GRAFS "olddisk1.raw");
@@ -300,6 +308,7 @@ void mainC(void)
     LoadOverlayToFrontbuffer((const uint8_t *)GRAFS "disk22.raw");
     _paletteIndex = 0;
     FadeIn();
+#endif
 #ifdef SWOS_SDL_BUILD
 skip_title_screens: ;
 #endif
@@ -312,7 +321,13 @@ skip_title_screens: ;
     } while (AssetSvcLoaderOp3() != 0);
 
     InstallAndRunLoaderBootstrap_Op3();
+#ifdef AGA
+    /* (POWERED BY, phase 5, stays up while the game goes on loading -- the menus' data, the front
+     *  end's -- until the main menu fades in over it; a black screen otherwise) */
+    { extern int32_t LoaderIntro_PoweredShown(void); if (!LoaderIntro_PoweredShown()) FadeOutToBlack(); }
+#else
     FadeOutToBlack();
+#endif
 
     /* ---- Phase 7: Poll loader op2 ---- */
     

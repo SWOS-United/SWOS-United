@@ -310,7 +310,9 @@ extern void SaveCareer(void);
 extern void SaveContest(void);
 extern void SaveDiskFilingMenu(void);
 extern void SaveHighlightsMenu(void);
+extern void SeasonInfo(void);
 extern void SeasonMenu(void);
+extern void SeasonStartToggle(void);
 extern void SelFilesDrawItemDescription(void);
 extern void SelFilesOnSelectCommon(void);
 extern void SelTeamForTacticsCommon(void);
@@ -565,6 +567,8 @@ extern char _aSaveCareer[];
 extern char _aSaveDiskFiling[];
 extern char _aSaveExit[];
 extern char _aSaveHighlights[];
+extern char _aSeasonInfo[];
+extern char _aSeasonStart[];
 extern char _aSeason_1[];
 extern char _aSecondKit[];
 extern char _aSeeded[];
@@ -706,6 +710,7 @@ extern char* _pitchTypeOrSeasonTable[];
 extern char* _pitchTypeStrTable[];
 extern char* _positionFilterStringTable[];
 extern char _saveFileTitle[];
+extern char _seasonStartText[];
 extern char* _skillFilterStringTable[];
 extern EditTeamsSpriteCopy _stadiumMenuLittlePlayerSpriteCopy;
 extern char _teamTacticsUSERA[];
@@ -1020,7 +1025,9 @@ const MenuSymbol _menuSymbols[] = {
     { "SaveContest", (void*)SaveContest, SYM_FUNC },
     { "SaveDiskFilingMenu", (void*)SaveDiskFilingMenu, SYM_FUNC },
     { "SaveHighlightsMenu", (void*)SaveHighlightsMenu, SYM_FUNC },
+    { "SeasonInfo", (void*)SeasonInfo, SYM_FUNC },
     { "SeasonMenu", (void*)SeasonMenu, SYM_FUNC },
+    { "SeasonStartToggle", (void*)SeasonStartToggle, SYM_FUNC },
     { "SelFilesDrawItemDescription", (void*)SelFilesDrawItemDescription, SYM_FUNC },
     { "SelFilesOnSelectCommon", (void*)SelFilesOnSelectCommon, SYM_FUNC },
     { "SelTeamForTacticsCommon", (void*)SelTeamForTacticsCommon, SYM_FUNC },
@@ -1272,6 +1279,8 @@ const MenuSymbol _menuSymbols[] = {
     { "_aSaveDiskFiling", (void*)_aSaveDiskFiling, SYM_STRING },
     { "_aSaveExit", (void*)_aSaveExit, SYM_STRING },
     { "_aSaveHighlights", (void*)_aSaveHighlights, SYM_STRING },
+    { "_aSeasonInfo", (void*)_aSeasonInfo, SYM_STRING },
+    { "_aSeasonStart", (void*)_aSeasonStart, SYM_STRING },
     { "_aSeason_1", (void*)_aSeason_1, SYM_STRING },
     { "_aSecondKit", (void*)_aSecondKit, SYM_STRING },
     { "_aSeeded", (void*)_aSeeded, SYM_STRING },
@@ -1413,6 +1422,7 @@ const MenuSymbol _menuSymbols[] = {
     { "_pitchTypeStrTable", (void*)_pitchTypeStrTable, SYM_TABLE },
     { "_positionFilterStringTable", (void*)_positionFilterStringTable, SYM_TABLE },
     { "_saveFileTitle", (void*)_saveFileTitle, SYM_BUFFER },
+    { "_seasonStartText", (void*)_seasonStartText, SYM_BUFFER },
     { "_skillFilterStringTable", (void*)_skillFilterStringTable, SYM_TABLE },
     { "_stadiumMenuLittlePlayerSpriteCopy", (void*)&_stadiumMenuLittlePlayerSpriteCopy, SYM_BUFFER },
     { "_teamTacticsUSERA", (void*)_teamTacticsUSERA, SYM_BUFFER },

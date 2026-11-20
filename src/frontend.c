@@ -134,6 +134,9 @@ void FrontEndPreLoopSetup(void)
 #ifndef SWOS_SDL_BUILD
     World_ReadFromData();
 #endif
+#ifdef SWOS_SDL_BUILD
+    { extern void WorldSwitch_KeepStart(void); WorldSwitch_KeepStart(); }   /* (the compiled data, for a switch) */
+#endif
     World_SnapshotBase();               /* (96/97's tables, for online play: world_online.c) */
     World_InstallBaked();
 #ifndef SWOS_SDL_BUILD
@@ -205,7 +208,16 @@ void FrontEndPreLoopSetup(void)
        Copa isn't installed. Shared code path (career_copa.c) — same on both ports. */
     extern void Career_InstallCopaLibertadoresPresetEntry(void);
     Career_InstallCopaLibertadoresPresetEntry();
+#ifdef SWOS_SDL_BUILD
+    { extern void WorldSwitch_Digest(const char *when); WorldSwitch_Digest("start"); }
+#endif
     InitMenuMusic();
+#ifdef AGA
+    /* (SWOS United's POWERED BY, up while the game loaded (loader_intro.c): faded out now the main
+     *  menu is ready, which fades in after it, _menuFade) */
+    { extern int32_t LoaderIntro_PoweredShown(void); extern void FadeOutToBlack(void);
+      if (LoaderIntro_PoweredShown()) FadeOutToBlack(); }
+#endif
     PrepareMenuBackground();
     InitMainMenuStuff();
 

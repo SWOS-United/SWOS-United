@@ -212,6 +212,26 @@ if [ -f dist/portmaster/swos.zip ]; then
 else
     echo "build_installer: NOTE no dist/portmaster/swos.zip (scripts/build_portmaster.sh): the setup's Handheld screen will ask for it" >&2
 fi
+# The classic seasons, for CLASSIC CAREER's SEASON START (scripts/make_seasons_package.py ->
+# dist/SWOS-United-Seasons.zip): seasons/<slug>/ beside the game (include/mods.h MODS_SEASONS_DIR).
+# Not git-tracked -- their teams are their authors' -- so staged from the package, as the port is.
+rm -rf "$STAGE_DIR/seasons"
+if [ -f dist/SWOS-United-Seasons.zip ]; then
+    unzip -q dist/SWOS-United-Seasons.zip "seasons/*" -d "$STAGE_DIR" || die "cannot stage dist/SWOS-United-Seasons.zip"
+    echo "-- seasons: $(find "$STAGE_DIR/seasons" -mindepth 1 -maxdepth 1 -type d | wc -l) (dist/SWOS-United-Seasons.zip)"
+else
+    echo "build_installer: NOTE no dist/SWOS-United-Seasons.zip (scripts/make_seasons_package.py): SEASON START offers 1996/97 alone" >&2
+fi
+# SWOS United's title track (src/loader_intro.c: the intro plays it first): daXX's remix of
+# Goalscoring Superstar Hero, from SWOS 2020's music DLC (tmusic), kept at bin/sound_dos/united_title.mp3
+# -- not git-tracked (it is its author's), so staged from there, as the seasons are from their package.
+if [ -f bin/sound_dos/united_title.mp3 ]; then
+    mkdir -p "$STAGE_DIR/sound_dos" && cp bin/sound_dos/united_title.mp3 "$STAGE_DIR/sound_dos/" ||
+        die "cannot stage bin/sound_dos/united_title.mp3"
+    echo "-- title track: sound_dos/united_title.mp3"
+else
+    echo "build_installer: NOTE no bin/sound_dos/united_title.mp3 (SWOS 2020's dlc/tmusic, daXX's Goalscoringsuperstarhero remix): the intro plays the game's own title tune" >&2
+fi
 find "$STAGE_DIR" -name .DS_Store -delete 2>/dev/null
 find "$STAGE_DIR" -name '*.uaem' -delete 2>/dev/null
 

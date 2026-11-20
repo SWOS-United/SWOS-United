@@ -11,6 +11,9 @@
 #include "input.h"
 #include "audio.h"
 #include <string.h>            /* memcpy/memset — both builds (Amiga loader re-stride) */
+#ifdef SWOS_SDL_BUILD
+#include <stdio.h>             /* (the title track's log line) */
+#endif
 extern uint8_t _rawAssetLoadBuffer[];   /* overlay/frame staging — both builds */
 #ifdef SWOS_SDL_BUILD
 extern int  AudioSDL_StartSong(const uint8_t *song_data, int song_size,
@@ -57,6 +60,14 @@ volatile uint8_t _skipLoaderIntro = 0;
  * before and after it are SWOS 2020's "image reels", the PC loader's equivalent of these. */
 volatile uint8_t _skipLoaderReels = 0;
 extern volatile uint16_t _currentKey;
+/* The title picture: SWOS United's logo (Playa, 2026-11-20: grafs_aga/SWOSUNTD.RAW, the project's
+ * own, made by scripts/make_loader_logos.sh, as POWERED.RAW is), where the game had its own
+ * (loader1.raw, still read on an OCS build, which has no 4-plane copy of ours). */
+#ifdef AGA
+#define TITLE_PICTURE GRAFS "swosuntd.raw"
+#else
+#define TITLE_PICTURE GRAFS "loader1.raw"
+#endif
 #include "intro_chip_ram.h"     /* the title tune's samples, shared with the sprite pool on the Amiga */
 extern uint8_t _aSoundHeroSng[];
 extern uint8_t _aSoundHeroIns[];
@@ -99,9 +110,15 @@ static void loaderIntroEnsureMenuMusicPlaying(void)
         extern int AudioSDL_PcSongStart(const char *stem, int loop);
         extern int32_t DosMusic_Style(void);
         extern int32_t DosMusic_TitleMidi(void);
-        /* [audio] music = pc: [audio] title_music = midi plays sound_dos/title.xmi (SWOS 2020's
+        /* SWOS United's title track (Playa, 2026-11-20): daXX's remix of Goalscoring Superstar
+         * Hero, sound_dos/united_title.mp3 (from SWOS 2020's music DLC, laid in by the installer,
+         * scripts/build_installer.sh), whatever the music style, repeated until fire. Without it:
+         * [audio] music = pc: [audio] title_music = midi plays sound_dos/title.xmi (SWOS 2020's
          * floppy title song, from a mod) on the emulated card, else the PC CD release's title
          * song, sound_dos/title.mp3. */
+        if (AudioSDL_StreamStart("united_title", 1) == 0) {
+            fprintf(stderr, "[music] title track: sound_dos/united_title.mp3\n");
+        } else
         if (DosMusic_Style() && DosMusic_TitleMidi() && AudioSDL_PcSongStart("title", 0) == 0) {
         } else
         if (DosMusic_Style() && AudioSDL_StreamStart("title", 0) == 0) {
@@ -162,6 +179,11 @@ static void loaderIntroStopMusicAndResetAudio(void)
         if (_quitToDos) break;
     }
     AudioSetChannelVolume(0xFFFF, 0);
+    {   /* (the song itself stopped too: silencing the channels leaves an MP3 title track --
+         *  united_title.mp3 repeats -- running unheard, back when the volume is) */
+        extern void AudioSDL_StopSong(void);
+        AudioSDL_StopSong();
+    }
 #else
     AudioBeepAllShort();
 #endif
@@ -439,6 +461,70 @@ static int16_t loaderIntroShowFrameWithMusic(const uint8_t *filename, int16_t ti
  *   - Load fail on later frames → fade out, show loader1.raw, fade in,
  *     then stop music
  * ================================================================ */
+#ifdef AGA
+/* ================================================================
+ * SWOS United's intro (Playa, 2026-11-20), in place of the game's thirteen frames and its disk
+ * pictures: its logo with the title track until fire, then (the track stopped) POWERED BY OpenSWOS
+ * for two seconds -- shown where the disk pictures were, while the game loads (SWOS.c phase 5:
+ * LoaderIntro_ShowPowered), so the load is not a black screen -- then the main menu. Faded in and
+ * out on SDL builds (the AGA Amiga cuts, as its frames always did).
+ * ================================================================ */
+static int32_t s_introShown;            /* the logo was shown: POWERED BY follows it */
+
+__attribute__((used, externally_visible))
+void ShowLoaderIntroSequence(void)
+{
+    if (_skipLoaderIntro)               /* harness fast-boot, skip_intro, or no Amiga data: no intro */
+        return;
+    s_introShown = 1;
+
+    SetCameraCoordinates(0, 0);
+    SwapBuffersAndCameraViewState();
+    UpdatePlanePtrsAndBlitParams();
+    SwapBuffersAndCameraViewState();
+    UpdatePlanePtrsAndBlitParams();
+
+    Player1StatusProc();
+    if (_pl1Fire == 0 && !intro_clicked()) {   /* (fire held at the start: straight to POWERED BY) */
+        loaderIntroLoadHeroAudioBank();
+        loaderIntroLoadFrameToFrontbufferAlt((const uint8_t *)TITLE_PICTURE);
+        loaderIntroEnsureMenuMusicPlaying();
+#ifdef SWOS_SDL_BUILD
+        FadeIn();
+#endif
+        while (loaderIntroWaitForFireOrTimeout(0x7FFF) == 0)
+            ;                           /* the logo until fire (or the window closed) */
+        loaderIntroStopMusicAndResetAudio();
+    }
+    /* (exit_cleanup's reasons: the fire that left the logo is still held, and still queued; the
+     *  boot fades the logo out next, SWOS.c) */
+    _fireResetFlag = 1;
+    _keyCount = 0;
+    _currentKey = 0;
+}
+
+/* POWERED BY OpenSWOS, after the logo (SWOS.c phase 5, in the disk pictures' place): faded in and
+ * held two seconds; it stays up while the game goes on loading, until the boot fades it out. */
+static int32_t s_poweredShown;
+
+int32_t LoaderIntro_PoweredShown(void) { return s_poweredShown; }
+
+void LoaderIntro_ShowPowered(void)
+{
+    enum { kPoweredFrames = 100 };      /* 2 s at the game's 50 Hz */
+    if (!s_introShown || _quitToDos != 0)
+        return;
+    s_poweredShown = 1;
+    loaderIntroLoadFrameToFrontbufferAlt((const uint8_t *)GRAFS "powered.raw");
+    FadeIn();
+    for (int32_t i = 0; i < kPoweredFrames && _quitToDos == 0; i++)
+        WaitForVSync();
+    _fireResetFlag = 1;                 /* (a fire pressed meanwhile is not the main menu's) */
+    _keyCount = 0;
+    _currentKey = 0;
+}
+
+#else   /* OCS: the game's intro */
 __attribute__((used, externally_visible))
 void ShowLoaderIntroSequence(void)
 {
@@ -460,7 +546,7 @@ void ShowLoaderIntroSequence(void)
 #ifndef AGA
         _paletteIndex = 3;
 #endif
-        loaderIntroLoadFrameToFrontbufferAlt((const uint8_t *)GRAFS "loader1.raw");
+        loaderIntroLoadFrameToFrontbufferAlt((const uint8_t *)TITLE_PICTURE);
         FadeIn();
         return;
     }
@@ -471,7 +557,7 @@ void ShowLoaderIntroSequence(void)
 #ifndef AGA
         _paletteIndex = 3;
 #endif
-        loaderIntroShowFrameWithMusic((const uint8_t *)GRAFS "loader1.raw", 0x6D6);
+        loaderIntroShowFrameWithMusic((const uint8_t *)TITLE_PICTURE, 0x6D6);
         goto exit_cleanup;
     }
 
@@ -490,7 +576,7 @@ void ShowLoaderIntroSequence(void)
 #ifndef AGA
     _paletteIndex = 3;
 #endif
-    if (loaderIntroShowFrameWithMusic((const uint8_t *)GRAFS "loader1.raw", 0xFA) != 0)
+    if (loaderIntroShowFrameWithMusic((const uint8_t *)TITLE_PICTURE, 0xFA) != 0)
         goto exit_cleanup;
 
     /* Frame 3: loader2.raw */
@@ -525,7 +611,7 @@ void ShowLoaderIntroSequence(void)
 #ifndef AGA
     _paletteIndex = 3;
 #endif
-    loaderIntroShowFrameFadeInOut((const uint8_t *)GRAFS "loader1.raw", 0x6D6);
+    loaderIntroShowFrameFadeInOut((const uint8_t *)TITLE_PICTURE, 0x6D6);
     /* Fall through to exit_cleanup (ignore return value) */
 
 exit_cleanup:
@@ -560,7 +646,7 @@ load_fail_mid:
 #ifndef AGA
         _paletteIndex = 3;
 #endif
-        loaderIntroLoadFrameToFrontbufferAlt((const uint8_t *)GRAFS "loader1.raw");
+        loaderIntroLoadFrameToFrontbufferAlt((const uint8_t *)TITLE_PICTURE);
         FadeIn();
     }
     goto exit_cleanup;
@@ -571,7 +657,7 @@ load_fail_early:
 #ifndef AGA
         _paletteIndex = 3;
 #endif
-        loaderIntroLoadFrameToFrontbufferAlt((const uint8_t *)GRAFS "loader1.raw");
+        loaderIntroLoadFrameToFrontbufferAlt((const uint8_t *)TITLE_PICTURE);
         FadeIn();
     }
     /* See exit_cleanup for the rationale. */
@@ -580,3 +666,4 @@ load_fail_early:
     _currentKey = 0;
     return;
 }
+#endif  /* AGA */

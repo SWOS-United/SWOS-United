@@ -29,6 +29,7 @@
 #define chdir(p) _chdir(p)
 #else
 #include <unistd.h>          /* readlink, chdir */
+#include <strings.h>         /* strcasecmp (the program's .exe, Cygwin) */
 #include <sys/stat.h>        /* stat: the Mac bundle's Resources */
 #endif
 
@@ -492,6 +493,13 @@ static char s_modsArg[256];          /* --mods=, for this run only */
 static int  s_modsArgSet;
 
 static int32_t s_rigRun;      /* --replay-test, --srp-resim, --career-golden (Mods_SetRig) */
+/* This run is the game started again by itself (Main_Relaunch: SWOS_RELAUNCHED) and the player
+ * has not chosen SKIP INTRO: the intro was skipped for the restart only, so the PC cutscenes,
+ * which the PC game plays only when the intro is not skipped, still play (src/mod_api.c). */
+static int32_t s_relaunchSkip;
+int32_t Main_RelaunchSkippedIntro(void) { return s_relaunchSkip; }
+static int32_t s_worldArg;    /* --world named the world (mods_start: the season's world) */
+static int32_t s_worldSet;    /* the start's world is set (mods_start then asks World_Current) */
 
 /* The mods on (include/mods.h): --mods, else SWOS_MODS_ENABLED, else SWOS.ini's [mods] enabled
  * -- at start, and again when the MODS screen changes them (Mods_Reload). */
@@ -506,6 +514,19 @@ static void mods_start(const PlatformInitOptions *o)
     if (o->arcade && !s_rigRun) {
         snprintf(withArcade, sizeof withArcade, "arcade%s%s", list && list[0] ? ", " : "", list ? list : "");
         list = withArcade;
+    }
+    /* SEASON START's season (src/career_seasons.c): only while 96/97 is the world played -- a world
+     * has its own teams -- and never in a rig, nor with --mods / SWOS_MODS_ENABLED (a test's own
+     * list). The world here as main() decides it below: SWOS_WORLD, else 96/97 with the original
+     * main menu, else SWOS.ini's (--world is in o->world already). */
+    {
+        const char *w = getenv("SWOS_WORLD") && getenv("SWOS_WORLD")[0] ? getenv("SWOS_WORLD")
+                        : o->original_main_menu && !s_worldArg ? "9697" : o->world;
+        /* (after the start: the world played -- a switch, world_switch.c, sets it first) */
+        const int classic = s_worldSet ? World_Current() == WORLD_9697 : (!w[0] || strcmp(w, "9697") == 0);
+        /* (SWOS_TEST_SEASONS=1: a rig takes it too -- the switch's proof, world_switch.c) */
+        const int rigOk = !s_rigRun || getenv("SWOS_TEST_SEASONS");
+        Mods_SetSeason(classic && rigOk && !s_modsArgSet && !env ? o->season : "");
     }
     Mods_Init(list, o->mods_disabled);
 }
@@ -592,6 +613,19 @@ static void note_self(char **argv)
     const ssize_t n = readlink("/proc/self/exe", s_selfPath, sizeof s_selfPath - 1);
     s_selfPath[n > 0 ? n : 0] = 0;
 #endif
+#if defined(__CYGWIN__)
+    /* (Cygwin's /proc/self/exe has no ".exe", and posix_spawn does not add it: "could not start
+     *  .../SWOS again", 2026-11-19 -- the program's own name, as the file is called) */
+    {
+        const size_t len = strlen(s_selfPath);
+        if (len && (len < 4 || strcasecmp(s_selfPath + len - 4, ".exe") != 0) && len + 4 < sizeof s_selfPath) {
+            char exe[sizeof s_selfPath];
+            snprintf(exe, sizeof exe, "%s.exe", s_selfPath);
+            if (access(exe, X_OK) == 0)
+                snprintf(s_selfPath, sizeof s_selfPath, "%s", exe);
+        }
+    }
+#endif
 }
 
 int32_t Main_CanRelaunch(void) { return s_selfPath[0] != 0; }
@@ -602,6 +636,7 @@ int32_t Main_Relaunch(void)
     if (!s_selfPath[0])
         return 0;
     setenv("SWOS_SKIP_INTRO", "1", 1);
+    setenv("SWOS_RELAUNCHED", "1", 1);  /* (the intro skipped, not chosen off: Main_RelaunchSkippedIntro) */
     s_selfArgv[0] = s_selfPath;
     if (posix_spawn(&pid, s_selfPath, NULL, NULL, s_selfArgv, environ) != 0) {
         fprintf(stderr, "[mods] could not start %s again\n", s_selfPath);
@@ -1292,6 +1327,7 @@ int main(int argc, char **argv)
             }
             snprintf(opts.world, sizeof opts.world, "%s", v);
             worldArg = 1;
+            s_worldArg = 1;
         } else if (strncmp(a, "--career-golden", 15) == 0 || strncmp(a, "--golden-", 9) == 0) {
             /* The golden career test (src/career_autopilot.c, scripts/career_golden_test.sh). */
             extern int32_t CareerAutopilot_ParseArg(const char *a);
@@ -1733,6 +1769,7 @@ int main(int argc, char **argv)
         extern void TacticsExpert_Set(int32_t expert);
         if (opts.skip_intro)
             _skipLoaderIntro = 1;
+        s_relaunchSkip = getenv("SWOS_RELAUNCHED") && !opts.skip_intro;
         _skipLoaderReels = (uint8_t)(opts.skip_image_reels != 0);
         _gNoLoadPause = opts.no_load_pause;
         FpsOverlay_Set(opts.show_fps);
@@ -1770,6 +1807,12 @@ int main(int argc, char **argv)
         extern void Countries_Localize(void);
         extern void Currency_Set(const char *name);
         Translations_Load(opts.language);
+        {   /* (the country names as compiled, before they are localized: a switch localizes them
+             *  again, with the new season's names -- world_switch.c) */
+            extern void Pristine_Keep(void *p, uint32_t n);
+            extern void *_countriesTable[262];
+            Pristine_Keep(_countriesTable, sizeof _countriesTable);
+        }
         Countries_Localize();
         Currency_Set(opts.currency);   /* pound (stock £) | dollar ($) | euro (€) */
     }
@@ -1815,6 +1858,7 @@ int main(int argc, char **argv)
         }
     }
     fprintf(stderr, "[world] %s\n", World_Tag());
+    s_worldSet = 1;
     /* OPTIONS -> WORLD draws the world SWOS.ini names (menus.c ChangeWorld). */
     { extern uint16_t _languageOption;       /* OPTIONS -> LANGUAGE (menus.c ChangeLanguage) */
       extern int32_t Language_OptionFor(const char *code);

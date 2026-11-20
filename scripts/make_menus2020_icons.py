@@ -89,6 +89,37 @@ def write_bmp(path, pixels):
         f.write(head + info + body)
 
 
+TV_SIZE = (34, 31)          # (SWOS 2020's 42x38, about four fifths; make_menus2020.py TV_SIZE)
+
+
+def shrink(pixels, w, h):
+    """The picture at w x h: each new pixel the area-weighted average of the opaque pixels it
+    covers, see-through (255, 0, 255) when they cover less than half of it."""
+    sh, sw = len(pixels), len(pixels[0])
+    out = []
+    for y in range(h):
+        y0, y1 = y * sh / h, (y + 1) * sh / h
+        row = []
+        for x in range(w):
+            x0, x1 = x * sw / w, (x + 1) * sw / w
+            acc, cover, area = [0.0, 0.0, 0.0], 0.0, 0.0
+            for sy in range(int(y0), min(sh, int(-(-y1 // 1)))):
+                fy = min(sy + 1, y1) - max(sy, y0)
+                for sx in range(int(x0), min(sw, int(-(-x1 // 1)))):
+                    k = fy * (min(sx + 1, x1) - max(sx, x0))
+                    if k <= 0:
+                        continue
+                    area += k
+                    c = pixels[sy][sx]
+                    if c != (255, 0, 255):
+                        cover += k
+                        for i in range(3):
+                            acc[i] += c[i] * k
+            row.append((255, 0, 255) if cover < area / 2 else tuple(int(round(a / cover)) for a in acc))
+        out.append(row)
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--swos2020", default=DEFAULT_SWOS2020, help="swos-2020 checkout")
@@ -160,7 +191,9 @@ def main():
     small([data[2 + r * w:2 + (r + 1) * w] for r in range(h)], "quit")
 
     # The LIVE CAST TV (game.cpp, SWOS::drawTvIcon): a 42x38 housing over one of two screens
-    # (idle / live), indices into the in-game palette its developer icons carry (0 = see-through).
+    # (idle / live), indices into the in-game palette its developer icons carry (0 = see-through),
+    # drawn smaller on SWOS United's main menu (TV_SIZE, Playa 2026-11-20: the banner beside it ends
+    # where the buttons do, make_menus2020.py).
     game = os.path.join(args.swos2020, "src", "game.cpp")
     tvpal = read_bmp_palette(os.path.join(args.swos2020, "developer_icons", "starwindz_256.bmp"))
     overlay = read_byte_map(game, "tv_overlay_map")
@@ -174,7 +207,7 @@ def main():
                 row.append((255, 0, 255) if v == 0 else tvpal[v])
             pixels.append(row)
         path = os.path.join(OUT, "tv_%s.bmp" % state)
-        write_bmp(path, pixels)
+        write_bmp(path, shrink(pixels, *TV_SIZE))
         print("  -> %s" % os.path.relpath(path, REPO))
 
 

@@ -576,6 +576,9 @@ int32_t Mods_Scan(ModInfo *out, int32_t max)
     return n;
 }
 
+static char s_season[MODS_ID_MAX];       /* Mods_SetSeason's: a folder in MODS_SEASONS_DIR */
+void Mods_SetSeason(const char *slug) { snprintf(s_season, sizeof s_season, "%s", slug ? slug : ""); }
+
 void Mods_Init(const char *enabled, const char *disabled)
 {
     const char *env = getenv("SWOS_MODS");
@@ -620,10 +623,20 @@ void Mods_Init(const char *enabled, const char *disabled)
         closedir(d);
     }
 
-    /* The player's list first, in its order: a DLC from the player's folder, else a canonical
+    /* The season SEASON START chose (MODS_SEASONS_DIR) first: its teams over every other mod's.
+     * Then the player's list, in its order: a DLC from the player's folder, else a canonical
      * mod of that slug; then each canonical mod that is on by default and not disabled. */
     char id[MODS_ID_MAX], dir[1100];
     int star;
+    if (s_season[0]) {
+        struct stat st;
+        snprintf(dir, sizeof dir, "%s/%s", MODS_SEASONS_DIR, s_season);
+        if (stat(dir, &st) == 0 && S_ISDIR(st.st_mode))
+            load_one(s_season, dir, 0);
+        else
+            fprintf(stderr, "[mods] season %s: left out -- no folder %s (the seasons come with the game)\n",
+                    s_season, dir);
+    }
     for (const char *p = enabled; p && (p = next_id(p, id, sizeof id, &star)) != NULL;) {
         struct stat st;
         if (known(id))

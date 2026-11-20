@@ -794,6 +794,7 @@ const char *ModApi_CutsceneBlocked(int32_t test)
 #endif
     extern volatile uint8_t _skipLoaderIntro;
     extern uint16_t _quitToDos;
+    extern int32_t Main_RelaunchSkippedIntro(void);
     const char *video = SDL_GetCurrentVideoDriver();
     if (test < 2 && CareerAutopilot_Active())
         return "the career autopilot";
@@ -811,8 +812,8 @@ const char *ModApi_CutsceneBlocked(int32_t test)
         return "quitting";
     if (!AudioSDL_Available())
         return "no sound";                  /* (the PC game's: not with g_soundOff) */
-    if (!test && _skipLoaderIntro)
-        return "the intro is skipped";      /* (the PC game's: not with skipIntro) */
+    if (!test && _skipLoaderIntro && !Main_RelaunchSkippedIntro())
+        return "the intro is skipped";      /* (the PC game's: not with skipIntro -- a restart's own skip aside) */
     if (!test && (!video || !strcmp(video, "dummy") || !strcmp(video, "offscreen")))
         return "no window";
     return NULL;

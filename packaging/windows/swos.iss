@@ -165,6 +165,10 @@ begin
     Result := Result + ' --no-play';
 end;
 
+[InstallDelete]
+; The classic seasons are laid down whole each time (an upgrade's package may have fewer).
+Type: filesandordirs; Name: "{app}\seasons"
+
 [UninstallDelete]
 ; The data trees are installed wholesale by one wildcard, so remove them
 ; wholesale -- Inno only tracks files it laid down individually, and a directory
@@ -180,5 +184,7 @@ Type: filesandordirs; Name: "{app}\sound"
 Type: filesandordirs; Name: "{app}\sound_dos"
 Type: filesandordirs; Name: "{app}\grafs_jag"
 Type: filesandordirs; Name: "{app}\mods"
+; The classic seasons (SEASON START): seasons\<slug>\, from dist\SWOS-United-Seasons.zip.
+Type: filesandordirs; Name: "{app}\seasons"
 Type: filesandordirs; Name: "{app}\setup"
 Type: filesandordirs; Name: "{app}\portmaster"

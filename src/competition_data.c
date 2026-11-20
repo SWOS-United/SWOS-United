@@ -1649,6 +1649,17 @@ Competition *Comp_ById(uint8_t compId)
     return s_compById[compId];
 }
 
+/* The registry and the career contests as compiled, for a world or season switch (world_switch.c). */
+void Comp_KeepPristine(void)
+{
+#ifdef SWOS_SDL_BUILD
+    extern void Pristine_Keep(void *p, uint32_t n);
+    Pristine_Keep(s_compById, sizeof s_compById);
+    Pristine_Keep(_careerContests, sizeof _careerContests);
+    Pristine_Keep(&s_careerContestsCount, sizeof s_careerContestsCount);
+#endif
+}
+
 /* ======================================================================
  * Master Competition Pointer Arrays
  * ====================================================================== */

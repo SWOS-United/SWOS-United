@@ -26,7 +26,7 @@
         "x": 1,
         "y": 41,
         "w": 148,
-        "h": 30
+        "h": 24
       },
       "commands": [
         {
@@ -53,16 +53,16 @@
       ],
       "image": "grafs_2020/menus2020/multiplayer.bmp",
       "image_x": 15,
-      "image_y": 7
+      "image_y": 4
     },
     {
       "kind": "entry",
       "name": "practice",
       "coords": {
         "x": 1,
-        "y": 77,
+        "y": 69,
         "w": 148,
-        "h": 30
+        "h": 24
       },
       "commands": [
         {
@@ -89,16 +89,16 @@
       ],
       "image": "grafs_2020/menus2020/compete.bmp",
       "image_x": 30,
-      "image_y": 7
+      "image_y": 4
     },
     {
       "kind": "entry",
       "name": "replays",
       "coords": {
         "x": 1,
-        "y": 113,
+        "y": 97,
         "w": 148,
-        "h": 30
+        "h": 24
       },
       "commands": [
         {
@@ -125,7 +125,7 @@
       ],
       "image": "grafs_2020/menus2020/practice.bmp",
       "image_x": 27,
-      "image_y": 7
+      "image_y": 4
     },
     {
       "kind": "entry",
@@ -134,7 +134,7 @@
         "x": 155,
         "y": 41,
         "w": 148,
-        "h": 30
+        "h": 24
       },
       "commands": [
         {
@@ -161,16 +161,16 @@
       ],
       "image": "grafs_2020/menus2020/options.bmp",
       "image_x": 98,
-      "image_y": 7
+      "image_y": 4
     },
     {
       "kind": "entry",
       "name": "editing",
       "coords": {
         "x": 155,
-        "y": 77,
+        "y": 69,
         "w": 148,
-        "h": 30
+        "h": 24
       },
       "commands": [
         {
@@ -197,16 +197,16 @@
       ],
       "image": "grafs_2020/menus2020/extras.bmp",
       "image_x": 98,
-      "image_y": 7
+      "image_y": 4
     },
     {
       "kind": "entry",
       "name": "extras",
       "coords": {
         "x": 155,
-        "y": 113,
+        "y": 97,
         "w": 148,
-        "h": 30
+        "h": 24
       },
       "commands": [
         {
@@ -233,7 +233,7 @@
       ],
       "image": "grafs_2020/menus2020/replays.bmp",
       "image_x": 101,
-      "image_y": 7
+      "image_y": 4
     },
     {
       "kind": "set_origin",
@@ -290,9 +290,9 @@
       "kind": "entry",
       "coords": {
         "x": 4,
-        "y": 4,
-        "w": 42,
-        "h": 38
+        "y": 5,
+        "w": 34,
+        "h": 31
       },
       "commands": [
         {
@@ -318,7 +318,7 @@
     {
       "kind": "entry",
       "coords": {
-        "x": 50,
+        "x": 42,
         "y": 5,
         "w": 262,
         "h": 31
@@ -352,7 +352,7 @@
       "name": "continueContest",
       "coords": {
         "x": 27,
-        "y": 151,
+        "y": 154,
         "w": 250,
         "h": 20
       },
@@ -452,28 +452,40 @@
       "image_y": 4
     },
     {
+      "kind": "set_origin",
+      "x": 0,
+      "y": 1
+    },
+    {
       "kind": "entry",
-      "name": "multiplayer",
+      "name": "classicCareer",
       "coords": {
-        "x": 281,
-        "y": 182,
-        "w": 31,
-        "h": 18
+        "x": 1,
+        "y": 125,
+        "w": 148,
+        "h": 24
       },
       "commands": [
         {
           "op": "text",
-          "flags": "0x0",
-          "str": "_aMultiplayer"
+          "flags": "0x10",
+          "literal": "CLASSIC CAREER"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 4
         },
         {
           "op": "onselect_fire",
-          "func": "menus2020.compete"
-        },
-        {
-          "op": "invisible"
+          "func": "menus2020.classicCareer"
         }
       ]
+    },
+    {
+      "kind": "set_origin",
+      "x": 0,
+      "y": 0
     },
     {
       "kind": "entry",
@@ -507,26 +519,33 @@
       "image_y": 3
     },
     {
+      "kind": "set_origin",
+      "x": 0,
+      "y": 1
+    },
+    {
       "kind": "entry",
-      "name": "modes",
+      "name": "worldCareer",
       "coords": {
-        "x": 281,
-        "y": 182,
-        "w": 31,
-        "h": 18
+        "x": 155,
+        "y": 125,
+        "w": 148,
+        "h": 24
       },
       "commands": [
         {
           "op": "text",
-          "flags": "0x0",
-          "literal": "MODES"
+          "flags": "0x10",
+          "literal": "WORLD 26/27 CAREER"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 15
         },
         {
           "op": "onselect_fire",
-          "func": "menus2020.practice"
-        },
-        {
-          "op": "invisible"
+          "func": "menus2020.worldCareer"
         }
       ]
     }

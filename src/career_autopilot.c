@@ -819,6 +819,7 @@ void CareerAutopilot_Tick(void)
     if (!s_started) {
         if (!Menu_IsMainMenu())
             return;
+        { extern void WorldSwitch_Test(void); WorldSwitch_Test(); }   /* (SWOS_TEST_SWITCH: world_switch.c) */
         start();                /* loads and runs a saved career; returns for a new one */
     }
     if (getenv("SWOS_GOLDEN_TRACE")) {  /* each new screen: its onInit and selection */

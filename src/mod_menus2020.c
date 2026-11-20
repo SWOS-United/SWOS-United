@@ -45,6 +45,7 @@
 #include "file_io.h"            /* LoadFileEx */
 #include "math68k.h"            /* CalculateDeltaXAndY */
 #include "gfx.h"
+#include "display.h"            /* _screen_width, _menu_draw_x_offset: the dark-yellow box */
 #include "easing.h"            /* the run-in's ease */
 #include "menu_load_json.h"     /* MenuJson_VerifyDynamic (SWOS_MENUS2020_TEST) */
 #include "menu_system.h"
@@ -60,6 +61,8 @@ extern int16_t DoContinueAbortMenu(uint8_t *header, uint8_t *changing, uint8_t *
 extern void MultiplayerMenuSelected(void);
 extern void CreditsMenuSelected(void);
 extern void ModesMenuSelected(void);
+extern void CareerSeasons_Classic(void);
+extern void CareerSeasons_World(void);
 
 static MenuEntry *entry(int32_t ordinal) { return CalcMenuEntryAddress((uint16_t)ordinal); }
 
@@ -81,7 +84,9 @@ enum {
     Main_multi, Main_compete, Main_practice,        /* (main.mnu's competition, practice, replays) */
     Main_options, Main_extras, Main_replays,        /* (its options, editing, extras) */
     Main_quit, Main_ticker, Main_liveCast,
-    Main_continue = 11, Main_save, Main_load, Main_multiplayer, Main_credits, Main_modes,
+    /* 14 and 16, the game's own MULTIPLAYER and MODES places: SWOS United's two careers
+     * (scripts/make_menus2020.py CAREER_BUTTONS; src/career_seasons.c) */
+    Main_continue = 11, Main_save, Main_load, Main_classicCareer, Main_credits, Main_worldCareer,
 };
 
 static uint16_t s_loadX, s_loadY;       /* LOAD's place under CONTINUE, as unpacked */
@@ -103,8 +108,10 @@ static void main_refresh(void)
     MenuEntry *cont = entry(Main_continue), *load = entry(Main_load);
     const int32_t contest = !cont->isInvisible;
 
-    show(Main_multiplayer, 0);
-    show(Main_modes, 0);
+    show(Main_classicCareer, 1);       /* (CommonMenuExit hides 14 and shows 16 for MODES) */
+    show(Main_worldCareer, 1);
+    nav(Main_classicCareer, -1, Main_worldCareer, Main_practice, contest ? Main_continue : Main_load);
+    nav(Main_worldCareer, Main_classicCareer, -1, Main_replays, contest ? Main_continue : Main_load);
     if (s_runState >= 1 && s_runState <= 3)     /* (unpacked again mid-run: no picture until they settle) */
         ModApi_SetMenuImage(Main_credits, NULL);
     s_liveShown = -2;                   /* (unpacked again: the JSON's idle picture) */
@@ -151,9 +158,9 @@ static void main_refresh(void)
             load->x = s_loadX;
             load->y = s_loadY;
         }
-        nav(Main_practice, -1, Main_replays, Main_compete, Main_continue);
-        nav(Main_replays, Main_practice, -1, Main_extras, Main_continue);
-        nav(Main_continue, -1, -1, Main_practice, Main_save);
+        nav(Main_practice, -1, Main_replays, Main_compete, Main_classicCareer);
+        nav(Main_replays, Main_practice, -1, Main_extras, Main_worldCareer);
+        nav(Main_continue, -1, -1, Main_classicCareer, Main_save);
         nav(Main_save, Main_quit, Main_load, Main_continue, -1);
         nav(Main_load, Main_save, Main_credits, Main_continue, -1);
         nav(Main_quit, -1, Main_save, Main_continue, -1);
@@ -166,11 +173,11 @@ static void main_refresh(void)
         }
         load->x = (uint16_t)(cont->x + (cont->dwWidth - load->dwWidth) / 2);
         load->y = cont->y;
-        nav(Main_practice, -1, Main_replays, Main_compete, Main_load);
-        nav(Main_replays, Main_practice, -1, Main_extras, Main_load);
-        nav(Main_load, Main_quit, Main_credits, Main_practice, -1);
-        nav(Main_quit, -1, Main_load, Main_practice, -1);
-        nav(Main_credits, Main_load, -1, Main_replays, -1);
+        nav(Main_practice, -1, Main_replays, Main_compete, Main_classicCareer);
+        nav(Main_replays, Main_practice, -1, Main_extras, Main_worldCareer);
+        nav(Main_load, Main_quit, Main_credits, Main_classicCareer, -1);
+        nav(Main_quit, -1, Main_load, Main_classicCareer, -1);
+        nav(Main_credits, Main_load, -1, Main_worldCareer, -1);
     }
 }
 
@@ -614,6 +621,8 @@ GAME_BUTTON(continueContest, StartContest)
 GAME_BUTTON(saveContest, SaveContest)
 GAME_BUTTON(loadContest, LoadOldCompetitionMenu)
 GAME_BUTTON(credits, CreditsMenuSelected)
+GAME_BUTTON(classicCareer, CareerSeasons_Classic)     /* (src/career_seasons.c) */
+GAME_BUTTON(worldCareer, CareerSeasons_World)
 #undef GAME_BUTTON
 
 /* QUIT: SWOS 2020's quit.mnu (showQuitMenu) -- QUIT TO <the system this build is for>, RETURN TO
@@ -715,10 +724,12 @@ static void competitionInit(void)
     nav(Comp_online, -1, -1, -1, row2);
     nav(Comp_speedruns, -1, Comp_diy, top, Comp_challenges);
     nav(Comp_diy, row2 == Comp_speedruns ? Comp_speedruns : -1, -1, top, Comp_preset);
-    nav(Comp_challenges, -1, Comp_preset, row2, Comp_career);
-    nav(Comp_preset, row3 == Comp_challenges ? Comp_challenges : -1, -1, Comp_diy, Comp_career);
-    nav(Comp_career, -1, -1, row3, Comp_exit);
-    nav(Comp_exit, -1, -1, Comp_career, -1);
+    /* (CLASSIC CAREER MODE: the main menu's two careers now -- CLASSIC CAREER, WORLD 26/27
+     *  CAREER; the row stays, hidden, so the ordinals do) */
+    show(Comp_career, 0);
+    nav(Comp_challenges, -1, Comp_preset, row2, Comp_exit);
+    nav(Comp_preset, row3 == Comp_challenges ? Comp_challenges : -1, -1, Comp_diy, Comp_exit);
+    nav(Comp_exit, -1, -1, row3, -1);
     SetCurrentEntry(Comp_diy);
 }
 
@@ -1104,6 +1115,7 @@ static void init(void)
         { "loadContest", loadContest }, { "quit", quit }, { "credits", credits },
 
         { "multiplayer", multiplayer },
+        { "classicCareer", classicCareer }, { "worldCareer", worldCareer },
         { "competitionInit", competitionInit }, { "competitionDraw", competitionDraw },
         { "quitInit", quitInit }, { "quitGame", quitGame }, { "returnToGame", returnToGame },
         { "online", online }, { "diy", diy }, { "preset", preset }, { "career", career },
@@ -1126,10 +1138,63 @@ static void init(void)
  * down with any change to their side, so a match starts only on a side both games have. */
 static int32_t keeps_ready(void) { return 1; }
 
+/* WORLD 26/27 CAREER in dark yellow (Playa, 2026-11-19): the menus' 16 colours have none (15 is
+ * bright yellow, 5 burnt orange), so its box is drawn in 15 and, each frame shown, every pixel of
+ * the box that still has 15 (not the text) is painted over in dark yellow -- as the dosmenus mod
+ * paints its shading, and after it (the fork's mods come later in the built-in list). Drawing only. */
+enum { kWorldCareerR = 0xB0, kWorldCareerG = 0x90, kWorldCareerB = 0x00 };
+static GfxTexture *s_wcTex;
+static uint8_t    *s_wcRgba;
+static int32_t     s_wcW, s_wcH;
+
+static void world_career_paint(void)
+{
+    extern const uint8_t *Platform_FrameShown(void);
+    int32_t x, y, w, h;
+    const uint8_t *fb;
+    if (!ModApi_IsMainMenu() || ModApi_InMatch() || ModApi_InReplay() ||
+        entry(Main_worldCareer)->isInvisible || !(fb = Platform_FrameShown()))
+        return;
+    ModApi_MenuEntryRect(Main_worldCareer, &x, &y, &w, &h);
+    x += _menu_draw_x_offset;
+    if (w <= 0 || h <= 0 || x < 0 || y < 0 || x + w > _screen_width || y + h > _screen_height)
+        return;
+    if (!s_wcTex || s_wcW != w || s_wcH != h) {
+        if (s_wcTex)
+            Gfx_DestroyTexture(s_wcTex);
+        free(s_wcRgba);
+        s_wcRgba = (uint8_t *)malloc((size_t)w * h * 4);
+        s_wcTex = s_wcRgba ? Gfx_CreateTexture(w, h, 0) : NULL;
+        s_wcW = w;
+        s_wcH = h;
+        if (!s_wcTex)
+            return;
+    }
+    int32_t any = 0;
+    for (int32_t j = 0; j < h; j++)
+        for (int32_t i = 0; i < w; i++) {
+            uint8_t *o = s_wcRgba + ((size_t)j * w + i) * 4;
+            const int32_t box = fb[(size_t)(y + j) * FRONTBUFFER_ROW_STRIDE_BYTES + x + i] == 15;
+            o[0] = kWorldCareerR;
+            o[1] = kWorldCareerG;
+            o[2] = kWorldCareerB;
+            o[3] = box ? 255 : 0;
+            any |= box;
+        }
+    if (!any)
+        return;
+    const SDL_FRect dst = { (float)x, (float)y, (float)w, (float)h };
+    Gfx_UpdateTexture(s_wcTex, s_wcRgba, w * 4);
+    Gfx_SetSpace(GFX_SPACE_PICTURE);
+    Gfx_SetBlend(GFX_BLEND_ALPHA);
+    Gfx_DrawTexture(s_wcTex, NULL, &dst);
+}
+
 const ModDef ModDef_menus2020 = {
     .slug            = SLUG,
     .init            = init,
     .menuDrawn       = run_menu_frame,
+    .frameDrawn      = world_career_paint,
     .lobbyKeepsReady = keeps_ready,
 };
 

@@ -95,6 +95,8 @@ void World_SnapshotBase(void)
                 s_league[s_nLeagues++] = (CompetitionLeague *)p;
         }
     }
+    free(s_leagueBase);                 /* (a switch: world_switch.c snaps again) */
+    free(s_leagueWorld);
     s_leagueBase = (CompetitionLeague *)malloc((size_t)s_nLeagues * sizeof *s_leagueBase);
     s_leagueWorld = (CompetitionLeague *)malloc((size_t)s_nLeagues * sizeof *s_leagueWorld);
     if (!s_leagueBase || !s_leagueWorld)

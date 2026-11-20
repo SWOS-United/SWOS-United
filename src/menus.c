@@ -5586,10 +5586,15 @@ void CareerMenuFinish(void)
     {   /* CAREER YEARS (12/13, career_init.c CareerYearsToggle): SDL only -- hidden on the Amiga,
          * its careers 20 seasons, START CAREER AS straight to CHOOSE TEAM again */
         extern void CareerYears_SetField(void);
+        extern void SeasonStart_SetField(void);     /* (SEASON START, 14/15, and INFO, 16: career_seasons.c) */
         CareerYears_SetField();
+        SeasonStart_SetField();
 #ifndef SWOS_SDL_BUILD
         _menuEntries[12].isInvisible = 1;
         _menuEntries[13].isInvisible = 1;
+        _menuEntries[14].isInvisible = 1;
+        _menuEntries[15].isInvisible = 1;
+        _menuEntries[16].isInvisible = 1;
         _menuEntries[9].downEntry = 10;
         _menuEntries[10].upEntry = 9;
         _careerParams.num_seasons = 20;
@@ -5625,6 +5630,10 @@ void CareerMenuInit(void)
     SetDefaultNameAndSurname();
     /* (a new career's length: career_params.json's, not a career loaded before it) */
     _careerParams.num_seasons = _careerYearsDefault;
+#ifdef SWOS_SDL_BUILD
+    { extern void CareerSeasons_CareerMenuInit(void);   /* (SEASON START; a restart's fields back) */
+      CareerSeasons_CareerMenuInit(); }
+#endif
     CareerMenuFinish();
 }
 
