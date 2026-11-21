@@ -211,13 +211,13 @@ void FrontEndPreLoopSetup(void)
 #ifdef SWOS_SDL_BUILD
     { extern void WorldSwitch_Digest(const char *when); WorldSwitch_Digest("start"); }
 #endif
-    InitMenuMusic();
 #ifdef AGA
-    /* (SWOS United's POWERED BY, up while the game loaded (loader_intro.c): faded out now the main
-     *  menu is ready, which fades in after it, _menuFade) */
-    { extern int32_t LoaderIntro_PoweredShown(void); extern void FadeOutToBlack(void);
-      if (LoaderIntro_PoweredShown()) FadeOutToBlack(); }
+    /* (SWOS United's POWERED BY, up while the game loaded, and the title track playing on
+     *  (loader_intro.c): faded out together now the main menu is ready -- before its music --
+     *  which fades in after it, _menuFade) */
+    { extern void LoaderIntro_EndPowered(void); LoaderIntro_EndPowered(); }
 #endif
+    InitMenuMusic();
     PrepareMenuBackground();
     InitMainMenuStuff();
 

@@ -59,7 +59,7 @@ static const struct { uint8_t strip; const char *name; } k_creditPhotos[] = {
     { CREDITS_STRIP_ZKZ,        "ZKZ"        },
     { CREDITS_STRIP_PLAYAVELI,  "PLAYAVELI"  },
     { CREDITS_STRIP_STARWINDZ,  "STARWINDZ"  },
-    { CREDITS_STRIP_THD79,      "THD79"      },
+    { CREDITS_STRIP_ELMICHAJ,   "ELMICHAJ"   },     /* (SWOS United's: in THD79's place) */
     { CREDITS_STRIP_REDHAIR,    "REDHAIR"    },
 };
 enum { kCreditPhotos = sizeof k_creditPhotos / sizeof k_creditPhotos[0] };

@@ -91,6 +91,11 @@ extern int16_t LoadRNCToBufferNoBlit(uint8_t *name, uint8_t *dest);     /* asset
  * from the hero audio bank data. Then applies preset 0 and marks
  * audio as active.
  * ================================================================ */
+/* The title track is SWOS United's MP3 (united_title.mp3): it plays on through POWERED BY, to the
+ * main menu (LoaderIntro_EndPowered). The Amiga's tune stops at fire -- its samples share memory
+ * with the sprites the game loads meanwhile (intro_chip_ram.h). */
+static int32_t s_titleStream;
+
 static void loaderIntroEnsureMenuMusicPlaying(void)
 {
 #ifdef SWOS_SDL_BUILD
@@ -118,6 +123,7 @@ static void loaderIntroEnsureMenuMusicPlaying(void)
          * song, sound_dos/title.mp3. */
         if (AudioSDL_StreamStart("united_title", 1) == 0) {
             fprintf(stderr, "[music] title track: sound_dos/united_title.mp3\n");
+            s_titleStream = 1;
         } else
         if (DosMusic_Style() && DosMusic_TitleMidi() && AudioSDL_PcSongStart("title", 0) == 0) {
         } else
@@ -494,7 +500,8 @@ void ShowLoaderIntroSequence(void)
 #endif
         while (loaderIntroWaitForFireOrTimeout(0x7FFF) == 0)
             ;                           /* the logo until fire (or the window closed) */
-        loaderIntroStopMusicAndResetAudio();
+        if (!s_titleStream || _quitToDos)   /* (the MP3 plays on, through POWERED BY) */
+            loaderIntroStopMusicAndResetAudio();
     }
     /* (exit_cleanup's reasons: the fire that left the logo is still held, and still queued; the
      *  boot fades the logo out next, SWOS.c) */
@@ -505,9 +512,30 @@ void ShowLoaderIntroSequence(void)
 
 /* POWERED BY OpenSWOS, after the logo (SWOS.c phase 5, in the disk pictures' place): faded in and
  * held two seconds; it stays up while the game goes on loading, until the boot fades it out. */
+extern volatile uint16_t _fadeState, _fadeCommand;   /* (fade.c) */
 static int32_t s_poweredShown;
 
 int32_t LoaderIntro_PoweredShown(void) { return s_poweredShown; }
+
+/* The main menu is ready (frontend.c, before its music): POWERED BY faded out, and the title track
+ * with it, then stopped -- the menu's own music and picture fade in after. */
+void LoaderIntro_EndPowered(void)
+{
+#ifdef SWOS_SDL_BUILD
+    if (s_poweredShown && _fadeState != 0 && _fadeCommand == FADE_SENTINEL)
+        _fadeCommand = 0xFFFFu;         /* (the picture's fade started: it runs each vblank) */
+    if (s_titleStream) {
+        for (int16_t vol = 0x40; vol >= 0 && _quitToDos == 0; vol--) {
+            AudioSetChannelVolume(0xFFFF, (uint16_t)vol);
+            WaitForVSync();
+        }
+        loaderIntroStopMusicAndResetAudio();
+        s_titleStream = 0;
+    }
+#endif
+    if (s_poweredShown)
+        FadeOutToBlack();               /* (done already, or what is left of it) */
+}
 
 void LoaderIntro_ShowPowered(void)
 {
