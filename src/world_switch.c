@@ -32,6 +32,7 @@
 #include "career_params.h"
 #include "mods.h"
 #include "platform_sdl.h"
+#include <SDL.h>              /* SDL_GetTicks: how long a switch takes */
 #include "swos_settings.h"
 #include "team_pool.h"
 #include "league_phase.h"       /* LeaguePhase_SetModEurope */
@@ -230,6 +231,8 @@ static void reset_installers(void)
     TeamDb_Reset();
 }
 
+static void reinstall(WorldId w);
+
 /* The world `world` ("9697", "2627" ...) with the season `season` (a folder in seasons/, ""
  * none; only in 96/97's world), now: SWOS.ini's [general] world and season too. 0 when it is
  * played (already, or now), -1 when the world is unknown. Only between contests: the caller asks
@@ -258,9 +261,22 @@ int32_t WorldSwitch_To(const char *world, const char *season)
 
     fprintf(stderr, "[switch] %s%s%s -> %s%s%s\n", World_Tag(), CareerSeasons_RunningSlug()[0] ? " " : "",
             CareerSeasons_RunningSlug(), World_TagOf((WorldId)w), s[0] ? " " : "", s);
+    reinstall((WorldId)w);
+    return 0;
+}
+
+/* The start's installs again, for the world `w` and the mods mods_start (main.c) now takes. */
+static void reinstall(WorldId w)
+{
+    extern void Mods_Reload(void);
+    extern void Translations_Load(const char *lang);
+    extern void Countries_Localize(void);
+    extern const char *CareerSeasons_RunningSlug(void);
+    extern uint8_t _lastLoadedExtNumber;
+    const uint32_t t0 = SDL_GetTicks();
     restore_all();
     reset_installers();
-    World_Set(World_TagOf((WorldId)w));
+    World_Set(World_TagOf(w));
     LeaguePhase_SetModEurope(NULL, NULL, 0, NULL);  /* (a mod's, set again by its init if it still applies) */
     Mods_Reload();                                  /* (the season's mod: main.c mods_start) */
     {   /* the files read once and kept, before anything reads them again: the next reader takes
@@ -277,10 +293,59 @@ int32_t WorldSwitch_To(const char *world, const char *season)
     Countries_Localize();
     install_all();
     TeamPool_Reset();
-    fprintf(stderr, "[switch] now %s%s%s\n", World_Tag(), CareerSeasons_RunningSlug()[0] ? " " : "",
-            CareerSeasons_RunningSlug());
+    fprintf(stderr, "[switch] now %s%s%s (%u ms)\n", World_Tag(), CareerSeasons_RunningSlug()[0] ? " " : "",
+            CareerSeasons_RunningSlug(), (unsigned)(SDL_GetTicks() - t0));
     WorldSwitch_Digest("switched");
-    return 0;
+}
+
+/* MULTIPLAYER plays SWOS 96/97 as it comes, whatever is on offline (Playa, 2026-11-21: "it has to
+ * work with 96/97 automatically, no matter what"). A world alone is swapped out by world_online.c;
+ * a mod that is not for online play ("online": false: a team database, SEASON START's season) is
+ * part of what the start installed, so it takes a switch: the mods without them and 96/97, as a
+ * start with them off would be -- SWOS.ini untouched -- and, after online play, the world and the
+ * mods of before, again as a start. 1 when it switched (WorldSwitch_OnlineEnd then switches back). */
+static WorldId s_onlineBack;
+static int32_t s_onlineSwitched;
+
+int32_t WorldSwitch_OnlineBegin(void)
+{
+    extern const char *CareerSeasons_RunningSlug(void);
+    if (s_onlineSwitched || !g_arcadeOpts || (!Mods_OfflineOnly(NULL, 0) && !CareerSeasons_RunningSlug()[0]))
+        return 0;
+    s_onlineBack = World_Current();
+    Mods_SetOnlinePlay(1);
+    fprintf(stderr, "[switch] online: 96/97 without the offline-only mods (back to %s after)\n",
+            World_TagOf(s_onlineBack));
+    reinstall(WORLD_9697);
+    s_onlineSwitched = 1;
+    return 1;
+}
+
+void WorldSwitch_OnlineEnd(void)
+{
+    if (!s_onlineSwitched)
+        return;
+    s_onlineSwitched = 0;
+    Mods_SetOnlinePlay(0);
+    fprintf(stderr, "[switch] online left: %s and its mods again\n", World_TagOf(s_onlineBack));
+    reinstall(s_onlineBack);
+}
+
+/* SWOS_TEST_ONLINE_SWITCH=1 (with SWOS_SWITCH_DIGEST=1): into online play and out of it at once,
+ * then quit -- the digest online must be a start's with no offline-only mod, the one after it the
+ * start's again. */
+void WorldSwitch_OnlineTest(void)
+{
+    if (!getenv("SWOS_TEST_ONLINE_SWITCH"))
+        return;
+    const int32_t switched = WorldSwitch_OnlineBegin();
+    char mods[200];
+    fprintf(stderr, "[switch] test online: switched %d, world %s, offline-only mods on: %d\n", (int)switched,
+            World_Tag(), (int)Mods_OfflineOnly(mods, sizeof mods));
+    WorldSwitch_OnlineEnd();
+    fprintf(stderr, "[switch] test back: world %s, offline-only mods on: %d (%s)\n", World_Tag(),
+            (int)Mods_OfflineOnly(mods, sizeof mods), mods);
+    exit(0);
 }
 
 /* SWOS_TEST_SWITCH=<world[:season]>,...: those switches, in order, before a test runs (the golden
@@ -304,5 +369,6 @@ void WorldSwitch_Test(void)
 #else
 
 void Pristine_Keep(void *p, uint32_t n) { (void)p; (void)n; }
+void WorldSwitch_OnlineTest(void) {}
 
 #endif

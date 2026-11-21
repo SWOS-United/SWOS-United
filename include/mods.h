@@ -49,6 +49,9 @@ void        Mods_Init(const char *enabled, const char *disabled);
 /* Before Mods_Init: the season to play (a folder in MODS_SEASONS_DIR), or "" for none -- main.c,
  * from [general] season while 96/97 is the world played. SDL. */
 void        Mods_SetSeason(const char *slug);
+/* Online play: the mods with "online": false and the season left out by the next Mods_Init
+ * (MULTIPLAYER: src/world_switch.c WorldSwitch_OnlineBegin). SDL. */
+void        Mods_SetOnlinePlay(int32_t on);
 /* Before Mods_Init: a rig runs (main.c), so the default-on canonical mods that are not cosmetic
  * stay off (a mod the run names is still on). SDL. */
 void        Mods_SetRig(int32_t on);

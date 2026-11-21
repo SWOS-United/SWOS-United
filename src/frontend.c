@@ -210,6 +210,7 @@ void FrontEndPreLoopSetup(void)
     Career_InstallCopaLibertadoresPresetEntry();
 #ifdef SWOS_SDL_BUILD
     { extern void WorldSwitch_Digest(const char *when); WorldSwitch_Digest("start"); }
+    { extern void WorldSwitch_OnlineTest(void); WorldSwitch_OnlineTest(); }   /* (SWOS_TEST_ONLINE_SWITCH) */
 #endif
 #ifdef AGA
     /* (SWOS United's POWERED BY, up while the game loaded, and the title track playing on
