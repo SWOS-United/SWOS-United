@@ -173,13 +173,18 @@ static int32_t league_match;            /* LongBench_LeagueMatch: the next kick-
 static int32_t match_bench(const TeamFile *t1, const TeamFile *t2, uint8_t *et)
 {
     extern int32_t NetplayMatch_Enabled(void);
-    extern int32_t NetplayLobby_IsOpen(void);
+#ifdef SWOS_NETPLAY
+    extern int32_t NetplayLobby_IsOpen(void);   /* (netplay_lobby.c: only in a netplay build) */
+#endif
     *et = 0;
     /* (netplay plays the game's bench of 5, always: Playa, 2026-11-14 -- the lobby's pre-match
      *  screens, the live match, its resim) */
-    if (!world_benches() || _trainingGame || _isNationalSelector || NetplayMatch_Enabled() ||
-        NetplayLobby_IsOpen())
+    if (!world_benches() || _trainingGame || _isNationalSelector || NetplayMatch_Enabled())
         return 0;
+#ifdef SWOS_NETPLAY
+    if (NetplayLobby_IsOpen())
+        return 0;
+#endif
     if (_gameType == GAME_TYPE_CAREER) {
         /* the career club's country: its contests by name, its league by division, else its own */
         const TeamFile *club = (const TeamFile *)&_careerTeam;
