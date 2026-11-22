@@ -616,10 +616,10 @@ static void draw_uniform(const KitLook *k, int32_t type, int32_t frame, int32_t 
             const int32_t col = i + 48 * type + 16 * frame + shift[type][frame];
             const char c = col >= 0 && col < 96 ? k_uniformSprite[KitPattern_Base(k->type)][j][col] : '.';
             int32_t colour = -1;
-            if (c == '0')      colour = _kTeamColorsTable[KitColour_Legacy(k->stripes)];
-            else if (c == '1') colour = _kTeamColorsTable[KitColour_Legacy(k->basic)];
-            else if (c == '2') colour = _kTeamColorsTable[KitColour_Legacy(k->shorts)];
-            else if (c == '3') colour = _kTeamColorsTable[KitColour_Legacy(k->socks)];
+            if (c == '0')      colour = TeamColors_MenuEntry(k->stripes);
+            else if (c == '1') colour = TeamColors_MenuEntry(k->basic);
+            else if (c == '2') colour = TeamColors_MenuEntry(k->shorts);
+            else if (c == '3') colour = TeamColors_MenuEntry(k->socks);
             else
                 for (n = 0; n < 8; n++)
                     if (kFixed[n].c == c)
