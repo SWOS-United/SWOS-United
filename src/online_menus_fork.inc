@@ -491,6 +491,7 @@ static void matchMaking_scrollDown2_onSelect(void)
 #include "world.h"            /* World_Tag: TEAM DB */
 #include "kit_art.h"          /* the little players in each team's kits */
 #include "team_colors.h"      /* KIT_COLOURS */
+#include "kit_variants.h"     /* KitColour_Legacy, KitPattern_Base */
 #include "text_render.h"      /* GetTextWidth: a name clear of the stars */
 
 extern void Platform_PaletteRgb(int index, uint8_t *r, uint8_t *g, uint8_t *b);
@@ -613,12 +614,12 @@ static void draw_uniform(const KitLook *k, int32_t type, int32_t frame, int32_t 
     for (j = 0; j < 14; j++)
         for (i = 0; i < 16; i++) {
             const int32_t col = i + 48 * type + 16 * frame + shift[type][frame];
-            const char c = col >= 0 && col < 96 ? k_uniformSprite[k->type & 3][j][col] : '.';
+            const char c = col >= 0 && col < 96 ? k_uniformSprite[KitPattern_Base(k->type)][j][col] : '.';
             int32_t colour = -1;
-            if (c == '0')      colour = _kTeamColorsTable[k->stripes % KIT_COLOURS];
-            else if (c == '1') colour = _kTeamColorsTable[k->basic % KIT_COLOURS];
-            else if (c == '2') colour = _kTeamColorsTable[k->shorts % KIT_COLOURS];
-            else if (c == '3') colour = _kTeamColorsTable[k->socks % KIT_COLOURS];
+            if (c == '0')      colour = _kTeamColorsTable[KitColour_Legacy(k->stripes)];
+            else if (c == '1') colour = _kTeamColorsTable[KitColour_Legacy(k->basic)];
+            else if (c == '2') colour = _kTeamColorsTable[KitColour_Legacy(k->shorts)];
+            else if (c == '3') colour = _kTeamColorsTable[KitColour_Legacy(k->socks)];
             else
                 for (n = 0; n < 8; n++)
                     if (kFixed[n].c == c)
