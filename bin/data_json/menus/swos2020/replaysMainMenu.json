@@ -1,0 +1,222 @@
+{
+  "name": "replaysMainMenu",
+  "source": {
+    "project": "swos-2020",
+    "file": "src/menus/replaysMain.mnu",
+    "commit": "df38d20"
+  },
+  "menu_flags": {
+    "dos_redraw": true
+  },
+  "onInit": "replaysMainMenu_OnInit",
+  "onReturn": null,
+  "onDraw": "replaysMainMenu_OnDraw",
+  "defaultEntry": 1,
+  "exports": {},
+  "items": [
+    {
+      "kind": "entry",
+      "name": "header",
+      "coords": {
+        "x": 92,
+        "y": 0,
+        "w": 125,
+        "h": 15
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "REPLAYS"
+        },
+        {
+          "op": "colors",
+          "frame_color": 1,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "swosGalore",
+      "coords": {
+        "x": 92,
+        "y": 32,
+        "w": 125,
+        "h": 20
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "SWOS GALORE"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 11
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": -1,
+          "down": 2
+        },
+        {
+          "op": "onselect_fire",
+          "func": "swosGalore_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "highlights",
+      "coords": {
+        "x": 92,
+        "y": 63,
+        "w": 125,
+        "h": 20
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "HIGHLIGHTS"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 14
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": 1,
+          "down": 3
+        },
+        {
+          "op": "onselect_fire",
+          "func": "highlights_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "matchReplays",
+      "coords": {
+        "x": 92,
+        "y": 94,
+        "w": 125,
+        "h": 20
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "MATCH REPLAYS"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 14
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": 2,
+          "down": 4
+        },
+        {
+          "op": "onselect_fire",
+          "func": "matchReplays_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "replayControls",
+      "coords": {
+        "x": 92,
+        "y": 125,
+        "w": 125,
+        "h": 20
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "REPLAY CONTROLS"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 13
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": 3,
+          "down": 6
+        },
+        {
+          "op": "onselect_fire",
+          "func": "replayControls_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "desc",
+      "coords": {
+        "x": 92,
+        "y": 156,
+        "w": 125,
+        "h": 20
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": ""
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "exit",
+      "coords": {
+        "x": 92,
+        "y": 185,
+        "w": 125,
+        "h": 15
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "str": "_aExit"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 12
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": 4,
+          "down": -1
+        },
+        {
+          "op": "onselect_fire",
+          "func": "SetExitMenuFlag"
+        }
+      ]
+    }
+  ]
+}

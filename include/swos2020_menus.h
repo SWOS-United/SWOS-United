@@ -57,9 +57,14 @@
     X(customChallengesEditMenu, "swos2020/customChallengesEditMenu", CustomChallengesEditMenu, 53) \
     X(swosGaloreMenu, "swos2020/swosGaloreMenu", SwosGaloreMenu, 7) \
     X(chartHighlightsMenu, "swos2020/chartHighlightsMenu", ChartHighlightsMenu, 52) \
+    X(rateHighlightsMenu, "swos2020/rateHighlightsMenu", RateHighlightsMenu, 41) \
+    X(shareHighlightsMenu, "swos2020/shareHighlightsMenu", ShareHighlightsMenu, 40) \
+    X(viewHighlightMenu, "swos2020/viewHighlightMenu", ViewHighlightMenu, 11) \
+    X(replaysMainMenu, "swos2020/replaysMainMenu", ReplaysMainMenu, 7) \
+    X(replaysControlsMenu, "swos2020/replaysControlsMenu", ReplaysControlsMenu, 25) \
     X(customTacticsWarningMenu, "swos2020/customTacticsWarningMenu", CustomTacticsWarningMenu, 10) \
 
-/* Every handler name the imported menus reference (454), sorted. */
+/* Every handler name the imported menus reference (487), sorted. */
 #define SWOS2020_MENU_CALLBACKS(X) \
     X(ChartHighlightsMenu_OnDraw) \
     X(ChartHighlightsMenu_OnInit) \
@@ -85,6 +90,14 @@
     X(LeftStripesColor_Dec_onSelect) \
     X(LeftStripesColor_Inc_onSelect) \
     X(LeftSwitch_onSelect) \
+    X(RateHighlightsMenu_OnDraw) \
+    X(RateHighlightsMenu_OnInit) \
+    X(RateHighlightsMenu_OnReturn) \
+    X(RateHighlights_Filename_onSelect) \
+    X(RateHighlights_Rate_onSelect) \
+    X(RateHighlights_ScrollDown_onSelect) \
+    X(RateHighlights_ScrollUp_onSelect) \
+    X(RateHighlights_menuExit_onSelect) \
     X(RightBasicColor_Dec_onSelect) \
     X(RightBasicColor_Inc_onSelect) \
     X(RightReset_onSelect) \
@@ -103,6 +116,13 @@
     X(RightStripesColor_Inc_onSelect) \
     X(RightSwitch_onSelect) \
     X(SetExitMenuFlag) \
+    X(ShareHighlights_Filename_onSelect) \
+    X(ShareHighlights_Note_onSelect) \
+    X(ShareHighlights_Scene_onSelect) \
+    X(ShareHighlights_ScrollDown_onSelect) \
+    X(ShareHighlights_ScrollUp_onSelect) \
+    X(ShareHighlights_Shared_onSelect) \
+    X(ShareHighlights_menuExit_onSelect) \
     X(aboutMPMenu_OnDraw) \
     X(act1_onSelect) \
     X(act2_onSelect) \
@@ -200,6 +220,7 @@
     X(difficulty_onSelect) \
     X(drawGoButtonAndStarsGraphics) \
     X(drawStarIconsForChartHighlights) \
+    X(drawStarIconsForRateHighlights) \
     X(draw_mp_game_style_icon_sets) \
     X(exitNewsMenu_OnSelect) \
     X(exitRankingMenu_OnSelect) \
@@ -210,6 +231,7 @@
     X(gameStyle_Inc_onSelect) \
     X(gameStyle_onSelect) \
     X(headerGoal_OnSelect) \
+    X(highlights_OnSelect) \
     X(hostGameMessageMenu_OnDraw) \
     X(hostGameMessageMenu_OnInit) \
     X(hostGameMessageMenu_button1_OnSelect) \
@@ -306,6 +328,7 @@
     X(matchMaking_scrollUp2_onSelect) \
     X(matchMaking_scrollUp_onSelect) \
     X(matchMaking_users_onSelect) \
+    X(matchReplays_OnSelect) \
     X(matchView_exit_onSelect) \
     X(matchView_onDraw) \
     X(matchView_onInit) \
@@ -385,6 +408,11 @@
     X(registerUserMenuNews3_OnSelect) \
     X(registerUserMenuNews_OnSelect) \
     X(rememberLogInInfo_OnSelect) \
+    X(replayControls_OnSelect) \
+    X(replaysControlsMenu_OnDraw) \
+    X(replaysControlsMenu_OnInit) \
+    X(replaysMainMenu_OnDraw) \
+    X(replaysMainMenu_OnInit) \
     X(s00_OnSelect) \
     X(s01_OnSelect) \
     X(s02_OnSelect) \
@@ -483,6 +511,9 @@
     X(selectUniformMenuOnReturn) \
     X(selectUniformMenu_OkOnSelect) \
     X(selectXBLARankingsMenu) \
+    X(shareHighlightsMenu_OnDraw) \
+    X(shareHighlightsMenu_OnInit) \
+    X(shareHighlightsMenu_OnReturn) \
     X(showPassword_OnSelect) \
     X(speedrunMainExit_OnSelect) \
     X(speedrunMainMenuOnDraw) \
@@ -492,6 +523,7 @@
     X(speedrunMode_Inc_onSelect) \
     X(speedrunMode_onSelect) \
     X(swosGaloreMenu_OnDraw) \
+    X(swosGalore_OnSelect) \
     X(tackleGoal_OnSelect) \
     X(tenGoals_OnSelect) \
     X(threeGoals_OnSelect) \
@@ -506,6 +538,12 @@
     X(tournaInfo_scrollUp2_onSelect) \
     X(tournaInfo_scrollUp_onSelect) \
     X(usernameInput_OnSelect) \
+    X(viewHighlightMenu_OnDraw) \
+    X(viewHighlightMenu_OnInit) \
+    X(viewHighlightMenu_fpsOption_OnSelect) \
+    X(viewHighlightMenu_no_OnSelect) \
+    X(viewHighlightMenu_sceneOption_OnSelect) \
+    X(viewHighlightMenu_yes_OnSelect) \
     X(viewMyRecordsExit_OnSelect) \
     X(viewMyRecordsLeaderboard_OnSelect) \
     X(viewMyRecordsMenuOnDraw) \
@@ -3144,6 +3182,213 @@ enum {
 #define ChartHighlightsMenu_kCH_AvgRateWidth (34)
 #define ChartHighlightsMenu_kCH_AvgRateHeight (14)
 #define ChartHighlightsMenu_kCH_AvgRateBaseColor (3)
+
+/* ---- rateHighlightsMenu -- src/menus/rateHighlights.mnu ---- */
+enum {
+    RateHighlightsMenu_header = 0,
+    RateHighlightsMenu_datetime_00 = 1,
+    RateHighlightsMenu_datetime_01 = 2,
+    RateHighlightsMenu_datetime_02 = 3,
+    RateHighlightsMenu_datetime_03 = 4,
+    RateHighlightsMenu_datetime_04 = 5,
+    RateHighlightsMenu_datetime_05 = 6,
+    RateHighlightsMenu_datetime_06 = 7,
+    RateHighlightsMenu_datetime_07 = 8,
+    RateHighlightsMenu_username_00 = 9,
+    RateHighlightsMenu_username_01 = 10,
+    RateHighlightsMenu_username_02 = 11,
+    RateHighlightsMenu_username_03 = 12,
+    RateHighlightsMenu_username_04 = 13,
+    RateHighlightsMenu_username_05 = 14,
+    RateHighlightsMenu_username_06 = 15,
+    RateHighlightsMenu_username_07 = 16,
+    RateHighlightsMenu_filename_00 = 17,
+    RateHighlightsMenu_filename_01 = 18,
+    RateHighlightsMenu_filename_02 = 19,
+    RateHighlightsMenu_filename_03 = 20,
+    RateHighlightsMenu_filename_04 = 21,
+    RateHighlightsMenu_filename_05 = 22,
+    RateHighlightsMenu_filename_06 = 23,
+    RateHighlightsMenu_filename_07 = 24,
+    RateHighlightsMenu_rate_00 = 25,
+    RateHighlightsMenu_rate_01 = 26,
+    RateHighlightsMenu_rate_02 = 27,
+    RateHighlightsMenu_rate_03 = 28,
+    RateHighlightsMenu_rate_04 = 29,
+    RateHighlightsMenu_rate_05 = 30,
+    RateHighlightsMenu_rate_06 = 31,
+    RateHighlightsMenu_rate_07 = 32,
+    RateHighlightsMenu_scrollUp = 33,
+    RateHighlightsMenu_scrollDown = 34,
+    RateHighlightsMenu_page = 35,
+    RateHighlightsMenu_longDesc = 36,
+    RateHighlightsMenu_menuHint = 37,
+    RateHighlightsMenu_newsOnDiscord = 38,
+    RateHighlightsMenu_menuExit = 39,
+    RateHighlightsMenu_dummy = 40,
+};
+#define RateHighlightsMenu_numEntries 41
+#define RateHighlightsMenu_kRH_ADJUSTY (3)
+#define RateHighlightsMenu_kRH_MaxRows (8)
+#define RateHighlightsMenu_kRH_ButtonY0 (39)
+#define RateHighlightsMenu_kRH_ButtonHeight (14)
+#define RateHighlightsMenu_kRH_ButtonStep (16)
+#define RateHighlightsMenu_kRH_DatetimePosX (0)
+#define RateHighlightsMenu_kRH_DatetimePosY (39)
+#define RateHighlightsMenu_kRH_DatetimeStep (16)
+#define RateHighlightsMenu_kRH_DatetimeWidth (52)
+#define RateHighlightsMenu_kRH_DatetimeHeight (14)
+#define RateHighlightsMenu_kRH_DatetimeBaseColor (11)
+#define RateHighlightsMenu_kRH_UsernamePosX (54)
+#define RateHighlightsMenu_kRH_UsernamePosY (39)
+#define RateHighlightsMenu_kRH_UsernameStep (16)
+#define RateHighlightsMenu_kRH_UsernameWidth (77)
+#define RateHighlightsMenu_kRH_UsernameHeight (14)
+#define RateHighlightsMenu_kRH_UsernameBaseColor (7)
+#define RateHighlightsMenu_kRH_FilenamePosX (133)
+#define RateHighlightsMenu_kRH_FilenamePosY (39)
+#define RateHighlightsMenu_kRH_FilenameStep (16)
+#define RateHighlightsMenu_kRH_FilenameWidth (141)
+#define RateHighlightsMenu_kRH_FilenameHeight (14)
+#define RateHighlightsMenu_kRH_FilenameBaseColor (3)
+#define RateHighlightsMenu_kRH_RatePosX (276)
+#define RateHighlightsMenu_kRH_RatePosY (39)
+#define RateHighlightsMenu_kRH_RateStep (16)
+#define RateHighlightsMenu_kRH_RateWidth (34)
+#define RateHighlightsMenu_kRH_RateHeight (14)
+#define RateHighlightsMenu_kRH_RateBaseColor (7)
+
+/* ---- shareHighlightsMenu -- src/menus/shareHighlights.mnu ---- */
+enum {
+    ShareHighlightsMenu_header = 0,
+    ShareHighlightsMenu_filename_00 = 1,
+    ShareHighlightsMenu_filename_01 = 2,
+    ShareHighlightsMenu_filename_02 = 3,
+    ShareHighlightsMenu_filename_03 = 4,
+    ShareHighlightsMenu_filename_04 = 5,
+    ShareHighlightsMenu_filename_05 = 6,
+    ShareHighlightsMenu_filename_06 = 7,
+    ShareHighlightsMenu_filename_07 = 8,
+    ShareHighlightsMenu_note_00 = 9,
+    ShareHighlightsMenu_note_01 = 10,
+    ShareHighlightsMenu_note_02 = 11,
+    ShareHighlightsMenu_note_03 = 12,
+    ShareHighlightsMenu_note_04 = 13,
+    ShareHighlightsMenu_note_05 = 14,
+    ShareHighlightsMenu_note_06 = 15,
+    ShareHighlightsMenu_note_07 = 16,
+    ShareHighlightsMenu_shared_00 = 17,
+    ShareHighlightsMenu_shared_01 = 18,
+    ShareHighlightsMenu_shared_02 = 19,
+    ShareHighlightsMenu_shared_03 = 20,
+    ShareHighlightsMenu_shared_04 = 21,
+    ShareHighlightsMenu_shared_05 = 22,
+    ShareHighlightsMenu_shared_06 = 23,
+    ShareHighlightsMenu_shared_07 = 24,
+    ShareHighlightsMenu_scene_00 = 25,
+    ShareHighlightsMenu_scene_01 = 26,
+    ShareHighlightsMenu_scene_02 = 27,
+    ShareHighlightsMenu_scene_03 = 28,
+    ShareHighlightsMenu_scene_04 = 29,
+    ShareHighlightsMenu_scene_05 = 30,
+    ShareHighlightsMenu_scene_06 = 31,
+    ShareHighlightsMenu_scene_07 = 32,
+    ShareHighlightsMenu_scrollUp = 33,
+    ShareHighlightsMenu_scrollDown = 34,
+    ShareHighlightsMenu_page = 35,
+    ShareHighlightsMenu_longDesc = 36,
+    ShareHighlightsMenu_numShared = 37,
+    ShareHighlightsMenu_newsOnDiscord = 38,
+    ShareHighlightsMenu_menuExit = 39,
+};
+#define ShareHighlightsMenu_numEntries 40
+#define ShareHighlightsMenu_kSH_ADJUSTY (3)
+#define ShareHighlightsMenu_kSH_MaxRows (8)
+#define ShareHighlightsMenu_kSH_ButtonY0 (39)
+#define ShareHighlightsMenu_kSH_ButtonHeight (14)
+#define ShareHighlightsMenu_kSH_ButtonStep (16)
+#define ShareHighlightsMenu_kSH_FilenamePosX (0)
+#define ShareHighlightsMenu_kSH_FilenamePosY (39)
+#define ShareHighlightsMenu_kSH_FilenameStep (16)
+#define ShareHighlightsMenu_kSH_FilenameWidth (80)
+#define ShareHighlightsMenu_kSH_FilenameHeight (14)
+#define ShareHighlightsMenu_kSH_FilenameBaseColor (3)
+#define ShareHighlightsMenu_kSH_NotePosX (82)
+#define ShareHighlightsMenu_kSH_NotePosY (39)
+#define ShareHighlightsMenu_kSH_NoteStep (16)
+#define ShareHighlightsMenu_kSH_NoteWidth (156)
+#define ShareHighlightsMenu_kSH_NoteHeight (14)
+#define ShareHighlightsMenu_kSH_NoteBaseColor (7)
+#define ShareHighlightsMenu_kSH_SharedPosX (240)
+#define ShareHighlightsMenu_kSH_SharedPosY (39)
+#define ShareHighlightsMenu_kSH_SharedStep (16)
+#define ShareHighlightsMenu_kSH_SharedWidth (34)
+#define ShareHighlightsMenu_kSH_SharedHeight (14)
+#define ShareHighlightsMenu_kSH_SharedBaseColor (10)
+#define ShareHighlightsMenu_kSH_ScenePosX (276)
+#define ShareHighlightsMenu_kSH_ScenePosY (39)
+#define ShareHighlightsMenu_kSH_SceneStep (16)
+#define ShareHighlightsMenu_kSH_SceneWidth (34)
+#define ShareHighlightsMenu_kSH_SceneHeight (14)
+#define ShareHighlightsMenu_kSH_SceneBaseColor (10)
+
+/* ---- viewHighlightMenu -- src/menus/viewHighlight.mnu ---- */
+enum {
+    ViewHighlightMenu_header = 0,
+    ViewHighlightMenu_panel = 1,
+    ViewHighlightMenu_message1 = 2,
+    ViewHighlightMenu_message2 = 3,
+    ViewHighlightMenu_message3 = 4,
+    ViewHighlightMenu_fpsOptionLabel = 5,
+    ViewHighlightMenu_fpsOption = 6,
+    ViewHighlightMenu_sceneOptionLabel = 7,
+    ViewHighlightMenu_sceneOption = 8,
+    ViewHighlightMenu_yes = 9,
+    ViewHighlightMenu_exit = 10,
+};
+#define ViewHighlightMenu_numEntries 11
+
+/* ---- replaysMainMenu -- src/menus/replaysMain.mnu ---- */
+enum {
+    ReplaysMainMenu_header = 0,
+    ReplaysMainMenu_swosGalore = 1,
+    ReplaysMainMenu_highlights = 2,
+    ReplaysMainMenu_matchReplays = 3,
+    ReplaysMainMenu_replayControls = 4,
+    ReplaysMainMenu_desc = 5,
+    ReplaysMainMenu_exit = 6,
+};
+#define ReplaysMainMenu_numEntries 7
+
+/* ---- replaysControlsMenu -- src/menus/replayControls.mnu ---- */
+enum {
+    ReplaysControlsMenu_header = 0,
+    ReplaysControlsMenu_desc00 = 1,
+    ReplaysControlsMenu_desc01 = 2,
+    ReplaysControlsMenu_desc02 = 3,
+    ReplaysControlsMenu_desc03 = 4,
+    ReplaysControlsMenu_desc04 = 5,
+    ReplaysControlsMenu_desc05 = 6,
+    ReplaysControlsMenu_desc06 = 7,
+    ReplaysControlsMenu_kInfoTitle = 8,
+    ReplaysControlsMenu_kInfo00 = 9,
+    ReplaysControlsMenu_kInfo01 = 10,
+    ReplaysControlsMenu_kInfo02 = 11,
+    ReplaysControlsMenu_kInfo03 = 12,
+    ReplaysControlsMenu_kInfo04 = 13,
+    ReplaysControlsMenu_kInfo05 = 14,
+    ReplaysControlsMenu_kInfo06 = 15,
+    ReplaysControlsMenu_cInfoTitle = 16,
+    ReplaysControlsMenu_cInfo00 = 17,
+    ReplaysControlsMenu_cInfo01 = 18,
+    ReplaysControlsMenu_cInfo02 = 19,
+    ReplaysControlsMenu_cInfo03 = 20,
+    ReplaysControlsMenu_cInfo04 = 21,
+    ReplaysControlsMenu_cInfo05 = 22,
+    ReplaysControlsMenu_cInfo06 = 23,
+    ReplaysControlsMenu_exit = 24,
+};
+#define ReplaysControlsMenu_numEntries 25
 
 /* ---- customTacticsWarningMenu -- src/menus/customTacticsWarning.mnu ---- */
 enum {

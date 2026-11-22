@@ -1,0 +1,1010 @@
+{
+  "name": "rateHighlightsMenu",
+  "source": {
+    "project": "swos-2020",
+    "file": "src/menus/rateHighlights.mnu",
+    "commit": "df38d20"
+  },
+  "menu_flags": {
+    "dos_redraw": true
+  },
+  "onInit": "RateHighlightsMenu_OnInit",
+  "onReturn": "RateHighlightsMenu_OnReturn",
+  "onDraw": "RateHighlightsMenu_OnDraw",
+  "defaultEntry": 39,
+  "exports": {
+    "kRH_ADJUSTY": 3,
+    "kRH_MaxRows": 8,
+    "kRH_ButtonY0": 39,
+    "kRH_ButtonHeight": 14,
+    "kRH_ButtonStep": 16,
+    "kRH_DatetimePosX": 0,
+    "kRH_DatetimePosY": 39,
+    "kRH_DatetimeStep": 16,
+    "kRH_DatetimeWidth": 52,
+    "kRH_DatetimeHeight": 14,
+    "kRH_DatetimeBaseColor": 11,
+    "kRH_UsernamePosX": 54,
+    "kRH_UsernamePosY": 39,
+    "kRH_UsernameStep": 16,
+    "kRH_UsernameWidth": 77,
+    "kRH_UsernameHeight": 14,
+    "kRH_UsernameBaseColor": 7,
+    "kRH_FilenamePosX": 133,
+    "kRH_FilenamePosY": 39,
+    "kRH_FilenameStep": 16,
+    "kRH_FilenameWidth": 141,
+    "kRH_FilenameHeight": 14,
+    "kRH_FilenameBaseColor": 3,
+    "kRH_RatePosX": 276,
+    "kRH_RatePosY": 39,
+    "kRH_RateStep": 16,
+    "kRH_RateWidth": 34,
+    "kRH_RateHeight": 14,
+    "kRH_RateBaseColor": 7
+  },
+  "items": [
+    {
+      "kind": "entry",
+      "name": "header",
+      "coords": {
+        "x": 87,
+        "y": 0,
+        "w": 130,
+        "h": 16
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "RATE HIGHLIGHTS"
+        },
+        {
+          "op": "colors",
+          "frame_color": 1,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "datetime_00",
+      "coords": {
+        "x": -8,
+        "y": 39,
+        "w": 52,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "00.00.00"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 11
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "datetime_01",
+      "coords": {
+        "x": -8,
+        "y": 55,
+        "w": 52,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "00.00.00"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 11
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "datetime_02",
+      "coords": {
+        "x": -8,
+        "y": 71,
+        "w": 52,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "00.00.00"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 11
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "datetime_03",
+      "coords": {
+        "x": -8,
+        "y": 87,
+        "w": 52,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "00.00.00"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 11
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "datetime_04",
+      "coords": {
+        "x": -8,
+        "y": 103,
+        "w": 52,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "00.00.00"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 11
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "datetime_05",
+      "coords": {
+        "x": -8,
+        "y": 119,
+        "w": 52,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "00.00.00"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 11
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "datetime_06",
+      "coords": {
+        "x": -8,
+        "y": 135,
+        "w": 52,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "00.00.00"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 11
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "datetime_07",
+      "coords": {
+        "x": -8,
+        "y": 151,
+        "w": 52,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "00.00.00"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 11
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "username_00",
+      "coords": {
+        "x": 46,
+        "y": 39,
+        "w": 77,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "9999999999"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "username_01",
+      "coords": {
+        "x": 46,
+        "y": 55,
+        "w": 77,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "9999999999"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "username_02",
+      "coords": {
+        "x": 46,
+        "y": 71,
+        "w": 77,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "9999999999"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "username_03",
+      "coords": {
+        "x": 46,
+        "y": 87,
+        "w": 77,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "9999999999"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "username_04",
+      "coords": {
+        "x": 46,
+        "y": 103,
+        "w": 77,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "9999999999"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "username_05",
+      "coords": {
+        "x": 46,
+        "y": 119,
+        "w": 77,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "9999999999"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "username_06",
+      "coords": {
+        "x": 46,
+        "y": 135,
+        "w": 77,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "9999999999"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "username_07",
+      "coords": {
+        "x": 46,
+        "y": 151,
+        "w": 77,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "9999999999"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "filename_00",
+      "coords": {
+        "x": 125,
+        "y": 39,
+        "w": 141,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x8000",
+          "literal": "9999999999999"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 3
+        },
+        {
+          "op": "onselect_fire",
+          "func": "RateHighlights_Filename_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "filename_01",
+      "coords": {
+        "x": 125,
+        "y": 55,
+        "w": 141,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x8000",
+          "literal": "9999999999999"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 3
+        },
+        {
+          "op": "onselect_fire",
+          "func": "RateHighlights_Filename_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "filename_02",
+      "coords": {
+        "x": 125,
+        "y": 71,
+        "w": 141,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x8000",
+          "literal": "9999999999999"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 3
+        },
+        {
+          "op": "onselect_fire",
+          "func": "RateHighlights_Filename_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "filename_03",
+      "coords": {
+        "x": 125,
+        "y": 87,
+        "w": 141,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x8000",
+          "literal": "9999999999999"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 3
+        },
+        {
+          "op": "onselect_fire",
+          "func": "RateHighlights_Filename_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "filename_04",
+      "coords": {
+        "x": 125,
+        "y": 103,
+        "w": 141,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x8000",
+          "literal": "9999999999999"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 3
+        },
+        {
+          "op": "onselect_fire",
+          "func": "RateHighlights_Filename_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "filename_05",
+      "coords": {
+        "x": 125,
+        "y": 119,
+        "w": 141,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x8000",
+          "literal": "9999999999999"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 3
+        },
+        {
+          "op": "onselect_fire",
+          "func": "RateHighlights_Filename_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "filename_06",
+      "coords": {
+        "x": 125,
+        "y": 135,
+        "w": 141,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x8000",
+          "literal": "9999999999999"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 3
+        },
+        {
+          "op": "onselect_fire",
+          "func": "RateHighlights_Filename_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "filename_07",
+      "coords": {
+        "x": 125,
+        "y": 151,
+        "w": 141,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x8000",
+          "literal": "9999999999999"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 3
+        },
+        {
+          "op": "onselect_fire",
+          "func": "RateHighlights_Filename_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "rate_00",
+      "coords": {
+        "x": 268,
+        "y": 39,
+        "w": 34,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "9999"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "RateHighlights_Rate_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "rate_01",
+      "coords": {
+        "x": 268,
+        "y": 55,
+        "w": 34,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "9999"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "RateHighlights_Rate_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "rate_02",
+      "coords": {
+        "x": 268,
+        "y": 71,
+        "w": 34,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "9999"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "RateHighlights_Rate_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "rate_03",
+      "coords": {
+        "x": 268,
+        "y": 87,
+        "w": 34,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "9999"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "RateHighlights_Rate_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "rate_04",
+      "coords": {
+        "x": 268,
+        "y": 103,
+        "w": 34,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "9999"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "RateHighlights_Rate_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "rate_05",
+      "coords": {
+        "x": 268,
+        "y": 119,
+        "w": 34,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "9999"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "RateHighlights_Rate_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "rate_06",
+      "coords": {
+        "x": 268,
+        "y": 135,
+        "w": 34,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "9999"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "RateHighlights_Rate_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "rate_07",
+      "coords": {
+        "x": 268,
+        "y": 151,
+        "w": 34,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "9999"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "RateHighlights_Rate_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "scrollUp",
+      "coords": {
+        "x": 303,
+        "y": 55,
+        "w": 9,
+        "h": 13
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": " "
+        },
+        {
+          "op": "onselect_fire",
+          "func": "RateHighlights_ScrollUp_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "scrollDown",
+      "coords": {
+        "x": 303,
+        "y": 152,
+        "w": 9,
+        "h": 13
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": " "
+        },
+        {
+          "op": "onselect_fire",
+          "func": "RateHighlights_ScrollDown_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "page",
+      "coords": {
+        "x": 281,
+        "y": 165,
+        "w": 8,
+        "h": 12
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "longDesc",
+      "coords": {
+        "x": -8,
+        "y": 165,
+        "w": 320,
+        "h": 12
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x8000"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "menuHint",
+      "coords": {
+        "x": -8,
+        "y": 21,
+        "w": 320,
+        "h": 12
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "newsOnDiscord",
+      "coords": {
+        "x": 42,
+        "y": 185,
+        "w": 90,
+        "h": 15
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "NEWS ON DISCORD"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 10
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": 39,
+          "up": -1,
+          "down": -1
+        },
+        {
+          "op": "onselect_fire",
+          "func": "newsOnDiscordSWOSGalore_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "menuExit",
+      "coords": {
+        "x": 172,
+        "y": 185,
+        "w": 90,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "str": "_aExit"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 12
+        },
+        {
+          "op": "nav",
+          "left": 38,
+          "right": -1,
+          "up": -1,
+          "down": -1
+        },
+        {
+          "op": "onselect_fire",
+          "func": "RateHighlights_menuExit_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "dummy",
+      "coords": {
+        "x": -8,
+        "y": -8,
+        "w": 1,
+        "h": 15
+      },
+      "commands": [
+        {
+          "op": "fg_func",
+          "func": "drawStarIconsForRateHighlights"
+        }
+      ]
+    }
+  ]
+}

@@ -53,6 +53,7 @@ const char *Account_Url(AccountLink link);
  * 1 the account is good, -1 it is not (Account_Error says why, in the menus' capitals). */
 void        Account_Begin(const char *user, const char *password);
 int32_t     Account_Poll(void);
+void        Account_LogOut(void);               /* this session's log-in forgotten (LOG OUT) */
 const char *Account_Error(void);
 
 /* ---- ranked and league / cup matches (a service with ACCOUNT_HAS_RANKED) ----

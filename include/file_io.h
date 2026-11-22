@@ -51,4 +51,8 @@ void SelectFilesOnReturn(void);
 void SelectFilesSort(void);             /* the list's order ([general] file_sort: name | date) */
 void SelectFilesSortOnSelect(void);     /* SORTED BY: the other order */
 
+/* The next load lists (GetFilenameAndExtension) show only these two extensions ('.SRP' as
+ * 0x2E535250); FileIo_ListOnly(0, 0) every kind again. */
+void FileIo_ListOnly(uint32_t ext1, uint32_t ext2);
+
 #endif

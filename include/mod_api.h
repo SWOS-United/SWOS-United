@@ -478,6 +478,8 @@ int32_t ModApi_LatestReplay(char *out, int32_t cap);
  * highlights file (said). SDL builds (SWOS Galore's charts). Copied to the save folder as
  * <SLUG>.HIL first (the highlights loaders take a bare name there). */
 int32_t ModApi_ViewHighlights(const char *slug, const char *name, int32_t scene);
+/* The same at `fps` frames a second (0: the file's own rate). */
+int32_t ModApi_ViewHighlightsAt(const char *slug, const char *name, int32_t scene, int32_t fps);
 int32_t ModApi_ListFiles(const char *dir, int32_t (*each)(const char *name, void *ctx), void *ctx);
 /* A whole file by its path (as ModApi_ListFiles' folders are named), NUL-terminated; free() it.
  * NULL when it cannot be read. */

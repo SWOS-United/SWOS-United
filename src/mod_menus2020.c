@@ -53,6 +53,9 @@
 #include "menus.h"
 #include "platform_sdl.h"       /* Platform_OpenUrl, Platform_RequestQuit */
 #include "united_ticker.h"       /* UnitedTicker_News */
+#include "menu_load_json.h"      /* MenuJson_RegisterSymbols: REPLAYS' handlers, by SWOS 2020's names */
+#include "menu_symbols.h"
+#include "swos2020_menus.h"
 
 #define SLUG "menus2020"
 
@@ -615,7 +618,6 @@ static void extras(void)   { open_screen(SLUG "/extrasMenu"); }
 /* The game's own handlers, each ending in CommonMenuExit, and then this menu's layout. */
 #define GAME_BUTTON(name, fn) static void name(void) { fn(); main_refresh(); }
 GAME_BUTTON(multiplayer, MultiplayerMenuSelected)
-GAME_BUTTON(replays, HighlightsMenu)
 GAME_BUTTON(options, OptionsMenuSelected)
 GAME_BUTTON(continueContest, StartContest)
 GAME_BUTTON(saveContest, SaveContest)
@@ -624,6 +626,110 @@ GAME_BUTTON(credits, CreditsMenuSelected)
 GAME_BUTTON(classicCareer, CareerSeasons_Classic)     /* (src/career_seasons.c) */
 GAME_BUTTON(worldCareer, CareerSeasons_World)
 #undef GAME_BUTTON
+
+/* ======================================================================================
+ * REPLAYS (swos-2020 replaysMain.mnu; replays/replaysMenu.cpp): SWOS GALORE (the galore2020 mod's,
+ * shown while it is on), HIGHLIGHTS (the game's own: VIEW / LOAD / SAVE), MATCH REPLAYS (a whole
+ * match's .SRP or .RPL, chosen from the save folder, in the highlights viewer), REPLAY CONTROLS (the
+ * viewer's keys, replayControls.mnu), and under them what the chosen one does.
+ * ====================================================================================== */
+extern uint8_t   _highlightsMenu[];
+extern uint8_t   _selectedFilename[];
+extern uintptr_t _extension;
+extern int16_t   GetFilenameAndExtension(uint32_t preferredExt, uint8_t *defaultFilename, uint8_t *menuTitleStr);
+extern void      ShowHighlights(void);
+extern int32_t   ReplayV2_Load(const uint8_t *name);
+extern void      ReplayV2_Unload(void);
+extern void      DosReplay_ClearRpl(void);
+extern int       DosReplay_LoadRpl(uint8_t *filename);
+
+static int32_t galore_entry(void) { return ModApi_FindEntry(MODPOINT_MODES, "galore2020"); }
+
+static void replaysMainMenu_OnInit(void)
+{
+    if (galore_entry() < 0) {           /* (no SWOS Galore: HIGHLIGHTS first) */
+        show(ReplaysMainMenu_swosGalore, 0);
+        nav(ReplaysMainMenu_highlights, -1, -1, -1, ReplaysMainMenu_matchReplays);
+        SetCurrentEntry(ReplaysMainMenu_highlights);
+    }
+}
+
+static void replaysMainMenu_OnDraw(void)
+{
+    const int32_t m = ModApi_MenuCurrentEntry();
+    ModApi_MenuText(ReplaysMainMenu_desc, m == ReplaysMainMenu_highlights ? "GO TO THE HIGHLIGHTS MENU TO PROCEED"
+                                       : m == ReplaysMainMenu_swosGalore ? "RATE AND CHART THE HIGHLIGHTS ONLINE"
+                                       : m == ReplaysMainMenu_matchReplays ? "VIEW AND SAVE THE FULL LENGTH MATCH REPLAYS"
+                                       : m == ReplaysMainMenu_replayControls ? "VIEW INSTRUCTION OF REPLAY CONTROLS"
+                                       : "BACK TO THE PREVIOUS MENU");
+}
+
+static void swosGalore_OnSelect(void)
+{
+    const int32_t i = galore_entry();
+    if (i >= 0)
+        ModApi_RunEntry(MODPOINT_MODES, i);
+}
+
+static void highlights_OnSelect(void) { ShowMenu(_highlightsMenu); }
+
+static void matchReplays_OnSelect(void)
+{
+    static uint8_t title[] = "MATCH REPLAYS";
+    int16_t r;
+    FileIo_ListOnly(0x2E535250u, 0x2E52504Cu);      /* '.SRP' (ours), '.RPL' (the PC's, SWOS 2020's) */
+    r = GetFilenameAndExtension(0, title, title);
+    FileIo_ListOnly(0, 0);
+    if (r != 0)
+        return;
+    DosReplay_ClearRpl();
+    ReplayV2_Unload();
+    if ((_extension == 0x2E535250u ? ReplayV2_Load(_selectedFilename) : DosReplay_LoadRpl(_selectedFilename)) != 0) {
+        ModApi_ShowError("NOT A MATCH REPLAY");
+        return;
+    }
+    ShowHighlights();
+    DosReplay_ClearRpl();
+    ReplayV2_Unload();
+}
+
+static void replayControls_OnSelect(void) { ModApi_ShowMenu("swos2020/replaysControlsMenu"); }
+
+static void replaysControlsMenu_OnInit(void) {}
+/* drawReplayControlsLayout(5, 23): the keyboard and the pad, at SWOS 2020's screen 5, 23 -- its
+ * menus' entries 8 right of where they are imported, so placed by the header (92, 0 as imported) */
+static void replaysControlsMenu_OnDraw(void)
+{
+    ModApi_DrawMapAtEntry(SLUG, "replay_controls_300x56_1x1_map", ReplaysControlsMenu_header, 5 - 8 - 92, 23, 0, 0,
+                          300, 56, 0);
+}
+
+static void replays_register(void)      /* (at the mod's start: SWOS 2020's names, global) */
+{
+    static int32_t registered;
+    if (!registered) {
+        static const MenuSymbol kHandlers[] = {
+            { "replaysMainMenu_OnInit", (void *)replaysMainMenu_OnInit, SYM_FUNC },
+            { "replaysMainMenu_OnDraw", (void *)replaysMainMenu_OnDraw, SYM_FUNC },
+            { "swosGalore_OnSelect", (void *)swosGalore_OnSelect, SYM_FUNC },
+            { "highlights_OnSelect", (void *)highlights_OnSelect, SYM_FUNC },
+            { "matchReplays_OnSelect", (void *)matchReplays_OnSelect, SYM_FUNC },
+            { "replayControls_OnSelect", (void *)replayControls_OnSelect, SYM_FUNC },
+            { "replaysControlsMenu_OnInit", (void *)replaysControlsMenu_OnInit, SYM_FUNC },
+            { "replaysControlsMenu_OnDraw", (void *)replaysControlsMenu_OnDraw, SYM_FUNC },
+        };
+        registered = 1;
+        MenuJson_RegisterSymbols(kHandlers, (int)(sizeof kHandlers / sizeof kHandlers[0]));
+    }
+}
+
+static void replays(void)
+{
+    replays_register();
+    ModApi_ShowMenu("swos2020/replaysMainMenu");
+    CommonMenuExit();
+    main_refresh();
+}
 
 /* QUIT: SWOS 2020's quit.mnu (showQuitMenu) -- QUIT TO <the system this build is for>, RETURN TO
  * GAME chosen -- asked first, as closing the window is not. */
@@ -774,7 +880,7 @@ static void career(void) { choose(CareerMenu); }
 /* ======================================================================================
  * PRACTICE (swos-2020 practice.mnu): FRIENDLY MATCH; TEAM TRAINING, PENALTY SHOOTOUT and DEMO GAME
  * are OpenSWOS's practice mod's (practice.training / .shootout / .demo, named in the JSON), shown
- * while it is on; MODES (ours, the mods' entries) when a mod other than practice has one.
+ * while it is on. (MODES, the mods' entries, was here until 2026-11-21.)
  * ====================================================================================== */
 enum { Prac_header, Prac_friendly, Prac_training, Prac_shootout, Prac_demo, Prac_help, Prac_exit,
        Prac_modes };
@@ -782,7 +888,9 @@ enum { Prac_header, Prac_friendly, Prac_training, Prac_shootout, Prac_demo, Prac
 static void practiceInit(void)
 {
     const int32_t practice = ModApi_FindEntry(MODPOINT_MODES, "practice") >= 0;
-    const int32_t modes = ModApi_EntryCount(MODPOINT_MODES) > (practice ? 1 : 0);
+    /* (no MODES here any more -- Playa, 2026-11-21: SWOS GALORE is in REPLAYS, SPEEDRUNS and
+     *  CHALLENGES in COMPETE, the practice mod's own entries above) */
+    const int32_t modes = 0;
     const int32_t last = modes ? Prac_modes : practice ? Prac_demo : Prac_friendly;
 
     show(Prac_training, practice);
@@ -1131,6 +1239,7 @@ static void init(void)
         { "tickerUp", tickerUp }, { "tickerDown", tickerDown },
     };
     ModApi_RegisterHandlers(SLUG, handlers, (int32_t)(sizeof handlers / sizeof handlers[0]));
+    replays_register();
 }
 
 /* The lobby, SWOS 2020's way: a change on the other side leaves this player's GO as it is -- a
