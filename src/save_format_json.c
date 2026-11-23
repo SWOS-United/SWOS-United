@@ -419,6 +419,74 @@ static int save_world_ok(const uint8_t *src, uint32_t size)
     return 0;
 }
 
+/* The season a career save was made in (src/career_seasons.c, CLASSIC CAREER's SEASON START):
+ * "season", a season's folder in seasons/; none, 96/97's own. A career of another season than the
+ * one played is refused, as one of another world: its teams are not these. SDL (the Amiga plays
+ * 96/97's own alone). */
+static int save_season_ok(const uint8_t *src, uint32_t size)
+{
+#ifdef SWOS_SDL_BUILD
+    extern const char *CareerSeasons_RunningSlug(void);
+    extern const char *CareerSeasons_LabelOf(const char *slug);
+    char slug[40] = {0};
+    mjson_get_string((const char *)src, (int)size, "$.season", slug, sizeof slug);
+    if (strcmp(slug, CareerSeasons_RunningSlug()) == 0)
+        return 1;
+    fprintf(stderr, "[save] a career of season %s, this is %s: refused (SEASON START: choose %s)\n",
+            CareerSeasons_LabelOf(slug), CareerSeasons_LabelOf(CareerSeasons_RunningSlug()),
+            CareerSeasons_LabelOf(slug));
+    return 0;
+#else
+    (void)src;
+    (void)size;
+    return 1;
+#endif
+}
+
+/* A save of another world or season than the one played: that one, now (src/world_switch.c, no
+ * restart), so it loads -- a 1994/95 career loaded after a 2024/25 one said "FILE SAVED BY
+ * DIFFERENT S.W.O.S. VERSION" (2026-11-19). `career`: its "season" counts (a career save writes
+ * it; none is 96/97's own); a competition save's world alone. Not installed (no world package, no
+ * season folder): nothing changes, and the checks after refuse it as before. SDL. */
+static void save_switch_to(const uint8_t *src, uint32_t size, int career)
+{
+#ifdef SWOS_SDL_BUILD
+    extern int32_t WorldSwitch_To(const char *world, const char *season);
+    extern const char *CareerSeasons_RunningSlug(void);
+    char tag[16] = "9697", slug[40] = "";
+    mjson_get_string((const char *)src, (int)size, "$.world", tag, sizeof tag);
+    if (career)
+        mjson_get_string((const char *)src, (int)size, "$.season", slug, sizeof slug);
+    const int32_t w = World_FromTag(tag);
+    if (w < 0)
+        return;
+    const char *season = w == (int32_t)WORLD_9697 ? (career ? slug : CareerSeasons_RunningSlug()) : NULL;
+    if (w == (int32_t)World_Current() && (!season || strcmp(season, CareerSeasons_RunningSlug()) == 0))
+        return;
+    if (season && season[0]) {          /* (its folder: else the season check below refuses it) */
+        char path[256];
+        snprintf(path, sizeof path, "seasons/%s/mod.json", season);
+        FILE *f = fopen(path, "rb");
+        if (!f)
+            return;
+        fclose(f);
+    }
+    if (w != (int32_t)WORLD_9697) {     /* (its package installed: data_json/worlds/<tag>/WORLD.ini) */
+        char rel[64], path[1024];
+        snprintf(rel, sizeof rel, "data_json/worlds/%s/WORLD.ini", tag);
+        FILE *f = fopen(swos_data_path(rel, path, (uint32_t)sizeof path), "rb");
+        if (!f)
+            return;
+        fclose(f);
+    }
+    fprintf(stderr, "[save] made in %s%s%s: switching to it\n", tag, season && season[0] ? " " : "",
+            season ? season : "");
+    WorldSwitch_To(tag, season ? season : "");
+#else
+    (void)src; (void)size; (void)career;
+#endif
+}
+
 /* A world's national files' sizes (countries 80..85: their ranges of global team numbers,
  * fit_world_national_files). A world's career save writes them as "national_files"; one without
  * them was saved with 96/97's (49 34 10 15 31 4). A career whose sizes are not the game's is refused:
@@ -4886,10 +4954,13 @@ static int dj_inplace_load(const char *ids, int idsLen, int isLeague,
     return loaded;
 }
 
+static int s_djGraphInstalled;
+/* A world or season switch (world_switch.c): the compiled data is back, the install runs again. */
+void DataJson_ResetCompetitionGraph(void) { s_djGraphInstalled = 0; }
+
 void DataJson_InstallCompetitionGraph(void)
 {
-    static int installed = 0;
-    if (installed) return;
+    if (s_djGraphInstalled) return;
     /* SWOS_DATA_JSON is default-ON; set SWOS_DATA_JSON=0 to fall back to the
        compiled competition tables. */
     { const char *v = getenv("SWOS_DATA_JSON"); if (v && v[0] == '0' && v[1] == '\0') return; }
@@ -4897,7 +4968,7 @@ void DataJson_InstallCompetitionGraph(void)
        leaves the compiled competitionsTable in place (so the two SWOS_DATA_JSON
        effects — JSON teams vs JSON competition graph — can be tested apart). */
     if (getenv("SWOS_DATA_JSON_NO_COMP")) return;
-    installed = 1;   /* single attempt; any country left unswapped stays compiled */
+    s_djGraphInstalled = 1;   /* single attempt; any country left unswapped stays compiled */
 
     static struct dj_graph_reg reg[DJ_MAX_RECS];
     int regN = 0, nCups = 0, nLeagues = 0, poolIdx = 0;
@@ -7161,6 +7232,14 @@ int16_t SaveJson_WriteCareer(uint8_t *filename)
         "file_kind",      KIND_CAREER,
         "world",          World_Tag(),
         "num_selected_teams", (int)_numSelectedTeams);
+#ifdef SWOS_SDL_BUILD
+    {   /* (save_season_ok) SEASON START's season, when it is not 96/97's own: so every 96/97 save
+         * is what it was */
+        extern const char *CareerSeasons_RunningSlug(void);
+        if (CareerSeasons_RunningSlug()[0])
+            mjson_printf(json_out_emit, &out, "%Q: %Q,\n  ", "season", CareerSeasons_RunningSlug());
+    }
+#endif
     if (World_Current() != WORLD_9697) {        /* (save_national_ok) */
         int32_t nf[6];
         national_file_sizes(nf);
@@ -9173,7 +9252,8 @@ int16_t SaveJson_LoadCareer(uint8_t *filename, const uint8_t *src_unused,
         swos_io_free(src);
         return 1;
     }
-    if (!save_world_ok(src, src_size) || !save_national_ok(src, src_size)) {
+    save_switch_to(src, src_size, 1);   /* (its world and season, now: then the checks) */
+    if (!save_world_ok(src, src_size) || !save_national_ok(src, src_size) || !save_season_ok(src, src_size)) {
         swos_io_free(src);
         return 1;
     }
@@ -9888,7 +9968,7 @@ static int16_t load_competition_mem(const uint8_t *src, uint32_t src_size, const
         if (rk[RK_KIND].v == NULL || rk[RK_KIND].vt != MJSON_TOK_STRING ||
             rk[RK_KIND].vlen != kl + 2 ||
             memcmp(rk[RK_KIND].v + 1, kind, (size_t)kl) != 0 ||
-            (!any_world && !save_world_ok(src, src_size))) {
+            (!any_world && (save_switch_to(src, src_size, 0), !save_world_ok(src, src_size)))) {
             return 1;
         }
     }

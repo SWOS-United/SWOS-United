@@ -2821,31 +2821,26 @@ __attribute__((used, externally_visible))
 void MultiplayerMenuSelected(void)
 {
 #ifdef SWOS_NETPLAY
+#ifdef SWOS_SDL_BUILD
+    /* Mods that say "online": false (a team database, SEASON START's season) are set aside for
+     * online play and come back after it: MULTIPLAYER is 96/97 as it comes, whatever is on
+     * offline (Playa, 2026-11-21; it used to refuse with "turn them off, then restart"). */
+    const int32_t switched = WorldSwitch_OnlineBegin();
+#endif
     {   /* Mods that change the game play online against a player with the same ones: the
          * handshake compares their signature (Mods_OnlineSignature, src/p2p_link.c). */
         char mods[160];
         if (Mods_OnlineSignature(mods, sizeof mods))
             fprintf(stderr, "[mods] online with %s: only against the same mods\n", mods);
     }
-#ifdef SWOS_SDL_BUILD
-    {   /* Mods that say "online": false (an offline-only team database): said here, before the
-         * log-in, not by a refused match later (docs/MODS.md §10). */
-        char mods[200], text[400];
-        if (Mods_OfflineOnly(mods, sizeof mods)) {
-            static const char *const ok[] = { "OK" };
-            snprintf(text, sizeof text, "THESE MODS ARE NOT FOR ONLINE PLAY: %s.|TURN THEM OFF IN OPTIONS - MODS, "
-                     "THEN RESTART, TO PLAY ONLINE.", mods);
-            fprintf(stderr, "[mods] MULTIPLAYER: offline-only mods on (%s): not started\n", mods);
-            MenuDialog_Show("PLAY ONLINE", text, ok, 1, 0);
-            CommonMenuExit();
-            return;
-        }
-    }
-#endif
     OnlineMenus_Init();
     /* (online is SWOS 96/97 whatever world this game plays offline, the world back after it:
      *  OnlineMenus_Show, src/world_online.c) */
     OnlineMenus_Show("swos2020/logInMenu");
+#ifdef SWOS_SDL_BUILD
+    if (switched)
+        WorldSwitch_OnlineEnd();
+#endif
     /* Coming back re-unpacks the main menu from its packed bytes, where the CONTINUE and
      * SAVE rows (entries 11/12) are visible and LOAD OLD COMPETITION sits below them --
      * what SWOSMainMenuInit did to them is gone. Every main-menu handler that opens a
@@ -5593,10 +5588,15 @@ void CareerMenuFinish(void)
     {   /* CAREER YEARS (12/13, career_init.c CareerYearsToggle): SDL only -- hidden on the Amiga,
          * its careers 20 seasons, START CAREER AS straight to CHOOSE TEAM again */
         extern void CareerYears_SetField(void);
+        extern void SeasonStart_SetField(void);     /* (SEASON START, 14/15, and INFO, 16: career_seasons.c) */
         CareerYears_SetField();
+        SeasonStart_SetField();
 #ifndef SWOS_SDL_BUILD
         _menuEntries[12].isInvisible = 1;
         _menuEntries[13].isInvisible = 1;
+        _menuEntries[14].isInvisible = 1;
+        _menuEntries[15].isInvisible = 1;
+        _menuEntries[16].isInvisible = 1;
         _menuEntries[9].downEntry = 10;
         _menuEntries[10].upEntry = 9;
         _careerParams.num_seasons = 20;
@@ -5632,6 +5632,10 @@ void CareerMenuInit(void)
     SetDefaultNameAndSurname();
     /* (a new career's length: career_params.json's, not a career loaded before it) */
     _careerParams.num_seasons = _careerYearsDefault;
+#ifdef SWOS_SDL_BUILD
+    { extern void CareerSeasons_CareerMenuInit(void);   /* (SEASON START; a restart's fields back) */
+      CareerSeasons_CareerMenuInit(); }
+#endif
     CareerMenuFinish();
 }
 

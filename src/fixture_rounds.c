@@ -69,6 +69,8 @@ static uint8_t *rounds(int32_t n, uint8_t *out)
     return out;
 }
 
+void FixtureRounds_Reset(void) { s_installed = 0; }   /* (world_switch.c: the table is back) */
+
 void FixtureRounds_Install(void)
 {
     uint8_t *p = s_tables;

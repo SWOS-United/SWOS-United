@@ -45,6 +45,7 @@
 #include "file_io.h"            /* LoadFileEx */
 #include "math68k.h"            /* CalculateDeltaXAndY */
 #include "gfx.h"
+#include "display.h"            /* _screen_width, _menu_draw_x_offset: the dark-yellow box */
 #include "easing.h"            /* the run-in's ease */
 #include "menu_load_json.h"     /* MenuJson_VerifyDynamic (SWOS_MENUS2020_TEST) */
 #include "menu_system.h"
@@ -52,6 +53,9 @@
 #include "menus.h"
 #include "platform_sdl.h"       /* Platform_OpenUrl, Platform_RequestQuit */
 #include "united_ticker.h"       /* UnitedTicker_News */
+#include "menu_load_json.h"      /* MenuJson_RegisterSymbols: REPLAYS' handlers, by SWOS 2020's names */
+#include "menu_symbols.h"
+#include "swos2020_menus.h"
 
 #define SLUG "menus2020"
 
@@ -60,6 +64,8 @@ extern int16_t DoContinueAbortMenu(uint8_t *header, uint8_t *changing, uint8_t *
 extern void MultiplayerMenuSelected(void);
 extern void CreditsMenuSelected(void);
 extern void ModesMenuSelected(void);
+extern void CareerSeasons_Classic(void);
+extern void CareerSeasons_World(void);
 
 static MenuEntry *entry(int32_t ordinal) { return CalcMenuEntryAddress((uint16_t)ordinal); }
 
@@ -81,7 +87,9 @@ enum {
     Main_multi, Main_compete, Main_practice,        /* (main.mnu's competition, practice, replays) */
     Main_options, Main_extras, Main_replays,        /* (its options, editing, extras) */
     Main_quit, Main_ticker, Main_liveCast,
-    Main_continue = 11, Main_save, Main_load, Main_multiplayer, Main_credits, Main_modes,
+    /* 14 and 16, the game's own MULTIPLAYER and MODES places: SWOS United's two careers
+     * (scripts/make_menus2020.py CAREER_BUTTONS; src/career_seasons.c) */
+    Main_continue = 11, Main_save, Main_load, Main_classicCareer, Main_credits, Main_worldCareer,
 };
 
 static uint16_t s_loadX, s_loadY;       /* LOAD's place under CONTINUE, as unpacked */
@@ -103,8 +111,10 @@ static void main_refresh(void)
     MenuEntry *cont = entry(Main_continue), *load = entry(Main_load);
     const int32_t contest = !cont->isInvisible;
 
-    show(Main_multiplayer, 0);
-    show(Main_modes, 0);
+    show(Main_classicCareer, 1);       /* (CommonMenuExit hides 14 and shows 16 for MODES) */
+    show(Main_worldCareer, 1);
+    nav(Main_classicCareer, -1, Main_worldCareer, Main_practice, contest ? Main_continue : Main_load);
+    nav(Main_worldCareer, Main_classicCareer, -1, Main_replays, contest ? Main_continue : Main_load);
     if (s_runState >= 1 && s_runState <= 3)     /* (unpacked again mid-run: no picture until they settle) */
         ModApi_SetMenuImage(Main_credits, NULL);
     s_liveShown = -2;                   /* (unpacked again: the JSON's idle picture) */
@@ -151,9 +161,9 @@ static void main_refresh(void)
             load->x = s_loadX;
             load->y = s_loadY;
         }
-        nav(Main_practice, -1, Main_replays, Main_compete, Main_continue);
-        nav(Main_replays, Main_practice, -1, Main_extras, Main_continue);
-        nav(Main_continue, -1, -1, Main_practice, Main_save);
+        nav(Main_practice, -1, Main_replays, Main_compete, Main_classicCareer);
+        nav(Main_replays, Main_practice, -1, Main_extras, Main_worldCareer);
+        nav(Main_continue, -1, -1, Main_classicCareer, Main_save);
         nav(Main_save, Main_quit, Main_load, Main_continue, -1);
         nav(Main_load, Main_save, Main_credits, Main_continue, -1);
         nav(Main_quit, -1, Main_save, Main_continue, -1);
@@ -166,11 +176,11 @@ static void main_refresh(void)
         }
         load->x = (uint16_t)(cont->x + (cont->dwWidth - load->dwWidth) / 2);
         load->y = cont->y;
-        nav(Main_practice, -1, Main_replays, Main_compete, Main_load);
-        nav(Main_replays, Main_practice, -1, Main_extras, Main_load);
-        nav(Main_load, Main_quit, Main_credits, Main_practice, -1);
-        nav(Main_quit, -1, Main_load, Main_practice, -1);
-        nav(Main_credits, Main_load, -1, Main_replays, -1);
+        nav(Main_practice, -1, Main_replays, Main_compete, Main_classicCareer);
+        nav(Main_replays, Main_practice, -1, Main_extras, Main_worldCareer);
+        nav(Main_load, Main_quit, Main_credits, Main_classicCareer, -1);
+        nav(Main_quit, -1, Main_load, Main_classicCareer, -1);
+        nav(Main_credits, Main_load, -1, Main_worldCareer, -1);
     }
 }
 
@@ -608,13 +618,118 @@ static void extras(void)   { open_screen(SLUG "/extrasMenu"); }
 /* The game's own handlers, each ending in CommonMenuExit, and then this menu's layout. */
 #define GAME_BUTTON(name, fn) static void name(void) { fn(); main_refresh(); }
 GAME_BUTTON(multiplayer, MultiplayerMenuSelected)
-GAME_BUTTON(replays, HighlightsMenu)
 GAME_BUTTON(options, OptionsMenuSelected)
 GAME_BUTTON(continueContest, StartContest)
 GAME_BUTTON(saveContest, SaveContest)
 GAME_BUTTON(loadContest, LoadOldCompetitionMenu)
 GAME_BUTTON(credits, CreditsMenuSelected)
+GAME_BUTTON(classicCareer, CareerSeasons_Classic)     /* (src/career_seasons.c) */
+GAME_BUTTON(worldCareer, CareerSeasons_World)
 #undef GAME_BUTTON
+
+/* ======================================================================================
+ * REPLAYS (swos-2020 replaysMain.mnu; replays/replaysMenu.cpp): SWOS GALORE (the galore2020 mod's,
+ * shown while it is on), HIGHLIGHTS (the game's own: VIEW / LOAD / SAVE), MATCH REPLAYS (a whole
+ * match's .SRP or .RPL, chosen from the save folder, in the highlights viewer), REPLAY CONTROLS (the
+ * viewer's keys, replayControls.mnu), and under them what the chosen one does.
+ * ====================================================================================== */
+extern uint8_t   _highlightsMenu[];
+extern uint8_t   _selectedFilename[];
+extern uintptr_t _extension;
+extern int16_t   GetFilenameAndExtension(uint32_t preferredExt, uint8_t *defaultFilename, uint8_t *menuTitleStr);
+extern void      ShowHighlights(void);
+extern int32_t   ReplayV2_Load(const uint8_t *name);
+extern void      ReplayV2_Unload(void);
+extern void      DosReplay_ClearRpl(void);
+extern int       DosReplay_LoadRpl(uint8_t *filename);
+
+static int32_t galore_entry(void) { return ModApi_FindEntry(MODPOINT_MODES, "galore2020"); }
+
+static void replaysMainMenu_OnInit(void)
+{
+    if (galore_entry() < 0) {           /* (no SWOS Galore: HIGHLIGHTS first) */
+        show(ReplaysMainMenu_swosGalore, 0);
+        nav(ReplaysMainMenu_highlights, -1, -1, -1, ReplaysMainMenu_matchReplays);
+        SetCurrentEntry(ReplaysMainMenu_highlights);
+    }
+}
+
+static void replaysMainMenu_OnDraw(void)
+{
+    const int32_t m = ModApi_MenuCurrentEntry();
+    ModApi_MenuText(ReplaysMainMenu_desc, m == ReplaysMainMenu_highlights ? "GO TO THE HIGHLIGHTS MENU TO PROCEED"
+                                       : m == ReplaysMainMenu_swosGalore ? "RATE AND CHART THE HIGHLIGHTS ONLINE"
+                                       : m == ReplaysMainMenu_matchReplays ? "VIEW AND SAVE THE FULL LENGTH MATCH REPLAYS"
+                                       : m == ReplaysMainMenu_replayControls ? "VIEW INSTRUCTION OF REPLAY CONTROLS"
+                                       : "BACK TO THE PREVIOUS MENU");
+}
+
+static void swosGalore_OnSelect(void)
+{
+    const int32_t i = galore_entry();
+    if (i >= 0)
+        ModApi_RunEntry(MODPOINT_MODES, i);
+}
+
+static void highlights_OnSelect(void) { ShowMenu(_highlightsMenu); }
+
+static void matchReplays_OnSelect(void)
+{
+    static uint8_t title[] = "MATCH REPLAYS";
+    int16_t r;
+    FileIo_ListOnly(0x2E535250u, 0x2E52504Cu);      /* '.SRP' (ours), '.RPL' (the PC's, SWOS 2020's) */
+    r = GetFilenameAndExtension(0, title, title);
+    FileIo_ListOnly(0, 0);
+    if (r != 0)
+        return;
+    DosReplay_ClearRpl();
+    ReplayV2_Unload();
+    if ((_extension == 0x2E535250u ? ReplayV2_Load(_selectedFilename) : DosReplay_LoadRpl(_selectedFilename)) != 0) {
+        ModApi_ShowError("NOT A MATCH REPLAY");
+        return;
+    }
+    ShowHighlights();
+    DosReplay_ClearRpl();
+    ReplayV2_Unload();
+}
+
+static void replayControls_OnSelect(void) { ModApi_ShowMenu("swos2020/replaysControlsMenu"); }
+
+static void replaysControlsMenu_OnInit(void) {}
+/* drawReplayControlsLayout(5, 23): the keyboard and the pad, at SWOS 2020's screen 5, 23 -- its
+ * menus' entries 8 right of where they are imported, so placed by the header (92, 0 as imported) */
+static void replaysControlsMenu_OnDraw(void)
+{
+    ModApi_DrawMapAtEntry(SLUG, "replay_controls_300x56_1x1_map", ReplaysControlsMenu_header, 5 - 8 - 92, 23, 0, 0,
+                          300, 56, 0);
+}
+
+static void replays_register(void)      /* (at the mod's start: SWOS 2020's names, global) */
+{
+    static int32_t registered;
+    if (!registered) {
+        static const MenuSymbol kHandlers[] = {
+            { "replaysMainMenu_OnInit", (void *)replaysMainMenu_OnInit, SYM_FUNC },
+            { "replaysMainMenu_OnDraw", (void *)replaysMainMenu_OnDraw, SYM_FUNC },
+            { "swosGalore_OnSelect", (void *)swosGalore_OnSelect, SYM_FUNC },
+            { "highlights_OnSelect", (void *)highlights_OnSelect, SYM_FUNC },
+            { "matchReplays_OnSelect", (void *)matchReplays_OnSelect, SYM_FUNC },
+            { "replayControls_OnSelect", (void *)replayControls_OnSelect, SYM_FUNC },
+            { "replaysControlsMenu_OnInit", (void *)replaysControlsMenu_OnInit, SYM_FUNC },
+            { "replaysControlsMenu_OnDraw", (void *)replaysControlsMenu_OnDraw, SYM_FUNC },
+        };
+        registered = 1;
+        MenuJson_RegisterSymbols(kHandlers, (int)(sizeof kHandlers / sizeof kHandlers[0]));
+    }
+}
+
+static void replays(void)
+{
+    replays_register();
+    ModApi_ShowMenu("swos2020/replaysMainMenu");
+    CommonMenuExit();
+    main_refresh();
+}
 
 /* QUIT: SWOS 2020's quit.mnu (showQuitMenu) -- QUIT TO <the system this build is for>, RETURN TO
  * GAME chosen -- asked first, as closing the window is not. */
@@ -715,10 +830,12 @@ static void competitionInit(void)
     nav(Comp_online, -1, -1, -1, row2);
     nav(Comp_speedruns, -1, Comp_diy, top, Comp_challenges);
     nav(Comp_diy, row2 == Comp_speedruns ? Comp_speedruns : -1, -1, top, Comp_preset);
-    nav(Comp_challenges, -1, Comp_preset, row2, Comp_career);
-    nav(Comp_preset, row3 == Comp_challenges ? Comp_challenges : -1, -1, Comp_diy, Comp_career);
-    nav(Comp_career, -1, -1, row3, Comp_exit);
-    nav(Comp_exit, -1, -1, Comp_career, -1);
+    /* (CLASSIC CAREER MODE: the main menu's two careers now -- CLASSIC CAREER, WORLD 26/27
+     *  CAREER; the row stays, hidden, so the ordinals do) */
+    show(Comp_career, 0);
+    nav(Comp_challenges, -1, Comp_preset, row2, Comp_exit);
+    nav(Comp_preset, row3 == Comp_challenges ? Comp_challenges : -1, -1, Comp_diy, Comp_exit);
+    nav(Comp_exit, -1, -1, row3, -1);
     SetCurrentEntry(Comp_diy);
 }
 
@@ -763,7 +880,7 @@ static void career(void) { choose(CareerMenu); }
 /* ======================================================================================
  * PRACTICE (swos-2020 practice.mnu): FRIENDLY MATCH; TEAM TRAINING, PENALTY SHOOTOUT and DEMO GAME
  * are OpenSWOS's practice mod's (practice.training / .shootout / .demo, named in the JSON), shown
- * while it is on; MODES (ours, the mods' entries) when a mod other than practice has one.
+ * while it is on. (MODES, the mods' entries, was here until 2026-11-21.)
  * ====================================================================================== */
 enum { Prac_header, Prac_friendly, Prac_training, Prac_shootout, Prac_demo, Prac_help, Prac_exit,
        Prac_modes };
@@ -771,7 +888,9 @@ enum { Prac_header, Prac_friendly, Prac_training, Prac_shootout, Prac_demo, Prac
 static void practiceInit(void)
 {
     const int32_t practice = ModApi_FindEntry(MODPOINT_MODES, "practice") >= 0;
-    const int32_t modes = ModApi_EntryCount(MODPOINT_MODES) > (practice ? 1 : 0);
+    /* (no MODES here any more -- Playa, 2026-11-21: SWOS GALORE is in REPLAYS, SPEEDRUNS and
+     *  CHALLENGES in COMPETE, the practice mod's own entries above) */
+    const int32_t modes = 0;
     const int32_t last = modes ? Prac_modes : practice ? Prac_demo : Prac_friendly;
 
     show(Prac_training, practice);
@@ -1104,6 +1223,7 @@ static void init(void)
         { "loadContest", loadContest }, { "quit", quit }, { "credits", credits },
 
         { "multiplayer", multiplayer },
+        { "classicCareer", classicCareer }, { "worldCareer", worldCareer },
         { "competitionInit", competitionInit }, { "competitionDraw", competitionDraw },
         { "quitInit", quitInit }, { "quitGame", quitGame }, { "returnToGame", returnToGame },
         { "online", online }, { "diy", diy }, { "preset", preset }, { "career", career },
@@ -1119,6 +1239,7 @@ static void init(void)
         { "tickerUp", tickerUp }, { "tickerDown", tickerDown },
     };
     ModApi_RegisterHandlers(SLUG, handlers, (int32_t)(sizeof handlers / sizeof handlers[0]));
+    replays_register();
 }
 
 /* The lobby, SWOS 2020's way: a change on the other side leaves this player's GO as it is -- a
@@ -1126,10 +1247,63 @@ static void init(void)
  * down with any change to their side, so a match starts only on a side both games have. */
 static int32_t keeps_ready(void) { return 1; }
 
+/* WORLD 26/27 CAREER in dark yellow (Playa, 2026-11-19): the menus' 16 colours have none (15 is
+ * bright yellow, 5 burnt orange), so its box is drawn in 15 and, each frame shown, every pixel of
+ * the box that still has 15 (not the text) is painted over in dark yellow -- as the dosmenus mod
+ * paints its shading, and after it (the fork's mods come later in the built-in list). Drawing only. */
+enum { kWorldCareerR = 0xB0, kWorldCareerG = 0x90, kWorldCareerB = 0x00 };
+static GfxTexture *s_wcTex;
+static uint8_t    *s_wcRgba;
+static int32_t     s_wcW, s_wcH;
+
+static void world_career_paint(void)
+{
+    extern const uint8_t *Platform_FrameShown(void);
+    int32_t x, y, w, h;
+    const uint8_t *fb;
+    if (!ModApi_IsMainMenu() || ModApi_InMatch() || ModApi_InReplay() ||
+        entry(Main_worldCareer)->isInvisible || !(fb = Platform_FrameShown()))
+        return;
+    ModApi_MenuEntryRect(Main_worldCareer, &x, &y, &w, &h);
+    x += _menu_draw_x_offset;
+    if (w <= 0 || h <= 0 || x < 0 || y < 0 || x + w > _screen_width || y + h > _screen_height)
+        return;
+    if (!s_wcTex || s_wcW != w || s_wcH != h) {
+        if (s_wcTex)
+            Gfx_DestroyTexture(s_wcTex);
+        free(s_wcRgba);
+        s_wcRgba = (uint8_t *)malloc((size_t)w * h * 4);
+        s_wcTex = s_wcRgba ? Gfx_CreateTexture(w, h, 0) : NULL;
+        s_wcW = w;
+        s_wcH = h;
+        if (!s_wcTex)
+            return;
+    }
+    int32_t any = 0;
+    for (int32_t j = 0; j < h; j++)
+        for (int32_t i = 0; i < w; i++) {
+            uint8_t *o = s_wcRgba + ((size_t)j * w + i) * 4;
+            const int32_t box = fb[(size_t)(y + j) * FRONTBUFFER_ROW_STRIDE_BYTES + x + i] == 15;
+            o[0] = kWorldCareerR;
+            o[1] = kWorldCareerG;
+            o[2] = kWorldCareerB;
+            o[3] = box ? 255 : 0;
+            any |= box;
+        }
+    if (!any)
+        return;
+    const SDL_FRect dst = { (float)x, (float)y, (float)w, (float)h };
+    Gfx_UpdateTexture(s_wcTex, s_wcRgba, w * 4);
+    Gfx_SetSpace(GFX_SPACE_PICTURE);
+    Gfx_SetBlend(GFX_BLEND_ALPHA);
+    Gfx_DrawTexture(s_wcTex, NULL, &dst);
+}
+
 const ModDef ModDef_menus2020 = {
     .slug            = SLUG,
     .init            = init,
     .menuDrawn       = run_menu_frame,
+    .frameDrawn      = world_career_paint,
     .lobbyKeepsReady = keeps_ready,
 };
 

@@ -49,15 +49,24 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+#include <sys/stat.h>
 
 #define SLUG "online-records"
 
-/* WRITES to sensiblesoccer.de -- a challenge won, a speedrun run -- are OFF: "Nothing from OpenSWOS
- * should go to sensiblesoccer.de" (the owner, 2026-11-07). The records are read from there (the
- * boards, the tallies, the shared challenges), never written; a win or a run stays the player's
- * own until SWOS United's own server (SWOS-API) takes them. The code that sent them stays, behind
- * this switch, for that server. */
+/* A challenge won is NOT written to sensiblesoccer.de: "Nothing from OpenSWOS should go to
+ * sensiblesoccer.de" (OpenSWOS's owner, 2026-11-07). The code that sent it stays, behind this
+ * switch, for SWOS United's own server (SWOS-API). */
 #define UNITED_WRITE_RECORDS 0
+
+/* A SPEEDRUN run IS written, as SWOS 2020 did (Playa, 2026-11-21: "you need to log in, then your
+ * runs get uploaded if they were successful"): only a run that reached its target, only for a
+ * player who logged in at SPEEDRUN's log-in (speedrun2020 says so: speedrun.online), into SWOS
+ * 2020's records on the site -- played + 1, the last time, the best only when it is better -- with
+ * its replay: the match's .SRP (SWOS 2020 sent a .7z of its .RPL; Playa, 2026-11-21: SWOS United
+ * replaces it, nothing has to read the old way). */
+#define UNITED_WRITE_SPEEDRUNS 1
+static int32_t s_speedrunOnline;    /* SPEEDRUN was entered through LOGIN (not PLAY OFFLINE) */
 
 static void who(char *out, uint32_t cap, int32_t mustBeLoggedIn)
 {
@@ -84,6 +93,9 @@ typedef struct {
     char           name[96], category[96];  /* won */
     UnitedSpeedrun run;                     /* (run.user points at user) */
     int32_t        style, target;           /* board, mine */
+    unsigned char *replay;                  /* speedrun: its .SRP (malloc'd: the worker frees it) */
+    uint32_t       replaySize;
+    char           replayName[96];
 } Job;
 
 /* The boards' answers (under s_lock): each the last one asked for, by what was asked. */
@@ -105,6 +117,53 @@ static UnitedChallengeTally s_tally;
 static int32_t              s_speedrunState; /* 0 none, 1 working, 2 line here */
 static char                 s_speedrunLine[64];
 
+/* A board's replay is this game's (".srp"), not SWOS 2020's (".rpl", a .7z on the site). */
+static int32_t srp_name(const char *file)
+{
+    const size_t n = strlen(file);
+    return n >= 4 && SDL_strcasecmp(file + n - 4, ".srp") == 0;
+}
+
+/* The run's replay, for the upload: the match's recording (LATEST.SRP, written when the match
+ * ended), named as SWOS 2020 named its runs -- "<user>-2026-1121-193005-auto.srp" (the boards read
+ * the date from its end). 0 none. */
+static int32_t run_replay(const char *user, Job *j)
+{
+    char path[1024];
+    FILE *f;
+    long size;
+    time_t now = time(NULL);
+    struct tm *tm = localtime(&now);
+    uint32_t k = 0;
+    struct stat st;
+    if (!tm || ModApi_LatestReplay(path, (int32_t)sizeof path) != 1)
+        return 0;
+    if (stat(path, &st) != 0 || st.st_mtime + 120 < now) {   /* (an older match's: not this run's) */
+        fprintf(stderr, "[online-records] speedrun: the last recording is not this run's\n");
+        return 0;
+    }
+    if (!(f = fopen(path, "rb")))
+        return 0;
+    fseek(f, 0, SEEK_END);
+    size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    j->replay = size > 0 && size < (8L << 20) ? (unsigned char *)malloc((size_t)size) : NULL;
+    if (!j->replay || fread(j->replay, 1, (size_t)size, f) != (size_t)size) {
+        free(j->replay);
+        j->replay = NULL;
+        fclose(f);
+        return 0;
+    }
+    fclose(f);
+    j->replaySize = (uint32_t)size;
+    for (const char *c = user; *c && k < 40; c++)   /* (a file name the site keeps as it is) */
+        j->replayName[k++] = (*c >= 'A' && *c <= 'Z') || (*c >= 'a' && *c <= 'z') || (*c >= '0' && *c <= '9') ||
+                             *c == '_' ? *c : '_';
+    snprintf(j->replayName + k, sizeof j->replayName - k, "-%04d-%02d%02d-%02d%02d%02d-auto.srp",
+             tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec);
+    return 1;
+}
+
 static void push(const Job *j)
 {
     SDL_LockMutex(s_lock);
@@ -114,6 +173,7 @@ static void push(const Job *j)
         SDL_CondSignal(s_wake);
     } else {
         fprintf(stderr, "[online-records] the queue is full: a job dropped\n");
+        free(j->replay);
     }
     SDL_UnlockMutex(s_lock);
 }
@@ -188,9 +248,14 @@ static void run_job(Job *j)
     } else if (j->kind == J_RPL) {
         unsigned char *packed = NULL, *data = NULL;
         uint32_t packedSize = 0, size = 0;
-        const int32_t ok = UnitedRecords_SpeedrunReplay(j->name, &packed, &packedSize) &&
-                           United7z_FirstFile(packed, packedSize, ".rpl", &data, &size);
-        free(packed);
+        int32_t ok;
+        if (srp_name(j->name)) {        /* (this game's: as it was uploaded) */
+            ok = UnitedRecords_SpeedrunReplay(j->name, &data, &size);
+        } else {
+            ok = UnitedRecords_SpeedrunReplay(j->name, &packed, &packedSize) &&
+                 United7z_FirstFile(packed, packedSize, ".rpl", &data, &size);
+            free(packed);
+        }
         SDL_LockMutex(s_lock);
         free(s_fetch[F_RPL].text);
         s_fetch[F_RPL].text = ok ? (char *)data : NULL;
@@ -218,13 +283,19 @@ static void run_job(Job *j)
     } else if (j->kind == J_SPEEDRUN) {
         char line[64];
         j->run.user = j->user;
+        j->run.replay = j->replay;
+        j->run.replaySize = j->replaySize;
+        j->run.replayName = j->replayName;
         const int32_t ok = UnitedRecords_SpeedrunRun(&j->run, line, sizeof line);
+        free(j->replay);
+        j->replay = NULL;
         SDL_LockMutex(s_lock);
         snprintf(s_speedrunLine, sizeof s_speedrunLine, "%s", ok ? line : "");
         s_speedrunState = 2;
         SDL_UnlockMutex(s_lock);
-        fprintf(stderr, "[online-records] speedrun %s (style %d, mode %d, difficulty %d): %s\n",
-                ok ? "sent" : "NOT sent", (int)j->run.style, (int)j->run.mode, (int)j->run.difficulty, line);
+        fprintf(stderr, "[online-records] speedrun %s (style %d, mode %d, difficulty %d, replay %s, %u bytes): %s\n",
+                ok ? "sent" : "NOT sent", (int)j->run.style, (int)j->run.mode, (int)j->run.difficulty,
+                j->replayName[0] ? j->replayName : "none", (unsigned)j->replaySize, line);
     }
 }
 
@@ -371,8 +442,9 @@ static int32_t service(const char *method, const char *args, char *out, uint32_t
             return 1;
         }
         int32_t rc = f->state == 1 ? 1 : f->state == 3 ? -1 : 0;
-        if (rc == 0)
-            rc = ModApi_SaveFile("speedrun2020", "run.RPL", f->text, f->size) == 0 ? 0 : -1;
+        if (rc == 0)        /* (run.SRP: SWOS United's; run.RPL: SWOS 2020's) */
+            rc = ModApi_SaveFile("speedrun2020", srp_name(j.name) ? "run.SRP" : "run.RPL", f->text, f->size) == 0
+                 ? 0 : -1;
         if (rc == -1)
             f->state = 0;               /* (asked again, it is fetched again) */
         SDL_UnlockMutex(s_lock);
@@ -488,9 +560,18 @@ static int32_t service(const char *method, const char *args, char *out, uint32_t
         SDL_UnlockMutex(s_lock);
         return 0;
     }
+    if (!strcmp(method, "speedrun.online")) {
+        s_speedrunOnline = json_bool(args, "$.on");
+        return 0;
+    }
     if (!strcmp(method, "speedrun.finished")) {
-        if (!UNITED_WRITE_RECORDS)
-            return -1;          /* (not sent: see UNITED_WRITE_RECORDS) */
+        SDL_LockMutex(s_lock);  /* (a run not sent has no line: not the last one's) */
+        if (s_speedrunState != 1)
+            s_speedrunState = 0;
+        SDL_UnlockMutex(s_lock);
+        if (!UNITED_WRITE_SPEEDRUNS || !s_speedrunOnline || !json_bool(args, "$.done"))
+            return -1;          /* (not sent: offline, or the target not reached -- SWOS 2020's
+                                 *  g_SpeedrunResult == 1 only) */
         who(me, sizeof me, 1);
         if (!me[0])
             return -1;
@@ -508,11 +589,15 @@ static int32_t service(const char *method, const char *args, char *out, uint32_t
             j.run.difficulty = preset >= 0 && preset <= 4 ? (int32_t)preset
                              : UnitedRecords_Difficulty(json_num(args, "$.yours"), json_num(args, "$.theirs"));
         }
+        if (j.run.mode == 5 || j.run.mode == 7)
+            j.run.difficulty = 0;   /* (the cards have one board: the site's rows are difficulty 0) */
         j.run.done = json_bool(args, "$.done");
         j.run.frames = (int32_t)json_num(args, "$.frames");
         j.run.ms = (int32_t)json_num(args, "$.ms");
-        if (j.run.mode < 0 || j.run.mode > 7)
+        if (j.run.mode < 0 || j.run.mode > 7 || j.run.frames <= 0)
             return -1;
+        if (!run_replay(me, &j))
+            fprintf(stderr, "[online-records] speedrun: no replay to send with it\n");
         SDL_LockMutex(s_lock);
         s_speedrunState = 1;
         s_speedrunLine[0] = 0;
@@ -525,6 +610,8 @@ static int32_t service(const char *method, const char *args, char *out, uint32_t
         const int32_t state = s_speedrunState;
         if (state == 2 && out && cap)
             snprintf(out, cap, "%s", s_speedrunLine);
+        else if (state == 1 && out && cap)  /* (SWOS 2020's "RECORD ... WILL BE UPLOADED") */
+            snprintf(out, cap, "UPLOADING THE RECORD...");
         SDL_UnlockMutex(s_lock);
         return state == 1 ? 1 : state == 2 && s_speedrunLine[0] ? 0 : -1;
     }

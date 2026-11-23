@@ -97,6 +97,8 @@ extern void ClubBusinessMenu(void);
 extern void ClubTeams(void);
 extern void CoachOrPlayerCoach(void);
 extern void CareerYearsToggle(void);
+extern void SeasonStartToggle(void);
+extern void SeasonInfo(void);
 extern void CompetitionInfo(void);
 extern void CompetitionStatsInit(void);
 extern void CompetitionStatsWinners(void);
@@ -584,6 +586,8 @@ extern char _aSquad[];
 extern char _aStar[];
 extern char _aStartCareerAs[];
 extern char _aCareerYears[];
+extern char _aSeasonStart[];
+extern char _aSeasonInfo[];
 extern char _aStatistics[];
 extern char _aStats[];
 extern char _aSubstitutes[];
@@ -710,6 +714,7 @@ extern char* _skillFilterStringTable[];
 extern char _managerNameBuffer[];
 extern char _managerSexBuffer[];
 extern char _careerYearsText[];
+extern char _seasonStartText[];
 extern char _managerSurnameBuffer[];
 extern char _offsetCoachOrPlayer[];
 extern char _saveFileTitle[];
@@ -5314,7 +5319,7 @@ Menu_Career _careerMenu = {
     },
     {
         { 102, -91, 100, 15 },
-        { MENU_CMD_NAV, -1, -1, 13, 11 },
+        { MENU_CMD_NAV, -1, -1, 15, 11 },
         { MENU_CMD_COLORS, 0xE },
         { MENU_CMD_TEXT_PTR, 0x0, _aChooseTeam },
         { MENU_CMD_ONSELECT_FIRE, ChooseTeamAndStartCareer },
@@ -5336,12 +5341,33 @@ Menu_Career _careerMenu = {
     },
     {
         { -102, 125, 40, 11 },
-        { MENU_CMD_NAV, -1, -1, 9, 10 },
+        { MENU_CMD_NAV, -1, -1, 9, 15 },
         { MENU_CMD_COLORS, 0xB },
         { MENU_CMD_TEXT_PTR, 0x0, _careerYearsText },
         { MENU_CMD_ONSELECT_FIRE, CareerYearsToggle },
         MENU_CMD_END
     },
+    {
+        { 30, 145, 120, 11 },
+        { MENU_CMD_COLORS, 0x9 },
+        { MENU_CMD_TEXT_PTR, 0x0, _aSeasonStart },
+        MENU_CMD_END
+    },
+    {
+        { -102, 145, 120, 11 },
+        { MENU_CMD_NAV, -1, 16, 13, 10 },
+        { MENU_CMD_COLORS, 0xB },
+        { MENU_CMD_TEXT_PTR, 0x0, _seasonStartText },
+        { MENU_CMD_ONSELECT_FIRE, SeasonStartToggle },
+        MENU_CMD_END
+    },
+    MENU_MARK_WIDE_COORDS,
+    { 280, 145, 40, 11 },
+    { MENU_CMD_NAV, 15, -1, 13, 10 },
+    { MENU_CMD_COLORS, 0xD },
+    { MENU_CMD_TEXT_PTR, 0x0, _aSeasonInfo },
+    { MENU_CMD_ONSELECT_FIRE, SeasonInfo },
+    MENU_CMD_END,
     MENU_MARK_END_MENU
 };
 Menu_ViewCompetitions _viewCompetitionsMenu = {

@@ -1,0 +1,280 @@
+{
+  "name": "viewHighlightMenu",
+  "source": {
+    "project": "swos-2020",
+    "file": "src/menus/viewHighlight.mnu",
+    "commit": "df38d20"
+  },
+  "menu_flags": {
+    "dos_redraw": true
+  },
+  "onInit": "viewHighlightMenu_OnInit",
+  "onReturn": null,
+  "onDraw": "viewHighlightMenu_OnDraw",
+  "defaultEntry": 10,
+  "exports": {},
+  "items": [
+    {
+      "kind": "entry",
+      "name": "header",
+      "coords": {
+        "x": 92,
+        "y": 0,
+        "w": 120,
+        "h": 16
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "VIEW HIGHLIGHT"
+        },
+        {
+          "op": "colors",
+          "frame_color": 1,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "panel",
+      "coords": {
+        "x": 32,
+        "y": 37,
+        "w": 240,
+        "h": 45
+      },
+      "commands": [
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 4
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "message1",
+      "coords": {
+        "x": 52,
+        "y": 43,
+        "w": 200,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "ARE YOU SURE TO VIEW THIS HIGHLIGHT?"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "message2",
+      "coords": {
+        "x": 52,
+        "y": 53,
+        "w": 200,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "message3",
+      "coords": {
+        "x": 52,
+        "y": 63,
+        "w": 200,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "fpsOptionLabel",
+      "coords": {
+        "x": 31,
+        "y": 103,
+        "w": 120,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "GAME STYLE"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "fpsOption",
+      "coords": {
+        "x": 156,
+        "y": 103,
+        "w": 120,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 13
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": -1,
+          "down": 9
+        },
+        {
+          "op": "onselect_fire",
+          "func": "viewHighlightMenu_fpsOption_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "sceneOptionLabel",
+      "coords": {
+        "x": 31,
+        "y": 125,
+        "w": 120,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "SELECTED SCENE(S)"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "sceneOption",
+      "coords": {
+        "x": 156,
+        "y": 125,
+        "w": 120,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 13
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": 6,
+          "down": 9
+        },
+        {
+          "op": "onselect_fire",
+          "func": "viewHighlightMenu_sceneOption_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "yes",
+      "coords": {
+        "x": 102,
+        "y": 163,
+        "w": 100,
+        "h": 15
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "YES"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 14
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": 8,
+          "down": 10
+        },
+        {
+          "op": "onselect_fire",
+          "func": "viewHighlightMenu_yes_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "exit",
+      "coords": {
+        "x": 102,
+        "y": 185,
+        "w": 100,
+        "h": 15
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "EXIT"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 12
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": -1,
+          "up": 9,
+          "down": -1
+        },
+        {
+          "op": "onselect_fire",
+          "func": "viewHighlightMenu_no_OnSelect"
+        }
+      ]
+    }
+  ]
+}

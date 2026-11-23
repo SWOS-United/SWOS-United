@@ -1295,6 +1295,20 @@ typedef struct Menu_Career
    * number moves (entries 12, 13). */
   MenuEntry_Byte_Colors_TextPtr careerYearsLabel;
   MenuEntry_Byte_Nav_Colors_TextPtr_OnSelect careerYears;
+  /* SEASON START (SWOS United): the season CLASSIC CAREER plays (SeasonStartToggle,
+   * src/career_seasons.c). SDL only, and only in 96/97's world -- hidden on the Amiga and in
+   * another world; appended last (entries 14, 15). */
+  MenuEntry_Byte_Colors_TextPtr seasonStartLabel;
+  MenuEntry_Byte_Nav_Colors_TextPtr_OnSelect seasonStart;
+  /* INFO (SWOS United): the season's readme (SeasonInfo, src/career_seasons.c), right of SEASON
+   * START, shown and hidden with it (entry 16). Wide coordinates: it stands past x 255. */
+  MenuMark markWideCoords;
+  MenuCoords16 seasonInfo_rc;
+  MenuCmd_Nav seasonInfo_nav;
+  MenuCmd_Colors seasonInfo_colors;
+  MenuCmd_TextPtr seasonInfo_text;
+  MenuCmd_OnSelect seasonInfo_onSelect;
+  MenuCommand seasonInfo_end;
   MenuMark markEndMenu;
 } Menu_Career;
 #pragma pack(pop)

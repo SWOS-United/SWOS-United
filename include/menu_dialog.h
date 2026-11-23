@@ -19,4 +19,10 @@ enum { MENU_DIALOG_MAX_BUTTONS = 4 };
 int32_t MenuDialog_Show(const char *title, const char *text, const char *const *buttons, int32_t count,
                         int32_t defaultButton);
 
+/* A long text to read, a page at a time (a mod's readme): the title and the page's number in
+ * the header, the text left-aligned and wrapped, PREVIOUS / EXIT / NEXT under it (EXIT the
+ * menus' brown, in the centre). `text` is as written: CR LF or LF lines, UTF-8 or Latin-1;
+ * characters the menu font has no glyph for are shown as spaces. Returns on EXIT or ESC. */
+void MenuDialog_ShowText(const char *title, const char *text);
+
 #endif /* MENU_DIALOG_H */

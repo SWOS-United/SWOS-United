@@ -565,6 +565,11 @@ int32_t ModApi_SaveFile(const char *slug, const char *name, const void *data, ui
 
 int32_t ModApi_ViewHighlights(const char *slug, const char *name, int32_t scene)
 {
+    return ModApi_ViewHighlightsAt(slug, name, scene, 0);
+}
+
+int32_t ModApi_ViewHighlightsAt(const char *slug, const char *name, int32_t scene, int32_t fps)
+{
     extern int16_t LoadHilFile(uint8_t *filename);
     extern void    ShowHighlights(void);
     extern int32_t _gHilOnlyScene;
@@ -597,6 +602,10 @@ int32_t ModApi_ViewHighlights(const char *slug, const char *name, int32_t scene)
     free(data);
     if (!ok || LoadHilFile((uint8_t *)bare) != 0)
         return -1;
+    if (fps > 0) {                      /* (SWOS 2020's VIEW HIGHLIGHT: GAME STYLE, the rate chosen) */
+        extern int _replayPlaybackFps;
+        _replayPlaybackFps = fps;
+    }
     _gHilOnlyScene = scene > 0 ? scene - 1 : -1;
     ShowHighlights();
     _gHilOnlyScene = -1;
@@ -794,6 +803,7 @@ const char *ModApi_CutsceneBlocked(int32_t test)
 #endif
     extern volatile uint8_t _skipLoaderIntro;
     extern uint16_t _quitToDos;
+    extern int32_t Main_RelaunchSkippedIntro(void);
     const char *video = SDL_GetCurrentVideoDriver();
     if (test < 2 && CareerAutopilot_Active())
         return "the career autopilot";
@@ -811,8 +821,8 @@ const char *ModApi_CutsceneBlocked(int32_t test)
         return "quitting";
     if (!AudioSDL_Available())
         return "no sound";                  /* (the PC game's: not with g_soundOff) */
-    if (!test && _skipLoaderIntro)
-        return "the intro is skipped";      /* (the PC game's: not with skipIntro) */
+    if (!test && _skipLoaderIntro && !Main_RelaunchSkippedIntro())
+        return "the intro is skipped";      /* (the PC game's: not with skipIntro -- a restart's own skip aside) */
     if (!test && (!video || !strcmp(video, "dummy") || !strcmp(video, "offscreen")))
         return "no window";
     return NULL;

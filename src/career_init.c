@@ -311,6 +311,14 @@ void SelectTeamToManage(void);
 __attribute__((used, externally_visible))
 void ChooseTeamAndStartCareer(void)
 {
+#ifdef SWOS_SDL_BUILD
+    {   /* SEASON START chose another season than this run's: the game starts again in it (at this
+         * screen, as it is: career_seasons.c) */
+        extern int32_t CareerSeasons_StartOther(void);
+        if (CareerSeasons_StartOther())
+            return;
+    }
+#endif
     /* A new career: a world's pooled files as shipped (team_pool.c), also in the picker;
      * its cups' first season (world_cups.c). */
     TeamPool_Reset();

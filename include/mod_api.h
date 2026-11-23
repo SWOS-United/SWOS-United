@@ -478,6 +478,8 @@ int32_t ModApi_LatestReplay(char *out, int32_t cap);
  * highlights file (said). SDL builds (SWOS Galore's charts). Copied to the save folder as
  * <SLUG>.HIL first (the highlights loaders take a bare name there). */
 int32_t ModApi_ViewHighlights(const char *slug, const char *name, int32_t scene);
+/* The same at `fps` frames a second (0: the file's own rate). */
+int32_t ModApi_ViewHighlightsAt(const char *slug, const char *name, int32_t scene, int32_t fps);
 int32_t ModApi_ListFiles(const char *dir, int32_t (*each)(const char *name, void *ctx), void *ctx);
 /* A whole file by its path (as ModApi_ListFiles' folders are named), NUL-terminated; free() it.
  * NULL when it cannot be read. */
@@ -833,6 +835,7 @@ typedef struct {
     uint8_t  side[2];       /* ModSide: who plays each */
     int8_t   keeperTurn;    /* the side whose keeper a player is diving (keeperDive), -1 none */
     int16_t  keeperStick;   /* that player's stick (0 up .. 7 up-left, -1 none) */
+    int16_t  keeperX, keeperY; /* the defending keeper on the pitch */
     uint8_t  ballOnSpot;    /* the ball on the spot, the keeper in the middle of his line */
 } ModShootout;
 int32_t ModApi_Shootout(ModShootout *out);
@@ -845,6 +848,14 @@ int32_t ModApi_MatchKit(int32_t side, int32_t *type, int32_t *shirt, int32_t *st
 /* What a player (1, 2) plays with, as SWOS 2020 names it in capitals: "JOYPAD", else "KEYBOARD1" /
  * "KEYBOARD2" (the Amiga: "JOYSTICK"). Two players and one pad: the pad is player 2's. */
 const char *ModApi_ControllerName(int32_t player);
+/* An online match's penalty shoot-out is on: it plays as PRACTICE's (each player's keeper his to
+ * dive, the short stops), and ModApi_Shootout describes it -- the practice mod draws its board. */
+int32_t     ModApi_OnlineShootout(void);
+/* The keeper's dive as a player chose it (keeperDive, an online shoot-out): match state -- the
+ * rollback registry keeps it (sim_state.c). 16-bit words: team (1, 2; 0 none), manual, dive, the
+ * height from which a dive is high, the sides the game's 2 and 6 dives go, the stick (-1 none). */
+typedef struct { int16_t team, manual, dive, height, dir2, dir6, stick; } ModKeeperDive;
+extern ModKeeperDive g_modKeeperDive;
 
 /* ---- match events (H3): ModDef.matchEvent ---- */
 typedef enum {

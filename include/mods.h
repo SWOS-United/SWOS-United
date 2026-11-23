@@ -34,6 +34,11 @@
  * a mod without one, a second mod with a uuid already on, or a DLC with a canonical uuid, is
  * left out. */
 #define MODS_CANONICAL_DIR "mods"
+/* The classic seasons (SWOS United: CLASSIC CAREER' SEASON START, src/career_seasons.c):
+ * team database mods (docs/MODS.md §10.4) in a folder of their own beside the game, installed with
+ * it (scripts/make_seasons_package.py) -- not canonical (their teams are their authors'), never on
+ * the MODS screen. One is on at a time, Mods_SetSeason's, ahead of every other mod. SDL. */
+#define MODS_SEASONS_DIR "seasons"
 
 /* The mods on, from `enabled` ("a, b c"; slugs are letters, digits, '-' and '_') -- in that
  * order, then the canonical defaults not in `disabled`. SDL: each needs a folder and a mod.json
@@ -41,6 +46,12 @@
  * after the settings and before any data is read. The Amiga's list (both kinds) comes from
  * data/MODS, which src/resload.c reads at its first file read; `disabled` is unused there. */
 void        Mods_Init(const char *enabled, const char *disabled);
+/* Before Mods_Init: the season to play (a folder in MODS_SEASONS_DIR), or "" for none -- main.c,
+ * from [general] season while 96/97 is the world played. SDL. */
+void        Mods_SetSeason(const char *slug);
+/* Online play: the mods with "online": false and the season left out by the next Mods_Init
+ * (MULTIPLAYER: src/world_switch.c WorldSwitch_OnlineBegin). SDL. */
+void        Mods_SetOnlinePlay(int32_t on);
 /* Before Mods_Init: a rig runs (main.c), so the default-on canonical mods that are not cosmetic
  * stay off (a mod the run names is still on). SDL. */
 void        Mods_SetRig(int32_t on);

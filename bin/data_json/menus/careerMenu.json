@@ -301,7 +301,7 @@
           "op": "nav",
           "left": -1,
           "right": -1,
-          "up": 13,
+          "up": 15,
           "down": 11
         },
         {
@@ -387,7 +387,7 @@
           "left": -1,
           "right": -1,
           "up": 9,
-          "down": 10
+          "down": 15
         },
         {
           "op": "colors",
@@ -402,6 +402,95 @@
         {
           "op": "onselect_fire",
           "func": "CareerYearsToggle"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "coords": {
+        "x": 30,
+        "y": 145,
+        "w": 120,
+        "h": 11
+      },
+      "commands": [
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 9
+        },
+        {
+          "op": "text",
+          "flags": "0x0",
+          "str": "_aSeasonStart"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "coords": {
+        "x": -102,
+        "y": 145,
+        "w": 120,
+        "h": 11
+      },
+      "commands": [
+        {
+          "op": "nav",
+          "left": -1,
+          "right": 16,
+          "up": 13,
+          "down": 10
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 11
+        },
+        {
+          "op": "text",
+          "flags": "0x0",
+          "str": "_seasonStartText"
+        },
+        {
+          "op": "onselect_fire",
+          "func": "SeasonStartToggle"
+        }
+      ]
+    },
+    {
+      "kind": "coords_mode",
+      "wide": true
+    },
+    {
+      "kind": "entry",
+      "coords": {
+        "x": 280,
+        "y": 145,
+        "w": 40,
+        "h": 11
+      },
+      "commands": [
+        {
+          "op": "nav",
+          "left": 15,
+          "right": -1,
+          "up": 13,
+          "down": 10
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 13
+        },
+        {
+          "op": "text",
+          "flags": "0x0",
+          "str": "_aSeasonInfo"
+        },
+        {
+          "op": "onselect_fire",
+          "func": "SeasonInfo"
         }
       ]
     }

@@ -49,6 +49,11 @@ void        World_SnapshotBase(void);
 void        World_SnapshotWorld(void);
 void        World_OnlineEnter(void);
 void        World_OnlineLeave(void);
+/* MULTIPLAYER (menus.c): online play is 96/97 as it comes -- a mod not for online play ("online":
+ * false: a team database, SEASON START's season) set aside for it and back after it, as a start
+ * without it would be (src/world_switch.c; SWOS.ini untouched). Begin is 1 when it switched. SDL. */
+int32_t     WorldSwitch_OnlineBegin(void);
+void        WorldSwitch_OnlineEnd(void);
 
 /* The fingerprint of the world's data this build was made with (src/world_data.c; "" none). A
  * world's data is the player's: OpenSWOS Setup installs its package, whose WORLD.ini says which

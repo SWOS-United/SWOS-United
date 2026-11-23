@@ -155,12 +155,26 @@ MAIN_SLOTS = {
     "editing":     ("EXTRAS   ", "extras", None),
     "extras":      ("REPLAYS  ", "replays", 11),          # (kPurple)
 }
+# SWOS United's careers (Playa, 2026-11-19): a fourth row of buttons under PRACTICE and REPLAYS, above
+# CONTINUE / LOAD -- CLASSIC CAREER (96/97's world, the season SEASON START chose) and WORLD
+# 26/27 CAREER (src/career_seasons.c). The four rows 24 high, 4 apart (SWOS 2020's three were 30, 6
+# apart), from y 41; CONTINUE under them. They take the ordinals of the game's own MULTIPLAYER (14)
+# and MODES (16), which this menu never shows (COMPETE and PRACTICE have them): the menu replaces
+# the compiled one in place, so it has no more entries. COMPETE's CLASSIC CAREER MODE goes.
+ROW_Y, ROW_H, ROW_STEP = 41, 24, 28
+CAREER_BUTTONS = [("classicCareer", "multiplayer", 1, "CLASSIC CAREER", 4, "classicCareer"),
+                  ("worldCareer", "modes", 155, "WORLD 26/27 CAREER", 15, "worldCareer")]
+CONTINUE_Y = 154        # (on screen 154..173: 3 under the last row's 150, 4 over SAVE / LOAD's 178)
 # The SWOS United logo's place in the CREDITS entry: SWOS 2020's 293,185 less the entry's 281,182
 # and ConvertMenu's +8 (mod_menus2020.c kCreditsPicX / kCreditsPicY: keep the two the same).
 CREDITS_PICTURE_AT = (293 - 281 - 8, 185 - 182)
 # The banner's size (scripts/make_united_logo.py writes it): 31 high, in the band above the buttons
-# (0..40) right of the TV (4..46).
+# (0..40) right of the TV (4..37).
 LOGO_SIZE = (262, 31)
+LOGO_INK_RIGHT = 260        # (the D's last column in it: the banner ends where the right buttons do)
+# The LIVE CAST TV's size (scripts/make_menus2020_icons.py TV_SIZE: SWOS 2020's 42x38, smaller --
+# Playa 2026-11-20 -- so it stands clear of the banner, 4..37).
+TV_SIZE = (34, 31)
 # (button slot, its picture, the icon's column on it): its onDraw's drawMapEx256_8sets columns
 # under MULTIPLAYER_MENU, y + 7.
 ICON_COLUMNS = [("competition", "multiplayer", 15), ("practice", "compete", 30),
@@ -271,9 +285,11 @@ def build_main(doc):
     button = by_name["saveContest"]
     base_colors = colors_of(button[0])
 
-    # The six buttons, relabelled (MAIN_SLOTS).
+    # The six buttons, relabelled (MAIN_SLOTS), in rows of ROW_H.
     for name, (text, handler, colour) in MAIN_SLOTS.items():
         it = by_name[name][0]
+        row = (it["coords"]["y"] - 41) // 36
+        it["coords"]["y"], it["coords"]["h"] = ROW_Y + row * ROW_STEP, ROW_H
         set_text(it, text)
         for c in it["commands"]:
             if c["op"] == "onselect_fire":
@@ -283,6 +299,7 @@ def build_main(doc):
 
     # 11: the game prints "CONTINUE <name>" / "REPLAY <name>" into it (CommonMenuExit).
     set_text(by_name["continueContest"][0], deferred=True)
+    by_name["continueContest"][0]["coords"]["y"] = CONTINUE_Y
     # SAVE and LOAD as main.mnu has them, with the floppies its onDraw draws
     # (disk_save_load_16x14_1x3_map at 91,182 and 211,182). drawMapEx takes screen pixels, and
     # ConvertMenu puts an entry 8 right of its .mnu x: so a picture's place in the entry is
@@ -324,6 +341,15 @@ def build_main(doc):
                           {"op": "onselect_fire", "func": mod("practice")},
                           {"op": "invisible"}]}
     extra = {"multiplayer": (multiplayer, credits_origin), "modes": (modes, credits_origin)}
+    # ... and in their places, SWOS United's careers (CAREER_BUTTONS): PRACTICE's row's look, a
+    # colour each (CLASSIC brown, WORLD dark yellow), the text centred.
+    row_origin = by_name["replays"][1]
+    for name, slot, x, text, colour, handler in CAREER_BUTTONS:
+        extra[slot] = ({"kind": "entry", "name": name,
+                        "coords": {"x": x, "y": ROW_Y + 3 * ROW_STEP, "w": 148, "h": ROW_H},
+                        "commands": [{"op": "text", "flags": "0x10", "literal": text},
+                                     {"op": "colors", "frame_color": 0, "background_color": colour},
+                                     {"op": "onselect_fire", "func": mod(handler)}]}, row_origin)
 
     remap = {}
     for new, name in enumerate(MAIN_ORDER):
@@ -353,7 +379,7 @@ def build_main(doc):
     for name, picture, dx in ICON_COLUMNS:
         it, _o = by_name[name]
         it["image"] = "grafs_2020/menus2020/%s.bmp" % picture
-        it["image_x"], it["image_y"] = dx, 7
+        it["image_x"], it["image_y"] = dx, (ROW_H - 16) // 2     # (16 high: SWOS 2020's y + 7 of 30)
     # The news ticker's row (the `ticker` mod scrolls its news through it, "ticker_entry"):
     # at the bottom, under SAVE and LOAD, as SWOS 2020's (its window text at row 250 of 270:
     # 15 under the menu's 200) -- the first filler, which is never drawn. mod_menus2020.c puts
@@ -367,20 +393,21 @@ def build_main(doc):
     # UP from COMPETE opens the live matches. Hidden by mod_menus2020.c without netplay.
     tv = ordered[filler + 1][0]
     tv["name"] = "liveCast"
-    tv["coords"] = {"x": 4, "y": 4, "w": 42, "h": 38}
+    tv["coords"] = {"x": 4, "y": 5, "w": TV_SIZE[0], "h": TV_SIZE[1]}
     tv["image"] = "grafs_2020/menus2020/tv_idle.bmp"
     tv["commands"] = [{"op": "colors", "frame_color": 0, "background_color": 0},   # (a frame when chosen)
                       {"op": "nav", "left": -1, "right": -1, "up": -1, "down": MAIN_ORDER.index("competition")},
                       {"op": "onselect_fire", "func": mod("liveCast")}]
 
-    # SWOS United's banner across the top, right of the TV (4..46) in the band above the buttons
+    # SWOS United's banner across the top, right of the TV (4..37) in the band above the buttons
     # (they start at 41), centred in x 50..311 (the menu's right edge: SWOS 2020's screen 319, our
     # 4:3 screen's 335), y 0..40: the third filler, never chosen (no handler,
     # nothing leads to it). Its picture is ours, not SWOS 2020's -- committed, grafs_united/logo.bmp
     # in the mod, made LOGO_SIZE from docs/images/swosunited-banner.png by scripts/make_united_logo.py.
     logo = ordered[filler + 2][0]
     logo["name"] = "logo"
-    logo["coords"] = {"x": (50 + 312 - LOGO_SIZE[0]) // 2, "y": (40 - LOGO_SIZE[1] + 1) // 2,
+    # (its last letter's last column, LOGO_INK_RIGHT, on the right buttons' last: 155 + 148 - 1)
+    logo["coords"] = {"x": 155 + 148 - 1 - LOGO_INK_RIGHT, "y": (40 - LOGO_SIZE[1] + 1) // 2,
                       "w": LOGO_SIZE[0], "h": LOGO_SIZE[1]}
     logo["image"] = "grafs_united/logo.bmp"
     logo["commands"] = [{"op": "colors", "frame_color": 0, "background_color": 0}]

@@ -103,8 +103,8 @@ on (`[mod.dosvideos] hd`, default on). Without one, or with the setting off, it 
   where MP4/H.264 would not. The rate in the file (25) is never read.
 - **Shown at the window's resolution:** `ModApi_CutsceneFrameHD` → `Platform_CutsceneShowHD`.
   The frame is an RGBA texture drawn through gfx.h on either presenter. It covers exactly the
-  rectangle the original would (its 320x200 or 320x240, centred in the game's picture, scaled
-  as the picture is), over black, and the fades go through the vertices' colour. A 4x set is
+  rectangle the original does (the whole game picture, stretched -- SWOS United, 2026-11-20),
+  over black, and the fades go through the vertices' colour. A 4x set is
   1280x800 in that place. The game's frame buffers and palette are untouched, as for the
   original.
 - **Made by** `scripts/flic_encode.py <upscaled frames> - <out> --info <extracted frames>
@@ -145,9 +145,10 @@ swos.asm `PlayAnimationCommon` / `PlayAnimation`, the `FadeAndPlay*Animation` ar
    `menuFade`) -- ours never drew over the menu: the picture is shown in place of the game's
    frame at the present (`Platform_CutsceneShow`), so the menu is there as it was.
 
-The picture is shown 1:1 in the middle of the game's screen (336 x 272, or wider with
-widescreen), the rest in the clip's darkest colour, in the clip's own palette; the presenter
-scales the whole as it scales the menus. Nothing the mods draw over the picture is drawn over a
+The picture is stretched over the whole of the game's screen (336 x 272, or wider with
+widescreen: no borders -- SWOS United, 2026-11-20; it was 1:1 in the middle, the rest in the
+clip's darkest colour), in the clip's own palette; the presenter scales the whole as it scales
+the menus. Nothing the mods draw over the picture is drawn over a
 clip, nor the menus' backdrop and opacity.
 
 Some chairmen's scenes are 320 x 240 too (`ch*_24`..`_26`). `SWOS_DOSVIDEO_TEST=win,ch2_05,chp_03` plays clips at the main menu (even headless, with

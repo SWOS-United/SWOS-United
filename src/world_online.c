@@ -28,7 +28,7 @@
 extern uint16_t _teamsCountryNumbers[256];
 extern void    *_countriesTable[262];
 extern void    *_competitionsTable[256];
-extern uint8_t  _shortCountryNames[214 * 3];
+extern uint8_t  _shortCountryNames[NATIONALITY_CODES * 3];
 extern uint8_t  _lastLoadedExtNumber;
 
 #define WO_LEAGUES 256
@@ -37,7 +37,7 @@ typedef struct {
     uint16_t teams[256];
     void    *countries[262];
     void    *comps[256];
-    uint8_t  nat[214 * 3];
+    uint8_t  nat[NATIONALITY_CODES * 3];
 } WorldTables;
 
 static WorldTables       s_base, s_world;
@@ -95,6 +95,8 @@ void World_SnapshotBase(void)
                 s_league[s_nLeagues++] = (CompetitionLeague *)p;
         }
     }
+    free(s_leagueBase);                 /* (a switch: world_switch.c snaps again) */
+    free(s_leagueWorld);
     s_leagueBase = (CompetitionLeague *)malloc((size_t)s_nLeagues * sizeof *s_leagueBase);
     s_leagueWorld = (CompetitionLeague *)malloc((size_t)s_nLeagues * sizeof *s_leagueWorld);
     if (!s_leagueBase || !s_leagueWorld)

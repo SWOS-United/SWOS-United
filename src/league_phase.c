@@ -824,6 +824,8 @@ static const uint8_t (*s_modPlaces)[4];
 static int32_t s_modCount;
 static const WorldUefaSeeds *s_modSeeds;
 
+void LeaguePhase_Reset(void) { s_installed = NULL; }   /* (world_switch.c) */
+
 void LeaguePhase_SetModEurope(CompetitionLeaguePhase *cups, const uint8_t (*places)[4], int32_t count,
                               const WorldUefaSeeds *seeds)
 {

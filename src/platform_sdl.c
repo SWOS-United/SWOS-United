@@ -1544,8 +1544,8 @@ void Platform_CutsceneShow(const uint8_t *pixels, int w, int h, const uint8_t *r
 }
 
 /* An upscaled clip's frame (Platform_CutsceneShowHD): RGBA at its own size, drawn over the picture
- * where the original clip would be -- `origW` x `origH` of the picture's pixels, centred -- at the
- * window's resolution (draw_overlays: gfx.h, either presenter). The picture under it is black. */
+ * where the original clip is -- the whole picture, stretched -- at the window's resolution
+ * (draw_overlays: gfx.h, either presenter). The picture under it is black. */
 static const uint8_t *s_cut_hd;
 static int      s_cut_hdW, s_cut_hdH, s_cut_hdOrigW, s_cut_hdOrigH, s_cut_hdLevel;
 static uint32_t s_cut_hdSerial, s_cut_hdUploaded;
@@ -1605,8 +1605,8 @@ static void cutscene_hd_draw(void)
         Gfx_UpdateTexture(s_cut_hdTex, s_cut_hd, s_cut_hdW * 4);
         s_cut_hdUploaded = s_cut_hdSerial;
     }
-    const float x = (float)(_screen_width - s_cut_hdOrigW) / 2.0f, y = (float)(_screen_height - s_cut_hdOrigH) / 2.0f;
-    const float x1 = x + (float)s_cut_hdOrigW, y1 = y + (float)s_cut_hdOrigH;
+    /* (stretched over the whole picture, as the original clip is: cutscene_show_locked) */
+    const float x = 0.0f, y = 0.0f, x1 = (float)_screen_width, y1 = (float)_screen_height;
     const Uint8 l = (Uint8)(s_cut_hdLevel >= 256 ? 255 : s_cut_hdLevel);
     GfxVertex v[4];
     SDL_memset(v, 0, sizeof v);
@@ -1651,17 +1651,16 @@ static void cutscene_show_locked(const uint8_t *pixels, int w, int h, const uint
         s_cut_pal[i].a = 255;
     }
     memset(s_cut_buf, black, need);
-    {   /* centred, 1:1; a picture larger than the screen shows its middle */
-        const int dx = (sw - w) / 2, dy = (sh - h) / 2;
-        for (int y = 0; y < h; y++) {
-            const int ty = dy + y;
-            if (ty < 0 || ty >= sh)
-                continue;
-            const int x0 = dx < 0 ? -dx : 0, x1 = dx + w > sw ? sw - dx : w;
-            if (x1 > x0)
-                memcpy(s_cut_buf + (size_t)ty * stride + dx + x0, pixels + (size_t)y * w + x0, (size_t)(x1 - x0));
+    {   /* stretched over the whole picture, whatever its width (Playa, 2026-11-20: no borders in
+         * widescreen): each pixel the clip's nearest */
+        for (int ty = 0; ty < sh; ty++) {
+            const uint8_t *row = pixels + (size_t)(ty * h / sh) * w;
+            uint8_t *out = s_cut_buf + (size_t)ty * stride;
+            for (int tx = 0; tx < sw; tx++)
+                out[tx] = row[tx * w / sw];
         }
     }
+    (void)black;
     s_cut_on = 1;
 }
 

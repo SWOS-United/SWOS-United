@@ -19,6 +19,7 @@
 
 #include "menu_load_json.h"
 #include "menu_system.h"
+#include "online_menus.h"      /* OnlineMenus_SpeedrunLogIn: SWOS 2020's log-in in front */
 #include "platform_sdl.h"         /* PlatformInitOptions (the remembered log-in name) */
 #include "swos2020_menus.h"
 #include "united_ui.h"
@@ -259,14 +260,16 @@ static void master_OnSelect(void) { play(4); }
 static void selectSpeedrunDifficultyExit_OnSelect(void) { SetExitMenuFlag(); }
 
 static int32_t s_lbStyle, s_lbMode, s_lbDiff, s_lbPage;
-static void open_leaderboard(int32_t mode)
+/* the LEADERBOARD of a style, a target, a difficulty (SWOS 2020's rank_OnSelect, rankNewsMenu_OnSelect) */
+static void open_leaderboard_at(int32_t style, int32_t mode, int32_t diff)
 {
-    s_lbStyle = current_style();
+    s_lbStyle = style;
     s_lbMode = mode;
-    s_lbDiff = 0;
+    s_lbDiff = diff >= 0 && diff < 5 && !is_card(mode) ? diff : 0;
     s_lbPage = 0;
     show("swos2020/leaderboardMenu");
 }
+static void open_leaderboard(int32_t mode) { open_leaderboard_at(current_style(), mode, 0); }
 static void newsDiff_OnSelect(void) { open_leaderboard(s_target); }
 
 static void selectSpeedrunDifficultyCardMenu_OnInit(void)
@@ -310,6 +313,7 @@ static void leaderboard_fetch(void)
 
 static void lb_style(int32_t step);
 static int32_t play_replay(const char *file, int32_t style);
+static void ask_and_play(const char *file, int32_t style);
 static void lb_mode(int32_t step);
 static void lb_diff(int32_t step);
 static void leaderboardMenuOnInit(void) { s_boardState = 1; s_lbFresh = 0; }
@@ -478,17 +482,30 @@ static void bestRecordInLeaderboard_OnSelect(void)
     const int32_t row = selected_ordinal() - (LeaderboardMenu_best_00 + 1);
     if (row < 0 || row >= kBoardRows)
         return;
+    (void)kYesExit;
     if (!s_lbFiles[row][0]) {
         ModApi_ShowDialog("SPEEDRUN REPLAY", "NO REPLAY FOR THIS PLACE", kOk, 1, 0);
         return;
     }
+    ask_and_play(s_lbFiles[row], s_lbStyle);
+}
+
+/* SWOS 2020's: asked first, then downloaded and played; said so when there is none. */
+static void ask_and_play(const char *file, int32_t style)
+{
+    static const char *const kYesExit[2] = { "YES", "EXIT" }, *const kOk[1] = { "OK" };
+    if (!file || !file[0]) {
+        ModApi_ShowDialog("SPEEDRUN REPLAY", "REPLAY FILE IS NOT AVAILABLE", kOk, 1, 0);
+        return;
+    }
     if (ModApi_ShowDialog("SPEEDRUN REPLAY", "ARE YOU SURE TO REPLAY|THE RECORDED REPLAY FILE?", kYesExit, 2, 0) != 0)
         return;
-    if (play_replay(s_lbFiles[row], s_lbStyle) != 0)
+    if (play_replay(file, style) != 0)
         ModApi_ShowDialog("SPEEDRUN REPLAY", "REPLAY FILE IS NOT AVAILABLE", kOk, 1, 0);
 }
 
-/* A board's run (its .RPL's name): downloaded, then played whole in the highlights viewer at the
+/* A board's run: SWOS United's (.srp) downloaded and played in the highlights viewer as it was
+ * recorded; SWOS 2020's (its .RPL's name) downloaded, then played whole there at the
  * board's style's rate (SWOS 2020's g_CustomFPS = the board's game style: the .RPL's own style
  * byte is not one of ours). 0 played. */
 static int32_t play_replay(const char *file, int32_t style)
@@ -506,13 +523,24 @@ static int32_t play_replay(const char *file, int32_t style)
         if (rc == 1)
             SDL_Delay(20);
     }
+    const size_t n = strlen(file);
+    const int32_t srp = n >= 4 && SDL_strcasecmp(file + n - 4, ".srp") == 0;   /* (SWOS United's run) */
     uint32_t size = 0;
-    uint8_t *data = rc == 0 ? (uint8_t *)ModApi_LoadFile("speedrun2020", "run.RPL", &size) : NULL;
-    const int32_t saved = data && swos_io_save((const uint8_t *)"SPEEDRUN.RPL", data, size) == 0;
+    uint8_t *data = rc == 0 ? (uint8_t *)ModApi_LoadFile("speedrun2020", srp ? "run.SRP" : "run.RPL", &size) : NULL;
+    const char *local = srp ? "SPEEDRUN.SRP" : "SPEEDRUN.RPL";
+    const int32_t saved = data && swos_io_save((const uint8_t *)local, data, size) == 0;
     free(data);
     DosReplay_ClearRpl();
     ReplayV2_Unload();
-    if (!saved || DosReplay_LoadRpl((uint8_t *)"SPEEDRUN.RPL") != 0)
+    if (srp) {                          /* (an .SRP carries its own rate, sounds and camera) */
+        extern int32_t ReplayV2_Load(const uint8_t *name);
+        if (!saved || ReplayV2_Load((const uint8_t *)local) != 0)
+            return -1;
+        ShowHighlights();
+        ReplayV2_Unload();
+        return 0;
+    }
+    if (!saved || DosReplay_LoadRpl((uint8_t *)local) != 0)
         return -1;
     {
         extern int _replayPlaybackFps;
@@ -532,6 +560,7 @@ static void makeRecordFrame_OnSelect(void) {}
 static int32_t s_mrMode, s_mrStyle, s_mineState, s_mineFresh;
 static char  s_mine[16384], s_mrHeader[40], s_mrUser[48], s_mrModeText[24], s_mrHelp[64];
 static char  s_mrCells[5][5][24];
+static char  s_mrFiles[5][2][96];       /* each difficulty's best and last run's replay, "" none */
 
 static void viewMyRecordsMenuOnInit(void)
 {
@@ -541,7 +570,7 @@ static void viewMyRecordsMenuOnInit(void)
 
 static void viewMyRecordsMenuOnDraw(void)
 {
-    static const char *const heads[5] = { "DIFFICULTY", "PLAYED", "BEST", "CURRENT", "RANK" };
+    static const char *const heads[5] = { "DIFFICULTY", "PL", "BEST", "CURRENT", "RANK" };   /* (SWOS 2020's) */
     static const int32_t col0[5] = { ViewMyRecordsMenu_difficulty_00, ViewMyRecordsMenu_played_00,
                                      ViewMyRecordsMenu_best_00, ViewMyRecordsMenu_current_00, ViewMyRecordsMenu_rank_00 };
     const char *me = me_upper();
@@ -571,6 +600,7 @@ static void viewMyRecordsMenuOnDraw(void)
         snprintf(s_mrCells[d][2], 24, "-");
         snprintf(s_mrCells[d][3], 24, "-");
         snprintf(s_mrCells[d][4], 24, "%s", me[0] ? "-" : "X");
+        s_mrFiles[d][0][0] = s_mrFiles[d][1][0] = 0;
     }
     if (s_mineState == 0) {
         static char copy[16384];
@@ -584,6 +614,8 @@ static void viewMyRecordsMenuOnDraw(void)
             if (target == s_mrMode && d >= 0 && d < 5) {
                 const int32_t played = atoi(field(&p)), best = atoi(field(&p)), last = atoi(field(&p));
                 const int32_t rank = atoi(field(&p));
+                snprintf(s_mrFiles[d][0], sizeof s_mrFiles[d][0], "%s", field(&p));
+                snprintf(s_mrFiles[d][1], sizeof s_mrFiles[d][1], "%s", field(&p));
                 snprintf(s_mrCells[d][1], 24, "%d", (int)played);
                 frame_time(s_mrCells[d][2], 24, best, s_mrStyle);
                 frame_time(s_mrCells[d][3], 24, last, s_mrStyle);
@@ -625,14 +657,43 @@ static void viewMyRecordsMenuOnDraw(void)
         set_color(entry_at(ViewMyRecordsMenu_HelpMsg), kYellowText);
     }
     entry_at(ViewMyRecordsMenu_reset)->isInvisible = 1;    /* (SWOS 2020 deleted the online rows) */
+    /* the trophies left of the five difficulties, as SWOS 2020 drew them (viewMyRecordsMenuOnDraw;
+     * none for the cards, which have one board) */
+    if (!is_card(s_mrMode)) {
+        static const int8_t kTrophy[5] = { 1, 3, 5, 4, 8 };
+        for (int32_t d = 0; d < 5; d++) {
+            const int32_t t = kTrophy[d], shift = t == 1 || t == 3, ord = ViewMyRecordsMenu_difficulty_00 + 1 + d;
+            int32_t x = 0, y = 0, w = 0, h = 0;
+            ModApi_MenuEntryRect(ord, &x, &y, &w, &h);
+            ModApi_DrawMapAtEntry("speedrun", "trophiesMap", ord, -22 + 2 * shift, (h - 14) / 2 - 2 * shift, 0, 14 * t,
+                                  16, 14, 0);
+        }
+    }
 }
 
 static void speedrunMode_Dec_onSelect(void) { s_mrMode = next_mode(s_mrMode, -1); }
 static void speedrunMode_onSelect(void) { s_mrMode = next_mode(s_mrMode, 1); }
 static void speedrunMode_Inc_onSelect(void) { s_mrMode = next_mode(s_mrMode, 1); }
-static void bestRecord_OnSelect(void) {}
-static void currentRecord_OnSelect(void) {}
-static void rank_OnSelect(void) {}
+/* A difficulty's best or last run, played (SWOS 2020's bestRecord_OnSelect / currentRecord_OnSelect);
+ * its RANK, that difficulty's LEADERBOARD (rank_OnSelect). */
+static void bestRecord_OnSelect(void)
+{
+    const int32_t d = selected_ordinal() - (ViewMyRecordsMenu_best_00 + 1);
+    if (d >= 0 && d < 5)
+        ask_and_play(s_mrFiles[d][0], s_mrStyle);
+}
+static void currentRecord_OnSelect(void)
+{
+    const int32_t d = selected_ordinal() - (ViewMyRecordsMenu_current_00 + 1);
+    if (d >= 0 && d < 5)
+        ask_and_play(s_mrFiles[d][1], s_mrStyle);
+}
+static void rank_OnSelect(void)
+{
+    const int32_t d = selected_ordinal() - (ViewMyRecordsMenu_rank_00 + 1);
+    if (d >= 0 && d < 5)
+        open_leaderboard_at(s_mrStyle, s_mrMode, d);
+}
 static void viewMyRecordsExit_OnSelect(void) { SetExitMenuFlag(); }
 static void viewMyRecordsSync_OnSelect(void) { s_mineState = 1; s_mineFresh = 1; }     /* UPDATE */
 static void viewMyRecordsReset_OnSelect(void) {}
@@ -644,6 +705,8 @@ enum { kNewsRows = 5 };
 static char  s_news[65536];
 static int32_t s_newsState, s_newsPage;
 static char  s_newsCells[kNewsRows][7][24], s_newsPageText[24];
+static char  s_newsFiles[kNewsRows][96];        /* each shown run's replay, "" none */
+static int32_t s_newsRun[kNewsRows][3];         /* and its style, target, difficulty; style -1: no row */
 
 static void newsMenu_OnInit(void) { s_newsState = 1; s_newsPage = 0; }
 static void newsMenu_OnReturn(void) {}
@@ -661,9 +724,12 @@ static void newsMenu_OnDraw(void)
         set_text(entry_at(col0[c]), heads[c]);
         set_back(entry_at(col0[c]), kLightBrownWithOrangeFrame);
     }
-    for (int32_t r = 0; r < kNewsRows; r++)
+    for (int32_t r = 0; r < kNewsRows; r++) {
         for (int32_t c = 0; c < 7; c++)
             s_newsCells[r][c][0] = 0;
+        s_newsFiles[r][0] = 0;
+        s_newsRun[r][0] = -1;
+    }
     if (s_newsState == 0) {
         static char copy[65536];
         snprintf(copy, sizeof copy, "%s", s_news);
@@ -678,6 +744,10 @@ static void newsMenu_OnDraw(void)
                 char *user = field(&p);
                 const int32_t frames = atoi(field(&p));
                 char *rank = field(&p);
+                snprintf(s_newsFiles[shown], sizeof s_newsFiles[shown], "%s", field(&p));
+                s_newsRun[shown][0] = style;
+                s_newsRun[shown][1] = mode;
+                s_newsRun[shown][2] = d;
                 snprintf(s_newsCells[shown][0], 24, "%s", date);
                 snprintf(s_newsCells[shown][1], 24, "%s", style == 0 ? "DOS" : style == 3 ? "60FPS" : style == 4 ? "XBOX" : "AMIGA");
                 snprintf(s_newsCells[shown][2], 24, "%s", mode == 5 ? "YELLOW." : mode == 7 ? "RED." : k_targets[mode & 7]);
@@ -708,12 +778,37 @@ static void newsMenu_OnDraw(void)
     entry_at(NewsMenu_news_ScrollUp)->afterDrawCb = arrow_AfterDraw;
     entry_at(NewsMenu_news_ScrollDown)->afterDrawCb = arrow_AfterDraw;
     entry_at(NewsMenu_newsOnDiscord)->isInvisible = 1;
+
+    /* SWOS_SPEEDRUN_NEWS_TEST=1 (--menu=swos2020/newsMenu): once the runs are here, the first one's
+     * replay downloaded and played, then the game quits -- 0 when it played */
+    {
+        static int32_t tested;
+        if (!tested && s_newsState == 0 && s_newsRun[0][0] >= 0 && getenv("SWOS_SPEEDRUN_NEWS_TEST")) {
+            tested = 1;
+            const int32_t rc = play_replay(s_newsFiles[0], s_newsRun[0][0]);
+            fprintf(stdout, "SPEEDRUN NEWS TEST %s: %s\n", rc == 0 ? "PASS" : "FAIL", s_newsFiles[0]);
+            fflush(stdout);
+            exit(rc == 0 ? 0 : 1);
+        }
+    }
 }
 
 static void news_ScrollUp_onSelect(void) { if (s_newsPage > 0) s_newsPage--; }
 static void news_ScrollDown_onSelect(void) { s_newsPage++; }
-static void bestNewsMenu_OnSelect(void) {}
-static void rankNewsMenu_OnSelect(void) {}
+/* A run's RECORD: that run played (SWOS 2020's bestNewsMenu_OnSelect); its RANK: its board
+ * (rankNewsMenu_OnSelect). */
+static void bestNewsMenu_OnSelect(void)
+{
+    const int32_t r = selected_ordinal() - (NewsMenu_best_00 + 1);
+    if (r >= 0 && r < kNewsRows && s_newsRun[r][0] >= 0)
+        ask_and_play(s_newsFiles[r], s_newsRun[r][0]);
+}
+static void rankNewsMenu_OnSelect(void)
+{
+    const int32_t r = selected_ordinal() - (NewsMenu_rank_00 + 1);
+    if (r >= 0 && r < kNewsRows && s_newsRun[r][0] >= 0)
+        open_leaderboard_at(s_newsRun[r][0], s_newsRun[r][1], s_newsRun[r][2]);
+}
 static void newsOnDiscordNewsMenu_OnSelect(void) {}
 
 /* ---- the mod ---- */
@@ -748,14 +843,36 @@ static const MenuSymbol k_handlers[] = {
 };
 #undef HANDLER
 
-/* "speedrun-screens": the speedrun mod opens these in place of its own */
+/* "speedrun-screens": the speedrun mod opens these in place of its own -- after SWOS 2020's log-in
+ * (challengeGame0Extras_OnSelect): LOGIN, the runs go to the online records; PLAY OFFLINE, they
+ * stay the player's own this time (the online-records service's speedrun.online); EXIT, back. */
 static int32_t screens(const char *method, const char *args, char *out, uint32_t cap)
 {
     (void)args; (void)out; (void)cap;
     if (strcmp(method, "open") != 0)
         return -1;
+    const char *u = United_UserName();
+    const int32_t r = OnlineMenus_ServerLogIn(LOGIN_FOR_SPEEDRUN, u, NULL);
+    if (r < 0)
+        return 0;                       /* (EXIT: back to the menu it came from) */
+    ModApi_CallService("online-records", "speedrun.online", r == 0 ? "{\"on\":true}" : "{\"on\":false}", NULL, 0);
     show("swos2020/speedrunMainMenu");
+    ModApi_CallService("online-records", "speedrun.online", "{\"on\":false}", NULL, 0);
     return 0;
+}
+
+/* SWOS_SPEEDRUN_SCREENS_TEST=1: at the first menu frame, SPEEDRUN as the main menu opens it -- its
+ * log-in first (SWOS_KEY_SCRIPT drives it); exits when it is left. */
+static void screens_test(void)
+{
+    static int32_t done;
+    if (done || !getenv("SWOS_SPEEDRUN_SCREENS_TEST"))
+        return;
+    done = 1;
+    screens("open", "{}", NULL, 0);
+    printf("SPEEDRUN SCREENS TEST left\n");
+    fflush(stdout);
+    exit(0);
 }
 
 static void speedrun2020_init(void)
@@ -770,6 +887,7 @@ static void speedrun2020_init(void)
 const ModDef ModDef_speedrun2020 = {
     .slug = SLUG,
     .init = speedrun2020_init,
+    .menuDrawn = screens_test,
 };
 
 #else

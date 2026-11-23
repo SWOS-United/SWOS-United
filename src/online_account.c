@@ -51,6 +51,7 @@ void        Account_Begin(const char *user, const char *password)
 }
 int32_t     Account_Poll(void)                 { return P(poll) ? s_provider.poll() : 1; }
 const char *Account_Error(void)                { return P(error) ? s_provider.error() : ""; }
+void        Account_LogOut(void)               {}
 int32_t     Account_ChooseMode(void)           { return P(chooseMode) ? s_provider.chooseMode() : 0; }
 void        Account_LobbyOpened(int32_t host)  { if (P(lobbyOpened)) s_provider.lobbyOpened(host); }
 void        Account_LobbyPeer(const char *name) { if (P(lobbyPeer)) s_provider.lobbyPeer(name); }
@@ -97,6 +98,7 @@ const char *Account_Url(AccountLink link)      { (void)link; return 0; }
 void        Account_Begin(const char *user, const char *password) { (void)user; (void)password; }
 int32_t     Account_Poll(void)                 { return 1; }
 const char *Account_Error(void)                { return ""; }
+void        Account_LogOut(void)               {}
 int32_t     Account_ChooseMode(void)           { return 0; }
 void        Account_LobbyOpened(int32_t host)  { (void)host; }
 void        Account_LobbyPeer(const char *name) { (void)name; }

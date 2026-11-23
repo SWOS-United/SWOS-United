@@ -1,0 +1,1042 @@
+{
+  "name": "shareHighlightsMenu",
+  "source": {
+    "project": "swos-2020",
+    "file": "src/menus/shareHighlights.mnu",
+    "commit": "df38d20"
+  },
+  "menu_flags": {
+    "dos_redraw": true
+  },
+  "onInit": "shareHighlightsMenu_OnInit",
+  "onReturn": "shareHighlightsMenu_OnReturn",
+  "onDraw": "shareHighlightsMenu_OnDraw",
+  "defaultEntry": 39,
+  "exports": {
+    "kSH_ADJUSTY": 3,
+    "kSH_MaxRows": 8,
+    "kSH_ButtonY0": 39,
+    "kSH_ButtonHeight": 14,
+    "kSH_ButtonStep": 16,
+    "kSH_FilenamePosX": 0,
+    "kSH_FilenamePosY": 39,
+    "kSH_FilenameStep": 16,
+    "kSH_FilenameWidth": 80,
+    "kSH_FilenameHeight": 14,
+    "kSH_FilenameBaseColor": 3,
+    "kSH_NotePosX": 82,
+    "kSH_NotePosY": 39,
+    "kSH_NoteStep": 16,
+    "kSH_NoteWidth": 156,
+    "kSH_NoteHeight": 14,
+    "kSH_NoteBaseColor": 7,
+    "kSH_SharedPosX": 240,
+    "kSH_SharedPosY": 39,
+    "kSH_SharedStep": 16,
+    "kSH_SharedWidth": 34,
+    "kSH_SharedHeight": 14,
+    "kSH_SharedBaseColor": 10,
+    "kSH_ScenePosX": 276,
+    "kSH_ScenePosY": 39,
+    "kSH_SceneStep": 16,
+    "kSH_SceneWidth": 34,
+    "kSH_SceneHeight": 14,
+    "kSH_SceneBaseColor": 10
+  },
+  "items": [
+    {
+      "kind": "entry",
+      "name": "header",
+      "coords": {
+        "x": 87,
+        "y": 0,
+        "w": 130,
+        "h": 16
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "SHARE HIGHLIGHTS"
+        },
+        {
+          "op": "colors",
+          "frame_color": 1,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "filename_00",
+      "coords": {
+        "x": -8,
+        "y": 39,
+        "w": 80,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x8000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 3
+        },
+        {
+          "op": "onselect_fire",
+          "func": "ShareHighlights_Filename_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "filename_01",
+      "coords": {
+        "x": -8,
+        "y": 55,
+        "w": 80,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x8000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 3
+        },
+        {
+          "op": "onselect_fire",
+          "func": "ShareHighlights_Filename_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "filename_02",
+      "coords": {
+        "x": -8,
+        "y": 71,
+        "w": 80,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x8000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 3
+        },
+        {
+          "op": "onselect_fire",
+          "func": "ShareHighlights_Filename_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "filename_03",
+      "coords": {
+        "x": -8,
+        "y": 87,
+        "w": 80,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x8000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 3
+        },
+        {
+          "op": "onselect_fire",
+          "func": "ShareHighlights_Filename_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "filename_04",
+      "coords": {
+        "x": -8,
+        "y": 103,
+        "w": 80,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x8000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 3
+        },
+        {
+          "op": "onselect_fire",
+          "func": "ShareHighlights_Filename_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "filename_05",
+      "coords": {
+        "x": -8,
+        "y": 119,
+        "w": 80,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x8000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 3
+        },
+        {
+          "op": "onselect_fire",
+          "func": "ShareHighlights_Filename_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "filename_06",
+      "coords": {
+        "x": -8,
+        "y": 135,
+        "w": 80,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x8000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 3
+        },
+        {
+          "op": "onselect_fire",
+          "func": "ShareHighlights_Filename_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "filename_07",
+      "coords": {
+        "x": -8,
+        "y": 151,
+        "w": 80,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x8000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 3
+        },
+        {
+          "op": "onselect_fire",
+          "func": "ShareHighlights_Filename_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "note_00",
+      "coords": {
+        "x": 74,
+        "y": 39,
+        "w": 156,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x8000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "ShareHighlights_Note_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "note_01",
+      "coords": {
+        "x": 74,
+        "y": 55,
+        "w": 156,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x8000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "ShareHighlights_Note_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "note_02",
+      "coords": {
+        "x": 74,
+        "y": 71,
+        "w": 156,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x8000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "ShareHighlights_Note_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "note_03",
+      "coords": {
+        "x": 74,
+        "y": 87,
+        "w": 156,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x8000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "ShareHighlights_Note_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "note_04",
+      "coords": {
+        "x": 74,
+        "y": 103,
+        "w": 156,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x8000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "ShareHighlights_Note_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "note_05",
+      "coords": {
+        "x": 74,
+        "y": 119,
+        "w": 156,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x8000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "ShareHighlights_Note_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "note_06",
+      "coords": {
+        "x": 74,
+        "y": 135,
+        "w": 156,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x8000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "ShareHighlights_Note_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "note_07",
+      "coords": {
+        "x": 74,
+        "y": 151,
+        "w": 156,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x8000"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        },
+        {
+          "op": "onselect_fire",
+          "func": "ShareHighlights_Note_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "shared_00",
+      "coords": {
+        "x": 232,
+        "y": 39,
+        "w": 34,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "---"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 10
+        },
+        {
+          "op": "onselect_fire",
+          "func": "ShareHighlights_Shared_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "shared_01",
+      "coords": {
+        "x": 232,
+        "y": 55,
+        "w": 34,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "---"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 10
+        },
+        {
+          "op": "onselect_fire",
+          "func": "ShareHighlights_Shared_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "shared_02",
+      "coords": {
+        "x": 232,
+        "y": 71,
+        "w": 34,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "---"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 10
+        },
+        {
+          "op": "onselect_fire",
+          "func": "ShareHighlights_Shared_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "shared_03",
+      "coords": {
+        "x": 232,
+        "y": 87,
+        "w": 34,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "---"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 10
+        },
+        {
+          "op": "onselect_fire",
+          "func": "ShareHighlights_Shared_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "shared_04",
+      "coords": {
+        "x": 232,
+        "y": 103,
+        "w": 34,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "---"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 10
+        },
+        {
+          "op": "onselect_fire",
+          "func": "ShareHighlights_Shared_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "shared_05",
+      "coords": {
+        "x": 232,
+        "y": 119,
+        "w": 34,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "---"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 10
+        },
+        {
+          "op": "onselect_fire",
+          "func": "ShareHighlights_Shared_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "shared_06",
+      "coords": {
+        "x": 232,
+        "y": 135,
+        "w": 34,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "---"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 10
+        },
+        {
+          "op": "onselect_fire",
+          "func": "ShareHighlights_Shared_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "shared_07",
+      "coords": {
+        "x": 232,
+        "y": 151,
+        "w": 34,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "---"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 10
+        },
+        {
+          "op": "onselect_fire",
+          "func": "ShareHighlights_Shared_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "scene_00",
+      "coords": {
+        "x": 268,
+        "y": 39,
+        "w": 34,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "---"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 10
+        },
+        {
+          "op": "onselect_fire",
+          "func": "ShareHighlights_Scene_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "scene_01",
+      "coords": {
+        "x": 268,
+        "y": 55,
+        "w": 34,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "---"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 10
+        },
+        {
+          "op": "onselect_fire",
+          "func": "ShareHighlights_Scene_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "scene_02",
+      "coords": {
+        "x": 268,
+        "y": 71,
+        "w": 34,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "---"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 10
+        },
+        {
+          "op": "onselect_fire",
+          "func": "ShareHighlights_Scene_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "scene_03",
+      "coords": {
+        "x": 268,
+        "y": 87,
+        "w": 34,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "---"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 10
+        },
+        {
+          "op": "onselect_fire",
+          "func": "ShareHighlights_Scene_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "scene_04",
+      "coords": {
+        "x": 268,
+        "y": 103,
+        "w": 34,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "---"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 10
+        },
+        {
+          "op": "onselect_fire",
+          "func": "ShareHighlights_Scene_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "scene_05",
+      "coords": {
+        "x": 268,
+        "y": 119,
+        "w": 34,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "---"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 10
+        },
+        {
+          "op": "onselect_fire",
+          "func": "ShareHighlights_Scene_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "scene_06",
+      "coords": {
+        "x": 268,
+        "y": 135,
+        "w": 34,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "---"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 10
+        },
+        {
+          "op": "onselect_fire",
+          "func": "ShareHighlights_Scene_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "scene_07",
+      "coords": {
+        "x": 268,
+        "y": 151,
+        "w": 34,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "---"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 10
+        },
+        {
+          "op": "onselect_fire",
+          "func": "ShareHighlights_Scene_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "scrollUp",
+      "coords": {
+        "x": 303,
+        "y": 55,
+        "w": 9,
+        "h": 13
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": " "
+        },
+        {
+          "op": "onselect_fire",
+          "func": "ShareHighlights_ScrollUp_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "scrollDown",
+      "coords": {
+        "x": 303,
+        "y": 152,
+        "w": 9,
+        "h": 13
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": " "
+        },
+        {
+          "op": "onselect_fire",
+          "func": "ShareHighlights_ScrollDown_onSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "page",
+      "coords": {
+        "x": 281,
+        "y": 165,
+        "w": 8,
+        "h": 12
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "longDesc",
+      "coords": {
+        "x": -8,
+        "y": 165,
+        "w": 320,
+        "h": 12
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x8000"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "numShared",
+      "coords": {
+        "x": -8,
+        "y": 21,
+        "w": 320,
+        "h": 12
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "newsOnDiscord",
+      "coords": {
+        "x": 42,
+        "y": 185,
+        "w": 90,
+        "h": 15
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "NEWS ON DISCORD"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 10
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": 39,
+          "up": -1,
+          "down": -1
+        },
+        {
+          "op": "onselect_fire",
+          "func": "newsOnDiscordSWOSGalore_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "menuExit",
+      "coords": {
+        "x": 172,
+        "y": 185,
+        "w": 90,
+        "h": 14
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "str": "_aExit"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 12
+        },
+        {
+          "op": "nav",
+          "left": 38,
+          "right": -1,
+          "up": -1,
+          "down": -1
+        },
+        {
+          "op": "onselect_fire",
+          "func": "ShareHighlights_menuExit_onSelect"
+        }
+      ]
+    }
+  ]
+}

@@ -1087,6 +1087,15 @@ int16_t SelectFileToSaveDialog(uint32_t filterExt, uint8_t *defaultFilename,
  *   out: d0 = 0 (file selected) or 1 (error/no selection)
  *        selectedFilename global contains the chosen filename
  * ================================================================ */
+/* The load list limited to two kinds (FileIo_ListOnly: REPLAYS' MATCH REPLAYS, .SRP and .RPL);
+ * 0: every kind, as the game always listed them. */
+static uint32_t s_listOnly[2];
+void FileIo_ListOnly(uint32_t ext1, uint32_t ext2)
+{
+    s_listOnly[0] = ext1;
+    s_listOnly[1] = ext2;
+}
+
 __attribute__((used, externally_visible))
 int16_t GetFilenameAndExtension(uint32_t preferredExt, uint8_t *defaultFilename,
                                  uint8_t *menuTitleStr)
@@ -1138,17 +1147,17 @@ int16_t GetFilenameAndExtension(uint32_t preferredExt, uint8_t *defaultFilename,
              * Automatically saved replays ([replays] auto_save) make that likely. */
             if (_totalNumberOfFiles >= 45)
                 break;
-            if (ext == 0x2E444959u || /* .DIY */
-                ext == 0x2E505245u || /* .PRE */
-                ext == 0x2E534541u || /* .SEA */
-                ext == 0x2E434152u || /* .CAR */
-                ext == 0x2E544143u || /* .TAC */
-                ext == 0x2E48494Cu || /* .HIL */
-                ext == 0x2E52504Cu    /* .RPL (PC whole-match replay) */
+            if ((ext == 0x2E444959u || /* .DIY */
+                 ext == 0x2E505245u || /* .PRE */
+                 ext == 0x2E534541u || /* .SEA */
+                 ext == 0x2E434152u || /* .CAR */
+                 ext == 0x2E544143u || /* .TAC */
+                 ext == 0x2E48494Cu || /* .HIL */
+                 ext == 0x2E52504Cu    /* .RPL (PC whole-match replay) */
 #ifdef SWOS_SDL_BUILD
-                || ext == 0x2E535250u /* .SRP (OpenSWOS whole-match replay) */
+                 || ext == 0x2E535250u /* .SRP (OpenSWOS whole-match replay) */
 #endif
-                )
+                 ) && (s_listOnly[0] == 0 || ext == s_listOnly[0] || ext == s_listOnly[1]))
             {
                 _totalNumberOfFiles++;
                 _numMatchedFiles++;

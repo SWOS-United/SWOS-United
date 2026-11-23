@@ -25,17 +25,40 @@
   #define AppVersion   "1.0.0"
 #endif
 
-#define AppName        "OpenSWOS"
-#define AppPublisher   "Baker76"
+; The project's identity: scripts/build_installer.sh passes a fork's from include/project_identity.h
+; (PROJECT_NAME, PROJECT_URL, PROJECT_SETUP_PROGRAM and, when the header has them, PROJECT_PUBLISHER and
+; PROJECT_WIN_APPID: docs/FORKING.md), so a fork's installer is its own without editing this file.
+#ifndef AppName
+  #define AppName      "OpenSWOS"
+#endif
+#ifndef AppPublisher
+  #define AppPublisher "Baker76"
+#endif
 #define AppExeName     "SWOS.exe"
 ; The data setup: OpenSWOS ships none of the original game's data, and this makes
 ; it from the player's own copy (tools/swosdata). Run when the install finishes.
-#define SetupExeName   "openswos-setup.exe"
+; Its name is the one the game looks for beside it (src/assets_check.c: PROJECT_SETUP_PROGRAM).
+#ifndef SetupExeName
+  #define SetupExeName "openswos-setup.exe"
+#endif
 #define SetupName      AppName + " Setup"
 ; SWOS United's DLC Manager: SWOS 2020's DLC catalogue, installed as mods in the player's folder.
 #define DlcManagerName     "SWOS United DLC Manager"
 #define DlcManagerExeName  "swos-dlc-manager.exe"
-#define AppURL         "https://github.com/benbaker76/OpenSWOS"
+#ifndef AppURL
+  #define AppURL       "https://github.com/benbaker76/OpenSWOS"
+#endif
+; Never reuse a GUID for another product -- it is what tells Windows an install is an
+; upgrade rather than a second copy. OpenSWOS's below; a fork's from its header.
+#ifndef AppIdGuid
+  #define AppIdGuid    "5E12A462-389E-5F60-9DC6-54B753E848D0"
+#endif
+; Program Files\<this>: the publisher's folder, then the program's -- unless they are one name.
+#if AppPublisher == AppName
+  #define InstallSubdir AppName
+#else
+  #define InstallSubdir AppPublisher + "\" + AppName
+#endif
 
 ; Relative to THIS file. Inno resolves relative paths against the script's
 ; directory, not the current one, so these hold wherever ISCC is invoked from.
@@ -46,9 +69,7 @@
 #define OutputDir      "..\..\dist"
 
 [Setup]
-; Never reuse this GUID for another product -- it is what tells Windows an
-; install is an upgrade of OpenSWOS rather than a second copy of it.
-AppId={{5E12A462-389E-5F60-9DC6-54B753E848D0}
+AppId={{{#AppIdGuid}}
 AppName={#AppName}
 AppVersion={#AppVersion}
 AppVerName={#AppName} {#AppVersion}
@@ -56,7 +77,7 @@ AppPublisher={#AppPublisher}
 AppPublisherURL={#AppURL}
 AppSupportURL={#AppURL}
 AppUpdatesURL={#AppURL}
-DefaultDirName={autopf}\{#AppPublisher}\{#AppName}
+DefaultDirName={autopf}\{#InstallSubdir}
 DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
 UninstallDisplayIcon={app}\{#AppExeName}
@@ -144,6 +165,10 @@ begin
     Result := Result + ' --no-play';
 end;
 
+[InstallDelete]
+; The classic seasons are laid down whole each time (an upgrade's package may have fewer).
+Type: filesandordirs; Name: "{app}\seasons"
+
 [UninstallDelete]
 ; The data trees are installed wholesale by one wildcard, so remove them
 ; wholesale -- Inno only tracks files it laid down individually, and a directory
@@ -159,5 +184,7 @@ Type: filesandordirs; Name: "{app}\sound"
 Type: filesandordirs; Name: "{app}\sound_dos"
 Type: filesandordirs; Name: "{app}\grafs_jag"
 Type: filesandordirs; Name: "{app}\mods"
+; The classic seasons (SEASON START): seasons\<slug>\, from dist\SWOS-United-Seasons.zip.
+Type: filesandordirs; Name: "{app}\seasons"
 Type: filesandordirs; Name: "{app}\setup"
 Type: filesandordirs; Name: "{app}\portmaster"

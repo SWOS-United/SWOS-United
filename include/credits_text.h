@@ -11,7 +11,7 @@
  * before them do -- add a line above the photos and the backdrop must be rebuilt with
  * them lower (make_credits_aga.py PHOTO_Y).
  *
- * The menu font has capitals, digits and . , : - ! only.
+ * The menu font: capitals, digits and the punctuation of the font extension (' / and the rest).
  */
 #ifndef CREDITS_TEXT_H
 #define CREDITS_TEXT_H
@@ -19,6 +19,31 @@
 #define CREDITS_GAP     ""
 #define CREDITS_PHOTOS  ((const char *)0)
 
+#ifdef SWOS_SDL_BUILD
+/* SWOS United's (Playa, 2026-11-20): its words, World 26/27's authors, its testers. The
+ * Amiga's AGA screen keeps OpenSWOS's below -- its photos are baked into its backdrop, at
+ * the height those lines leave them. */
+static const char *const k_creditsLines[] = {
+    "30 YEARS AFTER THE RELEASE OF SWOS 96/97 WE'RE BLESSED AND",
+    "FORTUNATE TO BRING THE GAME TO A NEW AUDIENCE. THANKS TO THE",
+    "GROUNDBREAKING WORK FROM ZLATKO KARAKAS WITH PORTING THE DOS",
+    "VERSION, THE TRAILBLAZING EFFORTS OF STARWINDZ WITH SWOS 2020",
+    "AND BENBAKER76'S ASTONISHING EFFORTS TO REBUILD THE AMIGA GAME",
+    "FAITHFULLY IN C CODE AND MERGE SWOS 2020, THE BEAUTIFUL GAME IS",
+    "ONCE AGAIN BACK ON THE WORLD MAP. PAIRED WITH ELMICHAJ'S",
+    "WEBSITE BACKEND AND REDHAIR'S SWOS TV, IT'S A CLEAR WINNER.",
+    CREDITS_GAP,
+    "WE ARE SWOS UNITED,",
+    "PLAYAVELI, DECEMBER 2026",
+    CREDITS_GAP,
+    CREDITS_PHOTOS,
+    CREDITS_GAP,
+    "WORLD 26/27 BY: AMINTA, WORLDOFSWOS.COM",
+    CREDITS_GAP,
+    "BETA TESTERS: BRUMMIE, CROM1, ELSHEIMY, EMPI, GATIFUN, MLADEN,",
+    "MOZG, PETARKU, PREDICADOR, REBEL, THD79, UMTYTM, YASHALKOK",
+};
+#else
 static const char *const k_creditsLines[] = {
     "OPENSWOS IS SENSIBLE WORLD OF SOCCER REBUILT IN C FROM",
     "THE ORIGINAL AMIGA GAME. REVERSE ENGINEERING BEGAN IN",
@@ -38,6 +63,7 @@ static const char *const k_creditsLines[] = {
     "DONATORS: BENBAKER76, PLAYAVELI, STARWINDZ, PETARKU,",
     "GATIFUN, BURELLAPAOLO, AZ0MAN0, CARTOPLOTUS68, JOSON, ALIKO",
 };
+#endif
 
 enum {
     CREDITS_LINE_PITCH = 9,     /* px from one line to the next */

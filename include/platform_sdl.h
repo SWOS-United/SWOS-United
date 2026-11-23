@@ -190,6 +190,7 @@ typedef struct {
     int                    quick_access;     /* [general] quick_access: SWOS 2020's QUICK ACCESS after a
                                               * friendly (src/quick_access.c), 0 off (default) */
     char                   world[8];         /* [general] world: the football world (include/world.h), "" = 9697 */
+    char                   season[32];       /* [general] season: SEASON START's (a folder in seasons/), "" = 96/97's own */
     int                    original_main_menu; /* [general] original_main_menu: 96/97's main menu, 96/97 the world */
     char                   mods[256];        /* [mods] enabled: the mods to play with (include/mods.h), "" = none */
     char                   mods_disabled[256];   /* [mods] disabled: canonical mods turned off, "" = none */

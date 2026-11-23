@@ -473,6 +473,8 @@ static int handler(void *user, const char *section,
             snprintf(opts->assets_reminder_off, sizeof opts->assets_reminder_off, "%s", value ? value : "");
         else if (eqi(name, "world") && value && value[0])
             snprintf(opts->world, sizeof opts->world, "%s", value);
+        else if (eqi(name, "season"))
+            snprintf(opts->season, sizeof opts->season, "%s", value ? value : "");
         else if (eqi(name, "original_main_menu"))
             opts->original_main_menu = value && (eqi(value, "true") || eqi(value, "on") || eqi(value, "1"));
         else if (eqi(name, "file_sort") && value && (eqi(value, "name") || eqi(value, "date")))
@@ -936,6 +938,10 @@ static int settings_build(const PlatformInitOptions *opts, IniEntry *items, char
         "; (docs/WORLD_2026_27.md): SWOS 96/97, World 2026-27 or Europe 1984-85 once " PROJECT_SETUP_NAME "\n"
         "; has imported its data. A save is played in the world it was made in.",
         opts->world[0] ? opts->world : "9697" };
+    SETTING(n) = (IniEntry){ "general","season",
+        "; season: the season CLASSIC CAREER plays in 96/97's world (SEASON START): empty for\n"
+        "; 96/97's own, else a season's folder in seasons/ beside the game (1994/95 v0.9, 2024/25 ...).",
+        opts->season };
     SETTING(n) = (IniEntry){ "general","original_main_menu",
         "; original_main_menu: true | false -- the main menu as 96/97's (no WORLD button, CAREER in\n"
         "; the middle) and 96/97 the world played, whatever world says (the SWOS 96/97 Mod 4.1's\n"

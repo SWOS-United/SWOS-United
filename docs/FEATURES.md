@@ -76,6 +76,54 @@ length a **setting** (default 20; allow e.g. 35).
 > rows, a 40-year career's 40. Proved: a 40-year career played to its end (season 40, retired) by the
 > career autopilot.
 >
+> **SWOS United's intro (Playa 2026-11-20):** two pictures in place of the game's thirteen loader
+> frames and its disk pictures (an AGA build: the PC, and the Amiga's AGA drawer; OCS keeps the
+> game's). SWOS United's logo with the title track until fire -- SWOS United's own, daXX's remix of
+> Goalscoring Superstar Hero (SWOS 2020's music DLC), `sound_dos/united_title.mp3`, repeated,
+> whatever the music style; not git-tracked, `scripts/build_installer.sh` lays it in from `bin/`;
+> without it the title tune as before (src/loader_intro.c
+> `ShowLoaderIntroSequence`), the track stopped, then POWERED BY OpenSWOS -- in the disk pictures'
+> place while the game loads (src/SWOS.c phase 5, `LoaderIntro_ShowPowered`): two seconds at
+> least, up until the main menu is ready, then faded out (src/frontend.c) and the menu faded in.
+> `skip_intro` skips both. The pictures are the project's own, `bin/grafs_aga/SWOSUNTD.RAW` and
+> `POWERED.RAW`, made from `packaging/intro/*.png` by `scripts/make_loader_logos.sh` (the DOS menu
+> palette the AGA build shows them in; POWERED BY in the menus' small font, from CHARSET.RAW).
+
+> **The two careers and SEASON START (SWOS United, Playa 2026-11-19):** the main menu has a fourth row
+> of buttons under PRACTICE and REPLAYS, above CONTINUE / LOAD -- **CLASSIC CAREER** (brown:
+> 96/97's world, in the season SEASON START chose) and **WORLD 26/27 CAREER** (dark yellow); the four
+> rows are 24 high, 4 apart (scripts/make_menus2020.py `CAREER_BUTTONS`; they take the main menu's
+> entries 14 and 16, the game's own MULTIPLAYER and MODES places, which this menu never shows).
+> COMPETE's CLASSIC CAREER MODE is gone. Proved: a career started after switches equals a fresh
+> start's save for save (`SWOS_TEST_SWITCH=2627,9697:<season>,...` before the golden careers;
+> `SWOS_TEST_SEASONS=1` lets that rig take a season) -- 96/97 after World 2026-27, World 2026-27
+> after 96/97 and a season, a season after another and after Europe 1984-85. Both open the career screen; CLASSIC CAREER's has **SEASON START**
+> under CAREER YEARS (entries 14 / 15 of `careerMenu`, appended; hidden on the Amiga and in another
+> world): 1996/97 (96/97's own data), then every season of SWOS 2020's team database DLC but the
+> special editions -- 1990/91 to 2024/25, `YYYY/YY`, the Amiga's releases `YYYY/YY vX.Y`, a season's
+> other databases by a word (1996/97 REVISED, 2019/20 WINTER, 1995/96 EURO 96 ...). **INFO** right of
+> it (entry 16, wide coordinates) shows the chosen season's `readme.txt` -- its authors' notes from the
+> DLC; 96/97's own is `seasons/ORIGINAL-9697.TXT`; a season without one (SWOS 2020's own) its
+> mod.json's name, authors, version -- in a reader a page at a time (`MenuDialog_ShowText`,
+> src/menu_dialog.c: PREVIOUS, the menus' brown EXIT in the centre, NEXT; ESC as EXIT). The seasons are
+> team database mods (docs/MODS.md §10.4) in `seasons/` beside the game, not canonical and never on
+> the MODS screen (include/mods.h `MODS_SEASONS_DIR`): `tools/dlc-manager/scripts/dlc2020_to_mods.py
+> --types teamdb --openswos .` then `scripts/make_seasons_package.py` -> `dist/SWOS-United-Seasons.zip`,
+> which `scripts/build_installer.sh` lays into the installer (never committed: their teams are their
+> authors'). The world and season played are SWOS.ini's `[general] world` and `season` (main.c
+> `mods_start`: a season only in 96/97's world), and a career that needs others changes them **while
+> the game runs** (src/world_switch.c `WorldSwitch_To`: no restart) -- the compiled data kept as it
+> was before the start's installs (`Pristine_Keep`), put back, each installer reset, and the start's
+> installs run again in their order: mods (the season's), translations and country names, world,
+> competitions from JSON, cups, national teams, the season's leagues, tweaks; the files read once
+> forgotten (POOLPLYR.DAT, every cached `data/` file: a season's cups' .TMD). SEASON START's choice
+> is taken at CHOOSE TEAM. A career save of a season records it (`"season"`, only for one that
+> is not 96/97's own); LOAD switches to a save's world and season first (save_format_json.c
+> `save_switch_to`: a competition save's world), and refuses it only when that world's package or
+> season's folder is not installed. While a
+> season other than 1996/97 is chosen, MULTIPLAYER refuses to start (an offline-only mod is on, as
+> any team database): choose 1996/97 to play online.
+>
 > **Status: done** (c011c12). `num_seasons` in `bin/data_json/career_params.json`
 > (`_careerParams.num_seasons`, default 20, clamped to `CAREER_MAX_SEASONS` = 35 in
 > `include/career_params.h`) — a data knob, not the `[career] length` INI setting or

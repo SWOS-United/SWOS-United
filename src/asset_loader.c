@@ -215,6 +215,24 @@ int32_t AssetCacheFindByName(const uint8_t *name)
     return (int32_t)dataSize;
 }
 
+/* The cached game data files (data/...: team files, the pool, the cups' .TMD) forgotten, their
+ * blocks free again: the next read takes each from the disk, through the mods -- a world or season
+ * switch's (world_switch.c). Every LoadFileEx may cache what it read (file_io.c), so a season's
+ * UEFACUP.TMD stayed and the next season's draw read it. The graphics and sounds stay cached. */
+void AssetCache_ForgetData(void)
+{
+    uint8_t *node = (uint8_t *)_assetLoaderCacheFlag;
+    while (node) {
+        const uint8_t *n = node + CACHE_OFF_NAME;
+        if (*(uint16_t *)(node + CACHE_OFF_ISFREE) == 0 && (n[0] | 0x20) == 'd' && (n[1] | 0x20) == 'a' &&
+            (n[2] | 0x20) == 't' && (n[3] | 0x20) == 'a' && (n[4] == '/' || n[4] == '\\')) {
+            node[CACHE_OFF_NAME] = 0;
+            *(uint16_t *)(node + CACHE_OFF_ISFREE) = 1;
+        }
+        node = cache_node_next(node);
+    }
+}
+
 /* ================================================================
  * AssetCacheCopyByName  (SWOS2.s line 9910)
  *

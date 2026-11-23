@@ -18,6 +18,7 @@
  * "changes": "career": careers and seasons; a normal match is untouched.
  */
 #include "mod_api.h"
+#include "mods.h"             /* Mods_Slot: a team database on */
 
 
 #include <stdio.h>
@@ -48,6 +49,16 @@ static const WorldUefaSeeds kSeeds = {
 
 static void euro36_init(void)
 {
+    /* Not with a team database (a season of SWOS 2020's DLC, SEASON START's): the seeds below are
+     * 96/97's clubs by number, and another season's files hold others, or fewer -- its 1994/95
+     * Germany has 41 clubs, and seed 0x0E2C made a career panic at its first continental draw
+     * (VerifyTeamLoaded, 2026-11-19). That season plays its own cups. */
+    for (int32_t i = 0; i < Mods_Count(); i++)
+        if (strcmp(Mods_Slot(i), "teamdb") == 0) {
+            fprintf(stderr, "[euro36] not with the team database %s (its clubs are not 96/97's): the season's own cups\n",
+                    Mods_Id(i));
+            return;
+        }
     static const CompetitionLeaguePhase kTemplate = {
         { { 0, 2, -1, 64, 32, 35, 0, 41, 1 }, 0, 0, 1, 3, 53, 6,
           { { 36, 2, 18 }, { 16, 0, 16 }, { 16, 0, 16 }, { 8, 0, 8 }, { 4, 0, 4 }, { 2, 0, 2 } }, 1 },

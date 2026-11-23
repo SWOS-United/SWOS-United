@@ -174,7 +174,8 @@ tests/career-golden/
 # A developer may still keep them in bin/ -- the FS-UAE harness mounts bin/ as
 # DH1: -- so they are ignored here, and every drop is staged from tracked files
 # only (scripts/stage_runtime.sh). What stays tracked in these trees is the
-# project's own: LOADER76 (the credits loader), the credits photos, the 1UP coin
+# project's own: LOADER76 (the credits loader), SWOSUNTD / POWERED (SWOS United's intro
+# logos, scripts/make_loader_logos.sh), the credits photos, the 1UP coin
 # sound and the commentary README.
 bin/data/*
 !bin/data/credits_icons.bmp
@@ -183,6 +184,8 @@ bin/grafs/*
 !bin/grafs/LOADER76.RAW
 bin/grafs_aga/*
 !bin/grafs_aga/LOADER76.RAW
+!bin/grafs_aga/SWOSUNTD.RAW
+!bin/grafs_aga/POWERED.RAW
 bin/grafs_dos/
 bin/grafs_jag/
 bin/sound/*
@@ -224,3 +227,6 @@ include/united_secrets.h
 # The Amiga's binary of the mods' JSON (swosdata --amiga-mod; the setup writes it in a drawer)
 bin/mods/*/challenges/
 bin/mods/*/classic/*/INDEX.BIN
+
+# The classic seasons (scripts/make_seasons_package.py): their authors' teams, never committed
+bin/seasons/

@@ -135,6 +135,7 @@ const char *Account_Prompt(void)
 const char *Account_Url(AccountLink link) { return (uint32_t)link < ACCOUNT_LINKS ? kUrls[link] : 0; }
 const char *Account_Error(void)           { return United_LoginError(); }
 void        Account_Begin(const char *user, const char *password) { United_LoginBegin(user, password); }
+void        Account_LogOut(void)          { United_LoginRefuse(""); fprintf(stderr, "[account] logged out\n"); }
 
 /* The log-in (SWOS-API's), then the ban list: a player banned from ALL LOG IN is refused
  * (United_LoginRefuse forgets the session). No list (no answer): nobody is banned this session.
