@@ -13,6 +13,17 @@ void    OnlineMenus_Init(void);
 /* Show a JSON-only menu by its loader name, e.g. "swos2020/logInMenu". */
 void    OnlineMenus_Show(const char *name);
 
+/* SWOS 2020's "SERVER LOGIN": the same logInMenu as MULTIPLAYER's, the account checked and the
+ * menu closed -- no matchmaking. For
+ *   LOGIN_FOR_SPEEDRUN  SPEEDRUN (challengeGame0Extras_OnSelect): PLAY OFFLINE and LATEST RUNS
+ *   LOGIN_FOR_GALORE    SWOS GALORE's RATE / SHARE (selectLatestUploads, selectShareHighlights):
+ *                       NOTICE (LOG OUT when logged in) and MONTHLY CHART
+ * `as`: who is logged in this session already ("" or NULL nobody), whose name LOGIN takes at once;
+ * `news`: what the lower button opens (NULL: SPEEDRUN's LATEST RUNS). 0 logged in, 1 PLAY OFFLINE,
+ * -1 left (EXIT, LOG OUT). A project without accounts: 1, no menu. */
+enum { LOGIN_FOR_SPEEDRUN = 1, LOGIN_FOR_GALORE = 2 };
+int32_t OnlineMenus_ServerLogIn(int32_t purpose, const char *as, void (*news)(void));
+
 /* --menu=<name>: remember a menu for OnlineMenus_ShowStartMenu to open once, when
  * the front end first starts. ShowStartMenu returns 1 when it showed one (and so the
  * main menu must be put back, as every main-menu button does: CommonMenuExit). */

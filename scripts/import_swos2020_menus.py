@@ -74,7 +74,10 @@ MULTIPLAYER_MENUS = [
     "customChallengesMain", "customChallengesSelectSCN", "customChallengesSortBy",
     "customChallengesNewOrLoad", "customChallengesEdit",
     # SWOS Galore: its menu and the highlights charts -- src/united_galore.c   (replays/replaysMenu.cpp)
-    "swosGalore", "chartHighlights",
+    "swosGalore", "chartHighlights", "rateHighlights", "shareHighlights", "viewHighlight",
+    # REPLAYS from the main menu: SWOS GALORE, HIGHLIGHTS, MATCH REPLAYS, REPLAY CONTROLS, and the
+    # controls' table -- src/mod_menus2020.c                       (replays/replaysMenu.cpp)
+    "replaysMain", "replayControls",
     # the ranked match's warning, the opponent on custom tactics      (game.cpp)
     "customTacticsWarning",
 ]

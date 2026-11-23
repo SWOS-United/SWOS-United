@@ -6,10 +6,10 @@
  * Its menus imported (data_json/menus/swos2020/, the importer's "SWOS Galore" group), their
  * handlers here under SWOS 2020's names (replays/replaysMenu.cpp).
  *
- * READS ONLY: the charts and the highlights come from sensiblesoccer.de (the online-records mod's
- * galore.chart / galore.download); RATE and SHARE would write there, and nothing from OpenSWOS
- * goes to sensiblesoccer.de (the owner, 2026-11-07) -- they wait for SWOS United's own server.
- * MODES -> SWOS GALORE.
+ * The charts and the highlights come from sensiblesoccer.de (the online-records mod's galore.chart /
+ * galore.download). RATE HIGHLIGHTS and SHARE HIGHLIGHTS write there, as SWOS 2020 did (Playa,
+ * 2026-11-21: "replicate the functionalities"), after its SERVER LOGIN -- SWOS-API's client
+ * (united_records.h, UnitedRecords_Galore*), on a thread of their own. REPLAYS -> SWOS GALORE.
  */
 #include "mod_api.h"
 
@@ -19,6 +19,7 @@
 #include "menu_system.h"
 #include "swos2020_menus.h"
 #include "united_ui.h"
+#include "endian_helpers.h"
 
 #include <SDL.h>
 #include <stdio.h>
@@ -67,8 +68,8 @@ static void swosGaloreMenu_OnDraw(void)
     set_text(entry_at(SwosGaloreMenu_desc),
              sel == SwosGaloreMenu_allTimeChart ? "THE BEST GOALS EVER SHARED"
              : sel == SwosGaloreMenu_monthlyChart ? "THE BEST GOALS OF A MONTH"
-             : sel == SwosGaloreMenu_latestUploads ? "NOT YET: SWOS UNITED'S OWN SERVER"
-             : sel == SwosGaloreMenu_shareHighlights ? "NOT YET: SWOS UNITED'S OWN SERVER" : "");
+             : sel == SwosGaloreMenu_latestUploads ? "CHECK OUT THE LATEST UPLOADS AND RATE THEM"
+             : sel == SwosGaloreMenu_shareHighlights ? "SHARE YOUR OWN HIGHLIGHTS ON SWOS GALORE" : "");
 }
 static void selectAllTimeChart(void)
 {
@@ -81,8 +82,6 @@ static void selectMonthlyChart(void)
     s_monthIndex = 0;
     show("swos2020/chartHighlightsMenu");
 }
-static void selectLatestUploads(void) { ModApi_ShowError("RATING COMES WITH SWOS UNITED'S OWN SERVER"); }
-static void selectShareHighlights(void) { ModApi_ShowError("SHARING COMES WITH SWOS UNITED'S OWN SERVER"); }
 
 /* ---- the chart ---- */
 
@@ -291,7 +290,6 @@ static void ChartHighlights_Filename_onSelect(void)
 static void ChartHighlights_ScrollUp_onSelect(void) { if (s_page > 0) s_page--; }
 static void ChartHighlights_ScrollDown_onSelect(void) { s_page++; }
 static void ChartHighlights_menuExit_onSelect(void) { SetExitMenuFlag(); }
-static void newsOnDiscordSWOSGalore_OnSelect(void) {}
 static void yearMonth_Dec_onSelect(void)          /* (SWOS 2020's: DEC goes back a month) */
 {
     if (s_monthIndex < 11)
@@ -307,6 +305,993 @@ static void yearMonth_Inc_onSelect(void)
     s_page = 0;
 }
 
+/* ======================================================================================
+ * RATE HIGHLIGHTS and SHARE HIGHLIGHTS (SWOS 2020's replays/replaysMenu.cpp: RateHighlight,
+ * ShareHighlight), behind its SERVER LOGIN (OnlineMenus_ServerLogIn), and VIEW HIGHLIGHT, the box
+ * before a highlight is shown (viewHighlightMenu: its game style, its scene(s)).
+ *
+ *   RATE   every shared highlight, newest first, seven a page: date, player, comment, the player's
+ *          own rating -- CLICK, then 3.0, 3.5 .. 5.0 and off again (not your own highlights); the
+ *          comment's button views the highlight. The ratings are sent on EXIT (only what changed).
+ *   SHARE  the .HIL files in the save folder: comment (typed, kept beside: the save folder's
+ *          mods/galore2020/<NAME>.TXT -- the comment, then the scene, as SWOS 2020's
+ *          highlights\<NAME>.TXT), SHARE ON/OFF, the SCENE promoted (ALL, 1..n). On EXIT (a shared
+ *          one needs a comment; LATEST.HIL is never shared): highlights no longer shared deleted,
+ *          new ones sent with their file, changed ones' rows updated -- and SWOS 2020's Discord
+ *          post of what was shared (PROJECT_DISCORD_PROXY, "galore_share").
+ * The network work runs on a thread of its own (s_job); the screen shows how far it is.
+ * ====================================================================================== */
+#if defined(SWOS_HTTPS)
+#include "online_menus.h"
+#include "project_identity.h"
+#include "united_api.h"
+#include "united_records.h"
+#include "https_client.h"
+#include "text_render.h"
+#include "input_text.h"
+#include "platform_sdl.h"
+#include "swos_io.h"
+#endif
+
+enum { kDarkBlue = 3, kLightBlue = 13, kGreenBack = 14 };
+
+typedef struct {
+    char    user[40], file[96], note[64], datetime[24];
+    int32_t scene, maxScenes, shared, style;
+    double  rate;
+    /* as the server had it (what EXIT compares with) */
+    double  rateWas;
+    int32_t sharedWas, sceneWas;
+    char    noteWas[64];
+} Hil;
+
+static Hil    *s_hil;               /* RATE: every shared highlight; SHARE: the local files */
+static int32_t s_hilN, s_hilPage, s_hilMode;    /* mode: 1 RATE, 2 SHARE */
+static char    s_hilTitle[48], s_hilPageText[24], s_hilDesc[96], s_hilHint[80];
+static char    s_hilCells[kRows][4][64];
+
+static char    s_me[40];            /* the logged-in player, as the site has them */
+
+static void open_url_discord(void);
+static void view_server(const Hil *h);
+
+/* SWOS 2020's shortenStr: cut to fit `limit` pixels, "..." at the end */
+static void shorten_to(char *s, const MenuEntry *e, int32_t limit)
+{
+    extern void *_charTables[];
+    uint8_t *table = (uint8_t *)_charTables[((e->stringFlags & STR_FLAGS_MASK) >> 2) / 4];
+    size_t n = strlen(s);
+    if (GetTextWidth((uint8_t *)s, table) <= limit)
+        return;
+    while (n > 0) {
+        s[n] = 0;
+        char tmp[80];
+        snprintf(tmp, sizeof tmp, "%s...", s);
+        if (GetTextWidth((uint8_t *)tmp, table) <= limit || n == 1) {
+            snprintf(s + n, 4, "...");
+            return;
+        }
+        n--;
+    }
+}
+
+static void upper(char *s)
+{
+    for (; *s; s++)
+        if (*s >= 'a' && *s <= 'z')
+            *s = (char)(*s - 32);
+}
+
+static int32_t pages(int32_t n) { return n ? (n + kRows - 1) / kRows : 1; }
+
+static void nav4(int32_t ordinal, int32_t left, int32_t right, int32_t up, int32_t down)
+{
+    MenuEntry *e = entry_at(ordinal);
+    e->leftEntry = (int8_t)left;
+    e->rightEntry = (int8_t)right;
+    e->upEntry = (int8_t)up;
+    e->downEntry = (int8_t)down;
+}
+
+/* SWOS 2020's table moves (viewHilData / viewLocalHilData): four columns of seven, left and right
+ * along a row, up and down a column (the last row's down: EXIT), the right column's right the page
+ * arrows (rows 1-3 up, 4-7 down); EXIT up to the third column's last row, left to NEWS ON DISCORD. */
+static void table_nav(const int32_t col0[4], int32_t scrollUp, int32_t scrollDown, int32_t exitEntry,
+                      int32_t newsEntry)
+{
+    for (int32_t c = 0; c < 4; c++)
+        for (int32_t i = 0; i < kRows; i++) {
+            const int32_t o = col0[c] + 1 + i;
+            nav4(o, c > 0 ? col0[c - 1] + 1 + i : -1, c < 3 ? col0[c + 1] + 1 + i : i < 3 ? scrollUp : scrollDown,
+                 i > 0 ? o - 1 : -1, i < kRows - 1 ? o + 1 : exitEntry);
+        }
+    nav4(scrollUp, col0[3] + 1, -1, -1, scrollDown);
+    nav4(scrollDown, col0[3] + kRows, -1, scrollUp, -1);
+    nav4(exitEntry, newsEntry, -1, col0[2] + kRows, -1);
+    nav4(newsEntry, -1, exitEntry, col0[0] + kRows, -1);
+}
+
+/* A highlights file's scenes and game style (SWOS 2020's getMaxScenes, getGameStyleFromFile): the
+ * PC's / SWOS 2020's (num_shots at 3616, the style at 5), SWOS's own (num_goals at 2244) or ours
+ * (JSON "num_goals"). style -1: not in the file (the viewer's own rate). */
+static int32_t hil_scenes(const uint8_t *d, uint32_t n, int32_t *style)
+{
+    extern int DosReplay_IsDosHil(const uint8_t *buf, uint32_t size);
+    extern uint32_t _kHilFileSig;
+    *style = -1;
+    if (!d || !n)
+        return 0;
+    if (DosReplay_IsDosHil(d, n)) {
+        const uint8_t b = n > 5 ? d[5] : 0;
+        *style = b == 0xF4 ? -1 : b >= 30 ? b - 30 : b >= 20 ? b - 20 : b >= 10 ? b - 10 : -1;
+        if (*style == 2)
+            *style = 1;
+        return n >= 3618 ? (int32_t)(int16_t)(d[3616] | (d[3617] << 8)) : 0;
+    }
+    if (d[0] == '{') {
+        const char *k = strstr((const char *)d, "\"num_goals\"");
+        const char *c = k ? strchr(k, ':') : NULL;
+        return c ? atoi(c + 1) : 0;
+    }
+    if (n >= 2246 && BE_READ_U32(d) == _kHilFileSig)
+        return (int32_t)BE_READ_U16(d + 2244);
+    return 0;
+}
+
+/* ---- the work on its thread ---- */
+
+enum { JOB_NONE, JOB_RATE_LOAD, JOB_RATE_SEND, JOB_SHARE_LOAD, JOB_SHARE_SEND };
+static int32_t           s_jobKind;
+static volatile int32_t  s_jobState;        /* 0 idle, 1 running, 2 done, 3 failed */
+static volatile int32_t  s_jobDone, s_jobTotal, s_jobPhase;   /* phase: 0 deleting, 1 updating, 2 uploading */
+static char             *s_jobText;         /* RATE_LOAD / SHARE_LOAD: what came back */
+static char             *s_jobText2;        /* RATE_LOAD: the player's ratings (what EXIT compares with) */
+enum { kJobText = 1 << 20 };
+
+#if defined(SWOS_HTTPS)
+static void style_name_of(int32_t style, char *out, uint32_t cap)
+{
+    static const char *const k[5] = { "DOS", "AMIGA", "MOON", "60 FPS", "XBOX" };
+    snprintf(out, cap, "%s", style >= 0 && style < 5 ? k[style] : "AMIGA");
+}
+
+static void b64url(const char *in, char *out, uint32_t cap)
+{
+    static const char t[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+    const uint8_t *d = (const uint8_t *)in;
+    size_t n = strlen(in), i = 0;
+    uint32_t o = 0;
+    for (; i + 3 <= n && o + 5 < cap; i += 3) {
+        const uint32_t v = (uint32_t)d[i] << 16 | (uint32_t)d[i + 1] << 8 | d[i + 2];
+        out[o++] = t[v >> 18 & 63];
+        out[o++] = t[v >> 12 & 63];
+        out[o++] = t[v >> 6 & 63];
+        out[o++] = t[v & 63];
+    }
+    if (n - i == 1 && o + 3 < cap) {
+        const uint32_t v = (uint32_t)d[i] << 16;
+        out[o++] = t[v >> 18 & 63];
+        out[o++] = t[v >> 12 & 63];
+    } else if (n - i == 2 && o + 4 < cap) {
+        const uint32_t v = (uint32_t)d[i] << 16 | (uint32_t)d[i + 1] << 8;
+        out[o++] = t[v >> 18 & 63];
+        out[o++] = t[v >> 12 & 63];
+        out[o++] = t[v >> 6 & 63];
+    }
+    out[o] = 0;
+}
+
+static void json_esc(const char *in, char *out, uint32_t cap)
+{
+    uint32_t o = 0;
+    for (; *in && o + 3 < cap; in++) {
+        if (*in == '"' || *in == '\\')
+            out[o++] = '\\';
+        if ((unsigned char)*in >= ' ')
+            out[o++] = *in;
+    }
+    out[o] = 0;
+}
+
+/* SWOS 2020's postGaloreShareToDiscord: the announcement and a card a highlight */
+static void discord_post(const char *cards, int32_t count)
+{
+    char announce[160], *body, *ea, *ec;
+    HttpsReply r;
+    if (!PROJECT_DISCORD_PROXY[0] || !count || getenv("SWOS_GALORE_NO_DISCORD"))
+        return;
+    snprintf(announce, sizeof announce, ":man_raising_hand: `%s` has shared %s :rotating_light:", s_me,
+             count == 1 ? "a new HIGHLIGHT" : "new HIGHLIGHTS");
+    ea = (char *)malloc(strlen(announce) * 3 + 1);
+    ec = (char *)malloc(strlen(cards) * 3 + 1);
+    body = ea && ec ? (char *)malloc(strlen(announce) * 3 + strlen(cards) * 3 + 64) : NULL;
+    if (body) {
+        Https_Escape(announce, ea, (uint32_t)strlen(announce) * 3 + 1);
+        Https_Escape(cards, ec, (uint32_t)strlen(cards) * 3 + 1);
+        sprintf(body, "type=galore_share&announce=%s&cards=%s", ea, ec);
+        if (Https_Request(PROJECT_DISCORD_PROXY, body, &r) == 0)
+            Https_Free(&r);
+        fprintf(stderr, "[galore2020] the share posted to Discord (%d highlight%s)\n", (int)count, count == 1 ? "" : "s");
+    }
+    free(body);
+    free(ea);
+    free(ec);
+}
+
+static int job_main(void *unused)
+{
+    (void)unused;
+    int32_t ok = 1;
+    if (s_jobKind == JOB_RATE_LOAD) {
+        ok = UnitedRecords_GaloreRatings(s_me, s_jobText2, kJobText) && UnitedRecords_GaloreAll(s_jobText, kJobText);
+    } else if (s_jobKind == JOB_SHARE_LOAD) {
+        ok = UnitedRecords_GaloreShared(s_me, s_jobText, kJobText);
+    } else if (s_jobKind == JOB_RATE_SEND) {
+        /* (SWOS 2020's updateServerData: a rating taken away -- update_avg_rate_data --, one new or
+         *  changed -- upsert_rater_data. Not its third part: the ratings of highlights no longer
+         *  shared dropped one request each -- they count nowhere (a chart is the shared highlights'),
+         *  and a player's years of them made the first EXIT take minutes; Playa, 2026-11-21) */
+        s_jobTotal = s_hilN;
+        for (int32_t i = 0; i < s_hilN; i++) {
+            const Hil *h = &s_hil[i];
+            s_jobDone = i + 1;
+            if (h->rate != h->rateWas && (h->rate > 0.0 || h->rateWas > 0.0))
+                ok &= UnitedRecords_GaloreRate(s_me, h->user, h->file, h->rate);
+        }
+    } else if (s_jobKind == JOB_SHARE_SEND) {
+        char *cards = (char *)malloc(65536);
+        uint32_t used = 0;
+        int32_t count = 0;
+        if (cards)
+            cards[used++] = '[';
+        s_jobPhase = 0;
+        s_jobTotal = s_hilN;
+        for (int32_t i = 0; i < s_hilN; i++) {      /* (no longer shared: its row deleted) */
+            s_jobDone = i + 1;
+            if (s_hil[i].sharedWas && !s_hil[i].shared)
+                ok &= UnitedRecords_GaloreUnshare(s_me, s_hil[i].file);
+        }
+        s_jobPhase = 1;
+        for (int32_t i = 0; i < s_hilN; i++) {
+            Hil *h = &s_hil[i];
+            s_jobDone = i + 1;
+            if (!h->shared || (h->sharedWas && !strcmp(h->note, h->noteWas) && h->scene == h->sceneWas))
+                continue;
+            uint8_t *data = NULL;
+            uint32_t size = 0;
+            if (!h->sharedWas) {                    /* (new: its file goes with it) */
+                char path[1024];
+                s_jobPhase = 2;
+                snprintf(path, sizeof path, "%s/%s", swos_save_dir(), h->file);
+                data = (uint8_t *)ModApi_ReadFile(path, &size);
+            }
+            const int32_t sent = UnitedRecords_GaloreShare(s_me, h->file, h->note, h->datetime, h->scene, data, size);
+            free(data);
+            s_jobPhase = 1;
+            ok &= sent;
+            if (sent && cards && used + 1024 < 65536) {     /* (the Discord card) */
+                char key[160], link[256], title[200], note[160], style[16], scene[32];
+                snprintf(key, sizeof key, "%s/%s", s_me, h->file);
+                if (h->scene > 0)
+                    snprintf(key + strlen(key), sizeof key - strlen(key), ":%d", (int)h->scene);
+                b64url(key, link, sizeof link);
+                json_esc(h->file, title, sizeof title);
+                json_esc(h->note, note, sizeof note);
+                style_name_of(h->style, style, sizeof style);
+                if (h->scene == 0)
+                    snprintf(scene, sizeof scene, "All %d scene%s", (int)h->maxScenes, h->maxScenes == 1 ? "" : "s");
+                else
+                    snprintf(scene, sizeof scene, "%d of %d", (int)h->scene, (int)h->maxScenes);
+                used += (uint32_t)snprintf(cards + used, 65536 - used,
+                                           "%s{\"title\":\"%s\",\"url\":\"https://swos.eu/rpl/?g=%s\",\"style\":\"%s\","
+                                           "\"scene\":\"%s\",\"comment\":\"%s\"}",
+                                           count ? "," : "", title, link, style, scene, note);
+                count++;
+            }
+        }
+        if (cards) {
+            snprintf(cards + used, 65536 - used, "]");
+            discord_post(cards, count);
+            free(cards);
+        }
+    }
+    s_jobState = ok ? 2 : 3;
+    return 0;
+}
+#endif
+
+/* Start a job (0), or not (a build without HTTPS, or one running). */
+static int32_t job_start(int32_t kind)
+{
+#if defined(SWOS_HTTPS)
+    SDL_Thread *t;
+    if (s_jobState == 1)
+        return -1;
+    if (!s_jobText)
+        s_jobText = (char *)malloc(kJobText);
+    if (!s_jobText2)
+        s_jobText2 = (char *)malloc(kJobText);
+    if (!s_jobText || !s_jobText2)
+        return -1;
+    if (kind == JOB_RATE_LOAD || kind == JOB_SHARE_LOAD) {
+        s_jobText[0] = 0;
+        s_jobText2[0] = 0;
+    }
+    s_jobKind = kind;
+    s_jobDone = s_jobTotal = s_jobPhase = 0;
+    s_jobState = 1;
+    t = SDL_CreateThread(job_main, "galore", NULL);
+    if (!t) {
+        s_jobState = 3;
+        return -1;
+    }
+    SDL_DetachThread(t);
+    return 0;
+#else
+    (void)kind;
+    return -1;
+#endif
+}
+
+static int32_t job_percent(void) { return s_jobTotal ? (int32_t)(s_jobDone * 100 / s_jobTotal) : 100; }
+
+static int32_t hil_alloc(void)
+{
+    if (!s_hil)
+        s_hil = (Hil *)malloc(sizeof(Hil) * 2000);
+    return s_hil != NULL;
+}
+
+/* ---- RATE HIGHLIGHTS ---- */
+
+static void rate_parse(void)
+{
+    s_hilN = 0;
+    if (!hil_alloc())
+        return;
+    for (char *line = s_jobText; line && *line && s_hilN < 2000;) {
+        char *next = strchr(line, '\n'), *f[5];
+        int32_t n = 0;
+        if (next)
+            *next++ = 0;
+        for (char *p = line; p && n < 5; n++) {
+            f[n] = p;
+            p = strchr(p, '\t');
+            if (p)
+                *p++ = 0;
+        }
+        if (n == 5 && f[0][0]) {
+            Hil *h = &s_hil[s_hilN++];
+            memset(h, 0, sizeof *h);
+            snprintf(h->user, sizeof h->user, "%s", f[0]);
+            snprintf(h->file, sizeof h->file, "%s", f[1]);
+            snprintf(h->note, sizeof h->note, "%s", f[2]);
+            snprintf(h->datetime, sizeof h->datetime, "%s", f[3]);
+            h->scene = atoi(f[4]);
+            /* the player's own rating of it (downloadServerHilData) */
+            char want[160];
+            snprintf(want, sizeof want, "%s\t%s\t", h->user, h->file);
+            const char *r = strstr(s_jobText2, want);
+            while (r && r != s_jobText2 && r[-1] != '\n')
+                r = strstr(r + 1, want);
+            h->rate = h->rateWas = r ? atof(r + strlen(want)) : 0.0;
+        }
+        line = next;
+    }
+}
+
+static void rateStars_AfterDraw(MenuEntry *e)
+{
+    const int32_t i = (int32_t)e->ordinal - RateHighlightsMenu_rate_01, idx = s_hilPage * kRows + i;
+    if (i < 0 || i >= kRows || idx >= s_hilN || s_hil[idx].rate <= 0)
+        return;
+    United_DrawRating((int32_t)(s_hil[idx].rate * 2 + 0.5), e->x + 1, e->y + 3);
+}
+
+static void hilArrow_AfterDraw(MenuEntry *e)
+{
+    const int32_t down = s_hilMode == 1 ? e->ordinal == RateHighlightsMenu_scrollDown
+                                        : e->ordinal == ShareHighlightsMenu_scrollDown;
+    United_DrawPageArrow(down, e->x + 2, e->y + 1);
+}
+
+static void RateHighlightsMenu_OnInit(void)
+{
+    s_hilMode = 1;
+    s_hilN = 0;
+    s_hilPage = 0;
+    s_hilDesc[0] = 0;
+    job_start(JOB_RATE_LOAD);
+}
+static void RateHighlightsMenu_OnReturn(void) {}
+
+static void RateHighlightsMenu_OnDraw(void)
+{
+    static const char *const heads[4] = { "DATE", "PLAYER", "                COMMENT", "RATE" };
+    static const int32_t col0[4] = { RateHighlightsMenu_datetime_00, RateHighlightsMenu_username_00,
+                                     RateHighlightsMenu_filename_00, RateHighlightsMenu_rate_00 };
+    if (s_jobKind == JOB_RATE_LOAD && s_jobState == 2) {
+        rate_parse();
+        s_jobState = 0;
+    }
+    for (int32_t c = 0; c < 4; c++) {
+        set_text(entry_at(col0[c]), heads[c]);
+        set_back(entry_at(col0[c]), kLightBrownWithOrangeFrame);
+    }
+    snprintf(s_hilTitle, sizeof s_hilTitle, "RATE HIGHLIGHTS (%d)", (int)s_hilN);
+    set_text(entry_at(RateHighlightsMenu_header), s_hilTitle);
+    if (s_hilPage >= pages(s_hilN))
+        s_hilPage = 0;
+    for (int32_t i = 0; i < kRows; i++) {
+        const int32_t idx = s_hilPage * kRows + i;
+        const Hil *h = idx < s_hilN ? &s_hil[idx] : NULL;
+        for (int32_t c = 0; c < 4; c++)
+            s_hilCells[i][c][0] = 0;
+        if (h) {
+            const char *d = h->datetime;        /* 2026-11-21-... -> 26.11.21 */
+            if (strlen(d) >= 10)
+                snprintf(s_hilCells[i][0], 64, "%.2s.%.2s.%.2s", d + 2, d + 5, d + 8);
+            snprintf(s_hilCells[i][1], 64, "%s", h->user);
+            upper(s_hilCells[i][1]);
+            shorten_to(s_hilCells[i][1], entry_at(RateHighlightsMenu_username_01 + i), RateHighlightsMenu_kRH_UsernameWidth - 8);
+            snprintf(s_hilCells[i][2], 64, "%s", h->note[0] ? h->note : h->file);
+            shorten_to(s_hilCells[i][2], entry_at(RateHighlightsMenu_filename_01 + i), RateHighlightsMenu_kRH_FilenameWidth - 8);
+            snprintf(s_hilCells[i][3], 64, "%s", h->rate == 0.0 ? "CLICK" : "");
+        }
+        for (int32_t c = 0; c < 4; c++)
+            set_text(entry_at(col0[c] + 1 + i), s_hilCells[i][c]);
+        set_back(entry_at(RateHighlightsMenu_rate_01 + i), s_hilCells[i][3][0] ? kLightBlue : kDarkBlue);
+        entry_at(RateHighlightsMenu_rate_01 + i)->afterDrawCb = rateStars_AfterDraw;
+    }
+    snprintf(s_hilPageText, sizeof s_hilPageText, "(%d OF %d)", (int)s_hilPage + 1, (int)pages(s_hilN));
+    set_text(entry_at(RateHighlightsMenu_page), s_hilPageText);
+    entry_at(RateHighlightsMenu_scrollUp)->afterDrawCb = hilArrow_AfterDraw;
+    entry_at(RateHighlightsMenu_scrollDown)->afterDrawCb = hilArrow_AfterDraw;
+    entry_at(RateHighlightsMenu_dummy)->isInvisible = 1;
+    table_nav(col0, RateHighlightsMenu_scrollUp, RateHighlightsMenu_scrollDown, RateHighlightsMenu_menuExit,
+              RateHighlightsMenu_newsOnDiscord);
+    /* the line under the table: the picked cell in full (viewHilData) -- or how the work goes */
+    {
+        const int32_t m = selected_ordinal();
+        int32_t row = -1, col = -1;
+        for (int32_t c = 0; c < 4; c++)
+            if (m >= col0[c] + 1 && m <= col0[c] + kRows) {
+                row = m - col0[c] - 1;
+                col = c;
+            }
+        const int32_t idx = s_hilPage * kRows + row;
+        const Hil *h = row >= 0 && idx < s_hilN ? &s_hil[idx] : NULL;
+        s_hilDesc[0] = 0;
+        if (s_jobState == 1 && s_jobKind == JOB_RATE_LOAD)
+            snprintf(s_hilDesc, sizeof s_hilDesc, "LOADING...");
+        else if (s_jobState == 1 && s_jobKind == JOB_RATE_SEND)
+            snprintf(s_hilDesc, sizeof s_hilDesc, "UPDATING SERVER DATA (%d%%)...", (int)job_percent());
+        else if (s_jobState == 3 && s_jobKind == JOB_RATE_LOAD)
+            snprintf(s_hilDesc, sizeof s_hilDesc, "SENSIBLESOCCER.DE CANNOT BE REACHED");
+        else if (h && col == 0)
+            snprintf(s_hilDesc, sizeof s_hilDesc, "%s", h->datetime);
+        else if (h && col == 1)
+            snprintf(s_hilDesc, sizeof s_hilDesc, "%s", h->user);
+        else if (h && col == 2)     /* (a cut comment and the file in turn, eight seconds each) */
+            snprintf(s_hilDesc, sizeof s_hilDesc, "%s",
+                     h->note[0] && strstr(s_hilCells[row][2], "...") && (SDL_GetTicks() / 8000) % 2 == 0 ? h->note
+                                                                                                        : h->file);
+        else if (h && col == 3 && h->rate != 0.0)
+            snprintf(s_hilDesc, sizeof s_hilDesc, "RATING: %3.1f", h->rate);
+        else if (h && col == 3)
+            snprintf(s_hilDesc, sizeof s_hilDesc, "NOT RATED");
+        upper(s_hilDesc);
+        set_text(entry_at(RateHighlightsMenu_longDesc), s_hilDesc);
+        snprintf(s_hilHint, sizeof s_hilHint, "%s",
+                 m == RateHighlightsMenu_menuExit ? "RATINGS ARE SUBMITTED UPON EXIT"
+                 : col == 2 ? "HIT FIRE TO DOWNLOAD AND VIEW THE HIGHLIGHT"
+                 : col == 3 ? "HIT FIRE TO TOGGLE RATING"
+                 : m == RateHighlightsMenu_newsOnDiscord ? "VIEW NEWS OF NEW SHARED HIGHLIGHTS ON DISCORD" : "");
+        set_text(entry_at(RateHighlightsMenu_menuHint), s_hilHint);
+    }
+    if (s_jobKind == JOB_RATE_SEND && s_jobState >= 2) {    /* (sent: the menu closes) */
+        s_jobState = 0;
+        SetExitMenuFlag();
+    }
+}
+
+static void view_server(const Hil *h);
+
+static void RateHighlights_Filename_onSelect(void)
+{
+    const int32_t idx = s_hilPage * kRows + selected_ordinal() - RateHighlightsMenu_filename_01;
+    if (s_jobState != 1 && idx >= 0 && idx < s_hilN)
+        view_server(&s_hil[idx]);
+}
+
+static void RateHighlights_Rate_onSelect(void)
+{
+    static const char *const kOk[1] = { "OK" };
+    const int32_t idx = s_hilPage * kRows + selected_ordinal() - RateHighlightsMenu_rate_01;
+    if (s_jobState == 1 || idx < 0 || idx >= s_hilN)
+        return;
+    Hil *h = &s_hil[idx];
+    if (!SDL_strcasecmp(h->user, s_me)) {
+        ModApi_ShowDialog("RATE HIGHLIGHT", "HEY, THIS IS NOT A SELF-ASSESSMENT...|LET SOMEBODY ELSE RATE YOUR HIGHLIGHT.",
+                          kOk, 1, 0);
+        return;
+    }
+    h->rate = h->rate == 0.0 ? 3.0 : h->rate + 0.5;    /* (changeRate: 3.0 first, up to 5.0, then off) */
+    if (h->rate > 5.0)
+        h->rate = 0.0;
+}
+
+static void RateHighlights_ScrollUp_onSelect(void) { s_hilPage = (s_hilPage + pages(s_hilN) - 1) % pages(s_hilN); }
+static void RateHighlights_ScrollDown_onSelect(void) { s_hilPage = (s_hilPage + 1) % pages(s_hilN); }
+
+static void RateHighlights_menuExit_onSelect(void)
+{
+    if (s_jobState == 1)
+        return;
+    if (job_start(JOB_RATE_SEND) != 0)      /* (nothing loaded, no network: just out) */
+        SetExitMenuFlag();
+}
+
+/* ---- SHARE HIGHLIGHTS ---- */
+
+static void note_file(const char *hil, char *out, uint32_t cap)    /* NAME.HIL -> NAME.TXT */
+{
+    const char *dot = strrchr(hil, '.');
+    snprintf(out, cap, "%.*s.TXT", (int)(dot ? dot - hil : (long)strlen(hil)), hil);
+    upper(out);
+}
+
+static void note_save(const Hil *h)     /* (saveNote: the comment, then the scene) */
+{
+    char name[128], text[128];
+    note_file(h->file, name, sizeof name);
+    snprintf(text, sizeof text, "%s\n%d\n", h->note, (int)h->scene);
+    ModApi_SaveFile(SLUG, name, text, (uint32_t)strlen(text));
+}
+
+static int32_t list_hil(const char *name, void *ctx)
+{
+    (void)ctx;
+    const size_t n = strlen(name);
+    if (n < 5 || SDL_strcasecmp(name + n - 4, ".HIL") != 0 || s_hilN >= 2000)
+        return 0;
+    if (!SDL_strcasecmp(name, "GALORE.HIL"))    /* (a downloaded highlight's copy, for the viewer) */
+        return 0;
+    Hil *h = &s_hil[s_hilN++];
+    memset(h, 0, sizeof *h);
+    snprintf(h->user, sizeof h->user, "%s", s_me);
+    snprintf(h->file, sizeof h->file, "%s", name);
+    return 0;
+}
+
+static int hil_cmp(const void *a, const void *b) { return SDL_strcasecmp(((const Hil *)a)->file, ((const Hil *)b)->file); }
+
+/* getLocalHilData: the files, their comments and scenes, whether each is shared already */
+static void share_local(void)
+{
+    s_hilN = 0;
+    if (!hil_alloc())
+        return;
+#if defined(SWOS_HTTPS)
+    ModApi_ListFiles(swos_save_dir(), list_hil, NULL);
+#endif
+    qsort(s_hil, (size_t)s_hilN, sizeof(Hil), hil_cmp);
+    {
+        time_t now = time(NULL);
+        struct tm *tm = localtime(&now);
+        char stamp[24] = "";
+        if (tm)
+            strftime(stamp, sizeof stamp, "%Y-%m-%d-%H-%M-%S", tm);
+        for (int32_t i = 0; i < s_hilN; i++) {
+            Hil *h = &s_hil[i];
+            char name[128], path[1024];
+            uint32_t size = 0;
+            snprintf(h->datetime, sizeof h->datetime, "%s", stamp);
+#if defined(SWOS_HTTPS)
+            snprintf(path, sizeof path, "%s/%s", swos_save_dir(), h->file);
+            uint8_t *data = (uint8_t *)ModApi_ReadFile(path, &size);
+            h->maxScenes = hil_scenes(data, size, &h->style);
+            free(data);
+#else
+            (void)path;
+#endif
+            note_file(h->file, name, sizeof name);
+            char *text = (char *)ModApi_LoadFile(SLUG, name, &size);
+            if (text) {
+                char *nl = strchr(text, '\n');
+                if (nl)
+                    *nl = 0;
+                snprintf(h->note, sizeof h->note, "%.36s", text);
+                h->scene = nl ? atoi(nl + 1) : 0;
+                free(text);
+            }
+            /* shared already: the server has its file under this player (getLocalHilData) */
+            char want[160];
+            snprintf(want, sizeof want, "\t%s\t", h->file);
+            for (const char *line = s_jobText; line && *line;) {
+                const char *tab = strchr(line, '\t'), *nl = strchr(line, '\n');
+                if (tab && (!nl || tab < nl) && !strncmp(tab, want, strlen(want))) {
+                    h->shared = h->sharedWas = 1;
+                    break;
+                }
+                line = nl ? nl + 1 : NULL;
+            }
+            snprintf(h->noteWas, sizeof h->noteWas, "%s", h->note);
+            h->sceneWas = h->scene;
+            /* (the server's comment and scene, where it has the row, are what EXIT compares with) */
+            if (h->sharedWas)
+                for (const char *line = s_jobText; line && *line;) {
+                    const char *nl = strchr(line, '\n');
+                    char row[400], *f[5];
+                    int32_t n = 0;
+                    snprintf(row, sizeof row, "%.*s", (int)(nl ? nl - line : (long)strlen(line)), line);
+                    for (char *p = row; p && n < 5; n++) {
+                        f[n] = p;
+                        p = strchr(p, '\t');
+                        if (p)
+                            *p++ = 0;
+                    }
+                    if (n == 5 && !strcmp(f[1], h->file)) {
+                        snprintf(h->noteWas, sizeof h->noteWas, "%s", f[2]);
+                        h->sceneWas = atoi(f[4]);
+                        break;
+                    }
+                    line = nl ? nl + 1 : NULL;
+                }
+        }
+    }
+}
+
+static int32_t num_shared(void)
+{
+    int32_t n = 0;
+    for (int32_t i = 0; i < s_hilN; i++)
+        n += s_hil[i].shared != 0;
+    return n;
+}
+
+static void shareHighlightsMenu_OnInit(void)
+{
+    s_hilMode = 2;
+    s_hilN = 0;
+    s_hilPage = 0;
+    if (job_start(JOB_SHARE_LOAD) != 0)
+        share_local();
+}
+static void shareHighlightsMenu_OnReturn(void) {}
+
+static void shareHighlightsMenu_OnDraw(void)
+{
+    static const char *const heads[4] = { " HIGHLIGHT FILE", "                  COMMENT", "SHARE", "SCENE" };
+    static const int32_t col0[4] = { ShareHighlightsMenu_filename_00, ShareHighlightsMenu_note_00,
+                                     ShareHighlightsMenu_shared_00, ShareHighlightsMenu_scene_00 };
+    static const int32_t widths[2] = { ShareHighlightsMenu_kSH_FilenameWidth, ShareHighlightsMenu_kSH_NoteWidth };
+    if (s_jobKind == JOB_SHARE_LOAD && s_jobState >= 2) {
+        if (s_jobState == 3)
+            s_jobText[0] = 0;           /* (no answer: nothing counted as shared) */
+        s_jobState = 0;
+        share_local();
+    }
+    for (int32_t c = 0; c < 4; c++) {
+        set_text(entry_at(col0[c]), heads[c]);
+        set_back(entry_at(col0[c]), kLightBrownWithOrangeFrame);
+    }
+    snprintf(s_hilTitle, sizeof s_hilTitle, "SHARE HIGHLIGHTS (%d)", (int)s_hilN);
+    set_text(entry_at(ShareHighlightsMenu_header), s_hilTitle);
+    if (s_hilPage >= pages(s_hilN))
+        s_hilPage = 0;
+    for (int32_t i = 0; i < kRows; i++) {
+        const int32_t idx = s_hilPage * kRows + i;
+        const Hil *h = idx < s_hilN ? &s_hil[idx] : NULL;
+        for (int32_t c = 0; c < 4; c++)
+            s_hilCells[i][c][0] = 0;
+        if (h) {
+            snprintf(s_hilCells[i][0], 64, "%s", h->file);
+            snprintf(s_hilCells[i][1], 64, "%s", h->note);
+            for (int32_t c = 0; c < 2; c++)
+                shorten_to(s_hilCells[i][c], entry_at(col0[c] + 1 + i), widths[c] - 8);
+            snprintf(s_hilCells[i][2], 64, "%s", h->shared ? "ON" : "OFF");
+            if (h->scene == 0)
+                snprintf(s_hilCells[i][3], 64, "ALL");
+            else
+                snprintf(s_hilCells[i][3], 64, "%d", (int)h->scene);
+        }
+        for (int32_t c = 0; c < 4; c++)
+            set_text(entry_at(col0[c] + 1 + i), s_hilCells[i][c]);
+        set_back(entry_at(ShareHighlightsMenu_shared_01 + i), !strcmp(s_hilCells[i][2], "ON") ? kGreenBack : kDarkBlue);
+        set_back(entry_at(ShareHighlightsMenu_scene_01 + i), s_hilCells[i][3][0] ? kLightBlue : kDarkBlue);
+    }
+    snprintf(s_hilPageText, sizeof s_hilPageText, "(%d OF %d)", (int)s_hilPage + 1, (int)pages(s_hilN));
+    set_text(entry_at(ShareHighlightsMenu_page), s_hilPageText);
+    entry_at(ShareHighlightsMenu_scrollUp)->afterDrawCb = hilArrow_AfterDraw;
+    entry_at(ShareHighlightsMenu_scrollDown)->afterDrawCb = hilArrow_AfterDraw;
+    table_nav(col0, ShareHighlightsMenu_scrollUp, ShareHighlightsMenu_scrollDown, ShareHighlightsMenu_menuExit,
+              ShareHighlightsMenu_newsOnDiscord);
+    {
+        const int32_t m = selected_ordinal();
+        int32_t row = -1, col = -1;
+        for (int32_t c = 0; c < 4; c++)
+            if (m >= col0[c] + 1 && m <= col0[c] + kRows) {
+                row = m - col0[c] - 1;
+                col = c;
+            }
+        const int32_t idx = s_hilPage * kRows + row;
+        s_hilDesc[0] = 0;
+        if (s_jobState == 1 && s_jobKind == JOB_SHARE_LOAD)
+            snprintf(s_hilDesc, sizeof s_hilDesc, "LOADING...");
+        else if (s_jobState == 1 && s_jobKind == JOB_SHARE_SEND)
+            snprintf(s_hilDesc, sizeof s_hilDesc, s_jobPhase == 0 ? "DELETING SERVER DATA (%d%%)..."
+                                                  : s_jobPhase == 2 ? "UPLOADING HIGHLIGHT FILE... (%d%%)"
+                                                                    : "UPDATING SERVER DATA (%d%%)...", (int)job_percent());
+        else if (row >= 0 && idx < s_hilN)
+            snprintf(s_hilDesc, sizeof s_hilDesc, "%s", s_hil[idx].file);
+        set_text(entry_at(ShareHighlightsMenu_longDesc), s_hilDesc);
+        if (m == ShareHighlightsMenu_menuExit)
+            snprintf(s_hilHint, sizeof s_hilHint, "HIGHLIGHTS SHARING OPTIONS ARE SUBMITTED UPON EXIT");
+        else if (col == 0)
+            snprintf(s_hilHint, sizeof s_hilHint, "HIT FIRE TO VIEW THE HIGHLIGHT");
+        else if (col == 1)
+            snprintf(s_hilHint, sizeof s_hilHint, "HIT FIRE TO EDIT THE COMMENT");
+        else if (col == 3)
+            snprintf(s_hilHint, sizeof s_hilHint, "HIT FIRE TO SELECT SCENE(S) FOR PROMOTION ON SWOS GALORE");
+        else if (m == ShareHighlightsMenu_newsOnDiscord)
+            snprintf(s_hilHint, sizeof s_hilHint, "VIEW NEWS OF NEW SHARED HIGHLIGHTS ON DISCORD");
+        else if (col == 2)
+            snprintf(s_hilHint, sizeof s_hilHint, "HIT FIRE TO TOGGLE THE SHARE OPTION. NUM OF SHARED IS %d.",
+                     (int)num_shared());
+        else
+            s_hilHint[0] = 0;
+        set_text(entry_at(ShareHighlightsMenu_numShared), s_hilHint);
+    }
+    if (s_jobKind == JOB_SHARE_SEND && s_jobState >= 2) {
+        s_jobState = 0;
+        SetExitMenuFlag();
+    }
+}
+
+static void view_local(const Hil *h);
+
+static int32_t share_row(int32_t first)
+{
+    const int32_t idx = s_hilPage * kRows + selected_ordinal() - first;
+    return s_jobState != 1 && idx >= 0 && idx < s_hilN ? idx : -1;
+}
+
+static void ShareHighlights_Filename_onSelect(void)
+{
+    const int32_t i = share_row(ShareHighlightsMenu_filename_01);
+    if (i >= 0)
+        view_local(&s_hil[i]);
+}
+
+static void ShareHighlights_Note_onSelect(void)     /* enterNote: 36 characters, kept at once */
+{
+    const int32_t i = share_row(ShareHighlightsMenu_note_01);
+    if (i < 0)
+        return;
+    static char buf[40];
+    MenuEntry *e = (MenuEntry *)CalcMenuEntryAddress((uint16_t)selected_ordinal());
+    snprintf(buf, sizeof buf, "%s", s_hil[i].note);
+    e->fg = (uintptr_t)buf;
+    if (InputText(37, (uint8_t *)e) == 0) {
+        snprintf(s_hil[i].note, sizeof s_hil[i].note, "%s", buf);
+        note_save(&s_hil[i]);
+    }
+}
+
+static void ShareHighlights_Shared_onSelect(void)
+{
+    const int32_t i = share_row(ShareHighlightsMenu_shared_01);
+    if (i >= 0)
+        s_hil[i].shared = !s_hil[i].shared;
+}
+
+static void ShareHighlights_Scene_onSelect(void)    /* changeScene: ALL, 1 .. n, kept at once */
+{
+    const int32_t i = share_row(ShareHighlightsMenu_scene_01);
+    if (i < 0)
+        return;
+    if (++s_hil[i].scene > s_hil[i].maxScenes)
+        s_hil[i].scene = 0;
+    note_save(&s_hil[i]);
+}
+
+static void ShareHighlights_ScrollUp_onSelect(void) { s_hilPage = (s_hilPage + pages(s_hilN) - 1) % pages(s_hilN); }
+static void ShareHighlights_ScrollDown_onSelect(void) { s_hilPage = (s_hilPage + 1) % pages(s_hilN); }
+
+static void ShareHighlights_menuExit_onSelect(void)
+{
+    static const char *const kOk[1] = { "OK" };
+    if (s_jobState == 1)
+        return;
+    for (int32_t i = 0; i < s_hilN; i++)
+        if (s_hil[i].shared) {
+            if (!s_hil[i].note[0]) {
+                ModApi_ShowDialog("WARNING", "SORRY. COMMENT SHOULD BE ENTERED|TO SHARE HIGHLIGHTS", kOk, 1, 0);
+                return;
+            }
+            if (!SDL_strcasecmp(s_hil[i].file, "LATEST.HIL")) {
+                ModApi_ShowDialog("WARNING", "SORRY. LATEST.HIL IS NOT ALLOWED|TO PREVENT DUPLICATED FILES IN SERVER",
+                                  kOk, 1, 0);
+                return;
+            }
+        }
+    if (job_start(JOB_SHARE_SEND) != 0)
+        SetExitMenuFlag();
+}
+
+/* ---- VIEW HIGHLIGHT ---- */
+
+static char    s_vhFile[110], s_vhNote[70], s_vhStyleText[32], s_vhSceneText[32];
+static int32_t s_vhStyle, s_vhStyleKnown, s_vhScene, s_vhMaxScenes, s_vhOther, s_vhYes;
+
+static void viewHighlightMenu_OnInit(void) {}
+
+static void viewHighlightMenu_OnDraw(void)
+{
+    static const char *const names[5] = { "PC DOS (70 FPS)", "AMIGA (50 FPS)", "MOON SOCCER (50 FPS)", "AMIGA (60 FPS)",
+                                          "XBOX (60 FPS)" };
+    set_text(entry_at(ViewHighlightMenu_message2), s_vhFile);
+    set_text(entry_at(ViewHighlightMenu_message3), s_vhNote);
+    snprintf(s_vhStyleText, sizeof s_vhStyleText, "%s %s", names[s_vhStyle], s_vhStyleKnown ? "" : "(?)");
+    set_text(entry_at(ViewHighlightMenu_fpsOption), s_vhStyleText);
+    if (s_vhScene == 0)
+        snprintf(s_vhSceneText, sizeof s_vhSceneText, "ALL %d SCENE%s", (int)s_vhMaxScenes, s_vhMaxScenes == 1 ? "" : "S");
+    else
+        snprintf(s_vhSceneText, sizeof s_vhSceneText, "SCENE %d OF %d", (int)s_vhScene, (int)s_vhMaxScenes);
+    set_text(entry_at(ViewHighlightMenu_sceneOption), s_vhSceneText);
+    /* another player's highlight with its scene chosen: that scene, not to be changed */
+    const int32_t locked = s_vhOther && s_vhScene != 0;
+    MenuEntry *fps = entry_at(ViewHighlightMenu_fpsOption), *scene = entry_at(ViewHighlightMenu_sceneOption),
+              *yes = entry_at(ViewHighlightMenu_yes);
+    fps->downEntry = (int8_t)(locked ? ViewHighlightMenu_yes : ViewHighlightMenu_sceneOption);
+    scene->upEntry = (int8_t)(locked ? -1 : ViewHighlightMenu_fpsOption);
+    scene->downEntry = (int8_t)(locked ? -1 : ViewHighlightMenu_yes);
+    scene->isDisabled = (uint8_t)locked;
+    set_back(scene, locked ? kGray : kLightBlue);
+    yes->upEntry = (int8_t)(locked ? ViewHighlightMenu_fpsOption : ViewHighlightMenu_sceneOption);
+}
+
+static void viewHighlightMenu_fpsOption_OnSelect(void)     /* 0, 1, 3, 4 (MOON SOCCER skipped) */
+{
+    s_vhStyle = s_vhStyle == 1 ? 3 : (s_vhStyle + 1) % 5;
+}
+static void viewHighlightMenu_sceneOption_OnSelect(void)
+{
+    if (s_vhOther && s_vhScene != 0)
+        return;
+    if (++s_vhScene > s_vhMaxScenes)
+        s_vhScene = 0;
+}
+static void viewHighlightMenu_yes_OnSelect(void) { s_vhYes = 1; SetExitMenuFlag(); }
+static void viewHighlightMenu_no_OnSelect(void) { s_vhYes = 0; SetExitMenuFlag(); }
+
+/* The fire that chose a highlight, let go before the box opens -- a download keeps the events
+ * waiting, and a fire still down would be the box's first choice (its EXIT). A second at most. */
+static void fire_released(void)
+{
+    extern volatile uint16_t _fire;
+    extern void MenuCheckControls(void);
+    extern void WaitForVSync(void);
+    for (int32_t i = 0; i < 70; i++) {
+        WaitForVSync();
+        MenuCheckControls();
+        if (!_fire)
+            break;
+    }
+}
+
+/* The box, then the highlight (in the save folder's mods/galore/view.HIL) at the rate chosen */
+static void view_box(const char *file, const char *note, int32_t scene, int32_t other)
+{
+    static const int32_t kFps[5] = { 70, 50, 50, 60, 60 };
+    uint32_t size = 0;
+    uint8_t *data = (uint8_t *)ModApi_LoadFile("galore", "view.HIL", &size);
+    int32_t style = -1;
+    s_vhMaxScenes = hil_scenes(data, size, &style);
+    free(data);
+    if (!s_vhMaxScenes) {
+        static const char *const kOk[1] = { "OK" };
+        ModApi_ShowDialog("VIEW HIGHLIGHT", "HIGHLIGHT FILE IS NOT AVAILABLE", kOk, 1, 0);
+        return;
+    }
+    snprintf(s_vhFile, sizeof s_vhFile, "- %s -", file);
+    snprintf(s_vhNote, sizeof s_vhNote, "%s", note);
+    s_vhStyleKnown = style >= 0;
+    s_vhStyle = style >= 0 ? style : 1;
+    s_vhScene = scene <= s_vhMaxScenes ? scene : 0;
+    s_vhOther = other;
+    s_vhYes = 0;
+    fire_released();
+    ModApi_ShowMenu("swos2020/viewHighlightMenu");     /* (the keys drained: the press that chose it
+                                                         * is not the box's first) */
+    if (s_vhYes && ModApi_ViewHighlightsAt("galore", "view.HIL", s_vhScene, kFps[s_vhStyle]) != 0) {
+        static const char *const kOk[1] = { "OK" };
+        ModApi_ShowDialog("VIEW HIGHLIGHT", "HIGHLIGHT FILE IS NOT AVAILABLE", kOk, 1, 0);
+    }
+}
+
+/* viewServerHilFileMsgBox: downloaded first (the online-records service), then the box */
+static void view_server(const Hil *h)
+{
+    char args[256], u[64], f[160], out[32];
+    snprintf(args, sizeof args, "{\"user\":\"%s\",\"file\":\"%s\"}", ModApi_JsonEscape(h->user, u, sizeof u),
+             ModApi_JsonEscape(h->file, f, sizeof f));
+    int32_t rc = 1;
+    for (int32_t waited = 0; rc == 1 && waited < 30000; waited += 20) {
+        rc = ModApi_CallService("online-records", "galore.download", args, out, sizeof out);
+        if (rc == 1)
+            SDL_Delay(20);
+    }
+    if (rc != 0) {
+        static const char *const kOk[1] = { "OK" };
+        ModApi_ShowDialog("VIEW HIGHLIGHT", "HIGHLIGHT FILE IS NOT AVAILABLE", kOk, 1, 0);
+        return;
+    }
+    view_box(h->file, h->note, h->scene, SDL_strcasecmp(h->user, s_me) != 0);
+}
+
+/* viewLocalHilFileMsgBox: the player's own file, copied for the viewer, then the box */
+static void view_local(const Hil *h)
+{
+#if defined(SWOS_HTTPS)
+    char path[1024];
+    uint32_t size = 0;
+    snprintf(path, sizeof path, "%s/%s", swos_save_dir(), h->file);
+    uint8_t *data = (uint8_t *)ModApi_ReadFile(path, &size);
+    if (data && ModApi_SaveFile("galore", "view.HIL", data, size) == 0)
+        view_box(h->file, h->note, h->scene, 0);
+    free(data);
+#else
+    (void)h;
+#endif
+}
+
+/* ---- the way in: SWOS 2020's selectLatestUploads / selectShareHighlights ---- */
+
+static void open_monthly(void) { s_monthly = 1; s_monthIndex = 0; show("swos2020/chartHighlightsMenu"); }
+
+/* SERVER LOGIN first; 1 logged in (s_me set) */
+static int32_t galore_login(void)
+{
+#if defined(SWOS_HTTPS)
+    if (OnlineMenus_ServerLogIn(LOGIN_FOR_GALORE, United_UserName(), open_monthly) != 0 || !United_UserName()[0])
+        return 0;
+    snprintf(s_me, sizeof s_me, "%s", United_UserName());
+    return 1;
+#else
+    ModApi_ShowError("SWOS GALORE NEEDS A BUILD THAT CAN GO ONLINE");
+    return 0;
+#endif
+}
+
+static void open_url_discord(void)
+{
+#if defined(SWOS_HTTPS)
+    Platform_OpenUrl("https://discord.gg/dcTdk6H4fz");   /* (SWOS 2020's newsOnDiscordSWOSGalore_OnSelect) */
+#endif
+}
+
+static void selectLatestUploads(void)
+{
+    static const char *const kExit[1] = { "EXIT" };
+    if (!galore_login())
+        return;
+    if (United_Banned(s_me, "SWOS GALORE")) {     /* (SWOS 2020's showFeatureNotAvailableMessage) */
+        ModApi_ShowDialog("WARNING", "YOU ARE BANNED FROM SWOS GALORE.|PLEASE CONTACT THE SITE MANAGER.", kExit, 1, 0);
+        return;
+    }
+    show("swos2020/rateHighlightsMenu");
+}
+
+static void selectShareHighlights(void)
+{
+    if (galore_login())
+        show("swos2020/shareHighlightsMenu");
+}
+
+static void newsOnDiscordSWOSGalore_OnSelect(void) { open_url_discord(); }
+
 /* ---- the mod ---- */
 
 #define HANDLER(fn) { #fn, (void *)fn, SYM_FUNC }
@@ -318,6 +1303,18 @@ static const MenuSymbol k_handlers[] = {
     HANDLER(ChartHighlights_ScrollDown_onSelect), HANDLER(ChartHighlights_menuExit_onSelect),
     HANDLER(drawStarIconsForChartHighlights), HANDLER(newsOnDiscordSWOSGalore_OnSelect),
     HANDLER(yearMonth_Dec_onSelect), HANDLER(yearMonth_Inc_onSelect),
+    HANDLER(RateHighlightsMenu_OnInit), HANDLER(RateHighlightsMenu_OnDraw), HANDLER(RateHighlightsMenu_OnReturn),
+    HANDLER(RateHighlights_Filename_onSelect), HANDLER(RateHighlights_Rate_onSelect),
+    HANDLER(RateHighlights_ScrollUp_onSelect), HANDLER(RateHighlights_ScrollDown_onSelect),
+    HANDLER(RateHighlights_menuExit_onSelect),
+    HANDLER(shareHighlightsMenu_OnInit), HANDLER(shareHighlightsMenu_OnDraw), HANDLER(shareHighlightsMenu_OnReturn),
+    HANDLER(ShareHighlights_Filename_onSelect), HANDLER(ShareHighlights_Note_onSelect),
+    HANDLER(ShareHighlights_Shared_onSelect), HANDLER(ShareHighlights_Scene_onSelect),
+    HANDLER(ShareHighlights_ScrollUp_onSelect), HANDLER(ShareHighlights_ScrollDown_onSelect),
+    HANDLER(ShareHighlights_menuExit_onSelect),
+    HANDLER(viewHighlightMenu_OnInit), HANDLER(viewHighlightMenu_OnDraw), HANDLER(viewHighlightMenu_fpsOption_OnSelect),
+    HANDLER(viewHighlightMenu_sceneOption_OnSelect), HANDLER(viewHighlightMenu_yes_OnSelect),
+    HANDLER(viewHighlightMenu_no_OnSelect),
 };
 #undef HANDLER
 
@@ -329,6 +1326,20 @@ static void galore_test(void)
 {
     static int32_t done;
     const char *t = getenv("SWOS_GALORE_TEST");
+    /* SWOS_GALORE_SCREEN_TEST=rate|share (with a test log-in, SWOS_UNITED_LOGIN): at the first menu
+     * frame, RATE or SHARE as SWOS GALORE opens it (its SERVER LOGIN first, then the screen:
+     * SWOS_KEY_SCRIPT drives both). Reads only, until EXIT is chosen. */
+    const char *screen = getenv("SWOS_GALORE_SCREEN_TEST");
+    if (!done && screen) {
+        done = 1;
+        if (!strcmp(screen, "share"))
+            selectShareHighlights();
+        else
+            selectLatestUploads();
+        printf("GALORE SCREEN TEST left\n");
+        fflush(stdout);
+        exit(0);
+    }
     if (done || !t)
         return;
     done = 1;

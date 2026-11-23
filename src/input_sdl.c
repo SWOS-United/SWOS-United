@@ -1225,6 +1225,13 @@ static void pad_hold_poll(uint32_t now)
 
 static void pad_key_button(int entry, SDL_JoystickID which, int down, uint32_t now)
 {
+    /* A recording being viewed: Y pauses and resumes it (SWOS 2020's REPLAY CONTROLS: P, (Y)) */
+    if (down && k_padKeys[entry].button == SDL_CONTROLLER_BUTTON_Y) {
+        extern int32_t ReplayV2_ViewerActive(void);
+        extern int32_t ReplayV2_ViewerKey(int32_t key);
+        if (ReplayV2_ViewerActive() && ReplayV2_ViewerKey(SDLK_p))
+            return;
+    }
     if (!k_padKeys[entry].hold) {
         if (down)
             push_amiga_key(k_padKeys[entry].tap);

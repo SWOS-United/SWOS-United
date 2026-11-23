@@ -178,6 +178,10 @@ def main():
             rows = [row[:10] for row in char_map(name, 7)[:7]]
             f.write("%s 10 7\n" % name)
             f.write("".join(row + "\n" for row in rows))
+        # REPLAY CONTROLS' keyboard and pad (replaysControlsMenu_OnDraw: drawReplayControlsLayout)
+        rows = [row[:300].ljust(300, ".") for row in char_map("replay_controls_300x56_1x1_map", 56)[:56]]
+        f.write("replay_controls_300x56_1x1_map 300 56\n")
+        f.write("".join(row + "\n" for row in rows))
     print("  -> bin/mods/menus2020/pixmaps.txt")
 
     with open(os.path.join(args.swos2020, "src", "game.cpp"), encoding="latin-1") as f:

@@ -885,7 +885,7 @@ static void result_refresh(void)
         const int32_t r = ModApi_CallService("online-records", "speedrun.line", args, s_onlineLine,
                                              sizeof s_onlineLine);
         s_onlineAsked = r != 1;
-        if (r != 0)
+        if (r < 0)                      /* (1: still sending -- the service's "UPLOADING" line) */
             s_onlineLine[0] = 0;
     }
     ModApi_MenuText(M_note, s_onlineLine[0] ? s_onlineLine : s_resultTeams);

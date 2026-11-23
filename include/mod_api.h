@@ -94,7 +94,7 @@ typedef struct ModDef {
     int32_t (*spriteDraw)(const struct Sprite *sprite, const struct SpriteGraphics *gfx,
                           int16_t *x, int16_t *y);
     void (*frameKept)(void);            /* the match is paused: the frame shown again, as drawn */
-    /* A DOS-tier pitch's PICTURE (SDL; the pitchmaps mod's Tile Agent maps). Drawing only: the
+    /* A DOS-tier pitch's PICTURE (SDL; the pitchmaps mod's Tile Map Editor maps). Drawing only: the
      * match plays on the game's own PITCHn.DAT/.BLK whatever these say. pitchLoaded after the
      * game read its own files (`dir` the graphics folder); pitchColoured when every fan tile has
      * its kit (bake then); pitchDropped when the next pitch is not loaded yet. pitchTiles, each
@@ -478,6 +478,8 @@ int32_t ModApi_LatestReplay(char *out, int32_t cap);
  * highlights file (said). SDL builds (SWOS Galore's charts). Copied to the save folder as
  * <SLUG>.HIL first (the highlights loaders take a bare name there). */
 int32_t ModApi_ViewHighlights(const char *slug, const char *name, int32_t scene);
+/* The same at `fps` frames a second (0: the file's own rate). */
+int32_t ModApi_ViewHighlightsAt(const char *slug, const char *name, int32_t scene, int32_t fps);
 int32_t ModApi_ListFiles(const char *dir, int32_t (*each)(const char *name, void *ctx), void *ctx);
 /* A whole file by its path (as ModApi_ListFiles' folders are named), NUL-terminated; free() it.
  * NULL when it cannot be read. */
