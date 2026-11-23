@@ -276,6 +276,52 @@ static void dos_build_all_sprites(int kit1, int kit2)
     s_dosSpritesBuilt = 1;
 }
 
+/* SWOS_PLAYER_DUMP=<file> (src/mod_menus2020.c, at the main menu): the PC graphics' three player sets
+ * -- team1.dat (plain, vertical stripes), team2.dat (coloured sleeves), team3.dat (hoops) -- each
+ * frame's pixels as decoded, their kit colour slots as they are (before any conversion), for
+ * scripts/make_shirt_sheet.py: "PLYR", u32 sets, frames, then per set per frame u16 width, height,
+ * centre x, centre y and width x height bytes. 0 written. */
+int ColorSprites_DumpDosPlayers(const char *path)
+{
+    static const char *const files[3] = { "team1.dat", "team2.dat", "team3.dat" };
+    enum { kFirst = 227, kFrames = 303 };
+    FILE *f = fopen(path, "wb");
+    if (!f)
+        return -1;
+    const uint32_t head[2] = { 3, kFrames };
+    fwrite("PLYR", 1, 4, f);
+    fwrite(head, 4, 2, f);
+    for (int set = 0; set < 3; set++) {
+        dos_free_sprites();
+        dos_build_sprite_dat(files[set], 341, kFrames);
+        for (int i = 0; i < kFrames; i++) {
+            const SpriteGraphics *sp = s_dosSprite[kFirst + i];
+            const uint16_t d[4] = { (uint16_t)(sp ? sp->pixWidth : 0), (uint16_t)(sp ? sp->nlines : 0),
+                                    (uint16_t)(sp ? sp->centerX : 0), (uint16_t)(sp ? sp->centerY : 0) };
+            fwrite(d, 2, 4, f);
+            for (int y = 0; sp && y < sp->nlines; y++)
+                fwrite(sp->sprData + y * sp->wquads * 16, 1, (size_t)sp->pixWidth, f);
+        }
+    }
+    dos_free_sprites();
+    {   /* then the normal pitch's match palette (768 x RGB) and the three faces' skin and hair
+         * conversions (FillSkinColorConversionTable 0-2 from the identity: 3 x 16 x u16) */
+        extern void FillSkinColorConversionTable(uint16_t skinColor, uint16_t *convertTable);
+        uint8_t rgb[768];
+        DosGfx_BuildPalette(4, rgb);
+        fwrite(rgb, 1, sizeof rgb, f);
+        for (int tone = 0; tone < 3; tone++) {
+            uint16_t ct[16];
+            for (int i = 0; i < 16; i++)
+                ct[i] = (uint16_t)i;
+            FillSkinColorConversionTable((uint16_t)tone, ct);
+            fwrite(ct, 2, 16, f);
+        }
+    }
+    fclose(f);
+    return 0;
+}
+
 /* Put the DOS player/keeper/bench sprites into the table, pristine, ready for
  * the per-team kit/skin conversions that run later in ConvertColorsAndTextSprites.
  * Call this BEFORE those conversions (they recolour the pixels in place). */

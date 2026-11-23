@@ -620,8 +620,48 @@ static void kit_sheet_dump(const char *path)
     exit(ok ? 0 : 1);
 }
 
+/* SWOS_SHIRT_DUMP=<file>: the EDIT TEAM / UNIFORM screens' shirt (sprite 190, its pixels in eight
+ * region colours: kit_art.c) for scripts/make_shirt_sheet.py -- "SHRT", u32 width, height, its pixel
+ * indices, the menu palette (256 x 0x0RGB, u16), the shirt types' regions (_shirtsIndexTable 8 x u16,
+ * _shirtTypesTable 32 x u16) and the 11 kit colours' entries (_kTeamColorsTable). Exits. */
+static void shirt_dump(const char *path)
+{
+    extern uint16_t _menuPalette[256], _shirtTypesTable[32], _shirtsIndexTable[8], _kTeamColorsTable[];
+    extern void *_spriteGraphicsPtr;
+    SpriteGraphics **t = (SpriteGraphics **)_spriteGraphicsPtr;
+    const SpriteGraphics *sp = t ? t[190] : NULL;
+    FILE *f = fopen(path, "wb");
+    int32_t ok = 0;
+    if (sp && sp->sprData && f) {
+        const uint32_t head[2] = { (uint32_t)sp->pixWidth, (uint32_t)sp->nlines };
+        fwrite("SHRT", 1, 4, f);
+        fwrite(head, 4, 2, f);
+        for (int32_t y = 0; y < sp->nlines; y++)
+            fwrite(sp->sprData + y * sp->wquads * 16, 1, (size_t)sp->pixWidth, f);
+        fwrite(_menuPalette, 2, 256, f);
+        fwrite(_shirtsIndexTable, 2, 8, f);
+        fwrite(_shirtTypesTable, 2, 32, f);
+        fwrite(_kTeamColorsTable, 2, 11, f);
+        ok = 1;
+        printf("SHIRT DUMP: %d x %d -> %s\n", (int)sp->pixWidth, (int)sp->nlines, path);
+    }
+    if (f)
+        fclose(f);
+    fflush(stdout);
+    exit(ok ? 0 : 1);
+}
+
 static void mainInit(void)
 {
+    if (getenv("SWOS_SHIRT_DUMP"))
+        shirt_dump(getenv("SWOS_SHIRT_DUMP"));
+    if (getenv("SWOS_PLAYER_DUMP")) {   /* (the PC graphics' match players: color_sprites.c) */
+        extern int ColorSprites_DumpDosPlayers(const char *path);
+        const int rc = ColorSprites_DumpDosPlayers(getenv("SWOS_PLAYER_DUMP"));
+        printf("PLAYER DUMP: %s\n", rc == 0 ? "written" : "FAILED");
+        fflush(stdout);
+        exit(rc == 0 ? 0 : 1);
+    }
     if (getenv("SWOS_KIT_SHEET"))
         kit_sheet_dump(getenv("SWOS_KIT_SHEET"));
     extern void SWOSMainMenuInit(void);
