@@ -40,6 +40,8 @@ extern uint16_t  _ingameTeamPlayerOffsets[];
 extern uint16_t  _statsTeam1Goals, _statsTeam2Goals, _team1PenaltyGoals, _team2PenaltyGoals;
 extern uint16_t  _gameState, _penalty, _cameraDirection, _pitchNumberAndType;
 extern uint16_t  _penaltiesState[1];
+extern Sprite   *_penaltyShooterSprite;
+extern uint16_t  _team1PenaltyAttempts, _team2PenaltyAttempts, _playingPenalties;
 extern uint8_t   _gameTime[];
 
 /* SWOS 2020's Discord server's emoji. */
@@ -198,10 +200,14 @@ static int worker_main(void *unused)
     return 0;
 }
 
+static int32_t s_test;                  /* SWOS_TICKER_TEST (below): the lines logged, never sent */
+
 static void post(const char *type, const char *text)
 {
     Post *p;
     fprintf(stderr, "[ticker] %s: %s\n", type, text);
+    if (s_test)
+        return;
 #ifndef SWOS_HTTPS
     return;
 #endif
@@ -254,7 +260,17 @@ static int32_t s_pendingCount;
 
 /* The state at the start of each frame, for what is seen from one frame to the next. */
 #define SNAP_FRAMES 256
-typedef struct { int32_t frame; uint16_t gameState; int16_t minute; uint8_t shootout; } Snap;
+typedef struct {
+    int32_t  frame;
+    uint16_t gameState;
+    int16_t  minute;
+    uint8_t  shootout, playing;     /* (playing: _playingPenalties -- 0 again when the shoot-out ends) */
+    uint16_t attempts[2], goals[2]; /* the shoot-out's kicks begun and goals, a team each */
+    uint8_t  kickTeam;              /* the kick under way: its team (1, 2), 0 none */
+    uint16_t kickGoals;             /* ... and that team's goals when it began */
+    uint8_t  kickSaid;              /* ... and its miss said already (the commentary's events) */
+} Snap;
+static uint8_t s_kickSaid;          /* the kick under way's miss said (sound_event) -- a snapshot's */
 static Snap s_snap[SNAP_FRAMES];
 
 /* A goal, between its DOS_EV_GOAL and the DOS_EV_SCORE after it. */
@@ -457,6 +473,19 @@ static void net_frame(int32_t frame)
     now.gameState = _gameState;
     now.minute = (int16_t)minute();
     now.shootout = (int16_t)_penaltiesState[0] == -1;
+    now.playing = _playingPenalties != 0;
+    now.attempts[0] = _team1PenaltyAttempts;
+    now.attempts[1] = _team2PenaltyAttempts;
+    now.goals[0] = _team1PenaltyGoals;
+    now.goals[1] = _team2PenaltyGoals;
+    now.kickTeam = 0;
+    now.kickGoals = 0;
+    {   /* (played again from here: the flag as it was at this frame's start) */
+        const Snap *was = &s_snap[(uint32_t)frame & (SNAP_FRAMES - 1)];
+        if (was->frame == frame)
+            s_kickSaid = was->kickSaid;
+    }
+    now.kickSaid = s_kickSaid;
     prev = &s_snap[(uint32_t)(frame - 1) & (SNAP_FRAMES - 1)];
     if (frame == 0) {
         uint32_t pitch = _pitchNumberAndType & 0xFF;
@@ -483,6 +512,31 @@ static void net_frame(int32_t frame)
         if (now.shootout && !prev->shootout) {
             snprintf(text, sizeof text, EMO_PLAY " *(%d mins.)* %s *Penalty shootout started*", now.minute, vs());
             add(text, 0);
+        }
+        {   /* A shoot-out kick missed (Playa, 2026-11-23: SWOS 2020 posted only a save in the match).
+             * NextPenalty counts a kick as it BEGINS (goalkeeper.c): when the next one begins, or the
+             * shoot-out ends, the one before is decided -- missed when its team's goals have not moved
+             * since it began. From the match state at each frame's start (the snapshots), so a rollback
+             * that plays the kick again says it again, as the goals' lines are. */
+            const int32_t begun = now.attempts[0] + now.attempts[1] != prev->attempts[0] + prev->attempts[1];
+            const int32_t ended = prev->playing && !now.playing;
+            now.kickTeam = prev->kickTeam;
+            now.kickGoals = prev->kickGoals;
+            if ((begun || ended) && prev->kickTeam && now.goals[prev->kickTeam - 1] == prev->kickGoals &&
+                !now.kickSaid) {    /* (a miss no commentary said: wide, or off the post and out) */
+                snprintf(text, sizeof text,
+                         ":x: *(%d mins.)* %s **%s** *MISSED A PENALTY!!!* in penalty shootout : **%d - %d**",
+                         now.minute, vs(), team_name(prev->kickTeam), (int)now.goals[0], (int)now.goals[1]);
+                add(text, 0);
+            }
+            if (begun) {
+                now.kickTeam = now.attempts[0] != prev->attempts[0] ? 1 : 2;
+                now.kickGoals = now.goals[now.kickTeam - 1];
+            } else if (ended || !now.playing) {
+                now.kickTeam = 0;
+            }
+            if (begun || ended)
+                now.kickSaid = s_kickSaid = 0;      /* (a new kick: nothing said of it) */
         }
         if (final_state(now.gameState) && !final_state(prev->gameState)) {
             char over[320];
@@ -606,8 +660,22 @@ static void sound_event(uint8_t event, uint16_t arg)
         add(text, 0);
         break;
     case DOS_EV_KEEPER_SAVED:
-    case DOS_EV_NEAR_MISS:              /* a penalty in the match missed (the shoot-out's are its score) */
-        if (!_penalty || (arg & 1) || !s_penaltyTeam)
+    case DOS_EV_NEAR_MISS:
+        if (arg & 1) {      /* a shoot-out kick saved or missed: the commentary's penalty_saved /
+                             * penalty_missed (dos_sound.c) -- said now, with its taker; once a kick */
+            const Sprite *k = _penaltyShooterSprite;
+            if (s_kickSaid || !k)
+                break;
+            s_kickSaid = 1;
+            sprite_name((Sprite *)k, name, sizeof name);
+            snprintf(text, sizeof text,
+                     ":x: *(%d mins.)* %s **%s** *(%s)* *MISSED A PENALTY!!!* in penalty shootout : **%d - %d**",
+                     minute(), vs(), name, team_name(k->teamNumber), (int)_team1PenaltyGoals, (int)_team2PenaltyGoals);
+            add(text, 0);
+            break;
+        }
+        /* a penalty in the match missed */
+        if (!_penalty || !s_penaltyTeam)
             break;
         snprintf(text, sizeof text, ":x: *(%d mins.)* %s **%s** *MISSED A PENALTY!!!* : **%d - %d**",
                  minute(), vs(), team_name(s_penaltyTeam), goals(1), goals(2));
@@ -754,8 +822,36 @@ void LiveTicker_End(int32_t finished, const char *why)
     }
 }
 
+/* SWOS_TICKER_TEST=1: an offline match (the PRACTICE shoot-out's test: SWOS_PRACTICE_SHOOTOUT_TEST)
+ * told to the ticker as an online one's host would -- each frame its netFrame and netConfirmed --
+ * the lines logged ([ticker] ...) and never sent anywhere. */
+static void ticker_test_frame(void)
+{
+    static int32_t begun;
+    const int32_t f = (int32_t)ModApi_MatchFrames();
+    if (!getenv("SWOS_TICKER_TEST"))
+        return;
+    if (!begun) {
+        begun = 1;
+        s_test = 1;
+        memset(&s_m, 0, sizeof s_m);
+        s_m.host = 1;
+        s_enabled = s_collect = 1;
+        s_frame = 0;
+        s_confirmed = -1;
+        s_pendingCount = 0;
+        s_finalPosted = 0;
+        s_goal.have = 0;
+        s_penaltyTeam = 0;
+        memset(s_snap, 0xFF, sizeof s_snap);
+    }
+    net_frame(f);
+    net_confirmed(f);
+}
+
 const ModDef ModDef_discord2020 = {
     .slug         = SLUG,
+    .matchFrame   = ticker_test_frame,
     .netFrame     = net_frame,
     .netConfirmed = net_confirmed,
     .matchMoment  = moment,
