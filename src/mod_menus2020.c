@@ -579,6 +579,13 @@ static void mainInit(void)
 /* Each frame of the main menu: the TV shows a match when one is live (SWOS 2020's drawTvIcon). */
 static void mainDrawn(void)
 {
+    {   /* Back without this menu's layout -- a way to the main menu that unpacked it again and ran only
+         * the game's CommonMenuExit (LOAD on CONTINUE's row, but at its own x: Playa, 2026-11-22) --
+         * laid out again. */
+        const MenuEntry *cont = entry(Main_continue), *load = entry(Main_load);
+        if (cont->isInvisible && load->x != (uint16_t)(cont->x + (cont->dwWidth - load->dwWidth) / 2))
+            main_refresh();
+    }
 #ifdef SWOS_NETPLAY
     const int32_t live = ModApi_LiveAny() == 1;
     if (live != s_liveShown) {

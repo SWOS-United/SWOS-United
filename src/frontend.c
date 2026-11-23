@@ -218,6 +218,10 @@ void FrontEndPreLoopSetup(void)
      *  which fades in after it, _menuFade) */
     { extern void LoaderIntro_EndPowered(void); LoaderIntro_EndPowered(); }
 #endif
+    {   /* (the kit variants' menu palette entries, now the intro's pictures -- drawn in them -- are gone) */
+        extern void TeamColors_MenuVariants(void);
+        TeamColors_MenuVariants();
+    }
     InitMenuMusic();
     PrepareMenuBackground();
     InitMainMenuStuff();

@@ -4091,7 +4091,7 @@ Menu_EditTeams _editTeamsMenu = {
     { MENU_MARK_START_MENU, 0, 22 },
     {
         {
-            { 22, 0, -105, 8 },
+            { 23, 0, -106, 8 },
             { MENU_CMD_NAV, 23, 5, 0, 40 },
             { MENU_CMD_COLORS, 0xA },
             { MENU_CMD_TEXT_PTR, 0x8000, 0 },
@@ -4099,7 +4099,7 @@ Menu_EditTeams _editTeamsMenu = {
             MENU_CMD_END
         },
         {
-            { 22, 10, -105, 8 },
+            { 23, 10, -106, 8 },
             { MENU_CMD_NAV, 24, 5, 39, 41 },
             { MENU_CMD_COLORS, 0xA },
             { MENU_CMD_TEXT_PTR, 0x8000, 0 },
@@ -4107,7 +4107,7 @@ Menu_EditTeams _editTeamsMenu = {
             MENU_CMD_END
         },
         {
-            { 22, 20, -105, 8 },
+            { 23, 20, -106, 8 },
             { MENU_CMD_NAV, 25, 5, 40, 42 },
             { MENU_CMD_COLORS, 0xA },
             { MENU_CMD_TEXT_PTR, 0x8000, 0 },
@@ -4115,7 +4115,7 @@ Menu_EditTeams _editTeamsMenu = {
             MENU_CMD_END
         },
         {
-            { 22, 30, -105, 8 },
+            { 23, 30, -106, 8 },
             { MENU_CMD_NAV, 26, 5, 41, 43 },
             { MENU_CMD_COLORS, 0xA },
             { MENU_CMD_TEXT_PTR, 0x8000, 0 },
@@ -4123,7 +4123,7 @@ Menu_EditTeams _editTeamsMenu = {
             MENU_CMD_END
         },
         {
-            { 22, 40, -105, 8 },
+            { 23, 40, -106, 8 },
             { MENU_CMD_NAV, 27, 6, 42, 44 },
             { MENU_CMD_COLORS, 0xA },
             { MENU_CMD_TEXT_PTR, 0x8000, 0 },
@@ -4131,7 +4131,7 @@ Menu_EditTeams _editTeamsMenu = {
             MENU_CMD_END
         },
         {
-            { 22, 50, -105, 8 },
+            { 23, 50, -106, 8 },
             { MENU_CMD_NAV, 28, 6, 43, 45 },
             { MENU_CMD_COLORS, 0xA },
             { MENU_CMD_TEXT_PTR, 0x8000, 0 },
@@ -4139,7 +4139,7 @@ Menu_EditTeams _editTeamsMenu = {
             MENU_CMD_END
         },
         {
-            { 22, 60, -105, 8 },
+            { 23, 60, -106, 8 },
             { MENU_CMD_NAV, 29, 7, 44, 46 },
             { MENU_CMD_COLORS, 0xA },
             { MENU_CMD_TEXT_PTR, 0x8000, 0 },
@@ -4147,7 +4147,7 @@ Menu_EditTeams _editTeamsMenu = {
             MENU_CMD_END
         },
         {
-            { 22, 70, -105, 8 },
+            { 23, 70, -106, 8 },
             { MENU_CMD_NAV, 30, 7, 45, 47 },
             { MENU_CMD_COLORS, 0xA },
             { MENU_CMD_TEXT_PTR, 0x8000, 0 },
@@ -4155,7 +4155,7 @@ Menu_EditTeams _editTeamsMenu = {
             MENU_CMD_END
         },
         {
-            { 22, 80, -105, 8 },
+            { 23, 80, -106, 8 },
             { MENU_CMD_NAV, 31, 9, 46, 48 },
             { MENU_CMD_COLORS, 0xA },
             { MENU_CMD_TEXT_PTR, 0x8000, 0 },
@@ -4163,7 +4163,7 @@ Menu_EditTeams _editTeamsMenu = {
             MENU_CMD_END
         },
         {
-            { 22, 90, -105, 8 },
+            { 23, 90, -106, 8 },
             { MENU_CMD_NAV, 32, 9, 47, 49 },
             { MENU_CMD_COLORS, 0xA },
             { MENU_CMD_TEXT_PTR, 0x8000, 0 },
@@ -4171,7 +4171,7 @@ Menu_EditTeams _editTeamsMenu = {
             MENU_CMD_END
         },
         {
-            { 22, 100, -105, 8 },
+            { 23, 100, -106, 8 },
             { MENU_CMD_NAV, 33, 9, 48, 50 },
             { MENU_CMD_COLORS, 0xA },
             { MENU_CMD_TEXT_PTR, 0x8000, 0 },
@@ -4179,7 +4179,7 @@ Menu_EditTeams _editTeamsMenu = {
             MENU_CMD_END
         },
         {
-            { 22, 110, -105, 8 },
+            { 23, 110, -106, 8 },
             { MENU_CMD_NAV, 34, 9, 49, 51 },
             { MENU_CMD_COLORS, 0xA },
             { MENU_CMD_TEXT_PTR, 0x8000, 0 },
@@ -4187,7 +4187,7 @@ Menu_EditTeams _editTeamsMenu = {
             MENU_CMD_END
         },
         {
-            { 22, 120, -105, 8 },
+            { 23, 120, -106, 8 },
             { MENU_CMD_NAV, 35, 10, 50, 52 },
             { MENU_CMD_COLORS, 0xA },
             { MENU_CMD_TEXT_PTR, 0x8000, 0 },
@@ -4195,7 +4195,7 @@ Menu_EditTeams _editTeamsMenu = {
             MENU_CMD_END
         },
         {
-            { 22, -126, -105, 8 },
+            { 23, -126, -106, 8 },
             { MENU_CMD_NAV, 36, 10, 51, 53 },
             { MENU_CMD_COLORS, 0xA },
             { MENU_CMD_TEXT_PTR, 0x8000, 0 },
@@ -4203,7 +4203,7 @@ Menu_EditTeams _editTeamsMenu = {
             MENU_CMD_END
         },
         {
-            { 22, -116, -105, 8 },
+            { 23, -116, -106, 8 },
             { MENU_CMD_NAV, 37, 11, 52, 54 },
             { MENU_CMD_COLORS, 0xA },
             { MENU_CMD_TEXT_PTR, 0x8000, 0 },
@@ -4211,7 +4211,7 @@ Menu_EditTeams _editTeamsMenu = {
             MENU_CMD_END
         },
         {
-            { 22, -106, -105, 8 },
+            { 23, -106, -106, 8 },
             { MENU_CMD_NAV, 38, 11, 53, 3 },
             { MENU_CMD_COLORS, 0xA },
             { MENU_CMD_TEXT_PTR, 0x8000, 0 },
@@ -4220,7 +4220,7 @@ Menu_EditTeams _editTeamsMenu = {
         }
     },
     {
-        { 11, 0, 10, 8 },
+        { 12, 0, 10, 8 },    /* (x 12, not 11: a two-digit number clear of the face card -- Playa, 2026-11-22) */
         { MENU_CMD_NUMBER, 0x0, 0 },
         MENU_CMD_END
     },
