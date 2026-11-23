@@ -610,12 +610,12 @@ msgid "optional"
 msgstr "opcional"
 
 #: app/main.cpp:397
-msgid "Adds the Amiga's music, sound effects and loading screens -- or plays without the PC game. Download one of the files on the right; ASWOS's swos.hdf works too."
-msgstr "Añade la música, los efectos de sonido y las pantallas de carga del Amiga, o permite jugar sin el juego de PC. Descarga uno de los archivos de la derecha; el swos.hdf de ASWOS también sirve."
+msgid "Adds the Amiga's music, sound effects and loading screens -- or plays without the PC game, with this copy's teams. The files on the right are the 2024-25 release: with the PC game here, the teams are 96/97's. ASWOS's swos.hdf works too."
+msgstr "Añade la música, los efectos de sonido y las pantallas de carga del Amiga, o permite jugar sin el juego de PC, con los equipos de esta copia. Los archivos de la derecha son la edición 2024-25: si el juego de PC está aquí, los equipos son los de 96/97. El swos.hdf de ASWOS también sirve."
 
 #: app/main.cpp:399
-msgid "The game's own files. Download one of the files on the right (either will do), or use both floppies, ASWOS's swos.hdf or a WHDLoad install."
-msgstr "Los archivos propios del juego. Descarga uno de los archivos de la derecha (cualquiera sirve), o usa los dos disquetes, el swos.hdf de ASWOS o una instalación de WHDLoad."
+msgid "The Amiga game's music, sound effects and loading screens. The teams are 96/97's, from the PC game, which the Amiga version needs too -- whatever season this copy is (the files on the right are the 2024-25 release). Download one of them, or use both floppies, ASWOS's swos.hdf or a WHDLoad install."
+msgstr "La música, los efectos de sonido y las pantallas de carga del juego de Amiga. Los equipos son los de 96/97, del juego de PC, que la versión de Amiga también necesita, sea cual sea la temporada de esta copia (los archivos de la derecha son la edición 2024-25). Descarga uno de ellos, o usa los dos disquetes, el swos.hdf de ASWOS o una instalación de WHDLoad."
 
 #: app/main.cpp:404
 msgid "about it"
@@ -650,8 +650,11 @@ msgid "The {0} season."
 msgstr "La temporada {0}."
 
 #: app/main.cpp:423
-msgid "{0} plays 96/97's teams: they come from the PC game when it is here."
-msgstr "{0} usa los equipos de 96/97: se toman del juego de PC cuando está aquí."
+msgid "Its music, sounds and screens are used; the teams are 96/97's, from the PC game (on the Amiga too)."
+msgstr "Se usan su música, sus sonidos y sus pantallas; los equipos son los de 96/97, del juego de PC (también en el Amiga)."
+
+msgid "Its teams are played too, as long as there is no PC game here (the Amiga version needs one)."
+msgstr "También se juega con sus equipos, mientras no haya un juego de PC aquí (la versión de Amiga lo necesita)."
 
 #: app/main.cpp:425
 msgid "Both disks."
@@ -1341,3 +1344,108 @@ msgstr "el juego de PC (sus dos disquetes)"
 
 msgid "the PC game's floppies, which cannot be used: {0}"
 msgstr "los disquetes del juego de PC, que no se pueden usar: {0}"
+
+msgid "Worlds"
+msgstr "Mundos"
+
+msgid "World 2026-27 and Europe 1984-85, from the SWOS 96/97 Mod"
+msgstr "World 2026-27 y Europe 1984-85, del SWOS 96/97 Mod"
+
+msgid "Get the worlds"
+msgstr "Consigue los mundos"
+
+msgid "Download OpenSWOS-World-2627.zip (World 2026-27), OpenSWOS-World-8485.zip (Europe 1984-85) or both, below."
+msgstr "Descarga abajo OpenSWOS-World-2627.zip (World 2026-27), OpenSWOS-World-8485.zip (Europe 1984-85) o los dos."
+
+msgid "Drag them here, or leave them in your Downloads folder. You choose the world in the game: its WORLD button, or OPTIONS -> WORLD."
+msgstr "Arrástralos aquí, o déjalos en tu carpeta de Descargas. El mundo se elige en el juego: con su botón MUNDO, o en OPCIONES -> MUNDO."
+
+msgid "Play {0} (its clubs and players) instead of 96/97"
+msgstr "Jugar {0} (sus clubes y jugadores) en lugar de 96/97"
+
+msgid "Another world"
+msgstr "Otro mundo"
+
+msgid "Looking for your copy of Sensible World of Soccer on your drives..."
+msgstr "Buscando tu copia de Sensible World of Soccer en tus unidades..."
+
+msgid "Scan my drives"
+msgstr "Buscar en mis unidades"
+
+msgid "The SWOS 96/97 Mod's worlds: World 2026-27 (today's clubs, players and competitions) and Europe 1984-85 (32 countries of that season). Each package is a download of its own; the game's WORLD button chooses the one played."
+msgstr "Los mundos del SWOS 96/97 Mod: World 2026-27 (los clubes, jugadores y competiciones de hoy) y Europe 1984-85 (32 países de aquella temporada). Cada paquete es una descarga aparte; el botón MUNDO del juego elige el que se juega."
+
+msgid "Not a world's package: OpenSWOS-World-2627.zip or OpenSWOS-World-8485.zip, or the folder it was unpacked to."
+msgstr "No es el paquete de un mundo: OpenSWOS-World-2627.zip u OpenSWOS-World-8485.zip, o la carpeta donde se descomprimió."
+
+msgid "No drives to look in."
+msgstr "No hay unidades donde buscar."
+
+msgid "Searching your drives ..."
+msgstr "Buscando en tus unidades ..."
+
+msgid "{0}: {1}."
+msgstr "{0}: {1}."
+
+msgid "The PC game's CD"
+msgstr "El CD del juego de PC"
+
+msgid "Amiga disk 1"
+msgstr "Disquete 1 del Amiga"
+
+msgid "Amiga disk 2"
+msgstr "Disquete 2 del Amiga"
+
+msgid "The Jaguar cartridge"
+msgstr "El cartucho de Jaguar"
+
+msgid "A world's package"
+msgstr "El paquete de un mundo"
+
+msgid "Nothing new on your drives."
+msgstr "Nada nuevo en tus unidades."
+
+msgid "Found on your drives -- {0}"
+msgstr "Encontrado en tus unidades -- {0}"
+
+msgid "The game needs the PC game or the Amiga version: Search a folder where yours is."
+msgstr "El juego necesita el juego de PC o la versión de Amiga: usa Buscar en una carpeta donde esté el tuyo."
+
+msgid "data"
+msgstr "datos"
+
+msgid "modes"
+msgstr "modos"
+
+msgid "data {0}"
+msgstr "datos {0}"
+
+msgid "To install: {0}."
+msgstr "Por instalar: {0}."
+
+msgid "Installed: {0}."
+msgstr "Instalado: {0}."
+
+msgid "a world's package"
+msgstr "el paquete de un mundo"
+
+msgid "Your copy of Sensible World of Soccer was not found, on your drives either: point to it here, then click Install."
+msgstr "No se encontró tu copia de Sensible World of Soccer, tampoco en tus unidades: indícala aquí y luego haz clic en Instalar."
+
+msgid "The search of your drives was stopped before it found your copy of Sensible World of Soccer: point to it here, then click Install."
+msgstr "La búsqueda en tus unidades se detuvo antes de encontrar tu copia de Sensible World of Soccer: indícala aquí y luego haz clic en Instalar."
+
+msgid "Making the game's data failed ({0}). Check your copy of the game here, then click Install."
+msgstr "No se pudieron crear los datos del juego ({0}). Revisa aquí tu copia del juego y luego haz clic en Instalar."
+
+msgid "Amiga 60 fps"
+msgstr "Amiga 60 fps"
+
+msgid "Moon Soccer"
+msgstr "Moon Soccer"
+
+msgid "It needs an AGA Amiga (A1200 or A4000, 68020 or better) with at least 8 MB of fast RAM: with less, the game does not start. In WinUAE or FS-UAE, add 8 MB of fast RAM -- the standard A1200 has none."
+msgstr "Necesita un Amiga AGA (A1200 o A4000, 68020 o superior) con al menos 8 MB de Fast RAM: con menos, el juego no arranca. En WinUAE o FS-UAE, añade 8 MB de Fast RAM -- el A1200 estándar no tiene."
+
+msgid "On the Amiga the world brings its clubs and players, but the national teams are still 96/97's (some under today's names). Today's 211 national teams play on the PC, Mac and phones."
+msgstr "En el Amiga el mundo trae sus clubes y jugadores, pero las selecciones nacionales siguen siendo las de 96/97 (algunas con su nombre actual). Las 211 selecciones actuales se juegan en PC, Mac y móvil."
