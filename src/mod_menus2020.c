@@ -566,8 +566,64 @@ static void menus_selftest(void)
     exit(failed ? 1 : 0);
 }
 
+/* SWOS_KIT_SHEET=<file>: at the main menu, the little player (the stadium screen's, facing forward, a
+ * plain shirt) in each kit colour the menus step through, in their order -- shirt, shorts and socks
+ * that colour, the menu palette's entries (TeamColors_MenuEntry), in each of the three skin and hair
+ * tones (FillSkinColorConversionTable 0-2) -- written as RGBA for scripts/make_kit_sheet.py: "KITS",
+ * u32 count, width, height, tones, then per colour its byte and, a tone each, width x height RGBA
+ * (alpha 0: not the player). Exits. */
+static void kit_sheet_dump(const char *path)
+{
+    extern EditTeamsSpriteCopy _stadiumMenuLittlePlayerSpriteCopy;
+    extern uint16_t _littlePlayersSpriteTable[];
+    extern uint16_t _menuPalette[];
+    extern void *_spriteGraphicsPtr;
+    extern void TeamColors_MenuVariants(void);
+    extern uint16_t TeamColors_MenuEntry(uint8_t colour);
+    extern int32_t KitColour_StepCount(void);
+    extern uint8_t KitColour_FromStepIndex(int32_t index);
+    SpriteGraphics **t = (SpriteGraphics **)_spriteGraphicsPtr;
+    const SpriteGraphics *sp = t ? t[_littlePlayersSpriteTable[0]] : NULL;
+    FILE *f = fopen(path, "wb");
+    int32_t ok = 0;
+    if (sp && sp->sprData && f) {
+        uint16_t ct[16];
+        const int32_t w = sp->pixWidth, h = sp->nlines, stride = sp->wquads * 16, n = KitColour_StepCount();
+        const uint32_t head[4] = { (uint32_t)n, (uint32_t)w, (uint32_t)h, 3 };
+        TeamColors_MenuVariants();
+        fwrite("KITS", 1, 4, f);
+        fwrite(head, 4, 4, f);
+        for (int32_t i = 0; i < n; i++) {
+            const uint8_t colour = KitColour_FromStepIndex(i);
+            const uint16_t e = TeamColors_MenuEntry(colour);
+            fwrite(&colour, 1, 1, f);
+            for (int32_t tone = 0; tone < 3; tone++) {
+            memcpy(ct, _stadiumMenuLittlePlayerSpriteCopy.colTable, sizeof ct);
+            FillSkinColorConversionTable((uint16_t)tone, ct);
+            ct[10] = ct[11] = ct[14] = ct[15] = e;
+            for (int32_t y = 0; y < h; y++)
+                for (int32_t x = 0; x < w; x++) {
+                    const uint8_t p = sp->sprData[y * stride + x];
+                    const uint16_t rgb = p ? _menuPalette[ct[p & 15] & 0xFF] : 0;
+                    const uint8_t px[4] = { (uint8_t)((rgb >> 8 & 15) * 17), (uint8_t)((rgb >> 4 & 15) * 17),
+                                            (uint8_t)((rgb & 15) * 17), (uint8_t)(p ? 255 : 0) };
+                    fwrite(px, 1, 4, f);
+                }
+            }
+        }
+        ok = 1;
+        printf("KIT SHEET: %d colours, the player %d x %d -> %s\n", (int)n, (int)w, (int)h, path);
+    }
+    if (f)
+        fclose(f);
+    fflush(stdout);
+    exit(ok ? 0 : 1);
+}
+
 static void mainInit(void)
 {
+    if (getenv("SWOS_KIT_SHEET"))
+        kit_sheet_dump(getenv("SWOS_KIT_SHEET"));
     extern void SWOSMainMenuInit(void);
     if (getenv("SWOS_MENUS2020_TEST"))
         menus_selftest();
