@@ -41,6 +41,8 @@ int32_t g_clashKits = 1;     /* [graphics] clash_kits (main.c), on by default; o
 #include <stdio.h>
 #include "jag_graphics.h"    /* JagGfx_Enabled */
 #include "kit_variants.h"
+extern uint16_t _pitchNumberAndType;   /* low byte: the pitch condition 0-6 */
+#include <string.h>
 #include "kit_palette.h"
 #include "team_colors.h"     /* TeamColors_Worn */
 extern uint16_t ConvertTeamColor(uint16_t color);
@@ -79,19 +81,60 @@ static int32_t has_colour(const TeamGame *t, int16_t c)
     return t->prShirtCol == c || (t->prShirtType != 0 && t->prStripesCol == c);
 }
 
-static void recolour(int32_t first, int32_t frames, const uint16_t (*prot)[kCellH],
-                     uint8_t from, uint8_t to)
+/* The keepers' and the referee's shirt pixels, kept the first time their sprites are seen with the
+ * shirt still in colour 8: a match played again ("play again", a new pitch) keeps the sprites and
+ * draws them a second time in its own colours, from whatever colour the first gave them. */
+enum { kBlocks = 5 };
+static const struct { int32_t first, frames; } kBlock[kBlocks] = {
+    { kGkTeam1, kGkFrames }, { kGkTeam1Reserve, kGkFrames }, { kGkTeam2, kGkFrames },
+    { kGkTeam2Reserve, kGkFrames }, { kRefFirst, kRefFrames },
+};
+static uint16_t s_shirt[kBlocks][kGkFrames][kCellH];
+static uint8_t  s_have[kBlocks];
+static uint8_t  s_refNow = kBlack;   /* the referee's shirt as last drawn */
+
+/* Block b's shirt pixels: those in colour 8 that are not protected -- found anew whenever the
+ * sprites show them in colour 8 (freshly loaded, or the referee redrawn). */
+static void find_shirt(int32_t b)
 {
     SpriteGraphics **table = (SpriteGraphics **)_spriteGraphicsPtr;
-    for (int32_t f = 0; f < frames; f++) {
-        SpriteGraphics *spr = table[first + f];
+    const uint16_t (*prot)[kCellH] = b < 4 ? kGkProtected : kRefProtected;
+    int32_t any = 0;
+    static uint16_t mask[kGkFrames][kCellH];
+    memset(mask, 0, sizeof mask);
+    for (int32_t f = 0; f < kBlock[b].frames; f++) {
+        SpriteGraphics *spr = table[kBlock[b].first + f];
+        if (!spr || !spr->sprData)
+            continue;
+        const int32_t pitch = (int32_t)spr->wquads * 16;
+        const uint8_t *px = (const uint8_t *)spr->sprData;
+        for (int32_t y = 0; y < (int32_t)spr->nlines && y < kCellH; y++)
+            for (int32_t x = 0; x < pitch && x < kCellW; x++)
+                if (px[y * pitch + x] == kJersey && !(prot[f][y] & (1u << x))) {
+                    mask[f][y] |= (uint16_t)(1u << x);
+                    any = 1;
+                }
+    }
+    if (any) {
+        memcpy(s_shirt[b], mask, sizeof mask);
+        s_have[b] = 1;
+    }
+}
+
+static void paint_shirt(int32_t b, uint8_t to)
+{
+    SpriteGraphics **table = (SpriteGraphics **)_spriteGraphicsPtr;
+    if (!s_have[b])
+        return;
+    for (int32_t f = 0; f < kBlock[b].frames; f++) {
+        SpriteGraphics *spr = table[kBlock[b].first + f];
         if (!spr || !spr->sprData)
             continue;
         const int32_t pitch = (int32_t)spr->wquads * 16;
         uint8_t *px = (uint8_t *)spr->sprData;
         for (int32_t y = 0; y < (int32_t)spr->nlines && y < kCellH; y++)
             for (int32_t x = 0; x < pitch && x < kCellW; x++)
-                if (px[y * pitch + x] == from && !(prot[f][y] & (1u << x)))
+                if (s_shirt[b][f][y] & (1u << x))
                     px[y * pitch + x] = to;
     }
 }
@@ -114,7 +157,7 @@ static int32_t referee_differs_from_original(void)
             for (int32_t x = 0; x < pitch && x < kCellW; x++) {
                 const uint8_t want = kRefClashKit[f][y][x], have = px[y * pitch + x];
                 if (want == kJersey && !(kRefProtected[f][y] & (1u << x))) {   /* (the shirt) */
-                    if (have != kBlack && have != kJersey && have != kYellow && have != kLightBlue)
+                    if (have != kBlack && have != kJersey && have != kYellow && have != kLightBlue && have != s_refNow)
                         differ++;
                 } else if (have != want) {
                     differ++;
@@ -170,20 +213,24 @@ void ClashKits_Apply(const TeamGame *team1, const TeamGame *team2)
             if (KitPattern_Base(w1[0]) != 0) shirts[n++] = w1[2];
             shirts[n++] = w2[1];
             if (KitPattern_Base(w2[0]) != 0) shirts[n++] = w2[2];
-            keeper  = KitVariants_KeeperColour(shirts, n);
+            keeper  = KitVariants_KeeperColour(shirts, n, (int32_t)(_pitchNumberAndType & 0xFF));   /* (its grass) */
             referee = KitVariants_RefereeColour(shirts, n, keeper);
             gk  = entry_of((uint8_t)keeper);    /* (always a colour: dark green by default) */
             ref = referee < 0 ? kBlack  : entry_of((uint8_t)referee);
             clash = 1;
+            fprintf(stderr, "[kits] clash kits: pitch type %d, shirts", (int)(_pitchNumberAndType & 0xFF));
+            for (int32_t i = 0; i < n; i++)
+                fprintf(stderr, " 0x%02X", shirts[i]);
+            fprintf(stderr, " -> keepers 0x%02X (%04X), referee %s0x%02X\n", (unsigned)keeper,
+                    (unsigned)KitVariants_Rgb12((uint8_t)keeper), referee < 0 ? "black, " : "",
+                    referee < 0 ? 2u : (unsigned)referee);
         }
     }
-    if (gk != kJersey) {
-        recolour(kGkTeam1, kGkFrames, kGkProtected, kJersey, gk);
-        recolour(kGkTeam1Reserve, kGkFrames, kGkProtected, kJersey, gk);
-        recolour(kGkTeam2, kGkFrames, kGkProtected, kJersey, gk);
-        recolour(kGkTeam2Reserve, kGkFrames, kGkProtected, kJersey, gk);
+    for (int32_t b = 0; b < kBlocks; b++) {   /* (the shirt pixels: found while in colour 8, kept) */
+        find_shirt(b);
+        paint_shirt(b, b < 4 ? gk : ref);     /* (no clash: the keepers in colour 8, the referee black) */
     }
-    recolour(kRefFirst, kRefFrames, kRefProtected, kJersey, ref);   /* (no clash: back to black) */
+    s_refNow = ref;
     if (clash)
         fprintf(stderr, "[kits] clash kits: keepers in %d, the referee in %d\n", gk, ref);
     else
