@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 # make_loader_logos.sh -- SWOS United's loader pictures (Playa, 2026-11-20), in place of the game's:
 #   bin/grafs_aga/SWOSUNTD.RAW  the title picture (loader1.raw's place, src/loader_intro.c TITLE_PICTURE):
-#                               packaging/intro/swos-united-logo.png in loader1's logo area (257x213)
+#                               packaging/intro/swos-united-logo.png, two thirds of loader1's logo area,
+#                               "PRESS (fire button) TO START" under it (packaging/intro/fire-button.png)
 #   bin/grafs_aga/POWERED.RAW   the disk pictures (olddisk1/disk22's place, src/SWOS.c): POWERED BY in
 #                               the menu font over packaging/intro/openswos-logo.png, the disk's height
+# Centred on x 168: the game shows a 352-wide loader picture's first 336 columns (SCREEN_WIDTH),
+# centred on the screen -- so the menus' picture behind them (its circle) is centred there too.
 # Both are the project's own and tracked; an OCS build keeps the game's. Needs tools/swosdata built
 # (tools/swosdata/build.sh: libswosdata.a) and bin/grafs_aga/CHARSET.RAW (the setup's) for the font.
 # Previews go to build/loader_logos/.
@@ -16,7 +19,11 @@ OUT=build/loader_logos
 mkdir -p "$OUT"
 gcc -O2 -o "$OUT/make_loader_logos" scripts/make_loader_logos.c -Ithird_party/swosgfx/lib -Ithird_party/stb_image \
     -Iinclude "$LIB" -lm
+# (the logo at two thirds of loader1's logo area, 149x142; under it "PRESS (fire) TO START" in POWERED
+#  BY's font, the fire button 11 tall; the two on the screen's middle -- Playa, 2026-11-23. The caption's
+#  ink and the button's red in entries 31 and 128, white and red like theirs and the logo's never:
+#  src/loader_intro.c title_glow pulses them)
 "$OUT/make_loader_logos" packaging/intro/swos-united-logo.png bin/grafs_aga/SWOSUNTD.RAW "$OUT/swosuntd.png" \
-    176 127 257 213 0
+    168 136 149 161 0 "PRESS () TO START" bin/grafs_aga/CHARSET.RAW 0 1 packaging/intro/fire-button.png 11 31 128
 "$OUT/make_loader_logos" packaging/intro/openswos-logo.png bin/grafs_aga/POWERED.RAW "$OUT/powered.png" \
-    175 150 200 124 1 "POWERED BY" bin/grafs_aga/CHARSET.RAW
+    168 150 200 124 1 "POWERED BY" bin/grafs_aga/CHARSET.RAW

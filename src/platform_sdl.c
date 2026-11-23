@@ -1797,12 +1797,57 @@ int Platform_MenuBackdropOn(void)
     return s_bd != NULL;
 }
 
+/* The intro's backdrop (Platform_SetIntroBackdrop): the menus' picture behind the intro's pictures
+ * (Playa, 2026-11-23), faded with them -- the presenter draws a picture as it is, so it gets a copy
+ * darkened to the palette's fade level (g_fadeLevel, 0x80 bright .. 0 black), made again only when
+ * the level changes. */
+static const uint8_t *s_introSrc;
+static int            s_introW, s_introH, s_introLevel = -1;
+static uint8_t       *s_introFaded;
+
+void Platform_SetIntroBackdrop(const uint8_t *rgba, int w, int h)
+{
+    s_introSrc = rgba && w > 0 && h > 0 ? rgba : NULL;
+    s_introW = w;
+    s_introH = h;
+    s_introLevel = -1;
+    if (!s_introSrc) {
+        Platform_SetMenuBackdrop(NULL, 0, 0);
+        free(s_introFaded);
+        s_introFaded = NULL;
+    }
+}
+
+static void intro_backdrop_update(void)
+{
+    extern int g_fadeLevel;
+    const int level = g_fadeLevel < 0 ? 0 : g_fadeLevel > 0x80 ? 0x80 : g_fadeLevel;
+    const size_t n = (size_t)s_introW * s_introH * 4;
+    if (level == s_introLevel && s_introFaded)
+        return;
+    if (!s_introFaded && !(s_introFaded = (uint8_t *)malloc(n)))
+        return;
+    for (size_t i = 0; i < n; i += 4) {
+        s_introFaded[i]     = (uint8_t)(s_introSrc[i]     * level >> 7);
+        s_introFaded[i + 1] = (uint8_t)(s_introSrc[i + 1] * level >> 7);
+        s_introFaded[i + 2] = (uint8_t)(s_introSrc[i + 2] * level >> 7);
+        s_introFaded[i + 3] = 255;
+    }
+    s_introLevel = level;
+    Platform_SetMenuBackdrop(s_introFaded, s_introW, s_introH);
+    s_bdSerial++;                       /* (the same buffer, new pixels) */
+}
+
 /* The backdrop shows: there is one, and the menus are up (in a match or a replay the key colour
- * is anything). */
+ * is anything) -- or the intro's (Platform_SetIntroBackdrop). */
 static int backdrop_shown(void)
 {
     extern int32_t ModApi_InMenus(void);
     extern int _gArcadeMode;
+    if (s_introSrc) {
+        intro_backdrop_update();
+        return s_bd != NULL && !s_cut_on;
+    }
     return s_bd && !_gArcadeMode && ModApi_InMenus() && !s_cut_on;
 }
 

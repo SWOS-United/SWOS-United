@@ -249,6 +249,9 @@ int  Platform_OpenUrl(const char *url);
 void Platform_SetMenuBackdrop(const uint8_t *rgba, int w, int h);
 /* 1 while a true-colour backdrop is set: the menus' backdrop panel is MENU_BACKDROP_KEY. */
 int  Platform_MenuBackdropOn(void);
+/* The menus' picture behind the intro's pictures, faded with them (their key-colour pixels show
+ * it); NULL ends it (src/loader_intro.c). */
+void Platform_SetIntroBackdrop(const uint8_t *rgba, int w, int h);
 /* ---- launcher options (agent B) ---- */
 /* DISPLAY OPTIONS: the menus' opacity, the pixel filter and the improved pitch
  * palette, from the options (at Platform_Init, and when a row changes one). Drawing only. */

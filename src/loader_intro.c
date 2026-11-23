@@ -13,6 +13,11 @@
 #include <string.h>            /* memcpy/memset — both builds (Amiga loader re-stride) */
 #ifdef SWOS_SDL_BUILD
 #include <stdio.h>             /* (the title track's log line) */
+#ifdef SWOS_SDL_BUILD
+#include <strings.h>           /* strcasecmp: the intro's own pictures */
+#include "platform_sdl.h"      /* MENU_BACKDROP_KEY, Platform_SetIntroBackdrop */
+#include "mod_hooks.h"         /* ModHooks_MenuBackdrop: the menus' picture behind the intro */
+#endif
 #endif
 extern uint8_t _rawAssetLoadBuffer[];   /* overlay/frame staging — both builds */
 #ifdef SWOS_SDL_BUILD
@@ -179,7 +184,11 @@ static void loaderIntroEnsureMenuMusicPlaying(void)
 static void loaderIntroStopMusicAndResetAudio(void)
 {
 #ifdef SWOS_SDL_BUILD
-    for (int16_t vol = 0x40; vol >= 0; vol--) {   /* fade from full (SDL playback level) */
+    /* fade from where the volume is: full (SDL playback level) when fire leaves the logo; 0 after
+     * LoaderIntro_EndPowered's own fade -- starting at full again there jumped the title track back
+     * up for a moment as POWERED BY faded into the main menu (Playa, 2026-11-23) */
+    extern AudioState _audioState;
+    for (int16_t vol = (int16_t)_audioState.channelVolume[0]; vol >= 0; vol--) {
         AudioSetChannelVolume(0xFFFF, (uint16_t)vol);
         WaitForVSync();
         if (_quitToDos) break;
@@ -286,6 +295,22 @@ static void loaderIntroLoadFrameToFrontbufferAlt(const uint8_t *filename)
      * rawAssetLoadBuffer to run the bitplane decode. Without this the
      * intro frame appears for ~1/50 s then gets replaced by the prior
      * buffer contents on the next vsync swap → visible flicker. */
+    {   /* SWOS United's own pictures (the logo, POWERED BY) over the menus' picture (Playa,
+         * 2026-11-23): their background (index 0, the wide margins too) the menus' key colour, the
+         * backdrops mod's picture shown there and faded with them (Platform_SetIntroBackdrop). The
+         * game's own frames, and a game without a picture, as they were. */
+        const char *slash = strrchr((const char *)filename, '/');
+        const char *base = slash ? slash + 1 : (const char *)filename;
+        const uint8_t *rgba = NULL;
+        int32_t w = 0, h = 0;
+        if ((strcasecmp(base, "swosuntd.raw") == 0 || strcasecmp(base, "powered.raw") == 0) &&
+            ModHooks_MenuBackdrop(&rgba, &w, &h) && rgba) {
+            for (uint32_t i = 0; i < FRONTBUFFER_SIZE_TOTAL_BYTES; i++)
+                if (dstAlt[i] == 0)
+                    dstAlt[i] = MENU_BACKDROP_KEY;
+            Platform_SetIntroBackdrop(rgba, w, h);
+        }
+    }
     if (dstBase && dstBase != dstAlt) {
         memcpy(dstBase, dstAlt, FRONTBUFFER_SIZE_TOTAL_BYTES);
     }
@@ -369,9 +394,58 @@ static int32_t intro_clicked(void)
 #endif
 }
 
+#ifdef AGA
+/* The title picture's caption glows (Playa, 2026-11-23): its ink and the fire button's bright red
+ * are palette entries 31 and 128, white and red like the logo's own but never its pixels
+ * (scripts/make_loader_logos.sh), so their copper colours pulse slowly -- between 70% and full
+ * over three seconds -- with now and then a one-step flicker. The picture's fades write them back
+ * from the palette (ApplyFadeStep), so nothing needs restoring. */
+static int32_t s_titleGlow;
+enum { kGlowInk = 31, kGlowRed = 128, kGlowPeriod = 150 };
+
+static void title_glow(uint32_t frame)
+{
+    extern uint8_t _copperListBuffer[];
+    extern void *_paletteTable[];
+    static const uint16_t bankValOffsets[8] = {
+        COP_PAL_B0_C0_VAL_OFF, COP_PAL_B1_C0_VAL_OFF, COP_PAL_B2_C0_VAL_OFF, COP_PAL_B3_C0_VAL_OFF,
+        COP_PAL_B4_C0_VAL_OFF, COP_PAL_B5_C0_VAL_OFF, COP_PAL_B6_C0_VAL_OFF, COP_PAL_B7_C0_VAL_OFF
+    };
+    static const int16_t kCos16[16] = {   /* 0.5 + 0.5 cos, x 256, a sixteenth of a turn each */
+        256, 246, 219, 177, 128, 79, 37, 10, 0, 10, 37, 79, 128, 177, 219, 246
+    };
+    static uint32_t s_seed = 0x2026u, s_flickerUntil;
+    const uint16_t *palette = (const uint16_t *)_paletteTable[_paletteIndex];
+    const uint32_t ph = (frame % kGlowPeriod) * 16u * 16u / kGlowPeriod;    /* 0..255 */
+    const int32_t c0 = kCos16[ph >> 4], c1 = kCos16[((ph >> 4) + 1) & 15];
+    int32_t level = 179 + (77 * (c0 + (c1 - c0) * (int32_t)(ph & 15) / 16)) / 256;   /* 0.7 .. 1 of 256 */
+    s_seed = s_seed * 1103515245u + 12345u;
+    if (((s_seed >> 16) & 63) == 0)     /* (about once a second: a short dip) */
+        s_flickerUntil = frame + 3;
+    if (frame < s_flickerUntil)
+        level -= 26;
+    for (int32_t k = 0; k < 2; k++) {
+        const int32_t idx = k ? kGlowRed : kGlowInk;
+        const uint16_t c = palette[idx];
+        const uint16_t r = (uint16_t)((((c >> 8) & 15) * level + 128) >> 8);
+        const uint16_t g = (uint16_t)((((c >> 4) & 15) * level + 128) >> 8);
+        const uint16_t b = (uint16_t)(((c & 15) * level + 128) >> 8);
+        volatile uint16_t *dst = (volatile uint16_t *)(_copperListBuffer + bankValOffsets[idx >> 5]) + (idx & 31) * 2;
+#if defined(__m68k__)
+        __asm__ volatile ("move.w %0,(%1)" : : "d"((uint16_t)(r << 8 | g << 4 | b)), "a"(dst) : "memory");
+#else
+        *dst = (uint16_t)(r << 8 | g << 4 | b);
+#endif
+    }
+}
+#endif
+
 static int16_t loaderIntroWaitForFireOrTimeout(int16_t timeout)
 {
     int16_t remaining = timeout;
+#ifdef AGA
+    uint32_t glowFrame = 0;
+#endif
 
     while (remaining >= 0)
     {
@@ -384,6 +458,10 @@ static int16_t loaderIntroWaitForFireOrTimeout(int16_t timeout)
         if (_quitToDos != 0)
             return 1;
 
+#ifdef AGA
+        if (s_titleGlow)
+            title_glow(glowFrame++);
+#endif
         WaitForVSync();
 
         remaining--;
@@ -498,8 +576,10 @@ void ShowLoaderIntroSequence(void)
 #ifdef SWOS_SDL_BUILD
         FadeIn();
 #endif
+        s_titleGlow = 1;                /* (the caption glows: title_glow) */
         while (loaderIntroWaitForFireOrTimeout(0x7FFF) == 0)
             ;                           /* the logo until fire (or the window closed) */
+        s_titleGlow = 0;
         if (!s_titleStream || _quitToDos)   /* (the MP3 plays on, through POWERED BY) */
             loaderIntroStopMusicAndResetAudio();
     }
@@ -535,6 +615,9 @@ void LoaderIntro_EndPowered(void)
 #endif
     if (s_poweredShown)
         FadeOutToBlack();               /* (done already, or what is left of it) */
+#ifdef SWOS_SDL_BUILD
+    Platform_SetIntroBackdrop(NULL, 0, 0);   /* (the menus set their own, as they load) */
+#endif
 }
 
 void LoaderIntro_ShowPowered(void)
