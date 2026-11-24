@@ -587,12 +587,15 @@ static void read_peer_state(void)
      * word that the kit he will play in is fine. */
     uint8_t kitBefore[5] = { 0 }, kitAfter[5] = { 0 };
     const int32_t recheck = kitChanged && mine()->ready && s_kitsForMe;
+    int32_t alikeBefore = 0;
     if (recheck)
-        (void)s_kitsForMe(kitBefore);       /* (against their side as it was) */
+        alikeBefore = s_kitsForMe(kitBefore);   /* (against their side as it was) */
     got.verified = theirs()->verified;      /* the server's word stands until the team changes (team_check) */
     *theirs() = got;
+    /* Only when it matters to him: his own kit is another now, or the two have only now become
+     * alike. Alike before (he said PLAY ANYWAY) and his kit as it was: he stays ready. */
     if (recheck) {
-        if (s_kitsForMe(kitAfter)) {
+        if (s_kitsForMe(kitAfter) && !alikeBefore) {
             drop_my_ready();
             NetplayLobby_ChatNotice("THE KITS NOW LOOK ALIKE - PLEASE CHECK THE COLOURS");
             fprintf(stderr, "[lobby] the other player's kit leaves the two alike: not ready\n");
