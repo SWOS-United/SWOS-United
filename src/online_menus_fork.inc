@@ -598,8 +598,8 @@ static int32_t lobby_row_of(MenuEntry *e, int32_t ordinal01)
     return e == entry_at(ordinal01) ? 0 : e == entry_at(ordinal01 + 1) ? 1 : -1;
 }
 
-/* SWOS 2020's drawUniformSpritesInLobby / drawUniformSprite: the kit a team plays in (its first,
- * which the UNIFORM screen's choice becomes online) as a little player running on the spot, from
+/* SWOS 2020's drawUniformSpritesInLobby / drawUniformSprite: the kit a team will play in (as the
+ * match will dress the two: lobby_worn_kits; its first until both have a team) as a little player running on the spot, from
  * the front and from the back, under the table -- the top row's on the left (under LOCATIONS),
  * the other's on the right (under GO). Its frames 0 1 2 1, ten 50ths of a second each. */
 static void draw_uniform(const KitLook *k, int32_t type, int32_t frame, int32_t ox, int32_t oy)
@@ -637,7 +637,13 @@ static void lobby_kits(int32_t row, int32_t x, int32_t y)
     KitLook look;
     if (!p->known || !p->hasTeam || NetplayLobby_State() == LOBBY_FAILED)
         return;
-    KitArt_FromTeam(&p->team.team, 0, &look);
+    {
+        KitLook worn[2];
+        if (lobby_worn_kits(worn))
+            look = worn[row];
+        else
+            KitArt_FromTeam(&p->team.team, 0, &look);
+    }
     draw_uniform(&look, 1, frame, x, y);                /* the front */
     draw_uniform(&look, 0, frame, x + 15, y);           /* the back */
 }

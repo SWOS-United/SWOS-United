@@ -1271,8 +1271,13 @@ void InitializeInGameTeamsAndStartGame(int16_t randomizePitch, int16_t minSubs,
             const int32_t chosen1 = NetplayMatch_Enabled() ? NetplaySetup_KitChosen(1) : -1;
             const int32_t chosen2 = NetplayMatch_Enabled() ? NetplaySetup_KitChosen(2) : -1;
             if (chosen1 >= 0 && chosen2 >= 0) {
-                if (SetInGameTeamsOnlineKits(&kit1, &kit2, chosen1, chosen2))
-                    fprintf(stderr, "[match] kits: still alike, as the players were told\n");
+                extern uint8_t _teamKitsSimilarity[4];
+                const int32_t alike = SetInGameTeamsOnlineKits(&kit1, &kit2, chosen1, chosen2);
+                fprintf(stderr, "[match] kits chosen online: player 1 %s, player 2 %s; alike (11 and up) "
+                                "first/first %d, first/second %d, second/first %d%s\n",
+                        chosen1 ? "yes" : "no", chosen2 ? "yes" : "no", _teamKitsSimilarity[0],
+                        _teamKitsSimilarity[1], _teamKitsSimilarity[2],
+                        alike ? ": still alike, as the players were told" : "");
             }
             else if (chosen || NetplayMatch_IsLive())
                 SetInGameTeamsFirstKits(&kit1, &kit2);

@@ -973,9 +973,6 @@ int32_t SetInGameTeamsOnlineKits(TeamFile *team1File, TeamFile *team2File, int32
         if (_teamKitsSimilarity[other] < 11)
             combo = other;
     }
-    fprintf(stderr, "[kits] online: chosen %d/%d, alike (first/first, first/second, second/first; "
-                    "11 and up too alike) %d %d %d: combination %d\n", (int)chosen1, (int)chosen2, _teamKitsSimilarity[0],
-            _teamKitsSimilarity[1], _teamKitsSimilarity[2], (int)combo);
     SetInGameTeamColors(combo, team1File, team2File);
     return _teamKitsSimilarity[combo] >= 11;
 }

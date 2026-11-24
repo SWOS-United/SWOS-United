@@ -177,35 +177,82 @@ static void lobby_unbake_kit(TeamFileEx *team)
         Uniform_Choose(&team->team, &sent);
 }
 
-/* ---- THE KITS ARE ALIKE ----
- * Before a player is ready: whether the two kits, as the match will dress them
- * (SetInGameTeamsOnlineKits, by the rule both games will play), are still too alike --
- * then the game changes neither. Nobody chose: the rule settles it, nobody is told. One
- * side chose: the other player is told (his first kit and his second were both too
- * alike). Both chose: both are. `mine`: this player's team header with its kit as it
- * stands (a choice over both kits); `mineChosen`: it is a choice. */
-static int32_t kits_alike_for_me(const TeamFile *mine, int32_t mineChosen)
+/* ---- the kits the match will be played in ----
+ * SetInGameTeamsOnlineKits on copies of the two team headers, by the rule both games will
+ * play, as kick-off will (game_init.c): the host's team first. What it wrote to the in-game
+ * teams is put back. `out` (may be NULL): what each side wears (KitLook, include/kit_art.h),
+ * the host's first; returns 1 when the two are still too alike. */
+static int32_t online_kits(const TeamFile *host, int32_t hostChosen, const TeamFile *joiner,
+                           int32_t joinerChosen, KitLook out[2])
 {
     extern TeamGame _topTeamInGame, _bottomTeamInGame;
     static TeamGame keepTop, keepBottom;
-    const int32_t me = NetplayLobby_LocalPlayer();
-    const LobbyPlayer *other = NetplayLobby_Player(3 - me);
-    TeamFile a, b;
-    int32_t alike;
+    TeamFile a = *host, b = *joiner;
+    int32_t alike, side;
 
-    if (!other || !other->known || !other->hasTeam || (mineChosen && !other->kitChosen))
-        return 0;
-    a = *mine;
-    b = other->team.team;
     keepTop = _topTeamInGame;
     keepBottom = _bottomTeamInGame;
     KitVariants_SetLobbyRule(NetplayLobby_KitRule());
-    alike = me == 1 ? SetInGameTeamsOnlineKits(&a, &b, mineChosen, other->kitChosen)
-                    : SetInGameTeamsOnlineKits(&b, &a, other->kitChosen, mineChosen);
+    alike = SetInGameTeamsOnlineKits(&a, &b, hostChosen, joinerChosen);
     KitVariants_SetLobbyRule(-1);
+    for (side = 0; out && side < 2; side++) {
+        const uint8_t *w = TeamColors_Worn(side ? &_bottomTeamInGame : &_topTeamInGame);
+        if (w) {
+            out[side].type = w[0]; out[side].stripes = w[1]; out[side].basic = w[2];
+            out[side].shorts = w[3]; out[side].socks = w[4];
+        } else {
+            KitArt_FromTeam(side ? &b : &a, 0, &out[side]);
+        }
+    }
     _topTeamInGame = keepTop;
     _bottomTeamInGame = keepBottom;
     return alike;
+}
+
+/* The lobby's two sides as they will kick off, for its little players (online_menus_fork.inc
+ * lobby_kits): worked out again only when a team, a choice or the rule has changed. 0 until
+ * both sides have a team. */
+static int32_t lobby_worn_kits(KitLook out[2])
+{
+    static struct { TeamFile team[2]; int32_t chosen[2], rule, valid; } key;
+    static KitLook worn[2];
+    const LobbyPlayer *p1 = NetplayLobby_Player(1), *p2 = NetplayLobby_Player(2);
+    int32_t rule;
+
+    if (!p1 || !p2 || !p1->known || !p2->known || !p1->hasTeam || !p2->hasTeam)
+        return 0;
+    rule = NetplayLobby_KitRule();
+    if (!key.valid || key.chosen[0] != p1->kitChosen || key.chosen[1] != p2->kitChosen ||
+        key.rule != rule || memcmp(&key.team[0], &p1->team.team, sizeof key.team[0]) != 0 ||
+        memcmp(&key.team[1], &p2->team.team, sizeof key.team[1]) != 0) {
+        key.team[0] = p1->team.team;
+        key.team[1] = p2->team.team;
+        key.chosen[0] = p1->kitChosen;
+        key.chosen[1] = p2->kitChosen;
+        key.rule = rule;
+        key.valid = 1;
+        (void)online_kits(&key.team[0], key.chosen[0], &key.team[1], key.chosen[1], worn);
+    }
+    out[0] = worn[0];
+    out[1] = worn[1];
+    return 1;
+}
+
+/* ---- THE KITS ARE ALIKE ----
+ * Before a player is ready: whether the two kits, as the match will dress them, are still
+ * too alike -- then the game changes neither. Nobody chose: the rule settles it, nobody is
+ * told. One side chose: the other player is told (his first kit and his second were both
+ * too alike). Both chose: both are. `mine`: this player's team header with its kit as it
+ * stands (a choice over both kits); `mineChosen`: it is a choice. */
+static int32_t kits_alike_for_me(const TeamFile *mine, int32_t mineChosen)
+{
+    const int32_t me = NetplayLobby_LocalPlayer();
+    const LobbyPlayer *other = NetplayLobby_Player(3 - me);
+
+    if (!other || !other->known || !other->hasTeam || (mineChosen && !other->kitChosen))
+        return 0;
+    return me == 1 ? online_kits(mine, mineChosen, &other->team.team, other->kitChosen, NULL)
+                   : online_kits(&other->team.team, other->kitChosen, mine, mineChosen, NULL);
 }
 
 /* 1: PLAY ANYWAY (or ESC: as the player had it), 0: UNIFORM. */
@@ -2715,6 +2762,14 @@ static void run_live_match(void)
         online_menus_fork()->liveMatchStart();
     InitAndPlayGame(&_selectedTeams[0], &_selectedTeams[1]);
     s_lobbyMatches++;
+    {   /* The match is over and the menus have the screen. A live match comes back with
+         * _playGame still set -- it ends on the session's last frame, not through the game's
+         * own end of match, which is what clears it (game_timers.c) -- and while it is set,
+         * the DOS graphics draw every screen in the pitch's palette (platform_sdl.c): HOW
+         * WAS THE MATCH? and the lobby after it came up with olive buttons. */
+        extern volatile uint16_t _playGame;
+        _playGame = 0;
+    }
 
     /* Back to the lobby with the same player: a rematch is two GOs and a START, as it
      * is in SWOS 2020. The menu is shown afresh (OnlineMenus_EnterLobby) rather than
