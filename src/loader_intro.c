@@ -577,7 +577,7 @@ void ShowLoaderIntroSequence(void)
      * share memory with the sprites the load brings in (intro_chip_ram.h). */
     loaderIntroLoadHeroAudioBank();
     loaderIntroEnsureMenuMusicPlaying();
-    if (!_skipLoaderReels && _quitToDos == 0) {     /* (INTRO PICTURES: TITLE ONLY -- the logo alone) */
+    if (_quitToDos == 0) {              /* (always, as before the swap: INTRO PICTURES is SWOS 2020's reels) */
         enum { kPoweredFrames = 100 };              /* 2 s at the game's 50 Hz, at least */
         s_poweredShown = 1;
         loaderIntroLoadFrameToFrontbufferAlt((const uint8_t *)GRAFS "powered.raw");
