@@ -308,7 +308,14 @@ int32_t NetplayLobby_Say(const char *text)
     return 0;
 }
 
-/* The bot's lines can be longer than a player's: wrapped at a space, a line each. */
+/* The bot's lines can be longer than a player's: wrapped at a space, a line each -- as wide as
+ * the lobby draws a line: its 28 capitals in the game's font (SWOS_LOBBY_CHAT_DYNAMIC_FONT 0, a
+ * row of the menu, which does not wrap), the whole line in the chat font (which wraps it itself). */
+#if SWOS_LOBBY_CHAT_DYNAMIC_FONT
+enum { BOT_LINE = LOBBY_CHAT_TEXT };
+#else
+enum { BOT_LINE = 28 < LOBBY_CHAT_TEXT ? 28 : LOBBY_CHAT_TEXT };
+#endif
 void NetplayLobby_ChatNotice(const char *text)
 {
     const char *p = text ? text : "";
@@ -316,12 +323,12 @@ void NetplayLobby_ChatNotice(const char *text)
     while (*p) {
         char line[LOBBY_CHAT_TEXT + 1];
         uint32_t n = (uint32_t)strlen(p), cut = n;
-        if (n > LOBBY_CHAT_TEXT) {
-            cut = LOBBY_CHAT_TEXT;
+        if (n > BOT_LINE) {
+            cut = BOT_LINE;
             while (cut > 0 && p[cut] != ' ')
                 cut--;
             if (cut == 0)
-                cut = LOBBY_CHAT_TEXT;
+                cut = BOT_LINE;
         }
         chat_clean(line, p, cut);
         if (line[0]) {
