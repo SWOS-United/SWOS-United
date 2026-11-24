@@ -199,10 +199,12 @@ LOGO_INK_RIGHT = 256        # (the D's last column in it: the banner ends where 
 # pixel, at the left buttons' edge (x 1) in the band above them (y 1..38). It was four fifths as big
 # from 2026-11-20 (Playa: clear of the banner); the banner is narrower instead.
 TV_SIZE = (42, 38)
-TV_AT = (4, 4)              # (2026-11-25: as SWOS 2020's, x kColumn1X + 3, standing on MULTIPLAYER)
-# Its housing (rows 8..35 of the picture, the antenna above, the feet below): the entry's box, so
-# the frame of a chosen entry hugs it as SWOS 2020's does; the picture reaches out over it.
-TV_HOUSING = (8, 28)
+TV_AT = (-2, 4)             # (2026-11-25: standing on MULTIPLAYER, 3 px left of its edge)
+# Inside its housing's outline (rows 9..34, columns 1..40: the antenna above, the feet below): the
+# entry's box, so the frame of a chosen entry lies on the housing's edge, as SWOS 2020's does; the
+# picture reaches out over it.
+TV_HOUSING = (9, 26)        # (first row, rows)
+TV_HOUSING_X = (1, 40)      # (first column, columns)
 # (button slot, its picture, the icon's column on it): its onDraw's drawMapEx256_8sets columns
 # under MULTIPLAYER_MENU, y + 7.
 ICON_COLUMNS = [("competition", "multiplayer", 15), ("practice", "compete", 30),
@@ -421,9 +423,10 @@ def build_main(doc):
     # UP from COMPETE opens the live matches. Hidden by mod_menus2020.c without netplay.
     tv = ordered[filler + 1][0]
     tv["name"] = "liveCast"
-    tv["coords"] = {"x": TV_AT[0], "y": TV_AT[1] + TV_HOUSING[0], "w": TV_SIZE[0], "h": TV_HOUSING[1]}
+    tv["coords"] = {"x": TV_AT[0] + TV_HOUSING_X[0], "y": TV_AT[1] + TV_HOUSING[0],
+                    "w": TV_HOUSING_X[1], "h": TV_HOUSING[1]}
     tv["image"] = "grafs_2020/menus2020/tv_idle.bmp"
-    tv["image_x"], tv["image_y"] = 0, -TV_HOUSING[0]
+    tv["image_x"], tv["image_y"] = -TV_HOUSING_X[0], -TV_HOUSING[0]
     tv["commands"] = [{"op": "colors", "frame_color": 0, "background_color": 0},   # (a frame when chosen)
                       {"op": "nav", "left": -1, "right": -1, "up": -1, "down": MAIN_ORDER.index("competition")},
                       {"op": "onselect_fire", "func": mod("liveCast")}]

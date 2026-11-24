@@ -289,10 +289,10 @@
     {
       "kind": "entry",
       "coords": {
-        "x": 4,
-        "y": 12,
-        "w": 42,
-        "h": 28
+        "x": -1,
+        "y": 13,
+        "w": 40,
+        "h": 26
       },
       "commands": [
         {
@@ -314,8 +314,8 @@
       ],
       "name": "liveCast",
       "image": "grafs_2020/menus2020/tv_idle.bmp",
-      "image_x": 0,
-      "image_y": -8
+      "image_x": -1,
+      "image_y": -9
     },
     {
       "kind": "entry",
