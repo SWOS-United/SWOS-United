@@ -26,6 +26,7 @@
  */
 #ifdef SWOS_SDL_BUILD
 
+#include "menu_dialog.h"
 #include "kit_variants.h"
 #include "menu_load_json.h"
 #include "menu_symbols.h"
@@ -194,8 +195,13 @@ static void note(const char *text)
     snprintf(s_note, sizeof s_note, "%s", text);
 }
 
+/* A change that takes hold only at the next start: leaving OPTIONS asks whether to start the
+ * game again now (settingsMenu_exit_OnSelect). */
+static int32_t s_restartPending;
+
 static void later(void)
 {
+    s_restartPending = 1;
     note("FROM THE NEXT START");
 }
 
@@ -929,9 +935,10 @@ static void art_change(int32_t dir)
     O()->dos_graphics = i != 0;
     if (i)
         snprintf(O()->dos_dir, sizeof O()->dos_dir, "%s", i == 2 ? "grafs_2020" : "grafs_dos");
-    if (i == 2 && !swos_data_exists("grafs_2020/pitch1.dat"))
+    if (i == 2 && !swos_data_exists("grafs_2020/pitch1.dat")) {
+        s_restartPending = 1;
         note("NO SWOS 2020 PITCHES: THE PC GAME'S; NEXT START");
-    else
+    } else
         later();
     save();
 }
@@ -1252,7 +1259,20 @@ static void settingsMenu_gameplay_OnSelect(void) { page_show(&k_gameplayPage); }
 static void settingsMenu_display_OnSelect(void)  { page_show(&k_displayPage); }   /* (launcher options, agent B) */
 static void settingsMenu_rules_OnSelect(void)    { page_show(&k_rulesPage); }     /* (the tweaks on by default) */
 static void settingsMenu_general_OnSelect(void)  { page_show(&k_generalPage); }   /* (replays, start-up) */
-static void settingsMenu_exit_OnSelect(void)     { SetExitMenuFlag(); }
+static void settingsMenu_exit_OnSelect(void)
+{
+    extern int32_t Main_CanRelaunch(void);
+    extern int32_t Main_Relaunch(void);
+    if (s_restartPending && Main_CanRelaunch()) {
+        static const char *const kButtons[2] = { "RESTART NOW", "LATER" };
+        s_restartPending = 0;           /* (asked once; a later change asks again) */
+        fprintf(stderr, "[settings] a change needs a restart: asking\n");
+        if (MenuDialog_Show("RESTART", "SOME OF YOUR CHANGES TAKE EFFECT ONLY WHEN THE GAME STARTS AGAIN."
+                            "|RESTART THE GAME NOW?", kButtons, 2, 0) == 0 && Main_Relaunch())
+            return;                     /* (the game closes; the new one is starting) */
+    }
+    SetExitMenuFlag();
+}
 
 /* ===================================================================== CONTROLLER SETUP */
 

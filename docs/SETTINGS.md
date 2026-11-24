@@ -285,6 +285,11 @@ flags; each is now a `SWOS.ini` key and a row on a settings page (OPTIONS -> SET
 canonical mod's setting, so the launcher is not needed. SWOS 2020's flags still work, as it
 passed them (`--help`).
 
+A change "from the next start" (the note says FROM THE NEXT START) is remembered: leaving OPTIONS
+by its EXIT then asks RESTART NOW / LATER, and RESTART NOW starts the game again at once
+(`Main_Relaunch`, as OPTIONS -> MODS does) where it can; where it cannot (the browser, phones),
+nothing is asked.
+
 | launcher option | `SWOS.ini` | in the game | |
 |---|---|---|---|
 | Resolution | `[video] resolution = auto \| WxH` | VIDEO: RESOLUTION (AUTO, 4:3, 16:10, 16:9, 21:9, 32:9) | the render's SHAPE, not its size; with widescreen on it is taken at once |
