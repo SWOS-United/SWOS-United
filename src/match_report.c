@@ -147,7 +147,10 @@ static char *read_log(uint32_t *lenOut)
     FILE *f;
 
     *lenOut = 0;
-    snprintf(path, sizeof path, "%s/SWOS.log", dir);
+    {   /* (this game's log: SWOS.log, or SWOS_2.log while another game has that -- main.c) */
+        extern const char *Main_LogPath(void);
+        snprintf(path, sizeof path, "%s", Main_LogPath());
+    }
     if (getenv("SWOS_NO_LOG") || !(f = fopen(path, "rb")))
         return NULL;
     fseek(f, 0, SEEK_END);

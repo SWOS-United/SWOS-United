@@ -233,6 +233,9 @@ typedef struct {
     int32_t            haveServer;
     uint8_t            serverAnswer[96];
     int32_t            serverAnswerLen;
+    /* (last: s_link below is initialised by position) */
+    uint32_t           lastPollMs;      /* this game last served the link (link_poll), 0 = not yet */
+    uint32_t           longestPollGapMs; /* the longest it went without, since connected */
 } P2PLink;
 
 static P2PLink s_link = { -1, 0, P2P_IDLE, P2P_FAIL_NONE, P2P_FAIL_NONE,
@@ -603,6 +606,7 @@ static void link_reset(P2PLink *l)
     l->jitterMs = 0;
     l->localPort   = 0;
     l->peerText[0] = '\0';
+    l->lastPollMs = l->longestPollGapMs = 0;
     memset(&l->peer, 0, sizeof l->peer);
 }
 
@@ -1308,6 +1312,17 @@ static void link_poll(P2PLink *l, uint32_t now)
 {
     if (l->sock < 0)
         return;
+    /* A game that does not serve the link sends nothing either: after 6 s the other side
+     * gives the connection up (LOST THE CONNECTION). Said in this game's log when it happens,
+     * so a lost connection can be told from a game that stood still -- a window dragged or
+     * minimised, a screen that does not keep the link -- by the two players' logs. */
+    if (l->state == P2P_CONNECTED && l->lastPollMs && now - l->lastPollMs >= 1000) {
+        fprintf(stderr, "[p2p-link] this game did not serve the link for %u ms (the other side gives "
+                        "up after %d)\n", (unsigned)(now - l->lastPollMs), (int)kQuietTimeoutMs);
+        if (now - l->lastPollMs > l->longestPollGapMs)
+            l->longestPollGapMs = now - l->lastPollMs;
+    }
+    l->lastPollMs = l->state == P2P_CONNECTED ? now : 0;
     Netem_LinkPump(l->sock);            /* what the emulated network is now due to deliver */
 
     for (int32_t i = 0; i < kMaxReadsPerPoll; i++) {
@@ -1446,8 +1461,16 @@ static void link_poll(P2PLink *l, uint32_t now)
             now - l->lastDelaySentMs >= (uint32_t)kDelayIntervalMs)
             send_delay(l, now);
 
-        if (now - l->lastHeardMs >= (uint32_t)kQuietTimeoutMs)
+        if (now - l->lastHeardMs >= (uint32_t)kQuietTimeoutMs) {
+            fprintf(stderr, "[p2p-link] lost: nothing heard from %s for %u ms (%s); this game last sent "
+                            "%u ms ago, ping %d ms, jitter %d ms, %d round trips; its own longest pause "
+                            "in serving the link %u ms\n",
+                    l->peerText[0] ? l->peerText : "the other player", (unsigned)(now - l->lastHeardMs),
+                    l->relayToken || l->fbUsed ? "through the server's relay" : "direct",
+                    (unsigned)(now - l->lastSentMs), (int)l->pingMs, (int)l->jitterMs,
+                    (int)l->pingSamples, (unsigned)l->longestPollGapMs);
             peer_gone(l, P2P_FAIL_LOST);
+        }
         else if (now - l->lastSentMs >= (uint32_t)(l->pingSamples < kDelaySamples
                                                         ? kPingWarmupMs : kPingIntervalMs)) {
             send_stamped(l, &l->peer, PKT_PING, now);
