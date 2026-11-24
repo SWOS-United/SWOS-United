@@ -52,6 +52,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stddef.h>
 #include <string.h>
 
 #include "endian_helpers.h"
@@ -1138,6 +1139,24 @@ void NetplayLobby_SetTeam(const TeamFileEx *team)
     set_notice("");
 }
 
+/* (the ten kit bytes of a team header: prShirtType .. secSocksColor) */
+#define KIT_FIRST_BYTE offsetof(TeamFile, prShirtType)
+#define KIT_BYTES      (offsetof(TeamFile, secSocksColor) + 1 - KIT_FIRST_BYTE)
+
+void NetplayLobby_SetKit(const TeamFile *kits, int32_t chosen)
+{
+    LobbyPlayer *p = mine();
+    uint8_t *to = (uint8_t *)&p->team.team + KIT_FIRST_BYTE;
+    const uint8_t *from = (const uint8_t *)kits + KIT_FIRST_BYTE;
+    if (s_lobby.state != LOBBY_OPEN || !p->hasTeam || !kits ||
+        (memcmp(to, from, KIT_BYTES) == 0 && p->kitChosen == (chosen ? 1 : 0)))
+        return;
+    memcpy(to, from, KIT_BYTES);
+    p->kitChosen = chosen ? 1 : 0;
+    p->ready = 0;
+    s_lobby.dirty = 1;
+}
+
 void NetplayLobby_SetKitChosen(int32_t chosen)
 {
     LobbyPlayer *p = mine();
@@ -1704,6 +1723,7 @@ const LobbyRules  *NetplayLobby_Rules(void) { return &s_noRules; }
 const char        *NetplayLobby_Notice(void) { return ""; }
 void               NetplayLobby_SetTeam(const TeamFileEx *team) { (void)team; }
 void               NetplayLobby_SetKitChosen(int32_t chosen) { (void)chosen; }
+void               NetplayLobby_SetKit(const TeamFile *kits, int32_t chosen) { (void)kits; (void)chosen; }
 int32_t            NetplayLobby_KitRule(void) { return 0; }
 void               NetplayLobby_SetTactic(int32_t tactic) { (void)tactic; }
 void               NetplayLobby_SetReady(int32_t ready) { (void)ready; }

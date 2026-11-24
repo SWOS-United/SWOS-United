@@ -111,6 +111,9 @@ void               NetplayLobby_SetTeam(const TeamFileEx *team);
 /* Whether the team just set wears a kit chosen on the UNIFORM screen (SetTeam: not); a change
  * takes the ready flag down too. KitRule: the rule the match's kits are chosen by. */
 void               NetplayLobby_SetKitChosen(int32_t chosen);
+/* Only the kit of this side's team (its ten kit bytes from `kits`, a team header) and whether it
+ * was chosen: the UNIFORM screen's, sent as it is left so the other player sees it at once. */
+void               NetplayLobby_SetKit(const TeamFile *kits, int32_t chosen);
 int32_t            NetplayLobby_KitRule(void);
 void               NetplayLobby_SetTactic(int32_t tactic);
 void               NetplayLobby_SetReady(int32_t ready);

@@ -255,6 +255,31 @@ static int32_t kits_alike_for_me(const TeamFile *mine, int32_t mineChosen)
                    : online_kits(&other->team.team, other->kitChosen, mine, mineChosen, NULL);
 }
 
+/* ---- the UNIFORM screen, online (UniformMenu_SetOnlineHooks) ----
+ * Both players may be on it at once. The other's kit is read from the lobby each frame --
+ * which is polled here, since the lobby's own screen is not drawn meanwhile -- and this
+ * player's goes out as the screen is left, not only when the team screen is. */
+static int32_t uniform_other(TeamFile *kits, int32_t *chosen)
+{
+    const LobbyPlayer *other;
+    NetplayLobby_Poll();
+    other = NetplayLobby_Player(3 - NetplayLobby_LocalPlayer());
+    if (!other || !other->known || !other->hasTeam)
+        return 0;
+    *kits = other->team.team;
+    *chosen = other->kitChosen;
+    return 1;
+}
+
+static void uniform_closed(void)
+{
+    extern TeamFileEx _selectedTeams[SELECTED_TEAMS_MAX];
+    TeamFile kits;
+    const int32_t chosen = Uniform_Chosen(&_selectedTeams[0].team, &kits);
+    NetplayLobby_SetKit(&kits, chosen);
+    NetplayLobby_Poll();                /* (sent now, not when the lobby is drawn again) */
+}
+
 /* 1: PLAY ANYWAY (or ESC: as the player had it), 0: UNIFORM. */
 static int32_t kits_warning(void)
 {
@@ -2239,6 +2264,7 @@ static void lineup_begin(void)
     lobby_unbake_kit(&_selectedTeams[0]);   /* its own kits back; what it was sent in is a choice */
     UniformMenu_SetOnline(other && other->hasTeam, NetplayLobby_LocalPlayer() == 1,
                           other && other->hasTeam && other->kitChosen, NetplayLobby_KitRule());
+    UniformMenu_SetOnlineHooks(uniform_other, uniform_closed);
     s_lineup.before = p->team;
     s_lineup.before.team.tactics = (uint8_t)p->tactic;
     s_lineup.controls = p->team.team.teamControls;
@@ -2305,6 +2331,7 @@ static void lineup_end(void)
                 kit.type, kit.stripes, kit.basic, kit.shorts, kit.socks);
     }
     UniformMenu_SetOnline(-1, 0, 0, KIT_RULE_EXTENDED);
+    UniformMenu_SetOnlineHooks(NULL, NULL);
     lineup_log(&s_lineup.before, &arranged);
     arranged.team.teamControls = s_lineup.controls;
     _selectedTeams[0] = s_lineup.keep[0];

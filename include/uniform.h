@@ -41,5 +41,9 @@ void UniformMenu_Open(TeamFileEx *left, TeamFileEx *right, int32_t leftIsTop);
  * online. `localIsTop`: this player is the match's first team; `otherChosen`: the other
  * player chose his kit; `kitRule`: the rule the match's kits are chosen by (KIT_RULE_*). */
 void UniformMenu_SetOnline(int32_t otherKnown, int32_t localIsTop, int32_t otherChosen, int32_t kitRule);
+/* Online, while the screen is up: `other` gives the other player's team header as it is now and
+ * whether he chose his kit (0: not known), so a kit he changes meanwhile is shown at once;
+ * `closed` runs as the screen is left, to send this side's kit. NULL: neither. */
+void UniformMenu_SetOnlineHooks(int32_t (*other)(TeamFile *kits, int32_t *chosen), void (*closed)(void));
 
 #endif /* UNIFORM_H */

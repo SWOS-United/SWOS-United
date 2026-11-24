@@ -51,8 +51,16 @@ match setup (setup version 7). The team's own two kits are remembered from when 
 (`s_picked`, `src/online_menus.c`) so SWITCH and RESET still have them the next time the
 screen is opened.
 
+A player has **set his kit himself** once he changed it on the UNIFORM screen or left that
+screen with SELECT — SELECT takes the kit shown, the game's pick included. RESET as the last
+thing before SELECT hands it back to the game. A kit set this way is never changed by the game,
+whatever the other player does. Both players may be on the screen at once: the other's kit is
+followed from the lobby while it is up (`UniformMenu_SetOnlineHooks`), and this player's goes
+out as soon as the screen is left (`NetplayLobby_SetKit`), not only with the team screen. The
+lobby's little players show the kits the match will be played in.
+
 How the match is dressed (`SetInGameTeamsOnlineKits`, `src/team_colors.c`; the host is the
-first team):
+first team; "chose" is "set his kit himself"):
 
 | who chose | the kits | told before ready |
 |---|---|---|
