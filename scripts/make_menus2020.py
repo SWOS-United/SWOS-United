@@ -199,7 +199,7 @@ LOGO_INK_RIGHT = 256        # (the D's last column in it: the banner ends where 
 # pixel, at the left buttons' edge (x 1) in the band above them (y 1..38). It was four fifths as big
 # from 2026-11-20 (Playa: clear of the banner); the banner is narrower instead.
 TV_SIZE = (42, 38)
-TV_AT = (-2, 4)             # (2026-11-25: standing on MULTIPLAYER, 3 px left of its edge)
+TV_AT = (-4, 4)             # (2026-11-25: standing on MULTIPLAYER, 5 px left of its edge)
 # Inside its housing's outline (rows 9..34, columns 1..40: the antenna above, the feet below): the
 # entry's box, so the frame of a chosen entry lies on the housing's edge, as SWOS 2020's does; the
 # picture reaches out over it.
