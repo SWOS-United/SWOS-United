@@ -330,11 +330,12 @@ AreShortsAndStripeColorsConflicting(uint16_t color1, uint16_t color2)
  * GetTeamKitsSimilarityFactor
  * ============================================================
  * Computes how similar two team kits are.
- * Returns similarity factor in range [0..99]:
- *   99 = completely different (early exit)
+ * Returns similarity factor in range [0..99] -- the higher, the more alike (the
+ * "conflicting" tests below answer "too alike"):
+ *   99 = alike at first sight (early exit)
  *   88/77/66 = special cases for sleeve/stripe combinations
- *   0..~35 = detailed scoring (lower = more different)
- *   <11 triggers lookup-table-based kit replacement loop
+ *   0..~35 = detailed scoring
+ *   < 11 is different enough (SetInGameTeamsPrimaryColors)
  * The result is clamped to >= 0.
  * Original: GetTeamKitsSimilarityFactor in SWOS2.s (line 43145)
  *
@@ -941,6 +942,42 @@ void SetInGameTeamsFirstKits(TeamFile *team1File, TeamFile *team2File)
     KitPalette_NewMatch();          /* (a new match's kits: its variants take entries afresh) */
     MeasureTeamKitsSimilarity(team1File, team2File);
     SetInGameTeamColors(0, team1File, team2File);
+}
+
+/* ============================================================
+ * SetInGameTeamsOnlineKits
+ * ============================================================
+ * An online match's kits, from whether each side chose one on the UNIFORM screen (a
+ * choice is both of that side's kits by now: online_menus.c lineup_end):
+ *   - nobody chose: SWOS's own rule, as offline (SetInGameTeamsPrimaryColors);
+ *   - one side chose: that side as chosen; the other in its first kit, or in its
+ *     second when the first is too alike. Nothing further: the rule's last resorts
+ *     (a single colour, red against blue) could recolour the chosen side;
+ *   - both chose: both as chosen.
+ * Returns 1 when the two kits worn are still too alike by the rule's own measure --
+ * the lobby warns the player(s) about it before they are ready.
+ */
+int32_t SetInGameTeamsOnlineKits(TeamFile *team1File, TeamFile *team2File, int32_t chosen1, int32_t chosen2)
+{
+    uint16_t combo = 0;
+    if (!chosen1 && !chosen2) {
+        SetInGameTeamsPrimaryColors(team1File, team2File);
+        return 0;
+    }
+    KitPalette_NewMatch();          /* (a new match's kits: its variants take entries afresh) */
+    MeasureTeamKitsSimilarity(team1File, team2File);
+    if (chosen1 != chosen2 && _teamKitsSimilarity[0] >= 11) {
+        /* (the chosen side's two kits are the same: 1 = the second team's second kit,
+         * 2 = the first team's) */
+        const uint16_t other = chosen1 ? 1 : 2;
+        if (_teamKitsSimilarity[other] < 11)
+            combo = other;
+    }
+    fprintf(stderr, "[kits] online: chosen %d/%d, alike (first/first, first/second, second/first; "
+                    "11 and up too alike) %d %d %d: combination %d\n", (int)chosen1, (int)chosen2, _teamKitsSimilarity[0],
+            _teamKitsSimilarity[1], _teamKitsSimilarity[2], (int)combo);
+    SetInGameTeamColors(combo, team1File, team2File);
+    return _teamKitsSimilarity[combo] >= 11;
 }
 #endif
 

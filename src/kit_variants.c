@@ -25,8 +25,17 @@ int32_t KitVariants_Rule(void)
     return s_rule;
 }
 
+static int32_t s_lobbyRule = -1;
+
+void KitVariants_SetLobbyRule(int32_t rule)
+{
+    s_lobbyRule = rule < 0 ? -1 : rule == KIT_RULE_ORIGINAL ? KIT_RULE_ORIGINAL : KIT_RULE_EXTENDED;
+}
+
 int32_t KitVariants_MatchRule(void)
 {
+    if (s_lobbyRule >= 0)
+        return s_lobbyRule;
 #ifdef SWOS_SDL_BUILD
     if (NetplayMatch_Enabled())
         return NetplaySetup_KitRule();

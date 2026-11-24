@@ -107,9 +107,10 @@ extern uint16_t _team1GoalsFirstLeg, _team2GoalsFirstLeg;
 #define NUM_TACTICS   6
 
 #define SETUP_MAGIC   0x53555020u    /* "SUP " */
-#define SETUP_VERSION 6     /* 2: the match-init seeds (_randomSeed and friends); 3: the tie rules;
+#define SETUP_VERSION 7     /* 2: the match-init seeds (_randomSeed and friends); 3: the tie rules;
                              * 4: the host's crowd (include/pitch.h); 5: both players' CALL BENCH;
-                             * 6: the kit clash rule (include/kit_variants.h) */
+                             * 6: the kit clash rule (include/kit_variants.h); 7: which players
+                             * chose their kit (team_colors.c SetInGameTeamsOnlineKits) */
 
 /* magic, version, then the scalars, then (version 3) the tie rules, then the teams,
  * then the tactics. A version-2 setup -- a recording made before the cup rules --
@@ -130,10 +131,13 @@ extern uint16_t _team1GoalsFirstLeg, _team2GoalsFirstLeg;
 /* (version 6) after the bench word, one word: the kit clash rule the kits are chosen by
  * (KIT_RULE_ORIGINAL / KIT_RULE_EXTENDED, include/kit_variants.h). Before: the original's. */
 #define KITRULE_BYTES 2u
+/* (version 7) after the kit rule, one word: player 1 chose his kit on the UNIFORM screen << 8 |
+ * player 2 did. Before: not known, and the match is dressed as those builds did (game_init.c). */
+#define KITCHOSEN_BYTES 2u
 
 uint32_t NetplaySetup_MaxBytes(void)
 {
-    return HEADER_BYTES + SCALAR_BYTES + BENCH_BYTES + KITRULE_BYTES + TEAM_BYTES + TACTIC_TOTAL + CROWD_BYTES + 8;
+    return HEADER_BYTES + SCALAR_BYTES + BENCH_BYTES + KITRULE_BYTES + KITCHOSEN_BYTES + TEAM_BYTES + TACTIC_TOTAL + CROWD_BYTES + 8;
 }
 
 /* CALL BENCH: each player's, for the setup this game sends (the lobby's, before Encode), and
@@ -172,11 +176,28 @@ int32_t NetplaySetup_KitRule(void)
     return s_kitRulePlay >= 0 ? s_kitRulePlay : KitVariants_Rule();
 }
 
+/* Who chose a kit: the lobby's for the setup this game sends, the last applied's to play by
+ * (-1: no setup applied, or one from before it was sent). */
+static uint8_t s_kitChosenSend[2];
+static int8_t  s_kitChosenPlay[2] = { -1, -1 };
+
+void NetplaySetup_SetKitChosen(int32_t player1, int32_t player2)
+{
+    s_kitChosenSend[0] = player1 ? 1 : 0;
+    s_kitChosenSend[1] = player2 ? 1 : 0;
+}
+
+int32_t NetplaySetup_KitChosen(int32_t player)
+{
+    return player >= 1 && player <= 2 ? s_kitChosenPlay[player - 1] : -1;
+}
+
 /* The bytes a setup of `version` holds. */
 static uint32_t setup_bytes(uint16_t version)
 {
     return HEADER_BYTES + SCALAR_COUNT * 2u + (version >= 3 ? TIE_WORDS * 2u : 0u) +
-           (version >= 5 ? BENCH_BYTES : 0u) + (version >= 6 ? KITRULE_BYTES : 0u) + TEAM_BYTES + TACTIC_TOTAL + (version >= 4 ? CROWD_BYTES : 0u);
+           (version >= 5 ? BENCH_BYTES : 0u) + (version >= 6 ? KITRULE_BYTES : 0u) +
+           (version >= 7 ? KITCHOSEN_BYTES : 0u) + TEAM_BYTES + TACTIC_TOTAL + (version >= 4 ? CROWD_BYTES : 0u);
 }
 
 /* The crowd of the last setup applied, and whether the next pitch loaded takes it. */
@@ -271,6 +292,7 @@ int32_t NetplaySetup_Encode(uint8_t *out, uint32_t cap)
     BE_WRITE_U16(p, _team2GoalsFirstLeg); p += 2;
     BE_WRITE_U16(p, (uint16_t)(s_benchSend[0] << 8 | s_benchSend[1])); p += 2;   /* (version 5) */
     BE_WRITE_U16(p, (uint16_t)(s_kitRuleSend >= 0 ? s_kitRuleSend : KitVariants_Rule())); p += 2;   /* (version 6) */
+    BE_WRITE_U16(p, (uint16_t)(s_kitChosenSend[0] << 8 | s_kitChosenSend[1])); p += 2;   /* (version 7) */
 
     /* The two teams (NetplaySetup_WriteTeam says why bytes are right here). */
     NetplaySetup_WriteTeam(p, &_selectedTeams[0]);
@@ -414,6 +436,14 @@ int32_t NetplaySetup_Apply(const uint8_t *in, uint32_t len)
     if (version >= 6)
         s_kitRulePlay = GET() == KIT_RULE_EXTENDED ? KIT_RULE_EXTENDED : KIT_RULE_ORIGINAL;
     fprintf(stderr, "[match] kit colours: %s\n", s_kitRulePlay == KIT_RULE_EXTENDED ? "extended" : "original");
+    s_kitChosenPlay[0] = s_kitChosenPlay[1] = -1;
+    if (version >= 7) {
+        const uint16_t w = GET();
+        s_kitChosenPlay[0] = (w >> 8) ? 1 : 0;
+        s_kitChosenPlay[1] = (w & 0xFF) ? 1 : 0;
+        fprintf(stderr, "[match] kits chosen: player 1 %s, player 2 %s\n",
+                s_kitChosenPlay[0] ? "yes" : "no", s_kitChosenPlay[1] ? "yes" : "no");
+    }
 #undef GET
 
     NetplaySetup_ReadTeam(&_selectedTeams[0], p);
@@ -547,6 +577,8 @@ const uint16_t *NetplaySetup_TakeCrowd(uint16_t mapIndex) { (void)mapIndex; retu
 void     NetplaySetup_SetCallBench(int32_t p1, int32_t p2) { (void)p1; (void)p2; }
 int32_t  NetplaySetup_BenchTapsOff(int32_t player) { (void)player; return 0; }
 int32_t  NetplaySetup_KitRule(void) { return 0; }
+void     NetplaySetup_SetKitChosen(int32_t player1, int32_t player2) { (void)player1; (void)player2; }
+int32_t  NetplaySetup_KitChosen(int32_t player) { (void)player; return -1; }
 void     NetplaySetup_SetKitRule(int32_t rule) { (void)rule; }
 
 #endif /* SWOS_NETPLAY */

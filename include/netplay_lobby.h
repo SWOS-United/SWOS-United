@@ -55,6 +55,7 @@ typedef struct {
     int32_t    extraDelay;          /* frames this player adds to the input delay (FRAME DELAY +) */
     int32_t    callBench;           /* his CALL BENCH (0 button or taps, 1 taps, 2 button): into the setup */
     int32_t    kitRule;             /* his KIT COLOURS (KIT_RULE_*, kit_variants.h): EXTENDED only if both */
+    int32_t    kitChosen;           /* he chose his kit on the UNIFORM screen: into the setup (game_init.c) */
     TeamFileEx team;
     TeamTactics userTactic;         /* the tactic itself when it is a USER one */
     char       name[LOBBY_NAME_MAX + 1];
@@ -107,6 +108,10 @@ const char        *NetplayLobby_Notice(void);
  * tactic takes the ready flag down, so nobody starts a match against a team they
  * have not seen. Ignored unless the lobby is OPEN. */
 void               NetplayLobby_SetTeam(const TeamFileEx *team);
+/* Whether the team just set wears a kit chosen on the UNIFORM screen (SetTeam: not); a change
+ * takes the ready flag down too. KitRule: the rule the match's kits are chosen by. */
+void               NetplayLobby_SetKitChosen(int32_t chosen);
+int32_t            NetplayLobby_KitRule(void);
 void               NetplayLobby_SetTactic(int32_t tactic);
 void               NetplayLobby_SetReady(int32_t ready);
 /* The second leg of a two-legged tie is next (or being played): each player's team stands, and

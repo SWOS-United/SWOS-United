@@ -1247,6 +1247,8 @@ void InitializeInGameTeamsAndStartGame(int16_t randomizePitch, int16_t minSubs,
         extern int32_t NetplayMatch_Enabled(void);
         extern int32_t NetplayMatch_IsLive(void);
         extern void SetInGameTeamsFirstKits(TeamFile *team1File, TeamFile *team2File);
+        extern int32_t SetInGameTeamsOnlineKits(TeamFile *team1File, TeamFile *team2File,
+                                                int32_t chosen1, int32_t chosen2);
         /* A netplay match (live, or one replayed from its recording) is dressed from
          * the teams alone: a choice made online is already IN the team both machines
          * have (online_menus.c lineup_end), and one left over on this machine would
@@ -1258,14 +1260,25 @@ void InitializeInGameTeamsAndStartGame(int16_t randomizePitch, int16_t minSubs,
             kit1.prBasicColor, kit1.prShortsColor, kit1.prSocksColor, &_topTeamInGame);
         SetTeamSecondaryColors((uint16_t)kit2.prShirtType, kit2.prStripesColor,
             kit2.prBasicColor, kit2.prShortsColor, kit2.prSocksColor, &_bottomTeamInGame);
-        /* Chosen kits are worn as chosen, as in SWOS 2020 (ReportBot 0028): the game's
-         * rule for kits that are too alike is asked only when nobody chose. Online it is
-         * never asked -- each player's team arrives with the kit they settled on as its
-         * first, and both machines dress the match the same way from that alone. */
-        if (chosen || NetplayMatch_IsLive())
-            SetInGameTeamsFirstKits(&kit1, &kit2);
-        else
-            SetInGameTeamsPrimaryColors(&kit1, &kit2);
+        /* Chosen kits are worn as chosen, as in SWOS 2020 (ReportBot 0028): offline the
+         * game's rule for kits that are too alike is asked only when nobody chose. Online
+         * the setup says who chose (a choice is both of that team's kits by now): nobody,
+         * the rule as offline; one side, it as chosen and the other in its first kit or
+         * its second; both, both as chosen (SetInGameTeamsOnlineKits). A setup from before
+         * that was sent -- and a live match of those builds -- dressed both in their first. */
+        {
+            extern int32_t NetplaySetup_KitChosen(int32_t player);
+            const int32_t chosen1 = NetplayMatch_Enabled() ? NetplaySetup_KitChosen(1) : -1;
+            const int32_t chosen2 = NetplayMatch_Enabled() ? NetplaySetup_KitChosen(2) : -1;
+            if (chosen1 >= 0 && chosen2 >= 0) {
+                if (SetInGameTeamsOnlineKits(&kit1, &kit2, chosen1, chosen2))
+                    fprintf(stderr, "[match] kits: still alike, as the players were told\n");
+            }
+            else if (chosen || NetplayMatch_IsLive())
+                SetInGameTeamsFirstKits(&kit1, &kit2);
+            else
+                SetInGameTeamsPrimaryColors(&kit1, &kit2);
+        }
         /* What each side kicks off in, for SWOS.log: shirt type, then the palette
          * entries of the shirt, its second colour, the shorts and the socks. */
         fprintf(stderr, "[match] kits: %.16s type %d colours %d/%d/%d/%d, %.16s type %d colours %d/%d/%d/%d\n",

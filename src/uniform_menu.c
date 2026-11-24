@@ -12,12 +12,13 @@
  *     (Uniform_Kits, called by InitializeInGameTeamsAndStartGame).
  *
  *   - A CHOSEN KIT IS WORN, AS IN SWOS 2020 (g_CustomUniform; ReportBot 0028, since
- *     2026-10-07). When either side chose, and in every live online match, both sides
- *     wear their first kit and SWOS's rule for kits that are too alike is not asked
- *     (SetInGameTeamsFirstKits). A chosen kit replaces both of that side's kits, so
- *     "first" is the choice, and online that needs nothing sent but the team. Until
- *     then the rule still decided, which overruled choices that were fine. A match
- *     where nobody chose is dressed by the rule as it always was.
+ *     2026-10-07). Offline, when either side chose, both sides wear their first kit and
+ *     SWOS's rule for kits that are too alike is not asked (SetInGameTeamsFirstKits). A
+ *     chosen kit replaces both of that side's kits, so "first" is the choice. A match
+ *     where nobody chose is dressed by the rule as it always was. Online, who chose
+ *     decides (SetInGameTeamsOnlineKits, docs/UNIFORM.md "Online"): nobody, the rule;
+ *     one side, it as chosen and the other in its first kit or its second; both, both
+ *     as chosen.
  *
  *   - THE SCREEN SHOWS WHAT WILL BE WORN. A side nobody has touched is drawn in the kit
  *     that rule would give it against the other side as it stands, so opening the
@@ -141,12 +142,21 @@ static struct {
 } s_menu;
 
 static int32_t s_online = -1;       /* -1 offline; else whether the other side is known */
-static int32_t s_onlineTop;
+static int32_t s_onlineTop, s_onlineOtherChosen, s_onlineRule;
 
-void UniformMenu_SetOnline(int32_t otherKnown, int32_t localIsTop)
+void UniformMenu_SetOnline(int32_t otherKnown, int32_t localIsTop, int32_t otherChosen, int32_t kitRule)
 {
     s_online = otherKnown;
     s_onlineTop = localIsTop;
+    s_onlineOtherChosen = otherChosen;
+    s_onlineRule = kitRule;
+}
+
+int32_t Uniform_Chosen(const TeamFile *team, TeamFile *kits)
+{
+    if (kits)
+        effective(team, kits);
+    return choice_of(team) != NULL;
 }
 
 static int32_t same_look(const KitLook *a, const KitLook *b)
@@ -203,9 +213,18 @@ static void refresh(void)
     effective(&s_menu.team[kRight]->team, &kit[kRight]);
     keepTop = _topTeamInGame;
     keepBottom = _bottomTeamInGame;
-    /* As kick-off will: a chosen kit is worn as chosen, and so is every kit of an
-     * online match (game_init.c). Then the screen only says when the two are alike. */
-    if (s_online >= 0 || choice_of(&s_menu.team[kLeft]->team) || choice_of(&s_menu.team[kRight]->team)) {
+    /* As kick-off will (game_init.c). Online: who chose decides (SetInGameTeamsOnlineKits),
+     * by the rule both games will play -- this side's choice is the one being made here, the
+     * other's came with its team. Offline: a chosen kit is worn as chosen, and the screen
+     * only says when the two are alike. */
+    if (s_online >= 0) {
+        const int32_t mine = choice_of(&s_menu.team[kLeft]->team) != NULL;
+        KitVariants_SetLobbyRule(s_onlineRule);
+        s_menu.alike = SetInGameTeamsOnlineKits(&kit[top], &kit[1 - top],
+                                                top == kLeft ? mine : s_onlineOtherChosen,
+                                                top == kLeft ? s_onlineOtherChosen : mine);
+        KitVariants_SetLobbyRule(-1);
+    } else if (choice_of(&s_menu.team[kLeft]->team) || choice_of(&s_menu.team[kRight]->team)) {
         SetInGameTeamsFirstKits(&kit[top], &kit[1 - top]);
         s_menu.alike = _teamKitsSimilarity[0] >= 11;    /* the rule's own measure of "too alike" */
     } else {
