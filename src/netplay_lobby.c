@@ -601,7 +601,7 @@ static void read_peer_state(void)
             fprintf(stderr, "[lobby] the other player's kit leaves the two alike: not ready\n");
         } else if (memcmp(kitBefore, kitAfter, sizeof kitBefore) != 0) {
             drop_my_ready();
-            NetplayLobby_ChatNotice("YOUR KIT HAS CHANGED - PLEASE CHECK IT");
+            NetplayLobby_ChatNotice("YOUR KIT HAS CHANGED - PRESS GO TO CONFIRM");
             fprintf(stderr, "[lobby] the other player's kit changes this player's: not ready\n");
         }
     }
