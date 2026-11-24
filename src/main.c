@@ -2106,6 +2106,10 @@ int main(int argc, char **argv)
         MouseCursors_Apply(opts.mouse_cursor);
         Platform_SetAutoCentering(opts.auto_centering);
     }
+    /* KIT COLOURS new to this SWOS.ini (Settings_Load): written now, not only when the game
+     * ends -- after the window, which the keys it may add read their values from. */
+    if (Settings_KitColoursMoved())
+        Settings_Save(&opts, ini_path);
 
 #ifdef SWOS_MOBILE_BUILD
     /* A phone has no setup: the game's data comes from a PC's, over Wi-Fi or by hand (src/mobile.c). */

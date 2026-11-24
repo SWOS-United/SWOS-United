@@ -77,6 +77,10 @@ static const char *const kQuickNames[10] = {
 /* [input] call_bench_p1 / call_bench_p2 read: the old call_bench (one for both) only fills what
  * they do not say, wherever its line stands in the file (a save keeps a key it no longer writes). */
 static int s_benchSeen[2];
+static int s_kitColoursSeen;    /* [graphics] kit_colours was in the file (Settings_Load) */
+static int s_kitColoursMoved;   /* ... and was not: moved to extended + clash kits on, to save */
+
+int Settings_KitColoursMoved(void) { return s_kitColoursMoved; }
 
 /* ---- SWOS 2020's CONTROLS MENU, menu look and MULTIPLAYER SETTINGS (SWOS 2020 port, agent A) ----
  * Read before the sections below; 1 when it was one of these keys. */
@@ -415,6 +419,7 @@ static int handler(void *user, const char *section,
         else if (eqi(name, "clash_kits") && parse_bool(value, &b))   /* (SWOS 2020 port, agent D) */
             opts->clash_kits = b;
         else if (eqi(name, "kit_colours")) {                           /* (kit_variants.h) */
+            s_kitColoursSeen = 1;                                       /* (Settings_Load: no move to it) */
             if      (eqi(value, "extended")) opts->kit_colours = 1;
             else if (eqi(value, "original")) opts->kit_colours = 0;
         }
@@ -534,6 +539,7 @@ void Settings_Load(PlatformInitOptions *opts, const char *path)
      * file can't be opened. Missing file is fine — we'll create it on
      * Settings_Save. Parse errors don't abort load; the keys before
      * the bad line still apply. */
+    s_kitColoursSeen = 0;
     int rc = ini_parse(path, handler, opts);
     if (rc > 0) {
         fprintf(stderr, "[settings] %s: parse error at line %d (continuing)\n",
@@ -542,6 +548,18 @@ void Settings_Load(PlatformInitOptions *opts, const char *path)
     s_baseline = *opts;
     s_haveBaseline = 1;
     snprintf(s_baselinePath, sizeof s_baselinePath, "%s", path);
+    /* A SWOS.ini from before KIT COLOURS (2026-11-24): the player never had the choice, so the
+     * kits and their officials as they are meant -- extended, and GK/REF CLASH KITS on even where
+     * an older build's switch had it off. After the baseline, so the next save writes both
+     * (Settings_AppendMissing at start-up). A file that has kit_colours, whatever it says, is
+     * the player's: left alone. A new file has both on already. */
+    if (rc != -1 && !s_kitColoursSeen) {
+        if (!opts->clash_kits || !opts->kit_colours)
+            fprintf(stderr, "[settings] no kit_colours yet: kit colours extended, GK/REF clash kits on\n");
+        opts->kit_colours = 1;
+        opts->clash_kits = 1;
+        s_kitColoursMoved = 1;
+    }
 }
 
 static const char *renderer_str(PlatformRendererMode m)
