@@ -1785,11 +1785,15 @@ static uint32_t       s_bdSmallSerial;
 
 void Platform_SetMenuBackdrop(const uint8_t *rgba, int w, int h)
 {
+    if (s_render_mtx)
+        SDL_LockMutex(s_render_mtx);    /* (the timer thread's fallback render reads it too) */
     if (rgba != s_bd || w != s_bdW || h != s_bdH)
         s_bdSerial++;
     s_bd = rgba && w > 0 && h > 0 ? rgba : NULL;
     s_bdW = w;
     s_bdH = h;
+    if (s_render_mtx)
+        SDL_UnlockMutex(s_render_mtx);
 }
 
 int Platform_MenuBackdropOn(void)
@@ -1807,6 +1811,13 @@ static uint8_t       *s_introFaded;
 
 void Platform_SetIntroBackdrop(const uint8_t *rgba, int w, int h)
 {
+    /* Under the render lock: during the intro the TIMER thread draws (its wait loops never reach
+     * WaitForVSync), and its backdrop_shown() reads and remakes s_introFaded -- freed here at the
+     * intro's end. Unlocked, a frame drawn as the intro ended read the freed picture: SWOS United
+     * crashed at the end of POWERED BY on testers' Windows PCs (2026-11-24). (SDL's mutex is
+     * recursive: Platform_SetMenuBackdrop takes it again.) */
+    if (s_render_mtx)
+        SDL_LockMutex(s_render_mtx);
     s_introSrc = rgba && w > 0 && h > 0 ? rgba : NULL;
     s_introW = w;
     s_introH = h;
@@ -1816,6 +1827,8 @@ void Platform_SetIntroBackdrop(const uint8_t *rgba, int w, int h)
         free(s_introFaded);
         s_introFaded = NULL;
     }
+    if (s_render_mtx)
+        SDL_UnlockMutex(s_render_mtx);
 }
 
 static void intro_backdrop_update(void)

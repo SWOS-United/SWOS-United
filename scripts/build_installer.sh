@@ -167,6 +167,10 @@ rm -rf "$STAGE_DIR"
 mkdir -p "$STAGE_DIR" || die "cannot create $STAGE_DIR"
 
 cp bin/SWOS.exe "$STAGE_DIR/" || die "cannot stage bin/SWOS.exe"
+# The CA list the HTTPS client checks certificates with (sensiblesoccer.de's log-in, the news
+# ticker): beside the game, where it looks second. Without it every request stops before it is
+# sent ("[https] no CA list"); no installer shipped it until 2026-11-24.
+cp bin/cacert.pem "$STAGE_DIR/" || die "cannot stage bin/cacert.pem"
 
 # (the list checked against what the exe needs first: scripts/check_win_dlls.sh)
 scripts/check_win_dlls.sh "$DLLS"
