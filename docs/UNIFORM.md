@@ -68,7 +68,7 @@ first team; "chose" is "set his kit himself"):
 | one side | that side as chosen; the other in its first kit, else its second; if both are too alike, its first | both, when the two are too alike |
 | both | both as chosen | both, when the two are too alike |
 
-"Told" is THE KITS ARE ALIKE, when the player confirms the team screen or presses GO:
+"Told" is THE KITS LOOK ALIKE (both kits shown side by side, `openswos/kitsAlikeMenu`), when the player confirms the team screen or presses GO:
 PLAY ANYWAY says ready, UNIFORM opens that screen and then the team screen to confirm again. A
 match is played in alike kits only when both players have said PLAY ANYWAY: when the other side's
 kit changes and leaves the two alike, this player is no longer ready (even where the lobby keeps
