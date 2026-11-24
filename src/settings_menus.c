@@ -1410,6 +1410,11 @@ static void jpc_select(int bench)
     CallDrawMenuItem(h);
     InputSDL_PadPressBegin();
     InputSDL_CaptureKey(1);
+    /* Waiting: the FIRE / BENCH value box yellow until a button is pressed, as SELECT JOYPAD's. */
+    MenuEntry *waitBox = entry_at(bench ? Jpc_benchButton : Jpc_fireButton);
+    const uint16_t waitBoxWas = waitBox->bgColor;
+    waitBox->bgColor = kWaitColour;
+    CallDrawMenuItem(waitBox);
     while (!done) {
         const int32_t key = InputSDL_CapturedKey();
         MenuCheckControls();
@@ -1433,6 +1438,9 @@ static void jpc_select(int bench)
         CallDrawMenuItem(h);
     }
     InputSDL_CaptureKey(0);
+    waitBox->bgColor = waitBoxWas;
+    jpc_values();                       /* (the button just set, shown in the box now) */
+    CallDrawMenuItem(waitBox);
     fprintf(stderr, "[settings] CONTROLLER SETUP, the %s button: %s\n", bench ? "BENCH" : "FIRE",
             done ? (button >= 0 ? "taken" : "the default") : "left");
     s_jpcHeader[0] = '\0';
