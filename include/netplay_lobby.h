@@ -114,6 +114,10 @@ void               NetplayLobby_SetKitChosen(int32_t chosen);
 /* Only the kit of this side's team (its ten kit bytes from `kits`, a team header) and whether it
  * was chosen: the UNIFORM screen's, sent as it is left so the other player sees it at once. */
 void               NetplayLobby_SetKit(const TeamFile *kits, int32_t chosen);
+/* Whether the two kits, as they stand, are too alike for this player to say ready without the
+ * warning (online_menus.c): when the other side's kit changes and this answers 1, this player is
+ * no longer ready, even where a change on the other side otherwise leaves him ready. */
+void               NetplayLobby_SetKitsAlikeHook(int32_t (*alikeForMe)(void));
 int32_t            NetplayLobby_KitRule(void);
 void               NetplayLobby_SetTactic(int32_t tactic);
 void               NetplayLobby_SetReady(int32_t ready);

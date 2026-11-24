@@ -240,16 +240,16 @@ static int32_t lobby_worn_kits(KitLook out[2])
 
 /* ---- THE KITS ARE ALIKE ----
  * Before a player is ready: whether the two kits, as the match will dress them, are still
- * too alike -- then the game changes neither. Nobody chose: the rule settles it, nobody is
- * told. One side chose: the other player is told (his first kit and his second were both
- * too alike). Both chose: both are. `mine`: this player's team header with its kit as it
- * stands (a choice over both kits); `mineChosen`: it is a choice. */
+ * too alike -- then the game changes neither. A match is played in alike kits only when
+ * BOTH players have said so: each is told, whoever chose (nobody chose: the rule settles
+ * it, never alike). `mine`: this player's team header with its kit as it stands (a choice
+ * over both kits); `mineChosen`: it is a choice. */
 static int32_t kits_alike_for_me(const TeamFile *mine, int32_t mineChosen)
 {
     const int32_t me = NetplayLobby_LocalPlayer();
     const LobbyPlayer *other = NetplayLobby_Player(3 - me);
 
-    if (!other || !other->known || !other->hasTeam || (mineChosen && !other->kitChosen))
+    if (!other || !other->known || !other->hasTeam)
         return 0;
     return me == 1 ? online_kits(mine, mineChosen, &other->team.team, other->kitChosen, NULL)
                    : online_kits(&other->team.team, other->kitChosen, mine, mineChosen, NULL);
@@ -278,6 +278,13 @@ static void uniform_closed(void)
     const int32_t chosen = Uniform_Chosen(&_selectedTeams[0].team, &kits);
     NetplayLobby_SetKit(&kits, chosen);
     NetplayLobby_Poll();                /* (sent now, not when the lobby is drawn again) */
+}
+
+/* NetplayLobby_SetKitsAlikeHook: this player's side as the lobby has it. */
+static int32_t my_kits_alike(void)
+{
+    const LobbyPlayer *p = NetplayLobby_Player(NetplayLobby_LocalPlayer());
+    return p && p->hasTeam && kits_alike_for_me(&p->team.team, p->kitChosen);
 }
 
 /* 1: PLAY ANYWAY (or ESC: as the player had it), 0: UNIFORM. */
@@ -1946,6 +1953,7 @@ static __attribute__((unused)) int32_t lobby_on_screen(void)
 static void mpGameSetupMenu_OnInit(void)
 {
     Platform_SetFrameHook(lobby_frame_hook);
+    NetplayLobby_SetKitsAlikeHook(my_kits_alike);
     s_lobbyPane  = LOBBY_PANE_CHAT;
     s_chatScroll = 0;
     lobby_layout();

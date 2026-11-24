@@ -65,13 +65,15 @@ first team; "chose" is "set his kit himself"):
 | who chose | the kits | told before ready |
 |---|---|---|
 | nobody | SWOS's rule, as offline: second kit, else a one-colour kit | nobody |
-| one side | that side as chosen; the other in its first kit, else its second; if both are too alike, its first | the one who did not choose, only when both of his kits are too alike |
+| one side | that side as chosen; the other in its first kit, else its second; if both are too alike, its first | both, when the two are too alike |
 | both | both as chosen | both, when the two are too alike |
 
 "Told" is THE KITS ARE ALIKE, when the player confirms the team screen or presses GO:
 PLAY ANYWAY says ready, UNIFORM opens that screen and then the team screen to confirm again. A
-change of the other side's team or kit takes this side's ready flag down, so the check is always
-made against what will be played. The UNIFORM screen shows the same decision. Before
+match is played in alike kits only when both players have said PLAY ANYWAY: when the other side's
+kit changes and leaves the two alike, this player is no longer ready (even where the lobby keeps
+him ready through other changes, as SWOS 2020's does) and the chat says THE KITS NOW LOOK ALIKE - PLEASE CHECK THE COLOURS.
+The UNIFORM screen shows the same decision. Before
 NETPLAY_COMPAT 23 an online match was always played in both first kits.
 
 ## The drawings: `[graphics] kit_art = amiga | jaguar`
