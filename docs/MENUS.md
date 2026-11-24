@@ -1031,9 +1031,10 @@ Two things a JSON menu may say that the packed format has no room for, for SWOS 
   entry's one line, empty for one without), set before each draw.
 - `image` (an entry): a `.bmp` under the data folder -- a mod's overlay first, as every read --
   drawn in the entry's box every menu frame, centred or at `image_x` / `image_y` from the box's
-  top left (an icon beside the entry's text), each colour the nearest in the palette on screen,
+  top left (an icon beside the entry's text; negative reaches out over the box, as the main
+  menu's TV, whose box is its housing: what is chosen and framed), each colour the nearest in the palette on screen,
   mapped again whenever that palette changes (a menu fades in from black); black and magenta
-  (255, 0, 255) transparent. Loaded at its first draw.
+  (255, 0, 255) transparent. Loaded at its first draw. The chosen entry's frame line stays over it.
 
 The loader gives them to `menu_extras.c` as it builds a menu, and they are filed under the menu's
 final packed bytes (the pointer ShowMenu gets, `_currentMenuPtr`): a JSON-installed engine menu

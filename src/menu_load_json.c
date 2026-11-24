@@ -622,8 +622,8 @@ int MenuJson_BuildPacked(const char *j, int jl, uint8_t *out, int outcap)
                 char desc[160] = "", image[160] = "";
                 mjson_get_string(it, itl, "$.description", desc, (int)sizeof desc);
                 mjson_get_string(it, itl, "$.image", image, (int)sizeof image);
-                MenuExtras_Entry(extrasOrdinal++, desc, image, (int32_t)mj_long_def(it, itl, "$.image_x", -1),
-                                 (int32_t)mj_long_def(it, itl, "$.image_y", -1));
+                MenuExtras_Entry(extrasOrdinal++, desc, image, (int32_t)mj_long_def(it, itl, "$.image_x", -32768),
+                                 (int32_t)mj_long_def(it, itl, "$.image_y", -32768));
             }
 #endif
             emit_entry(&w, it, itl, byteMode, menuName);
