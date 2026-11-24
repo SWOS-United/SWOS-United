@@ -243,6 +243,8 @@ static void page_row(int32_t i)
     if (!s_page || i >= s_page->count)
         return;
     note("");
+    fprintf(stderr, "[settings] %s: %s (%s)\n", s_page->title, s_page->rows[i].label,
+            (_controlMask & 0x20) ? "fire" : dir < 0 ? "left" : "right");
     s_page->rows[i].change(dir);
     page_refresh();
 }
@@ -383,6 +385,7 @@ static void select_joypad(int32_t p)
         CallDrawMenuItem(entry_at(Page_note));
     }
     InputSDL_CaptureKey(0);
+    fprintf(stderr, "[settings] SELECT JOYPAD, player %d: %s\n", (int)p + 1, found ? "a pad chosen" : "left");
     if (found) {
         char name[64];
         InputSDL_GivePlayerDevice(p, dev);
@@ -1402,6 +1405,8 @@ static void jpc_select(int bench)
         CallDrawMenuItem(h);
     }
     InputSDL_CaptureKey(0);
+    fprintf(stderr, "[settings] CONTROLLER SETUP, the %s button: %s\n", bench ? "BENCH" : "FIRE",
+            done ? (button >= 0 ? "taken" : "the default") : "left");
     s_jpcHeader[0] = '\0';
     release_wait();
     save();
