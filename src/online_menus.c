@@ -50,6 +50,7 @@
 #include "uniform.h"          /* the UNIFORM screen, from the lobby's team screen */
 #include "kit_variants.h"     /* KitVariants_SetLobbyRule: the kits as the match will choose them */
 #include "team_colors.h"      /* SetInGameTeamsOnlineKits */
+#include "menu_dialog.h"      /* THE KITS LOOK ALIKE, when its own screen is missing */
 #include "custom_team.h"      /* MY CUSTOM TEAM */
 #include "online_account.h"   /* accounts: none here; a fork's (SWOS United's) */
 #include "chat_style.h"       /* SWOS_LOBBY_CHAT_DYNAMIC_FONT: the chat font, or the game's */
@@ -2507,7 +2508,17 @@ static int32_t kits_warning(const KitLook kits[2])
     }
     s_kaPlay = 0;                       /* (ESC: not agreed -- the UNIFORM screen) */
     fprintf(stderr, "[lobby] the two kits look alike: the warning\n");
-    OnlineMenus_Show("openswos/kitsAlikeMenu");
+    if (!MenuJson_Load("openswos/kitsAlikeMenu")) {
+        /* The screen's file missing (a SWOS.exe put in place without its data_json): the plain
+         * dialog instead. Not showing anything read as UNIFORM, and the team screen and this
+         * went round and round. */
+        static const char *const kButtons[2] = { "PLAY ANYWAY", "UNIFORM" };
+        s_kaPlay = MenuDialog_Show("THE KITS LOOK ALIKE",
+                                   "THE GAME WILL NOT CHANGE THESE KITS.|PLAY IN THEM ONLY IF BOTH OF YOU AGREE.",
+                                   kButtons, 2, 0) == 0;
+    } else {
+        OnlineMenus_Show("openswos/kitsAlikeMenu");
+    }
     KitArt_Return();
     fprintf(stderr, "[lobby] the two kits look alike: %s\n", s_kaPlay ? "play anyway" : "uniform");
     return s_kaPlay;
