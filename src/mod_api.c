@@ -445,17 +445,14 @@ int32_t ModApi_SetSetting(const char *slug, const char *key, const char *value)
 #ifndef SWOS_SDL_BUILD
     return write_settings();    /* (save/MODS.INI: the Amiga has no SWOS.ini) */
 #else
+    extern char **Settings_ReadLines(const char *path, int *count);
+    extern void   Settings_FreeLines(char **lines, int count);
     const char *path = swos_ini_path();
-    static char lines[512][256];
-    int32_t n = 0, sectionAt = -1, keyAt = -1, sectionEnd = -1;
+    int n = 0;
+    char **lines = Settings_ReadLines(path, &n);   /* (the whole file: swos_settings.c says why) */
+    int32_t sectionAt = -1, keyAt = -1, sectionEnd = -1;
     char section[64] = "", want[80];
     snprintf(want, sizeof want, "mod.%s", slug);
-    FILE *f = fopen(path, "r");
-    if (f) {
-        while (n < 512 && fgets(lines[n], sizeof lines[0], f))
-            n++;
-        fclose(f);
-    }
     for (int32_t i = 0; i < n; i++) {
         char t[256];
         snprintf(t, sizeof t, "%s", lines[i]);
@@ -479,8 +476,11 @@ int32_t ModApi_SetSetting(const char *slug, const char *key, const char *value)
         }
     }
     FILE *out = fopen(path, "w");
-    if (!out)
+    if (!out) {
+        if (lines)
+            Settings_FreeLines(lines, n);
         return -1;
+    }
     for (int32_t i = 0; i < n; i++) {
         if (i == keyAt) {
             fprintf(out, "%s = %s\n", key, value);
@@ -497,6 +497,8 @@ int32_t ModApi_SetSetting(const char *slug, const char *key, const char *value)
     if (sectionAt < 0)
         fprintf(out, "\n[%s]\n%s = %s\n", want, key, value);
     fclose(out);
+    if (lines)
+        Settings_FreeLines(lines, n);
     swos_save_commit();
     return 0;
 #endif
