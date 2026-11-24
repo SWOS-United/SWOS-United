@@ -280,11 +280,24 @@ static void uniform_closed(void)
     NetplayLobby_Poll();                /* (sent now, not when the lobby is drawn again) */
 }
 
-/* NetplayLobby_SetKitsAlikeHook: this player's side as the lobby has it. */
-static int32_t my_kits_alike(void)
+/* NetplayLobby_SetKitsHook: this player's side as the lobby has it -- the kit he would wear,
+ * and whether the two are too alike for him. */
+static int32_t my_kits(uint8_t myKit[5])
 {
-    const LobbyPlayer *p = NetplayLobby_Player(NetplayLobby_LocalPlayer());
-    return p && p->hasTeam && kits_alike_for_me(&p->team.team, p->kitChosen, NULL);
+    const int32_t me = NetplayLobby_LocalPlayer();
+    const LobbyPlayer *p = NetplayLobby_Player(me);
+    KitLook worn[2];
+    int32_t alike;
+    memset(worn, 0, sizeof worn);
+    if (!p || !p->hasTeam)
+        return 0;
+    alike = kits_alike_for_me(&p->team.team, p->kitChosen, worn);
+    if (me == 1 || me == 2) {
+        const KitLook *k = &worn[me - 1];
+        myKit[0] = k->type; myKit[1] = k->stripes; myKit[2] = k->basic;
+        myKit[3] = k->shorts; myKit[4] = k->socks;
+    }
+    return alike;
 }
 
 /* THE KITS LOOK ALIKE (below): 1 PLAY ANYWAY, 0 UNIFORM (or ESC). `kits`: the two, the host's first. */
@@ -1951,7 +1964,7 @@ static __attribute__((unused)) int32_t lobby_on_screen(void)
 static void mpGameSetupMenu_OnInit(void)
 {
     Platform_SetFrameHook(lobby_frame_hook);
-    NetplayLobby_SetKitsAlikeHook(my_kits_alike);
+    NetplayLobby_SetKitsHook(my_kits);
     s_lobbyPane  = LOBBY_PANE_CHAT;
     s_chatScroll = 0;
     lobby_layout();

@@ -497,7 +497,7 @@ static void team_check(void);      /* the matchmaking server's word on both team
 /* (the ten kit bytes of a team header: prShirtType .. secSocksColor) */
 #define KIT_FIRST_BYTE offsetof(TeamFile, prShirtType)
 #define KIT_BYTES      (offsetof(TeamFile, secSocksColor) + 1 - KIT_FIRST_BYTE)
-static int32_t (*s_kitsAlikeForMe)(void);     /* NetplayLobby_SetKitsAlikeHook */
+static int32_t (*s_kitsForMe)(uint8_t myKit[5]);     /* NetplayLobby_SetKitsHook */
 static int32_t team_blocks(const LobbyPlayer *p);
 
 static void drop_my_ready(void)
@@ -580,15 +580,27 @@ static void read_peer_state(void)
                          memcmp((const uint8_t *)&got.team.team + KIT_FIRST_BYTE,
                                 (const uint8_t *)&theirs()->team.team + KIT_FIRST_BYTE, KIT_BYTES) != 0;
     }
+    /* A ready flag kept through the other side's change (SWOS 2020's lobby) is not kept through
+     * a kit of theirs that changes this player's (the game moved him to his second kit, or back)
+     * or leaves the two too alike for him -- he would be warned if he said ready now
+     * (online_menus.c kits_alike_for_me). He is no longer ready, and told: a GO again is his
+     * word that the kit he will play in is fine. */
+    uint8_t kitBefore[5] = { 0 }, kitAfter[5] = { 0 };
+    const int32_t recheck = kitChanged && mine()->ready && s_kitsForMe;
+    if (recheck)
+        (void)s_kitsForMe(kitBefore);       /* (against their side as it was) */
     got.verified = theirs()->verified;      /* the server's word stands until the team changes (team_check) */
     *theirs() = got;
-    /* A ready flag kept through the other side's change (SWOS 2020's lobby) is not kept through
-     * a kit of theirs that leaves the two too alike for this player: he would be warned if he
-     * said ready now (online_menus.c kits_alike_for_me), so he is no longer ready, and told. */
-    if (kitChanged && mine()->ready && s_kitsAlikeForMe && s_kitsAlikeForMe()) {
-        drop_my_ready();
-        NetplayLobby_ChatNotice("THE KITS NOW LOOK ALIKE - PLEASE CHECK THE COLOURS");
-        fprintf(stderr, "[lobby] the other player's kit leaves the two alike: not ready\n");
+    if (recheck) {
+        if (s_kitsForMe(kitAfter)) {
+            drop_my_ready();
+            NetplayLobby_ChatNotice("THE KITS NOW LOOK ALIKE - PLEASE CHECK THE COLOURS");
+            fprintf(stderr, "[lobby] the other player's kit leaves the two alike: not ready\n");
+        } else if (memcmp(kitBefore, kitAfter, sizeof kitBefore) != 0) {
+            drop_my_ready();
+            NetplayLobby_ChatNotice("YOUR KIT HAS CHANGED - PLEASE CHECK IT");
+            fprintf(stderr, "[lobby] the other player's kit changes this player's: not ready\n");
+        }
     }
     if (!s_lobby.peerAnnounced && got.name[0]) {
         char line[LOBBY_NAME_MAX + 16];
@@ -1165,9 +1177,9 @@ void NetplayLobby_SetTeam(const TeamFileEx *team)
     set_notice("");
 }
 
-void NetplayLobby_SetKitsAlikeHook(int32_t (*alikeForMe)(void))
+void NetplayLobby_SetKitsHook(int32_t (*kitsForMe)(uint8_t myKit[5]))
 {
-    s_kitsAlikeForMe = alikeForMe;
+    s_kitsForMe = kitsForMe;
 }
 
 void NetplayLobby_SetKit(const TeamFile *kits, int32_t chosen)
@@ -1751,7 +1763,7 @@ const char        *NetplayLobby_Notice(void) { return ""; }
 void               NetplayLobby_SetTeam(const TeamFileEx *team) { (void)team; }
 void               NetplayLobby_SetKitChosen(int32_t chosen) { (void)chosen; }
 void               NetplayLobby_SetKit(const TeamFile *kits, int32_t chosen) { (void)kits; (void)chosen; }
-void               NetplayLobby_SetKitsAlikeHook(int32_t (*alikeForMe)(void)) { (void)alikeForMe; }
+void               NetplayLobby_SetKitsHook(int32_t (*kitsForMe)(uint8_t myKit[5])) { (void)kitsForMe; }
 int32_t            NetplayLobby_KitRule(void) { return 0; }
 void               NetplayLobby_SetTactic(int32_t tactic) { (void)tactic; }
 void               NetplayLobby_SetReady(int32_t ready) { (void)ready; }
