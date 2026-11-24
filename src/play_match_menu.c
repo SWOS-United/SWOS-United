@@ -585,7 +585,7 @@ void SetPlayerSurnamesOnSidePitch(void) {
  *
  * UNIFORM stands above EXIT, EXIT's size, as far above it as the bottom row is below the
  * tactics (2026-11-24; before, it shared EDIT TACTICS' place, the two 10 px high). EDIT TACTICS
- * is VIEW OPPO's size, on its line, at the tactics' right edge.
+ * is VIEW OPPO's height, on its line, from beside it to the tactics' right edge, as on the Amiga.
  * Positions are taken from EXIT's (entry 8), which never moves, because this runs
  * again on every change of the screen without the menu being unpacked afresh.
  * ================================================================ */
@@ -615,8 +615,8 @@ static void UpdateUniformButton(void) {
     tactics->y = viewOpp->y;
     tactics->dwHeight = viewOpp->dwHeight;
     if (!tactics->isInvisible) {            /* (computer v computer: none, VIEW OTHER TEAM 93 wide) */
-        tactics->dwWidth = viewOpp->dwWidth;
-        tactics->x = (int16_t)(userF->x + userF->dwWidth - tactics->dwWidth);
+        tactics->x = (int16_t)(viewOpp->x + viewOpp->dwWidth + 1);   /* (as the Amiga's: 68 wide) */
+        tactics->dwWidth = (int16_t)(userF->x + userF->dwWidth - tactics->x);
     }
     tactics->downEntry = -1;
     viewOpp->rightEntry = tactics->isInvisible ? -1 : 10;
