@@ -48,6 +48,9 @@
 #include "match_report.h"     /* the match report: HOW WAS THE MATCH?, SEND MATCH REPORTS */
 #include "match_prediction.h" /* both players' PRED and SEEN cross after the match */
 #include "uniform.h"          /* the UNIFORM screen, from the lobby's team screen */
+#include "kit_variants.h"     /* KitVariants_SetLobbyRule: the kits as the match will choose them */
+#include "team_colors.h"      /* SetInGameTeamsOnlineKits */
+#include "menu_dialog.h"      /* THE KITS LOOK ALIKE, when its own screen is missing */
 #include "custom_team.h"      /* MY CUSTOM TEAM */
 #include "online_account.h"   /* accounts: none here; a fork's (SWOS United's) */
 #include "chat_style.h"       /* SWOS_LOBBY_CHAT_DYNAMIC_FONT: the chat font, or the game's */
@@ -168,9 +171,141 @@ static void lobby_unbake_kit(TeamFileEx *team)
     KitArt_FromTeam(&team->team, 0, &sent);
     KitArt_ToTeam(&s_picked.kit[0], 0, &team->team);
     KitArt_ToTeam(&s_picked.kit[1], 1, &team->team);
-    if (memcmp(&sent, &s_picked.kit[0], sizeof sent) != 0)
+    /* (a kit chosen that is the team's own first is a choice too: the lobby says so) */
+    if (memcmp(&sent, &s_picked.kit[0], sizeof sent) != 0 ||
+        NetplayLobby_Player(NetplayLobby_LocalPlayer())->kitChosen)
         Uniform_Choose(&team->team, &sent);
 }
+
+/* ---- the kits the match will be played in ----
+ * SetInGameTeamsOnlineKits on copies of the two team headers, by the rule both games will
+ * play, as kick-off will (game_init.c): the host's team first. What it wrote to the in-game
+ * teams is put back. `out` (may be NULL): what each side wears (KitLook, include/kit_art.h),
+ * the host's first; returns 1 when the two are still too alike. */
+static int32_t online_kits(const TeamFile *host, int32_t hostChosen, const TeamFile *joiner,
+                           int32_t joinerChosen, KitLook out[2])
+{
+    extern TeamGame _topTeamInGame, _bottomTeamInGame;
+    static TeamGame keepTop, keepBottom;
+    TeamFile a = *host, b = *joiner;
+    int32_t alike, side;
+
+    keepTop = _topTeamInGame;
+    keepBottom = _bottomTeamInGame;
+    KitVariants_SetLobbyRule(NetplayLobby_KitRule());
+    alike = SetInGameTeamsOnlineKits(&a, &b, hostChosen, joinerChosen);
+    KitVariants_SetLobbyRule(-1);
+    for (side = 0; out && side < 2; side++) {
+        const uint8_t *w = TeamColors_Worn(side ? &_bottomTeamInGame : &_topTeamInGame);
+        if (w) {
+            out[side].type = w[0]; out[side].stripes = w[1]; out[side].basic = w[2];
+            out[side].shorts = w[3]; out[side].socks = w[4];
+        } else {
+            KitArt_FromTeam(side ? &b : &a, 0, &out[side]);
+        }
+    }
+    _topTeamInGame = keepTop;
+    _bottomTeamInGame = keepBottom;
+    return alike;
+}
+
+/* The lobby's two sides as they will kick off, for its little players (online_menus_fork.inc
+ * lobby_kits): worked out again only when a team, a choice or the rule has changed. 0 until
+ * both sides have a team. */
+static int32_t lobby_worn_kits(KitLook out[2])
+{
+    static struct { TeamFile team[2]; int32_t chosen[2], rule, valid; } key;
+    static KitLook worn[2];
+    const LobbyPlayer *p1 = NetplayLobby_Player(1), *p2 = NetplayLobby_Player(2);
+    int32_t rule;
+
+    if (!p1 || !p2 || !p1->known || !p2->known || !p1->hasTeam || !p2->hasTeam)
+        return 0;
+    rule = NetplayLobby_KitRule();
+    if (!key.valid || key.chosen[0] != p1->kitChosen || key.chosen[1] != p2->kitChosen ||
+        key.rule != rule || memcmp(&key.team[0], &p1->team.team, sizeof key.team[0]) != 0 ||
+        memcmp(&key.team[1], &p2->team.team, sizeof key.team[1]) != 0) {
+        key.team[0] = p1->team.team;
+        key.team[1] = p2->team.team;
+        key.chosen[0] = p1->kitChosen;
+        key.chosen[1] = p2->kitChosen;
+        key.rule = rule;
+        key.valid = 1;
+        (void)online_kits(&key.team[0], key.chosen[0], &key.team[1], key.chosen[1], worn);
+    }
+    out[0] = worn[0];
+    out[1] = worn[1];
+    return 1;
+}
+
+/* ---- THE KITS LOOK ALIKE ----
+ * Before a player is ready: whether the two kits, as the match will dress them, are still
+ * too alike -- then the game changes neither. A match is played in alike kits only when
+ * BOTH players have said so: each is told, whoever chose (nobody chose: the rule settles
+ * it, never alike). `mine`: this player's team header with its kit as it stands (a choice
+ * over both kits); `mineChosen`: it is a choice. `out` (may be NULL): the two kits, the
+ * host's first. */
+static int32_t kits_alike_for_me(const TeamFile *mine, int32_t mineChosen, KitLook out[2])
+{
+    const int32_t me = NetplayLobby_LocalPlayer();
+    const LobbyPlayer *other = NetplayLobby_Player(3 - me);
+
+    if (!other || !other->known || !other->hasTeam)
+        return 0;
+    return me == 1 ? online_kits(mine, mineChosen, &other->team.team, other->kitChosen, out)
+                   : online_kits(&other->team.team, other->kitChosen, mine, mineChosen, out);
+}
+
+/* ---- the UNIFORM screen, online (UniformMenu_SetOnlineHooks) ----
+ * Both players may be on it at once. The other's kit is read from the lobby each frame --
+ * which is polled here, since the lobby's own screen is not drawn meanwhile -- and this
+ * player's goes out as the screen is left, not only when the team screen is. */
+static int32_t uniform_other(TeamFile *kits, int32_t *chosen)
+{
+    const LobbyPlayer *other;
+    NetplayLobby_Poll();
+    other = NetplayLobby_Player(3 - NetplayLobby_LocalPlayer());
+    if (!other || !other->known || !other->hasTeam)
+        return 0;
+    *kits = other->team.team;
+    *chosen = other->kitChosen;
+    return 1;
+}
+
+static void uniform_closed(void)
+{
+    extern TeamFileEx _selectedTeams[SELECTED_TEAMS_MAX];
+    TeamFile kits;
+    const int32_t chosen = Uniform_Chosen(&_selectedTeams[0].team, &kits);
+    NetplayLobby_SetKit(&kits, chosen);
+    NetplayLobby_Poll();                /* (sent now, not when the lobby is drawn again) */
+}
+
+/* NetplayLobby_SetKitsHook: this player's side as the lobby has it -- the kit he would wear,
+ * and whether the two are too alike for him. */
+static int32_t my_kits(uint8_t myKit[5])
+{
+    const int32_t me = NetplayLobby_LocalPlayer();
+    const LobbyPlayer *p = NetplayLobby_Player(me);
+    KitLook worn[2];
+    int32_t alike;
+    memset(worn, 0, sizeof worn);
+    if (!p || !p->hasTeam || (me != 1 && me != 2))
+        return 0;
+    /* (the other player without a team yet: this one in his first kit, as the lobby shows him --
+     * not nothing, which read as his kit changing the moment the other picked one) */
+    KitArt_FromTeam(&p->team.team, 0, &worn[me - 1]);
+    alike = kits_alike_for_me(&p->team.team, p->kitChosen, worn);
+    {
+        const KitLook *k = &worn[me - 1];
+        myKit[0] = k->type; myKit[1] = k->stripes; myKit[2] = k->basic;
+        myKit[3] = k->shorts; myKit[4] = k->socks;
+    }
+    return alike;
+}
+
+/* THE KITS LOOK ALIKE (below): 1 PLAY ANYWAY, 0 UNIFORM (or ESC). `kits`: the two, the host's first. */
+static int32_t kits_warning(const KitLook kits[2]);
 
 void OnlineMenus_Show(const char *name)
 {
@@ -1147,7 +1282,8 @@ static int32_t s_testReady;         /* SWOS_LOBBY_READY: say ready once the lobb
 static int32_t s_matchEndedEarly;   /* the last match was cut short: its notice says why */
 
 static void lineup_test_swap(void);    /* SWOS_LOBBY_LINEUP_SWAP, beside the TACTICS screen */
-static void lineup_screen(void);       /* the team screen, from TEAMS and TACTICS */
+static void lineup_test_kit(void);     /* SWOS_LOBBY_KIT, as the UNIFORM screen would choose */
+static void lineup_screen(int32_t uniformFirst);   /* the team screen, from TEAMS and TACTICS */
 static void custom_tactics_warning(void);   /* after the team screen, a ranked match (SWOS 2020) */
 
 static void lobby_test_knobs(void)
@@ -1198,6 +1334,13 @@ static void lobby_test_knobs(void)
             if (rec[i].team.countryNumber == file && rec[i].team.teamOrdinal == ordinal) {
                 lobby_pick_team(&rec[i]);
                 lineup_test_swap();
+                lineup_test_kit();
+                if (getenv("SWOS_LOBBY_KITS_WARNING")) {    /* (a test: the screen, this team on both sides) */
+                    KitLook k[2];
+                    KitArt_FromTeam(&rec[i].team, 0, &k[0]);
+                    KitArt_FromTeam(&rec[i].team, 1, &k[1]);
+                    (void)kits_warning(k);
+                }
                 break;
             }
         }
@@ -1825,6 +1968,7 @@ static __attribute__((unused)) int32_t lobby_on_screen(void)
 static void mpGameSetupMenu_OnInit(void)
 {
     Platform_SetFrameHook(lobby_frame_hook);
+    NetplayLobby_SetKitsHook(my_kits);
     s_lobbyPane  = LOBBY_PANE_CHAT;
     s_chatScroll = 0;
     lobby_layout();
@@ -2068,7 +2212,7 @@ static void mpGameSetup_teams_onSelect(void)
         static TeamFileEx custom;
         if (CustomTeam_Pick(&custom) > 0) {
             if (lobby_pick_team(&custom))
-                lineup_screen();
+                lineup_screen(0);
             NetplayLobby_SetActivity(LOBBY_ACTIVITY_NONE);
             return;
         }
@@ -2076,7 +2220,7 @@ static void mpGameSetup_teams_onSelect(void)
     ChooseTeamsDialog(1, 1, 1, (uint8_t *)title, (void *)0);
 
     if ((int16_t)_selectedTeamCountryNumber != -1 && _selectedTeamPtr && lobby_pick_team(_selectedTeamPtr))
-        lineup_screen();                /* straight on to the line-up, then CONFIRM = ready */
+        lineup_screen(0);               /* straight on to the line-up, then CONFIRM = ready */
     NetplayLobby_SetActivity(LOBBY_ACTIVITY_NONE);
 }
 
@@ -2141,7 +2285,9 @@ static void lineup_begin(void)
     _selectedTeams[1] = other && other->hasTeam ? other->team : p->team;
     Uniform_Clear();
     lobby_unbake_kit(&_selectedTeams[0]);   /* its own kits back; what it was sent in is a choice */
-    UniformMenu_SetOnline(other && other->hasTeam, NetplayLobby_LocalPlayer() == 1);
+    UniformMenu_SetOnline(other && other->hasTeam, NetplayLobby_LocalPlayer() == 1,
+                          other && other->hasTeam && other->kitChosen, NetplayLobby_KitRule());
+    UniformMenu_SetOnlineHooks(uniform_other, uniform_closed);
     s_lineup.before = p->team;
     s_lineup.before.team.tactics = (uint8_t)p->tactic;
     s_lineup.controls = p->team.team.teamControls;
@@ -2193,19 +2339,22 @@ static void lineup_end(void)
     extern uint16_t   _team1SelectedPlayerIndex, _team2SelectedPlayerIndex;
     TeamFileEx arranged = _selectedTeams[0];
     KitLook kit;
+    int32_t chosen;
 
     _team1SelectedPlayerIndex = s_lineup.marked[0];
     _team2SelectedPlayerIndex = s_lineup.marked[1];
 
     /* A kit chosen on the UNIFORM screen: both of the team's kits become it, so SWOS's
      * own kit rule, run on each machine at kick-off, can only dress this side in it. */
-    if (Uniform_Take(&_selectedTeams[0].team, &kit)) {
+    chosen = Uniform_Take(&_selectedTeams[0].team, &kit);
+    if (chosen) {
         KitArt_ToTeam(&kit, 0, &arranged.team);
         KitArt_ToTeam(&kit, 1, &arranged.team);
         fprintf(stderr, "[lobby] team screen: a kit was chosen (type %d, colours %d/%d/%d/%d)\n",
                 kit.type, kit.stripes, kit.basic, kit.shorts, kit.socks);
     }
-    UniformMenu_SetOnline(-1, 0);
+    UniformMenu_SetOnline(-1, 0, 0, KIT_RULE_EXTENDED);
+    UniformMenu_SetOnlineHooks(NULL, NULL);
     lineup_log(&s_lineup.before, &arranged);
     arranged.team.teamControls = s_lineup.controls;
     _selectedTeams[0] = s_lineup.keep[0];
@@ -2215,6 +2364,7 @@ static void lineup_end(void)
     _isCareer = s_lineup.isCareer; _trainingGame = s_lineup.training;
     _twoPlayers = s_lineup.twoPlayers;
     NetplayLobby_SetTeam(&arranged);
+    NetplayLobby_SetKitChosen(chosen);      /* (how both games dress the match: game_init.c) */
 }
 
 /* The team screen, from the lobby: straight after TEAMS picks a team, and from TACTICS
@@ -2222,7 +2372,7 @@ static void lineup_end(void)
  * CONFIRM means ready -- the player's row goes green -- as in SWOS 2020's lobby. EXIT
  * keeps what was changed but leaves them not ready. The confirmed side is the lobby's to
  * keep: a rematch starts from it (netplay_lobby.c keeps each side across a match). */
-static void lineup_screen(void)
+static void lineup_screen(int32_t uniformFirst)
 {
     extern int16_t ShowPlayMatchMenu(int16_t controlFlags, int16_t maxSubstitutes, int16_t excludeFlags,
                                      int16_t isFirstPlayer, int16_t squadChanges,
@@ -2242,12 +2392,26 @@ static void lineup_screen(void)
     g_playMatchStartLabel = confirm;
     g_playMatchStartRefused = NetplayLobby_LegBlocked;     /* (a second leg: no CONFIRM while the
                                                              * first's injured or sent off play) */
-    ShowPlayMatchMenu(1, (int16_t)NetplayLobby_Rules()->maxSubs, 0, 1, 1,
-                      &_selectedTeams[0], &_selectedTeams[1]);
+    /* UNIFORM from THE KITS LOOK ALIKE: that screen first, then this one to CONFIRM. A CONFIRM
+     * with kits still too alike asks again: PLAY ANYWAY confirms, UNIFORM goes round. */
+    for (;;) {
+        TeamFile kits;
+        KitLook worn[2];
+        int32_t chosen;
+        if (uniformFirst)
+            UniformMenu_Open(&_selectedTeams[0], &_selectedTeams[1], NetplayLobby_LocalPlayer() == 1);
+        uniformFirst = 0;
+        ShowPlayMatchMenu(1, (int16_t)NetplayLobby_Rules()->maxSubs, 0, 1, 1,
+                          &_selectedTeams[0], &_selectedTeams[1]);
+        confirmed = _exitGameFlag == 0; /* EXIT sets it; CONFIRM (the PLAY button) does not */
+        _exitGameFlag = 0;
+        chosen = Uniform_Chosen(&_selectedTeams[0].team, &kits);
+        if (!confirmed || !kits_alike_for_me(&kits, chosen, worn) || kits_warning(worn))
+            break;
+        uniformFirst = 1;
+    }
     g_playMatchStartLabel = NULL;
     g_playMatchStartRefused = NULL;
-    confirmed = _exitGameFlag == 0;     /* EXIT sets it; CONFIRM (the PLAY button) does not */
-    _exitGameFlag = 0;
     lineup_end();
     NetplayLobby_SetActivity(LOBBY_ACTIVITY_NONE);
     if (confirmed)
@@ -2287,12 +2451,88 @@ static void custom_tactics_warning(void)
     OnlineMenus_Show(SWOS2020_MENU(customTacticsWarningMenu));
 }
 
+/* ---- THE KITS LOOK ALIKE (openswos/kitsAlikeMenu.json) ----
+ * Before a player is ready online, when the two kits the match would be played in are too
+ * alike (kits_alike_for_me): each player with his team, and the kit it would wear drawn as the
+ * UNIFORM screen draws it -- the host's on the left, as the match has him first. */
+enum { KA_player1 = 1, KA_team1 = 3, KA_shirt1 = 5, KA_vs = 11, KA_line1 = 12, KA_line2 = 13 };
+static KitLook s_kaKit[2];
+static char    s_kaPlayer[2][LOBBY_NAME_MAX + 1], s_kaTeam[2][18];
+static int32_t s_kaPlay;
+
+static int32_t ka_side(const MenuEntry *e) { return e->ordinal >= KA_shirt1 + 3; }
+static void ka_shirt(MenuEntry *e)
+{
+    int32_t w, h;
+    KitArt_Draw(KIT_ART_SHIRT, &s_kaKit[ka_side(e)], e->x, e->y, e->dwWidth, e->dwHeight);
+    KitArt_Size(KIT_ART_PLAYER, &w, &h);    /* (above it the little player wearing the lot) */
+    KitArt_Draw(KIT_ART_PLAYER, &s_kaKit[ka_side(e)], e->x, e->y - h - 3, e->dwWidth, h);
+}
+static void ka_shorts(MenuEntry *e) { KitArt_Draw(KIT_ART_SHORTS, &s_kaKit[ka_side(e)], e->x, e->y, e->dwWidth, e->dwHeight); }
+static void ka_socks(MenuEntry *e)  { KitArt_Draw(KIT_ART_SOCKS, &s_kaKit[ka_side(e)], e->x, e->y, e->dwWidth, e->dwHeight); }
+
+static void kitsAlike_OnInit(void)
+{
+    static const MenuEntryFn draw[3] = { ka_shirt, ka_shorts, ka_socks };
+    int32_t side, part;
+    for (side = 0; side < 2; side++) {
+        entry_at(KA_player1 + side)->fg = (uintptr_t)s_kaPlayer[side];
+        entry_at(KA_team1 + side)->fg = (uintptr_t)s_kaTeam[side];
+        for (part = 0; part < 3; part++) {
+            MenuEntry *e = entry_at(KA_shirt1 + side * 3 + part);
+            e->background = ENTRY_FRAME_AND_BACK_COLOR;
+            e->bgColor = 7;             /* (grey: what the UNIFORM screen's kits sit on) */
+            e->content = 0;
+            e->afterDrawCb = draw[part];
+        }
+    }
+    entry_at(KA_vs)->fg = (uintptr_t)"VS";
+    entry_at(KA_line1)->fg = (uintptr_t)"THE GAME WILL NOT CHANGE THESE KITS.";
+    entry_at(KA_line2)->fg = (uintptr_t)"PLAY IN THEM ONLY IF BOTH OF YOU AGREE.";
+}
+
+static void kitsAlike_OnDraw(void)
+{
+    KitArt_Lend();
+}
+
+static void kitsAlike_play_OnSelect(void)    { s_kaPlay = 1; SetExitMenuFlag(); }
+static void kitsAlike_uniform_OnSelect(void) { s_kaPlay = 0; SetExitMenuFlag(); }
+
+static int32_t kits_warning(const KitLook kits[2])
+{
+    int32_t side;
+    for (side = 0; side < 2; side++) {
+        const LobbyPlayer *p = NetplayLobby_Player(side + 1);
+        s_kaKit[side] = kits[side];
+        snprintf(s_kaPlayer[side], sizeof s_kaPlayer[side], "%s", p && p->name[0] ? p->name : "");
+        snprintf(s_kaTeam[side], sizeof s_kaTeam[side], "%.16s",
+                 p && p->hasTeam ? (const char *)p->team.team.teamName : "");
+    }
+    s_kaPlay = 0;                       /* (ESC: not agreed -- the UNIFORM screen) */
+    fprintf(stderr, "[lobby] the two kits look alike: the warning\n");
+    if (!MenuJson_Load("openswos/kitsAlikeMenu")) {
+        /* The screen's file missing (a SWOS.exe put in place without its data_json): the plain
+         * dialog instead. Not showing anything read as UNIFORM, and the team screen and this
+         * went round and round. */
+        static const char *const kButtons[2] = { "PLAY ANYWAY", "UNIFORM" };
+        s_kaPlay = MenuDialog_Show("KIT CLASH",
+                                   "THE GAME WILL NOT CHANGE THESE KITS.|PLAY IN THEM ONLY IF BOTH OF YOU AGREE.",
+                                   kButtons, 2, 0) == 0;
+    } else {
+        OnlineMenus_Show("openswos/kitsAlikeMenu");
+    }
+    KitArt_Return();
+    fprintf(stderr, "[lobby] the two kits look alike: %s\n", s_kaPlay ? "play anyway" : "uniform");
+    return s_kaPlay;
+}
+
 static void mpGameSetup_tactics_onSelect(void)
 {
     const LobbyPlayer *p = NetplayLobby_Player(NetplayLobby_LocalPlayer());
     if (!on_my_row(MpGameSetupMenu_tactics_00) || !p->hasTeam)
         return;
-    lineup_screen();
+    lineup_screen(0);
 }
 
 /* SWOS_LOBBY_LINEUP_SWAP=a:b -- for a test, the same arranging with one swap made by the
@@ -2312,12 +2552,37 @@ static void lineup_test_swap(void)
     fprintf(stderr, "[lobby] test: swapped line-up slots %d and %d\n", a, b);
 }
 
+/* SWOS_LOBBY_KIT=<type>,<shirt>,<second>,<shorts>,<socks> -- for a test, the kit chosen as
+ * the UNIFORM screen would choose it (KitLook, include/kit_art.h), and no screen: how both
+ * machines dress the match by who chose (SetInGameTeamsOnlineKits). */
+static void lineup_test_kit(void)
+{
+    extern TeamFileEx _selectedTeams[SELECTED_TEAMS_MAX];
+    const char *v = getenv("SWOS_LOBBY_KIT");
+    unsigned t, a, b, c, d;
+    KitLook kit;
+    if (!v || sscanf(v, "%u,%u,%u,%u,%u", &t, &a, &b, &c, &d) != 5 ||
+        !NetplayLobby_Player(NetplayLobby_LocalPlayer())->hasTeam)
+        return;
+    lineup_begin();
+    kit.type = (uint8_t)t; kit.stripes = (uint8_t)a; kit.basic = (uint8_t)b;
+    kit.shorts = (uint8_t)c; kit.socks = (uint8_t)d;
+    Uniform_Choose(&_selectedTeams[0].team, &kit);
+    lineup_end();
+    fprintf(stderr, "[lobby] test: kit chosen %u,%u,%u,%u,%u\n", t, a, b, c, d);
+}
+
 /* GO: ready, or not. */
 static void mpGameSetup_go_onSelect(void)
 {
     const LobbyPlayer *p = NetplayLobby_Player(NetplayLobby_LocalPlayer());
     if (!on_my_row(MpGameSetupMenu_go_00))
         return;
+    KitLook worn[2];
+    if (!p->ready && p->hasTeam && kits_alike_for_me(&p->team.team, p->kitChosen, worn) && !kits_warning(worn)) {
+        lineup_screen(1);               /* UNIFORM: that screen, then the team screen to CONFIRM */
+        return;
+    }
     if (!p->ready && FORK_HOOK(readying))
         online_menus_fork()->readying();
     NetplayLobby_SetReady(!p->ready);
@@ -2625,6 +2890,14 @@ static void run_live_match(void)
         online_menus_fork()->liveMatchStart();
     InitAndPlayGame(&_selectedTeams[0], &_selectedTeams[1]);
     s_lobbyMatches++;
+    {   /* The match is over and the menus have the screen. A live match comes back with
+         * _playGame still set -- it ends on the session's last frame, not through the game's
+         * own end of match, which is what clears it (game_timers.c) -- and while it is set,
+         * the DOS graphics draw every screen in the pitch's palette (platform_sdl.c): HOW
+         * WAS THE MATCH? and the lobby after it came up with olive buttons. */
+        extern volatile uint16_t _playGame;
+        _playGame = 0;
+    }
 
     /* Back to the lobby with the same player: a rematch is two GOs and a START, as it
      * is in SWOS 2020. The menu is shown afresh (OnlineMenus_EnterLobby) rather than
@@ -3048,6 +3321,10 @@ static const MenuSymbol k_handlers[] = {
     HANDLER(mpGameSetup_tactics_onSelect),
     HANDLER(customTacticsWarningMenu_OnInit),
     HANDLER(customTacticsWarningMenu_OnDraw),
+    HANDLER(kitsAlike_OnInit),
+    HANDLER(kitsAlike_OnDraw),
+    HANDLER(kitsAlike_play_OnSelect),
+    HANDLER(kitsAlike_uniform_OnSelect),
     HANDLER(mpGameSetup_go_onSelect),
     HANDLER(selectLegOpt1),
     HANDLER(selectEtPen1),
@@ -3282,7 +3559,7 @@ int32_t OnlineMenus_SelfTest(void)
     }
     {   /* SWOS 2020's OPTIONS screens and CONTROLLER SETUP (src/settings_menus.c) */
         static const struct { const char *name; int entries; } k_settings[] = {
-            { "openswos/settingsMenu", 10 }, { "openswos/settingsPage", 27 }, { "openswos/joypadConfigMenu", 44 },
+            { "openswos/settingsMenu", 11 }, { "openswos/settingsPage", 27 }, { "openswos/joypadConfigMenu", 44 },
         };
         extern void SettingsMenus_Init(void);
         SettingsMenus_Init();

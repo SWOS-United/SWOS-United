@@ -1654,8 +1654,11 @@ void InputSDL_HandleEvent(const SDL_Event *e)
              * and the Amiga ISR uses its own keyDelay/repeat logic that
              * we don't currently emulate; ignoring repeats prevents
              * runaway double-inserts in InputText). Drop the event when
-             * the buffer is full. */
-            if (e->key.repeat == 0 && _keyCount < (sizeof(_keyBuffer) - 3)) {
+             * the buffer is full. BACKSPACE and DELETE in a text field are the
+             * exception: held, they go on deleting, as anywhere else -- a name
+             * or a password was cleared one press per character. */
+            const int repeats = _gTextInputActive && (a == AKEY_BSPACE || a == AKEY_DEL);
+            if ((e->key.repeat == 0 || repeats) && _keyCount < (sizeof(_keyBuffer) - 3)) {
                 _keyBuffer[_keyCount] = (uint8_t)a;
                 _keyCount++;
             }

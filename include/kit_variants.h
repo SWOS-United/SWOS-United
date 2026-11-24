@@ -29,6 +29,9 @@ int32_t KitVariants_Rule(void);
 /* The rule the match being set up is played by: the setup's in a net game or a replayed
  * recording, this game's own otherwise. */
 int32_t KitVariants_MatchRule(void);
+/* The online lobby's rule for a kit decision made before the match (its warning, the UNIFORM
+ * screen): what KitVariants_MatchRule says until set back to -1. */
+void    KitVariants_SetLobbyRule(int32_t rule);
 
 /* A kit colour byte -> its colour index (0-9 the base colours, then the variants), or -1. */
 int32_t KitVariants_ColourIndex(uint8_t colour);

@@ -27,17 +27,12 @@ the two team headers, on which a chosen kit has been written over **both** of th
 (`Uniform_Kits`). Nothing after that reads a kit from a team file — the match, its replay and
 a rollback all work from the in-game teams.
 
-**SWOS's own kit rule still runs.** `SetInGameTeamsPrimaryColors` is unchanged and is given
-those copies. So:
-
-- A side nobody touched still changes to its second kit to avoid the other's, exactly as it
-  always has — including avoiding a kit the other side *chose*.
-- A side that chose is dressed in what it chose, whichever of its "two" kits the rule picks.
-- Two chosen kits the rule finds too alike are resolved the way it resolves any two: the
-  second team gets a one-colour kit. The screen's help line says so while it is the case
-  ("THESE KITS ARE TOO ALIKE: THE GAME WILL CHANGE ONE"). SWOS 2020 instead forced both
-  sides into what was on screen; that cannot be done online, where each player chooses
-  without seeing the other do it.
+**Offline, a chosen kit is worn as chosen** (as SWOS 2020's `g_CustomUniform`, ReportBot 0028):
+when either side chose, both sides wear their first kit — a choice is both of that side's kits —
+and SWOS's rule for kits that are too alike is not asked (`SetInGameTeamsFirstKits`). The
+screen's help line says when the two are alike ("THESE KITS ARE ALIKE - THE GAME WILL NOT
+CHANGE THEM"). A match where nobody chose is dressed by the rule (`SetInGameTeamsPrimaryColors`)
+as it always was.
 
 **The screen shows what will be worn.** A side nobody has chosen for is drawn in the kit the
 rule gives it against the other side as it stands (the rule is run on the spot and what it
@@ -50,10 +45,36 @@ the same lines.
 In the lobby's team screen only this player's side can be changed; the other's is shown once
 they have picked a team. A chosen kit travels **inside the team**: both of its kits become the
 chosen one before the team is sent (`lineup_end`), so both machines dress the side from the
-same record, the recording's `SETP` carries it, and nothing was added to the lobby's or the
-handshake's wire format. The team's own two kits are remembered from when it was picked
+same record and the recording's `SETP` carries it. Beside the team, the lobby's STATE says
+whether the player chose (`kitChosen`, lobby version 10), and the host puts both players' in the
+match setup (setup version 7). The team's own two kits are remembered from when it was picked
 (`s_picked`, `src/online_menus.c`) so SWITCH and RESET still have them the next time the
 screen is opened.
+
+A player has **set his kit himself** once he changed it on the UNIFORM screen or left that
+screen with SELECT — SELECT takes the kit shown, the game's pick included. RESET as the last
+thing before SELECT hands it back to the game. A kit set this way is never changed by the game,
+whatever the other player does. Both players may be on the screen at once: the other's kit is
+followed from the lobby while it is up (`UniformMenu_SetOnlineHooks`), and this player's goes
+out as soon as the screen is left (`NetplayLobby_SetKit`), not only with the team screen. The
+lobby's little players show the kits the match will be played in.
+
+How the match is dressed (`SetInGameTeamsOnlineKits`, `src/team_colors.c`; the host is the
+first team; "chose" is "set his kit himself"):
+
+| who chose | the kits | told before ready |
+|---|---|---|
+| nobody | SWOS's rule, as offline: second kit, else a one-colour kit | nobody |
+| one side | that side as chosen; the other in its first kit, else its second; if both are too alike, its first | both, when the two are too alike |
+| both | both as chosen | both, when the two are too alike |
+
+"Told" is THE KITS LOOK ALIKE (both kits shown side by side, `openswos/kitsAlikeMenu`), when the player confirms the team screen or presses GO:
+PLAY ANYWAY says ready, UNIFORM opens that screen and then the team screen to confirm again. A
+match is played in alike kits only when both players have said PLAY ANYWAY: when the other side's
+kit changes and leaves the two alike, this player is no longer ready (even where the lobby keeps
+him ready through other changes, as SWOS 2020's does) and the chat says THE KITS NOW LOOK ALIKE - PLEASE CHECK THE COLOURS.
+The UNIFORM screen shows the same decision. Before
+NETPLAY_COMPAT 23 an online match was always played in both first kits.
 
 ## The drawings: `[graphics] kit_art = amiga | jaguar`
 

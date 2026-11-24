@@ -1,0 +1,349 @@
+{
+  "name": "kitsAlikeMenu",
+  "comment": "SWOS United: THE KITS LOOK ALIKE -- before a player is ready online, when the two kits the match would be played in are too alike (src/online_menus.c kits_warning): both sides' kits as the UNIFORM screen draws them, and PLAY ANYWAY or UNIFORM. JSON-only (docs/MENUS.md section 10); the texts and the kit drawings are put in by onInit.",
+  "menu_flags": {
+    "dos_redraw": true
+  },
+  "onInit": "kitsAlike_OnInit",
+  "onReturn": null,
+  "onDraw": "kitsAlike_OnDraw",
+  "defaultEntry": 14,
+  "items": [
+    {
+      "kind": "entry",
+      "name": "header",
+      "coords": {
+        "x": 72,
+        "y": 0,
+        "w": 176,
+        "h": 16
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x10",
+          "literal": "KIT CLASH"
+        },
+        {
+          "op": "colors",
+          "frame_color": 1,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "player1",
+      "coords": {
+        "x": 8,
+        "y": 20,
+        "w": 140,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "player2",
+      "coords": {
+        "x": 172,
+        "y": 20,
+        "w": 140,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "team1",
+      "coords": {
+        "x": 8,
+        "y": 30,
+        "w": 140,
+        "h": 12
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 6
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "team2",
+      "coords": {
+        "x": 172,
+        "y": 30,
+        "w": 140,
+        "h": 12
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 6
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "shirt1",
+      "coords": {
+        "x": 55,
+        "y": 62,
+        "w": 46,
+        "h": 31
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "shorts1",
+      "coords": {
+        "x": 55,
+        "y": 93,
+        "w": 46,
+        "h": 17
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "socks1",
+      "coords": {
+        "x": 55,
+        "y": 110,
+        "w": 46,
+        "h": 17
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "shirt2",
+      "coords": {
+        "x": 219,
+        "y": 62,
+        "w": 46,
+        "h": 31
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "shorts2",
+      "coords": {
+        "x": 219,
+        "y": 93,
+        "w": 46,
+        "h": 17
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "socks2",
+      "coords": {
+        "x": 219,
+        "y": 110,
+        "w": 46,
+        "h": 17
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 7
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "vs",
+      "coords": {
+        "x": 136,
+        "y": 88,
+        "w": 48,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "line1",
+      "coords": {
+        "x": 0,
+        "y": 136,
+        "w": 320,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "line2",
+      "coords": {
+        "x": 0,
+        "y": 148,
+        "w": 320,
+        "h": 10
+      },
+      "commands": [
+        {
+          "op": "text_no_ptr",
+          "flags": "0x0"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "play",
+      "coords": {
+        "x": 40,
+        "y": 170,
+        "w": 110,
+        "h": 15
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "PLAY ANYWAY"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 14
+        },
+        {
+          "op": "nav",
+          "left": -1,
+          "right": 15,
+          "up": -1,
+          "down": -1
+        },
+        {
+          "op": "onselect_fire",
+          "func": "kitsAlike_play_OnSelect"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "name": "uniform",
+      "coords": {
+        "x": 170,
+        "y": 170,
+        "w": 110,
+        "h": 15
+      },
+      "commands": [
+        {
+          "op": "text",
+          "flags": "0x0",
+          "literal": "UNIFORM"
+        },
+        {
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 13
+        },
+        {
+          "op": "nav",
+          "left": 14,
+          "right": -1,
+          "up": -1,
+          "down": -1
+        },
+        {
+          "op": "onselect_fire",
+          "func": "kitsAlike_uniform_OnSelect"
+        }
+      ]
+    }
+  ]
+}

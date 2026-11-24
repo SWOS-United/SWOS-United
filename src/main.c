@@ -30,6 +30,8 @@
 #define chdir(p) _chdir(p)
 #else
 #include <unistd.h>          /* readlink, chdir */
+#include <fcntl.h>           /* open: the log's lock */
+#include <sys/file.h>        /* flock: the log's lock */
 #include <strings.h>         /* strcasecmp (the program's .exe, Cygwin) */
 #include <sys/stat.h>        /* stat: the Mac bundle's Resources */
 #endif
@@ -652,6 +654,42 @@ static void note_self(char **argv) { (void)argv; }
 int32_t Main_CanRelaunch(void) { return 0; }
 int32_t Main_Relaunch(void) { return 0; }
 #endif
+
+/* SWOS.log -- or, while another copy of the game has it (two games on one machine, as for a
+ * netplay test), SWOS_2.log, SWOS_3.log ...: two games writing one file mixed their lines and
+ * cut each other's off. Which one is this game's is decided once, by a lock held until the game
+ * ends -- the system lets it go with the process, a crash included -- on a file beside it
+ * (SWOS.log.lock, SWOS_2.log.lock ...). The match report reads the same one (match_report.c). */
+const char *Main_LogPath(void)
+{
+    static char path[1100];
+    int32_t n;
+    if (path[0])
+        return path;
+    for (n = 1; n <= 8; n++) {
+        char lock[1120];
+        if (n == 1)
+            snprintf(path, sizeof path, "%s/SWOS.log", swos_user_dir());
+        else
+            snprintf(path, sizeof path, "%s/SWOS_%d.log", swos_user_dir(), (int)n);
+        snprintf(lock, sizeof lock, "%s.lock", path);
+#ifdef _WIN32
+        if (CreateFileA(lock, GENERIC_WRITE, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL) !=
+            INVALID_HANDLE_VALUE)
+            return path;                /* (the handle stays open: no other process may open it) */
+#else
+        {
+            const int fd = open(lock, O_RDWR | O_CREAT, 0644);
+            if (fd >= 0 && flock(fd, LOCK_EX | LOCK_NB) == 0)
+                return path;            /* (the descriptor stays open, and with it the lock) */
+            if (fd >= 0)
+                close(fd);
+        }
+#endif
+    }
+    snprintf(path, sizeof path, "%s/SWOS.log", swos_user_dir());     /* (no lock to be had: as before) */
+    return path;
+}
 
 int main(int argc, char **argv)
 {
@@ -1708,8 +1746,7 @@ int main(int argc, char **argv)
      * is where the output goes — start it BEFORE launching (docs/SWITCH.md). */
 #else
     if (getenv("SWOS_NO_LOG") == NULL) {
-        char log_path[1088];
-        snprintf(log_path, sizeof log_path, "%s/SWOS.log", swos_user_dir());
+        const char *log_path = Main_LogPath();
         FILE *log = freopen(log_path, "w", stderr);
         if (log) {
             setvbuf(log, NULL, _IONBF, 0);
@@ -2069,6 +2106,10 @@ int main(int argc, char **argv)
         MouseCursors_Apply(opts.mouse_cursor);
         Platform_SetAutoCentering(opts.auto_centering);
     }
+    /* KIT COLOURS new to this SWOS.ini (Settings_Load): written now, not only when the game
+     * ends -- after the window, which the keys it may add read their values from. */
+    if (Settings_KitColoursMoved())
+        Settings_Save(&opts, ini_path);
 
 #ifdef SWOS_MOBILE_BUILD
     /* A phone has no setup: the game's data comes from a PC's, over Wi-Fi or by hand (src/mobile.c). */

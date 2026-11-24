@@ -1973,6 +1973,45 @@ const uint8_t *Platform_FrameShown(void)
  * SDL texture. Same shape as swos-port-c's `updateScreen`. */
 static const uint8_t *frame_source(void);
 
+/* ---- the menus' pictures in their own colours (Platform_TrueColourPixel) ----
+ * A menu's picture (menu_extras.c: the main menu's logo, its TV, the icons) is drawn into the
+ * 8bpp frame as each colour's nearest palette entry -- the menu palette has 16 steps a channel
+ * and few greys, so a picture of many colours lost them (the TV's fifteen greys came out as a
+ * few brownish ones). Beside that, each of its pixels gives its own colour here; the frame is
+ * shown with it wherever the pixel still holds the entry it was drawn with (anything drawn on
+ * top afterwards wins), darkened with the menus' fade. Given again every menu frame: a picture
+ * not given for 100 ms (a match, another screen) is gone. */
+static uint32_t *s_tc;                  /* 0xRRGGBB | 0xFF000000 when set, per frame pixel */
+static uint8_t  *s_tcIdx;               /* the palette entry the frame got there */
+static int       s_tcW, s_tcH, s_tcCount;
+static Uint64    s_tcStamp;
+
+void Platform_TrueColourBegin(void)
+{
+    const int w = _screen_width, h = _screen_height;
+    if (w != s_tcW || h != s_tcH || !s_tc) {
+        SDL_free(s_tc);
+        SDL_free(s_tcIdx);
+        s_tc = (uint32_t *)SDL_calloc((size_t)w * (size_t)h, sizeof *s_tc);
+        s_tcIdx = (uint8_t *)SDL_calloc((size_t)w * (size_t)h, 1);
+        s_tcW = s_tc && s_tcIdx ? w : 0;
+        s_tcH = s_tc && s_tcIdx ? h : 0;
+    } else if (s_tcCount) {
+        SDL_memset(s_tc, 0, (size_t)w * (size_t)h * sizeof *s_tc);
+    }
+    s_tcCount = 0;
+    s_tcStamp = Platform_NowMs();
+}
+
+void Platform_TrueColourPixel(int x, int y, uint8_t index, uint32_t rgb)
+{
+    if (!s_tc || x < 0 || y < 0 || x >= s_tcW || y >= s_tcH)
+        return;
+    s_tc[(size_t)y * s_tcW + x] = 0xFF000000u | (rgb & 0xFFFFFFu);
+    s_tcIdx[(size_t)y * s_tcW + x] = index;
+    s_tcCount++;
+}
+
 static void chunky_to_rgba(uint32_t *dst, int dst_pitch_pixels)
 {
     /* Double-buffer semantics — read the *completed* frame, not the
@@ -2011,11 +2050,23 @@ static void chunky_to_rgba(uint32_t *dst, int dst_pitch_pixels)
     const int keyed = backdrop_shown();
     const int alpha = menu_alpha_now();     /* (launcher options, agent B: the menus' opacity) */
     const uint8_t *under = alpha < 255 && fb != _frontbufferMaskBuffer ? _frontbufferMaskBuffer : NULL;
+    extern int g_fadeLevel;
+    const int tcOn = s_tcCount && s_tcW == _screen_width && s_tcH == _screen_height &&
+                     Platform_NowMs() - s_tcStamp < 100;
+    const int tcFade = g_fadeLevel < 0 ? 0 : g_fadeLevel > 0x80 ? 0x80 : g_fadeLevel;
     for (int y = 0; y < _screen_height; ++y) {
         const uint8_t *line = fb + (size_t)y * FRONTBUFFER_ROW_STRIDE_BYTES;
         const uint8_t *uline = under ? under + (size_t)y * FRONTBUFFER_ROW_STRIDE_BYTES : NULL;
         uint32_t      *out  = dst + (size_t)y * dst_pitch_pixels;
+        const uint32_t *tc = tcOn ? s_tc + (size_t)y * s_tcW : NULL;
+        const uint8_t  *tci = tcOn ? s_tcIdx + (size_t)y * s_tcW : NULL;
         for (int x = 0; x < _screen_width; ++x) {
+            if (tc && tc[x] && tci[x] == line[x]) {     /* a menu picture's own colour */
+                const uint32_t c = tc[x];
+                out[x] = 0xFF000000u | ((((c >> 16) & 0xFF) * (uint32_t)tcFade >> 7) << 16) |
+                         ((((c >> 8) & 0xFF) * (uint32_t)tcFade >> 7) << 8) | ((c & 0xFF) * (uint32_t)tcFade >> 7);
+                continue;
+            }
             if (keyed && line[x] == MENU_BACKDROP_KEY) {   /* the menus' true-colour backdrop */
                 out[x] = bd ? bd[(size_t)y * _screen_width + x] : 0u;    /* (s_key_clear: the GPU's) */
                 continue;

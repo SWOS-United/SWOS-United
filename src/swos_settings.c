@@ -77,6 +77,10 @@ static const char *const kQuickNames[10] = {
 /* [input] call_bench_p1 / call_bench_p2 read: the old call_bench (one for both) only fills what
  * they do not say, wherever its line stands in the file (a save keeps a key it no longer writes). */
 static int s_benchSeen[2];
+static int s_kitColoursSeen;    /* [graphics] kit_colours was in the file (Settings_Load) */
+static int s_kitColoursMoved;   /* ... and was not: moved to extended + clash kits on, to save */
+
+int Settings_KitColoursMoved(void) { return s_kitColoursMoved; }
 
 /* ---- SWOS 2020's CONTROLS MENU, menu look and MULTIPLAYER SETTINGS (SWOS 2020 port, agent A) ----
  * Read before the sections below; 1 when it was one of these keys. */
@@ -415,6 +419,7 @@ static int handler(void *user, const char *section,
         else if (eqi(name, "clash_kits") && parse_bool(value, &b))   /* (SWOS 2020 port, agent D) */
             opts->clash_kits = b;
         else if (eqi(name, "kit_colours")) {                           /* (kit_variants.h) */
+            s_kitColoursSeen = 1;                                       /* (Settings_Load: no move to it) */
             if      (eqi(value, "extended")) opts->kit_colours = 1;
             else if (eqi(value, "original")) opts->kit_colours = 0;
         }
@@ -534,6 +539,7 @@ void Settings_Load(PlatformInitOptions *opts, const char *path)
      * file can't be opened. Missing file is fine — we'll create it on
      * Settings_Save. Parse errors don't abort load; the keys before
      * the bad line still apply. */
+    s_kitColoursSeen = 0;
     int rc = ini_parse(path, handler, opts);
     if (rc > 0) {
         fprintf(stderr, "[settings] %s: parse error at line %d (continuing)\n",
@@ -542,6 +548,18 @@ void Settings_Load(PlatformInitOptions *opts, const char *path)
     s_baseline = *opts;
     s_haveBaseline = 1;
     snprintf(s_baselinePath, sizeof s_baselinePath, "%s", path);
+    /* A SWOS.ini from before KIT COLOURS (2026-11-24): the player never had the choice, so the
+     * kits and their officials as they are meant -- extended, and GK/REF CLASH KITS on even where
+     * an older build's switch had it off. After the baseline, so the next save writes both
+     * (Settings_AppendMissing at start-up). A file that has kit_colours, whatever it says, is
+     * the player's: left alone. A new file has both on already. */
+    if (rc != -1 && !s_kitColoursSeen) {
+        if (!opts->clash_kits || !opts->kit_colours)
+            fprintf(stderr, "[settings] no kit_colours yet: kit colours extended, GK/REF clash kits on\n");
+        opts->kit_colours = 1;
+        opts->clash_kits = 1;
+        s_kitColoursMoved = 1;
+    }
 }
 
 static const char *renderer_str(PlatformRendererMode m)
@@ -1200,6 +1218,59 @@ static void flush_section_missing(FILE *out, const char *sec,
  * keys, unknown keys, ordering) verbatim. If nothing changed, nothing is missing
  * and nothing is duplicated, the file is left untouched.
  */
+/* The whole file, a line each -- each with its '\n' when it had one -- however many lines and
+ * however long they are; NULL (count 0) when it cannot be read. The writers here and in mod_api.c
+ * read SWOS.ini into fixed tables before (400 lines here, 512 there, 255 characters a line) and
+ * wrote back only what fitted: a SWOS.ini past 400 lines lost its end -- the mods' sections, the
+ * PC menu look's among them -- at every save. Settings_FreeLines gives it back. */
+char **Settings_ReadLines(const char *path, int *count)
+{
+    FILE *f = fopen(path, "r");
+    char **lines = NULL, *cur = NULL;
+    size_t len = 0, cap = 0;
+    int n = 0, nCap = 0, c;
+    *count = 0;
+    if (!f)
+        return NULL;
+    for (;;) {
+        c = fgetc(f);
+        if (c != EOF) {
+            if (len + 2 > cap) {
+                char *grown = (char *)realloc(cur, cap = cap ? cap * 2 : 128);
+                if (!grown) break;
+                cur = grown;
+            }
+            cur[len++] = (char)c;
+        }
+        if ((c == '\n' || c == EOF) && len) {
+            if (n + 1 > nCap) {
+                char **grown = (char **)realloc(lines, (size_t)(nCap = nCap ? nCap * 2 : 256) * sizeof *lines);
+                if (!grown) break;
+                lines = grown;
+            }
+            cur[len] = '\0';
+            lines[n++] = cur;
+            cur = NULL;
+            len = cap = 0;
+        }
+        if (c == EOF)
+            break;
+    }
+    free(cur);
+    fclose(f);
+    *count = n;
+    if (!lines)
+        lines = (char **)calloc(1, sizeof *lines);  /* (an empty file: read, no lines) */
+    return lines;
+}
+
+void Settings_FreeLines(char **lines, int count)
+{
+    for (int i = 0; i < count; i++)
+        free(lines[i]);
+    free(lines);
+}
+
 void Settings_Save(const PlatformInitOptions *opts, const char *path)
 {
     if (!opts || !path) return;
@@ -1222,17 +1293,13 @@ void Settings_Save(const PlatformInitOptions *opts, const char *path)
     }
 
     /* Slurp the existing file. */
-    static char lines[400][256];
     int n_lines = 0;
-    FILE *f = fopen(path, "r");
-    if (!f) {                                               /* absent -> create it */
+    char **lines = Settings_ReadLines(path, &n_lines);
+    if (!lines) {                                           /* absent -> create it */
         settings_write_full(opts, path);
         swos_save_commit();     /* as below: the web's localStorage copy, the Switch's commit */
         return;
     }
-    while (n_lines < 400 && fgets(lines[n_lines], (int)sizeof lines[0], f))
-        n_lines++;
-    fclose(f);
 
     /* Pass 1: detect whether anything actually needs writing, and which keys
      * the file already has. This keeps an unchanged file (the common case)
@@ -1276,13 +1343,17 @@ void Settings_Save(const PlatformInitOptions *opts, const char *path)
         }
         for (int k = 0; k < n; k++) if (!seen[k]) { dirty = 1; break; }
     }
-    if (!dirty) return;   /* nothing to change — leave the file exactly as it is */
+    if (!dirty) {         /* nothing to change — leave the file exactly as it is */
+        Settings_FreeLines(lines, n_lines);
+        return;
+    }
 
     /* Pass 2: rewrite, updating changed values and preserving everything else. */
     memset(seen, 0, sizeof seen);
     FILE *out = fopen(path, "w");
     if (!out) {
         fprintf(stderr, "[settings] cannot write %s: %s\n", path, strerror(errno));
+        Settings_FreeLines(lines, n_lines);
         return;
     }
     char cur_sec[32] = "";
@@ -1357,6 +1428,7 @@ void Settings_Save(const PlatformInitOptions *opts, const char *path)
         }
     }
     fclose(out);
+    Settings_FreeLines(lines, n_lines);
     /* Closed first — the Switch's save commit requires it, and without the
      * commit SWOS.ini reads back fine all session and is gone next launch.
      * Nothing on any other target (swos_io.h). */

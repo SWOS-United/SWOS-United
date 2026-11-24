@@ -282,7 +282,12 @@ void mainC(void)
     AssetLoaderInitAltPathAndBanks();
     AssetPrecacheCore();
     InstallAndInitLoaderBootstrap();
+#if defined(AGA) && defined(SWOS_SDL_BUILD)
+    /* (SDL: POWERED BY stays up from the intro on, while the game loads -- loader_intro.c) */
+    { extern int32_t LoaderIntro_PoweredShown(void); if (!LoaderIntro_PoweredShown()) FadeOutToBlack(); }
+#else
     FadeOutToBlack();
+#endif
     _loaderModeFlag = 0;
 
     /* ---- Phase 5: Show title screens (skipped in arcade mode) ---- */

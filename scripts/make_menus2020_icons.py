@@ -89,7 +89,7 @@ def write_bmp(path, pixels):
         f.write(head + info + body)
 
 
-TV_SIZE = (34, 31)          # (SWOS 2020's 42x38, about four fifths; make_menus2020.py TV_SIZE)
+TV_SIZE = (42, 38)          # (SWOS 2020's own, pixel for pixel: not shrunk; make_menus2020.py TV_SIZE)
 
 
 def shrink(pixels, w, h):
@@ -196,8 +196,8 @@ def main():
 
     # The LIVE CAST TV (game.cpp, SWOS::drawTvIcon): a 42x38 housing over one of two screens
     # (idle / live), indices into the in-game palette its developer icons carry (0 = see-through),
-    # drawn smaller on SWOS United's main menu (TV_SIZE, Playa 2026-11-20: the banner beside it ends
-    # where the buttons do, make_menus2020.py).
+    # at its own size, pixel for pixel (it was drawn four fifths as big from 2026-11-20 to make room
+    # for the banner; the banner moved instead, make_menus2020.py).
     game = os.path.join(args.swos2020, "src", "game.cpp")
     tvpal = read_bmp_palette(os.path.join(args.swos2020, "developer_icons", "starwindz_256.bmp"))
     overlay = read_byte_map(game, "tv_overlay_map")
@@ -211,7 +211,9 @@ def main():
                 row.append((255, 0, 255) if v == 0 else tvpal[v])
             pixels.append(row)
         path = os.path.join(OUT, "tv_%s.bmp" % state)
-        write_bmp(path, shrink(pixels, *TV_SIZE))
+        if (len(pixels[0]), len(pixels)) != TV_SIZE:
+            pixels = shrink(pixels, *TV_SIZE)
+        write_bmp(path, pixels)
         print("  -> %s" % os.path.relpath(path, REPO))
 
 

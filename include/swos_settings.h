@@ -37,6 +37,13 @@ void Settings_Save(const PlatformInitOptions *opts, const char *path);
  * comments and ordering — and if it already has every key, leave it untouched.
  * This is the startup/shutdown path so hand-edited SWOS.ini files survive. */
 void Settings_AppendMissing(const PlatformInitOptions *opts, const char *path);
+/* 1 when Settings_Load moved a SWOS.ini without [graphics] kit_colours to extended kit colours
+ * and GK/REF clash kits on: main.c saves that at once, the window being up. */
+int Settings_KitColoursMoved(void);
+/* SWOS.ini as lines, whole (no limit on their number or length): NULL when it cannot be read.
+ * For a writer that rewrites it; Settings_FreeLines gives it back. */
+char **Settings_ReadLines(const char *path, int *count);
+void   Settings_FreeLines(char **lines, int count);
 
 /* --game-options-selftest: OpenSWOS Setup's settings (include/game_options.h) through the game's
  * reader and writer; 0 when every value comes back. */

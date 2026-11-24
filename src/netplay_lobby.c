@@ -52,6 +52,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stddef.h>
 #include <string.h>
 
 #include "endian_helpers.h"
@@ -94,19 +95,22 @@ enum {
 #define STATE_MAGIC   0x53554C42u       /* "SULB" */
 #define START_MAGIC   0x53555354u       /* "SUST" */
 #define ANSWER_MAGIC  0x5355414Eu       /* "SUAN" */
-#define LOBBY_VERSION 9     /* 2: START carries the match's packet key; 3: and the kick-off state;
+#define LOBBY_VERSION 10    /* 2: START carries the match's packet key; 3: and the kick-off state;
                                4: the cup rules; 5: the host's switches; 6: FRAME DELAY's extra
                                frames (STATE) and the match's delay (START); 7: the match's
                                mode and the service's match / leg ids (the rules); 8: each player's
                                CALL BENCH (STATE), which the host puts in the setup; 9: each player's
-                               KIT COLOURS (STATE): the setup's rule is EXTENDED only if both are */
+                               KIT COLOURS (STATE): the setup's rule is EXTENDED only if both are;
+                               10: whether each player chose his kit on the UNIFORM screen (STATE),
+                               which the host puts in the setup */
 
 /* STATE: magic, version, player, ready, activity, hasTeam, tactic, rulesGen, the ten
- * rules, the name, the team, the USER tactic, the extra delay frames, the CALL BENCH. */
+ * rules, the name, the team, the USER tactic, the extra delay frames, the CALL BENCH, the
+ * KIT COLOURS, whether the kit was chosen. */
 enum { RULE_WORDS = 15 };            /* (the last five: the mode, the match id and the leg id) */
 enum { CHAT_WINDOW = 8, CHAT_MAGIC = 0x43484154 /* "CHAT" */ };
 enum { STATE_BYTES = 4 + 2 + 4 + 2 + 2 + RULE_WORDS * 2 + LOBBY_NAME_MAX + NETPLAY_TEAM_BYTES +
-                     TACTIC_BYTES + 1 + 1 + 1 };
+                     TACTIC_BYTES + 1 + 1 + 1 + 1 };
 /* START: magic, version, the joiner STATE generation it was built on, rulesGen, the
  * packet key, the match's input delay; then the setup's length and the setup; then the host's state to kick off
  * from (a state_wire packet, the rest of the message -- see NetplayLobby_ApplyMatch). */
@@ -304,7 +308,14 @@ int32_t NetplayLobby_Say(const char *text)
     return 0;
 }
 
-/* The bot's lines can be longer than a player's: wrapped at a space, a line each. */
+/* The bot's lines can be longer than a player's: wrapped at a space, a line each -- as wide as
+ * the lobby draws a line: its 28 capitals in the game's font (SWOS_LOBBY_CHAT_DYNAMIC_FONT 0, a
+ * row of the menu, which does not wrap), the whole line in the chat font (which wraps it itself). */
+#if SWOS_LOBBY_CHAT_DYNAMIC_FONT
+enum { BOT_LINE = LOBBY_CHAT_TEXT };
+#else
+enum { BOT_LINE = 28 < LOBBY_CHAT_TEXT ? 28 : LOBBY_CHAT_TEXT };
+#endif
 void NetplayLobby_ChatNotice(const char *text)
 {
     const char *p = text ? text : "";
@@ -312,12 +323,12 @@ void NetplayLobby_ChatNotice(const char *text)
     while (*p) {
         char line[LOBBY_CHAT_TEXT + 1];
         uint32_t n = (uint32_t)strlen(p), cut = n;
-        if (n > LOBBY_CHAT_TEXT) {
-            cut = LOBBY_CHAT_TEXT;
+        if (n > BOT_LINE) {
+            cut = BOT_LINE;
             while (cut > 0 && p[cut] != ' ')
                 cut--;
             if (cut == 0)
-                cut = LOBBY_CHAT_TEXT;
+                cut = BOT_LINE;
         }
         chat_clean(line, p, cut);
         if (line[0]) {
@@ -456,6 +467,7 @@ static int32_t encode_state(uint8_t *out)
     *q++ = (uint8_t)p->extraDelay;
     *q++ = (uint8_t)p->callBench;
     *q++ = (uint8_t)p->kitRule;                   /* (version 9) */
+    *q++ = (uint8_t)(p->kitChosen ? 1 : 0);       /* (version 10) */
     return (int32_t)(q - out);
 }
 
@@ -471,7 +483,8 @@ static void send_state(void)
  * changes in any way that matters to the match. */
 static int32_t side_differs(const LobbyPlayer *a, const LobbyPlayer *b)
 {
-    if (a->hasTeam != b->hasTeam || a->tactic != b->tactic || a->extraDelay != b->extraDelay)
+    if (a->hasTeam != b->hasTeam || a->tactic != b->tactic || a->extraDelay != b->extraDelay ||
+        a->kitChosen != b->kitChosen)       /* (it decides how the kits are worn: game_init.c) */
         return 1;
     if (a->hasTeam && memcmp(&a->team, &b->team, sizeof a->team) != 0)
         return 1;
@@ -481,6 +494,10 @@ static int32_t side_differs(const LobbyPlayer *a, const LobbyPlayer *b)
 }
 
 static void team_check(void);      /* the matchmaking server's word on both teams */
+/* (the ten kit bytes of a team header: prShirtType .. secSocksColor) */
+#define KIT_FIRST_BYTE offsetof(TeamFile, prShirtType)
+#define KIT_BYTES      (offsetof(TeamFile, secSocksColor) + 1 - KIT_FIRST_BYTE)
+static int32_t (*s_kitsForMe)(uint8_t myKit[5]);     /* NetplayLobby_SetKitsHook */
 static int32_t team_blocks(const LobbyPlayer *p);
 
 static void drop_my_ready(void)
@@ -540,6 +557,8 @@ static void read_peer_state(void)
     got.callBench  = *q <= 2 ? *q : 0;
     q++;
     got.kitRule    = *q == KIT_RULE_EXTENDED ? KIT_RULE_EXTENDED : KIT_RULE_ORIGINAL;
+    q++;
+    got.kitChosen  = *q ? 1 : 0;
     if (got.tactic < 0 || got.tactic > LOBBY_TACTIC_MAX)
         got.tactic = 0;
     /* A team is a team of the database, with at most its names, faces, kits and line-up
@@ -552,10 +571,40 @@ static void read_peer_state(void)
         got.refused = 1;
     }
 
-    if (theirs()->known && side_differs(theirs(), &got) && !ModHooks_LobbyKeepsReady())
-        drop_my_ready();
+    int32_t kitChanged = 0;
+    if (theirs()->known && side_differs(theirs(), &got)) {
+        if (!ModHooks_LobbyKeepsReady())
+            drop_my_ready();
+        else                                /* (kept ready -- unless the kits now clash for us) */
+            kitChanged = got.kitChosen != theirs()->kitChosen ||
+                         memcmp((const uint8_t *)&got.team.team + KIT_FIRST_BYTE,
+                                (const uint8_t *)&theirs()->team.team + KIT_FIRST_BYTE, KIT_BYTES) != 0;
+    }
+    /* A ready flag kept through the other side's change (SWOS 2020's lobby) is not kept through
+     * a kit of theirs that changes this player's (the game moved him to his second kit, or back)
+     * or leaves the two too alike for him -- he would be warned if he said ready now
+     * (online_menus.c kits_alike_for_me). He is no longer ready, and told: a GO again is his
+     * word that the kit he will play in is fine. */
+    uint8_t kitBefore[5] = { 0 }, kitAfter[5] = { 0 };
+    const int32_t recheck = kitChanged && mine()->ready && s_kitsForMe;
+    int32_t alikeBefore = 0;
+    if (recheck)
+        alikeBefore = s_kitsForMe(kitBefore);   /* (against their side as it was) */
     got.verified = theirs()->verified;      /* the server's word stands until the team changes (team_check) */
     *theirs() = got;
+    /* Only when it matters to him: his own kit is another now, or the two have only now become
+     * alike. Alike before (he said PLAY ANYWAY) and his kit as it was: he stays ready. */
+    if (recheck) {
+        if (s_kitsForMe(kitAfter) && !alikeBefore) {
+            drop_my_ready();
+            NetplayLobby_ChatNotice("THE KITS NOW LOOK ALIKE - PLEASE CHECK THE COLOURS");
+            fprintf(stderr, "[lobby] the other player's kit leaves the two alike: not ready\n");
+        } else if (memcmp(kitBefore, kitAfter, sizeof kitBefore) != 0) {
+            drop_my_ready();
+            NetplayLobby_ChatNotice("YOUR KIT HAS CHANGED - PRESS GO TO CONFIRM");
+            fprintf(stderr, "[lobby] the other player's kit changes this player's: not ready\n");
+        }
+    }
     if (!s_lobby.peerAnnounced && got.name[0]) {
         char line[LOBBY_NAME_MAX + 16];
         snprintf(line, sizeof line, "%s CONNECTED", got.name);
@@ -1125,9 +1174,45 @@ void NetplayLobby_SetTeam(const TeamFileEx *team)
     /* The team's own formation, as the friendly menu would start it. A team record
      * naming a USER slot keeps it only when that slot is ours to send. */
     p->tactic  = team->team.tactics <= LOBBY_TACTIC_MAX ? team->team.tactics : 0;
+    p->kitChosen = 0;
     p->ready   = 0;
     s_lobby.dirty = 1;
     set_notice("");
+}
+
+void NetplayLobby_SetKitsHook(int32_t (*kitsForMe)(uint8_t myKit[5]))
+{
+    s_kitsForMe = kitsForMe;
+}
+
+void NetplayLobby_SetKit(const TeamFile *kits, int32_t chosen)
+{
+    LobbyPlayer *p = mine();
+    uint8_t *to = (uint8_t *)&p->team.team + KIT_FIRST_BYTE;
+    const uint8_t *from = (const uint8_t *)kits + KIT_FIRST_BYTE;
+    if (s_lobby.state != LOBBY_OPEN || !p->hasTeam || !kits ||
+        (memcmp(to, from, KIT_BYTES) == 0 && p->kitChosen == (chosen ? 1 : 0)))
+        return;
+    memcpy(to, from, KIT_BYTES);
+    p->kitChosen = chosen ? 1 : 0;
+    p->ready = 0;
+    s_lobby.dirty = 1;
+}
+
+void NetplayLobby_SetKitChosen(int32_t chosen)
+{
+    LobbyPlayer *p = mine();
+    if (s_lobby.state != LOBBY_OPEN || p->kitChosen == (chosen ? 1 : 0))
+        return;
+    p->kitChosen = chosen ? 1 : 0;
+    p->ready = 0;
+    s_lobby.dirty = 1;
+}
+
+int32_t NetplayLobby_KitRule(void)
+{
+    return s_lobby.players[0].kitRule == KIT_RULE_EXTENDED &&
+           s_lobby.players[1].kitRule == KIT_RULE_EXTENDED ? KIT_RULE_EXTENDED : KIT_RULE_ORIGINAL;
 }
 
 void NetplayLobby_SetTactic(int32_t tactic)
@@ -1556,8 +1641,9 @@ int32_t NetplayLobby_Start(void)
     NetplaySetup_SetCallBench(s_lobby.players[0].callBench, s_lobby.players[1].callBench);
     /* KIT COLOURS: the variants and the CIEDE2000 rule only when both players have them on; else
      * both games choose the kits by the original's tables, in their base colours. */
-    NetplaySetup_SetKitRule(s_lobby.players[0].kitRule == KIT_RULE_EXTENDED &&
-                            s_lobby.players[1].kitRule == KIT_RULE_EXTENDED ? KIT_RULE_EXTENDED : KIT_RULE_ORIGINAL);
+    NetplaySetup_SetKitRule(NetplayLobby_KitRule());
+    /* Who chose a kit on the UNIFORM screen: how both games dress the match (game_init.c). */
+    NetplaySetup_SetKitChosen(s_lobby.players[0].kitChosen, s_lobby.players[1].kitChosen);
     make_packet_key(s_lobby.packetKey);
     BE_WRITE_U32(buf, START_MAGIC);
     BE_WRITE_U16(buf + 4, LOBBY_VERSION);
@@ -1678,6 +1764,10 @@ const LobbyPlayer *NetplayLobby_Player(int32_t player) { (void)player; return NU
 const LobbyRules  *NetplayLobby_Rules(void) { return &s_noRules; }
 const char        *NetplayLobby_Notice(void) { return ""; }
 void               NetplayLobby_SetTeam(const TeamFileEx *team) { (void)team; }
+void               NetplayLobby_SetKitChosen(int32_t chosen) { (void)chosen; }
+void               NetplayLobby_SetKit(const TeamFile *kits, int32_t chosen) { (void)kits; (void)chosen; }
+void               NetplayLobby_SetKitsHook(int32_t (*kitsForMe)(uint8_t myKit[5])) { (void)kitsForMe; }
+int32_t            NetplayLobby_KitRule(void) { return 0; }
 void               NetplayLobby_SetTactic(int32_t tactic) { (void)tactic; }
 void               NetplayLobby_SetReady(int32_t ready) { (void)ready; }
 void               NetplayLobby_SetActivity(int32_t activity) { (void)activity; }

@@ -12,6 +12,8 @@
 #   HOST_WIDTH=336 JOIN_WIDTH=484 ...             # a 4:3 and a 16:9 player: each side gets
 #                                                 # a HOME of its own whose SWOS.ini sets
 #                                                 # [video] resolution=<W>x272
+#   HOST_TEAM=50:0B JOIN_TEAM=50:0B ...           # each side's team (<file>:<ordinal>, hex;
+#                                                 # England and Brazil by default)
 #   HOST_STYLE=xbox [JOIN_STYLE=amiga] ...        # a side's [gameplay] style (amiga|dos|xbox):
 #                                                 # the joiner plays the host's either way
 #
@@ -83,11 +85,11 @@ HOST_HOME=$(side_home host "${HOST_WIDTH:-}" "${HOST_STYLE:-}")
 JOIN_HOME=$(side_home join "${JOIN_WIDTH:-}" "${JOIN_STYLE:-}")
 
 rm -f bin/swos_present*.png
-( run host 50:0B SWOS_LOBBY_START=1 SWOS_NETEM_SEED=11 SWOS_LIVE_RANDOM_INPUT=0xA5A5F00D \
+( run host ${HOST_TEAM:-50:0B} SWOS_LOBBY_START=1 SWOS_NETEM_SEED=11 SWOS_LIVE_RANDOM_INPUT=0xA5A5F00D \
     ${CAPTURE:+SWOS_PRESENT_CAPTURE=$CAPTURE} ${CAPTURE_FROM:+SWOS_PRESENT_CAPTURE_FROM=$CAPTURE_FROM} \
     ${HOST_HOME} ${HOST_ENV:-} > "$OUT/host.log" 2>&1; echo "[lobby-test] exit $?" >> "$OUT/host.log" ) &
 sleep 1
-( run join 52:02 SWOS_NETEM_SEED=22 SWOS_LIVE_RANDOM_INPUT=0x5A5A0FF0 ${JOIN_HOME} ${JOIN_ENV:-} > "$OUT/join.log" 2>&1; echo "[lobby-test] exit $?" >> "$OUT/join.log" ) &
+( run join ${JOIN_TEAM:-52:02} SWOS_NETEM_SEED=22 SWOS_LIVE_RANDOM_INPUT=0x5A5A0FF0 ${JOIN_HOME} ${JOIN_ENV:-} > "$OUT/join.log" 2>&1; echo "[lobby-test] exit $?" >> "$OUT/join.log" ) &
 wait
 [ -n "${CAPTURE:-}" ] && mv bin/swos_present*.png "$OUT"/ 2>/dev/null
 

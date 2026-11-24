@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """make_united_logo.py -- SWOS United's banner for the top of menus2020's main menu.
 
-    scripts/make_united_logo.py [--height 31] [--source docs/images/swosunited-banner.png]
+    scripts/make_united_logo.py [--height 31] [--width W] [--source docs/images/swosunited-banner.png]
 
 The banner ("SWOS", three little players, "UNITED") made HEIGHT pixels tall (its width by its aspect ratio, LANCZOS) as
 a 24-bit BMP the menu image loader takes (docs/MENUS.md §13): its pure black nudged to 1,1,1 so it
@@ -22,10 +22,13 @@ OUT = os.path.join(REPO, "bin", "mods", "menus2020", "grafs_united", "logo.bmp")
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--height", type=int, default=31, help="its height in pixels (the band is 40)")
+    ap.add_argument("--width", type=int, default=258,
+                    help="its width (0: by the aspect ratio); 258: right of SWOS 2020's 42-wide TV, "
+                         "ending where the buttons do (make_menus2020.py LOGO_SIZE)")
     ap.add_argument("--source", default=SRC, help="the picture (default the banner)")
     args = ap.parse_args()
     im = Image.open(args.source).convert("RGBA")
-    w = round(im.width * args.height / im.height)
+    w = args.width or round(im.width * args.height / im.height)
     im = im.resize((w, args.height), Image.LANCZOS)
     out = Image.new("RGB", im.size)
     src, dst = im.load(), out.load()

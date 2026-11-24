@@ -32,6 +32,9 @@ void     __attribute__((used, externally_visible)) SetInGameTeamColors(uint16_t 
 void     __attribute__((used, externally_visible)) SetInGameTeamsPrimaryColors(TeamFile *team1File, TeamFile *team2File);
 #ifdef SWOS_SDL_BUILD
 void     SetInGameTeamsFirstKits(TeamFile *team1File, TeamFile *team2File);   /* chosen kits: no clash rule */
+/* An online match's: the rule when nobody chose, else the chosen as chosen and the other side's
+ * first or second kit; 1 when the two worn are still too alike (team_colors.c). */
+int32_t  SetInGameTeamsOnlineKits(TeamFile *team1File, TeamFile *team2File, int32_t chosen1, int32_t chosen2);
 #endif
 uint16_t __attribute__((used, externally_visible)) ConvertPlayerDressColor(uint16_t color);
 

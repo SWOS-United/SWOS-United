@@ -291,15 +291,15 @@ passed them (`--help`).
 | Auto centering | `[video] auto_centering` | VIDEO: AUTO CENTERING | a window resized, maximized or moved goes back to the middle of the display it is on (SWOS 2020's controls.cpp); windowed only |
 | Show FPS | `[video] show_fps` | VIDEO: SHOW FPS | the frames presented a second, top right, drawn over the picture (`src/fps_overlay.c`), never into the game's frame |
 | Mouse cursor | `[input] mouse_cursor = system \| workbench2 \| workbench1` | DISPLAY OPTIONS: MOUSE POINTER | SWOS 2020's `cursor1.bmp` / `cursor2.bmp` as the launcher numbered them, as pixel maps in `src/mouse_cursors.c` |
-| Graphics | `[graphics] style = amiga \| dos \| 2020` | GAMEPLAY: ARTWORK | from the next start (the artwork is loaded at start-up) |
-| Menu style | `[mod.dosmenus] look = amiga \| pc` | GAMEPLAY: MENU LOOK, and the PC menu shading mod's page | the look each start shows; F5 still flips it for the run. Unset: `PROJECT_MENU_LOOK_AMIGA` |
+| Graphics | `[graphics] style = amiga \| dos \| 2020` | DISPLAY: GAME GRAPHICS | from the next start (the artwork is loaded at start-up) |
+| Menu style | `[mod.dosmenus] look = amiga \| pc` | DISPLAY: MENU LOOK, and the PC menu shading mod's page | the look each start shows; F5 still flips it for the run. Unset: `PROJECT_MENU_LOOK_AMIGA` |
 | Background image | `[mod.backgrounds] image = auto \| random \| off \| <file>` | the Menu backgrounds mod's page | `auto` the mod's own first picture, `random` one of every picture it lists, once a start. The launcher's "PC DOS" and "Amiga" were SWOS 2020's bg-images, not shipped: put them in `backgrounds/` |
 | Stronger goalkeeper AI | `[tweaks] stronger_goalkeeper_ai` | GAMEPLAY: STRONGER KEEPERS | off line only; built with `PROJECT_TWEAK_STRONGER_GK` (project_identity.h) even when `PROJECT_TWEAKS` is 0 |
 | Improved CPU tactics | `[gameplay] cpu_tactics = normal \| expert` | GAMEPLAY: CPU TACTICS | off line only (below) |
-| Skip intro | `[general] skip_intro` | GAMEPLAY: SKIP INTRO | from the next start |
-| Skip image reels | `[general] skip_image_reels` | GAMEPLAY: INTRO PICTURES (ALL / TITLE ONLY) | the intro is its title picture and tune alone, until fire |
+| Skip intro | `[general] skip_intro` | GENERAL: SKIP INTRO | from the next start |
+| Skip image reels | `[general] skip_image_reels` | GENERAL: INTRO PICTURES (ALL / TITLE ONLY) | the intro is its title picture and tune alone, until fire |
 | No pause while loading | `[general] no_load_pause` | GAMEPLAY: PRE-MATCH PAUSE | the stadium screen's 3 seconds before a match left out; off line only |
-| Game style, VSync, window mode, monitor, menu cursor | as before | VIDEO / GAMEPLAY | (they were there already) |
+| Game style, VSync, window mode, monitor, menu cursor | as before | VIDEO / GAMEPLAY / DISPLAY (menu cursor) | (they were there already) |
 | PC DOS screen / Amiga screen | none of its own | GAMEPLAY: GAME STYLE | the 320 x 200 view is part of the PC DOS style (below) |
 
 **CPU TACTICS = EXPERT** is SWOS 2020's `--improved-cpu-tactics` (options.cpp
@@ -336,7 +336,9 @@ The launcher set these with SWOS 2020's command-line flags; they are now in the 
 OPTIONS -> SETTINGS -> **DISPLAY** (`src/settings_menus.c`, `k_displayRows`), each saved to
 `SWOS.ini` at once and in force at once (`Platform_SetDisplayOptions`). All of them are drawing
 only: no match state, no recording, no replay changes (`scripts/check_netplay_compat.sh`
-unchanged), and an online match plays the same whatever either player has set.
+unchanged), and an online match plays the same whatever either player has set. KIT COLOURS,
+below, is the exception -- it decides which kits clash, and online both players' count -- and has
+been on the RULES page since 2026-11-24; GAME GRAPHICS, MENU LOOK and MENU CURSOR moved here then.
 
 | row | SWOS.ini | SWOS 2020 / the launcher | what |
 |---|---|---|---|

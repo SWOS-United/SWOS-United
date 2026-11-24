@@ -169,12 +169,14 @@ CONTINUE_Y = 154        # (on screen 154..173: 3 under the last row's 150, 4 ove
 # and ConvertMenu's +8 (mod_menus2020.c kCreditsPicX / kCreditsPicY: keep the two the same).
 CREDITS_PICTURE_AT = (293 - 281 - 8, 185 - 182)
 # The banner's size (scripts/make_united_logo.py writes it): 31 high, in the band above the buttons
-# (0..40) right of the TV (4..37).
-LOGO_SIZE = (262, 31)
-LOGO_INK_RIGHT = 260        # (the D's last column in it: the banner ends where the right buttons do)
-# The LIVE CAST TV's size (scripts/make_menus2020_icons.py TV_SIZE: SWOS 2020's 42x38, smaller --
-# Playa 2026-11-20 -- so it stands clear of the banner, 4..37).
-TV_SIZE = (34, 31)
+# (0..40) right of the TV (1..42).
+LOGO_SIZE = (258, 31)
+LOGO_INK_RIGHT = 256        # (the D's last column in it: the banner ends where the right buttons do)
+# The LIVE CAST TV's size (scripts/make_menus2020_icons.py TV_SIZE): SWOS 2020's 42x38, pixel for
+# pixel, at the left buttons' edge (x 1) in the band above them (y 1..38). It was four fifths as big
+# from 2026-11-20 (Playa: clear of the banner); the banner is narrower instead.
+TV_SIZE = (42, 38)
+TV_AT = (1, 1)
 # (button slot, its picture, the icon's column on it): its onDraw's drawMapEx256_8sets columns
 # under MULTIPLAYER_MENU, y + 7.
 ICON_COLUMNS = [("competition", "multiplayer", 15), ("practice", "compete", 30),
@@ -393,13 +395,13 @@ def build_main(doc):
     # UP from COMPETE opens the live matches. Hidden by mod_menus2020.c without netplay.
     tv = ordered[filler + 1][0]
     tv["name"] = "liveCast"
-    tv["coords"] = {"x": 4, "y": 5, "w": TV_SIZE[0], "h": TV_SIZE[1]}
+    tv["coords"] = {"x": TV_AT[0], "y": TV_AT[1], "w": TV_SIZE[0], "h": TV_SIZE[1]}
     tv["image"] = "grafs_2020/menus2020/tv_idle.bmp"
     tv["commands"] = [{"op": "colors", "frame_color": 0, "background_color": 0},   # (a frame when chosen)
                       {"op": "nav", "left": -1, "right": -1, "up": -1, "down": MAIN_ORDER.index("competition")},
                       {"op": "onselect_fire", "func": mod("liveCast")}]
 
-    # SWOS United's banner across the top, right of the TV (4..37) in the band above the buttons
+    # SWOS United's banner across the top, right of the TV (1..42) in the band above the buttons
     # (they start at 41), centred in x 50..311 (the menu's right edge: SWOS 2020's screen 319, our
     # 4:3 screen's 335), y 0..40: the third filler, never chosen (no handler,
     # nothing leads to it). Its picture is ours, not SWOS 2020's -- committed, grafs_united/logo.bmp

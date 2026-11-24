@@ -53,6 +53,11 @@ int32_t  NetplaySetup_BenchTapsOff(int32_t player);
 int32_t  NetplaySetup_KitRule(void);
 /* The rule the setup this game sends carries: the lobby's, EXTENDED only if both players are. */
 void     NetplaySetup_SetKitRule(int32_t rule);
+/* Whether each player chose his kit on the UNIFORM screen: Set, the host before Encode (player 1
+ * the host); KitChosen -- the last setup applied's, 1 or 0, or -1 when none was applied or it is
+ * from before it was sent (game_init.c then dresses the match as those builds did). */
+void     NetplaySetup_SetKitChosen(int32_t player1, int32_t player2);
+int32_t  NetplaySetup_KitChosen(int32_t player);
 /* Round-trip check: encode, scribble over every global it covers, apply, and
  * require equality. Part of --netplay-selftest. 0 on success. */
 int32_t  NetplaySetup_SelfTest(void);
