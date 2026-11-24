@@ -166,7 +166,7 @@ typedef struct {
 
 /* A label's background (settingsPage.json's labels are grey, 7): CONTROLS tells player 1's rows
  * from player 2's by colour as well as by name. */
-enum { kLabelGrey = 7, kLabelPlayer1 = 10, kLabelPlayer2 = 11 };
+enum { kLabelGrey = 7, kLabelPlayer1 = 11, kLabelPlayer2 = 10 };   /* (purple -- the Amiga look's blue -- and red) */
 
 typedef struct {
     const char *title;

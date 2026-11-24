@@ -95,7 +95,7 @@ AUDIO, GAMEPLAY (`openswos/settingsMenu`, each a page of `openswos/settingsPage`
 `src/settings_menus.c`; docs/MENUS.md §10f). The keys screen above is CONTROLS -> KEYBOARD KEYS.
 The CONTROLS page is SWOS 2020's controlOptions.mnu (its `controls/controlOptionsMenu.cpp`)
 as rows -- player 1's (PLAYER 1, P1 SELECT JOYPAD, P1 CONTROLLER SETUP, P1 CALL BENCH)
-with red labels, player 2's with purple ones, the rows for both grey:
+with purple labels (blue in the Amiga menu look), player 2's with red ones, the rows for both grey:
 
 | row | SWOS.ini `[input]` | what it does |
 |---|---|---|
