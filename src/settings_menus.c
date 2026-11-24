@@ -90,6 +90,8 @@ extern void        InputSDL_PadPressBegin(void);
 extern int         InputSDL_AnyPadButtonHeld(void);
 extern void        InputSDL_PostFrame(void);
 extern int         InputSDL_PadPressPoll(int only, int *dev, int *button);
+extern int         InputSDL_PadPressHeld(void);
+extern int         InputSDL_PadButtonDown(int d, int b);
 extern void        InputSDL_GivePlayerDevice(int p, int d);
 extern int         InputSDL_AutoDetect(void);
 extern void        InputSDL_SetAutoDetect(int on);
@@ -278,17 +280,22 @@ static void note_now(const char *text)
  * every button of every pad, not only what reads as fire now (a button just made BENCH no longer
  * does, but it was fire when it went down) -- then forget it, so its release is not a fire on the
  * same row that asks for a button again. At most ~3 s. */
-static void release_wait(void)
+static void release_wait(int dev, int button)
 {
     /* Real time, with SDL's input brought up to date: a menu read alone runs no frame (the
      * pads' state and the registers stay what they were), so the loop used to end at once with
-     * the button still down -- and the row asked again. The events stay queued for the menus. */
+     * the button still down -- and the row asked again. The events stay queued for the menus.
+     * `dev` / `button`: the press the row took (button -1: that pad's fire) -- only that one is
+     * waited for, so a button held all along elsewhere (another pad, a contact an adapter reads as
+     * pressed) no longer holds the row up for the full three seconds. dev -1: every pad's;
+     * -2: none (the row was left from the keyboard). */
     const Uint32 until = SDL_GetTicks() + 3000;
     for (;;) {
         const Uint8 *keys;
         SDL_PumpEvents();
         keys = SDL_GetKeyboardState(NULL);
-        if (!InputSDL_AnyPadButtonHeld() && !keys[SDL_SCANCODE_RETURN] && !keys[SDL_SCANCODE_LCTRL] &&
+        if (!(dev >= 0 ? InputSDL_PadButtonDown(dev, button) : dev == -1 && InputSDL_AnyPadButtonHeld()) &&
+            !keys[SDL_SCANCODE_RETURN] && !keys[SDL_SCANCODE_LCTRL] &&
             !keys[SDL_SCANCODE_RCTRL] && !keys[SDL_SCANCODE_SPACE])
             break;
         if (SDL_TICKS_PASSED(SDL_GetTicks(), until))
@@ -371,8 +378,16 @@ static void select_joypad(int32_t p)
     snprintf(line, sizeof line, "PRESS A BUTTON ON PLAYER %d'S PAD   ESC: LEAVE IT", (int)p + 1);
     note_now(line);
     InputSDL_PadPressBegin();
+    /* Chosen with a pad's fire (SWOS 2020's PRESS FIRE): that pad, at once -- not a second press.
+     * Its button is still down; release_wait below lets it go. From the keyboard: the next pad a
+     * button is pressed on. */
+    if ((dev = InputSDL_PadPressHeld()) >= 0) {
+        found = 1;
+        button = -1;                    /* (its fire: what release_wait waits for) */
+        fprintf(stderr, "[settings] SELECT JOYPAD, player %d: the pad its fire came from\n", (int)p + 1);
+    }
     InputSDL_CaptureKey(1);
-    for (;;) {
+    for (; !found;) {
         MenuCheckControls();
         if (InputSDL_CapturedKey() == SDL_SCANCODE_ESCAPE)
             break;
@@ -393,9 +408,11 @@ static void select_joypad(int32_t p)
         snprintf(line, sizeof line, "%s SELECTED", name);
         upper(s_note, sizeof s_note, line);
         save();
+        page_refresh();                 /* (shown now, not once the button is let go) */
+        note_now(s_note);
     } else
         note("");
-    release_wait();
+    release_wait(found ? dev : -2, found ? button : -1);
 }
 
 static void setup_show(int32_t p, char *out, int32_t cap)
@@ -1408,7 +1425,8 @@ static void jpc_select(int bench)
     fprintf(stderr, "[settings] CONTROLLER SETUP, the %s button: %s\n", bench ? "BENCH" : "FIRE",
             done ? (button >= 0 ? "taken" : "the default") : "left");
     s_jpcHeader[0] = '\0';
-    release_wait();
+    CallDrawMenuItem(h);                /* (the prompt gone now, not once the button is let go) */
+    release_wait(done && button >= 0 ? s_setupDev : -2, button);
     save();
 }
 

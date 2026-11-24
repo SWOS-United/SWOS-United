@@ -1120,6 +1120,31 @@ void InputSDL_PadPressBegin(void)
     }
 }
 
+/* Button `b` of pad `d` down now (-1: what reads as its fire -- a mapped pad's A or B, a plain
+ * joystick's configured FIRE, its first button by default). */
+int InputSDL_PadButtonDown(int d, int b)
+{
+    SDL_JoystickUpdate();
+    if (!dev_open(d))
+        return 0;
+    if (b >= 0)
+        return dev_button(d, b);
+    if (s_dev_gc[d] && dev_cfg(d) == NULL)
+        return dev_button(d, SDL_CONTROLLER_BUTTON_A) || dev_button(d, SDL_CONTROLLER_BUTTON_B);
+    b = cfg_button(d, dev_cfg(d), 0);
+    return b >= 0 ? dev_button(d, b) : (dev_button(d, SDL_CONTROLLER_BUTTON_A) || dev_button(d, SDL_CONTROLLER_BUTTON_B));
+}
+
+/* A pad with a button down as InputSDL_PadPressBegin looked: the press that chose the row (SELECT
+ * JOYPAD: the pad its fire came from is the one wanted). -1 when none was. */
+int InputSDL_PadPressHeld(void)
+{
+    for (int d = 0; d < INPUTSDL_MAX_DEVICES; d++)
+        if (dev_open(d) && s_pressBase[d])
+            return d;
+    return -1;
+}
+
 /* A button pressed since InputSDL_PadPressBegin, on device `only` (or any, -1): 1 and the
  * device and button, else 0. A button let go is forgotten, so pressing it again counts. */
 int InputSDL_PadPressPoll(int only, int *dev, int *button)
