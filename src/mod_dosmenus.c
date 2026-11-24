@@ -7,13 +7,14 @@
  * 0-31 -- a dithered gradient, dark at the bottom left to bright at the top right -- followed by
  * the menus' 256-colour palette, in which each of eight ramps is 32 shades of one colour. A box
  * of menu colour c is drawn pixel by pixel as ramp menuItemColorTable[c] plus the map's shade at
- * that pixel; a box one pixel wide or tall (a frame's line) is drawn flat. So a button's shading
+ * that pixel; a box one pixel wide or tall (a frame's line) is drawn flat: the palette's colour
+ * of that number (outerFrameColorsTable's pairs: 180 and 72 grey). So a button's shading
  * depends on where it is on the screen, and the buttons' gradients line up across the menu.
  *
  * HERE: the engine says which boxes it fills (ModDef menuFill, menuDrawBegin when the whole menu
  * is drawn again); each frame the window shows, every pixel of those boxes that still has the box's
  * colour (the text and pictures on it have others) is painted over the picture in the PC game's
- * colour for that place -- the 336 x 256 menu mapped onto the 320 x 200 shade map. Drawing only.
+ * colour for that place, and every line's in its flat colour (colour 0's lines, which clear, left) -- the 336 x 256 menu mapped onto the 320 x 200 shade map. Drawing only.
  *
  * F5 (ModApi_AddHotkey; [mod.dosmenus] hotkey to change it) switches between the PC shading and
  * the Amiga's flat menus while the game runs -- Playa's ask, 2026-11-08. Not remembered: each
@@ -45,7 +46,7 @@ extern int _menu_draw_x_offset;
 /* swos.asm's menuItemColorTable: a menu colour's ramp in the PC menus' palette. */
 static const uint8_t k_ramp[16] = { 96, 96, 96, 32, 64, 64, 64, 96, 32, 96, 128, 160, 64, 192, 224, 224 };
 
-enum { kMapW = 320, kMapH = 200, kMaxBoxes = 160 };
+enum { kMapW = 320, kMapH = 200, kMaxBoxes = 1024 };   /* (a button: its box, 8 lines) */
 
 static struct {
     int      tried, ok;
@@ -99,6 +100,15 @@ static void toggle_look(void)
 {
     s_amigaLook = !s_amigaLook;
     fprintf(stderr, "[dosmenus] menus: %s\n", s_amigaLook ? "Amiga (flat)" : "PC (shaded)");
+}
+
+/* The PC look is in force (and the PC game's data there): SetUpTacticsButtons' PC colours. */
+int DosMenus_PcLook(void)
+{
+    follow_setting();
+    if (!s_pc.tried)
+        load_pc();
+    return !s_amigaLook && s_pc.ok;
 }
 
 static void init(void)
@@ -175,8 +185,9 @@ static void frame_drawn(void)
     memset(s_layer, 0, (size_t)s_lw * s_lh * 4);
     for (int32_t b = 0; b < s_boxes; b++) {
         const int32_t c = s_box[b].colour;
-        if (c == 0 && hud)
-            continue;                   /* (the HUD layer's clear) */
+        const int32_t line = s_box[b].w == 1 || s_box[b].h == 1;
+        if (c == 0 && (hud || line))
+            continue;                   /* (the HUD layer's clear; a line that clears) */
         for (int32_t y = s_box[b].y; y < s_box[b].y + s_box[b].h; y++) {
             if (y < 0 || y >= s_lh)
                 continue;
@@ -188,7 +199,8 @@ static void frame_drawn(void)
                 /* the menu's 336 columns onto the map's 320 */
                 int32_t mx = (x - xoff) * kMapW / 336;
                 mx = mx < 0 ? 0 : mx >= kMapW ? kMapW - 1 : mx;
-                const uint8_t *rgb = s_pc.rgb[(k_ramp[c] + s_pc.shade[my * kMapW + mx]) & 255];
+                const uint8_t *rgb = line ? s_pc.rgb[c]
+                                          : s_pc.rgb[(k_ramp[c] + s_pc.shade[my * kMapW + mx]) & 255];
                 s_layer[(size_t)y * s_lw + x] = 0xFF000000u | ((uint32_t)rgb[0] << 16) | ((uint32_t)rgb[1] << 8) | rgb[2];
                 any = 1;
             }

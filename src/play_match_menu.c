@@ -488,14 +488,20 @@ void SetUpTacticsButtons(void) {
     if (_viewingOpponentTeam) team = _playMatchTeam2Ptr;
     uint8_t curTact = team->team.tactics;
 
+    /* The PC game's colours in the PC look (swos.asm SetUpTacticsButtons: the others red, the
+     * team's own brown, the opponent's grey): the Amiga's 4 and 5 share one ramp there. */
+    int pc = 0;
+#ifdef SWOS_SDL_BUILD
+    { extern int DosMenus_PcLook(void); pc = DosMenus_PcLook(); }
+#endif
     MenuEntry *e = &_menuEntries[38];
     int16_t i;
     for (i = 0; i < 18; i++, e++) {
         uint16_t c = e->bgColor & 0xFFF0;
         if (_viewingOpponentTeam || _showingCpuTeams) {
-            c |= (i == curTact) ? PINK_TO_BROWN_1 : PINK_TO_BROWN_9;
+            c |= (i == curTact) ? PINK_TO_BROWN_1 : (pc ? RED_10 : PINK_TO_BROWN_9);
         } else {
-            c |= (i == curTact) ? ORANGE_TO_BROWN_5 : ORANGE_TO_BROWN_4;
+            c |= (i == curTact) ? ORANGE_TO_BROWN_5 : (pc ? RED_10 : ORANGE_TO_BROWN_4);
         }
         e->bgColor = c;
         e->isDisabled = (_showingCpuTeams || _viewingOpponentTeam) ? 1 : 0;

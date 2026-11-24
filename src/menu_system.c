@@ -470,9 +470,9 @@ void DrawMenuItemBackground(uint16_t color, uint16_t x, uint16_t y, uint16_t w, 
 {
     FillRectangle(x, y, w, h, color);
 #ifdef SWOS_SDL_BUILD
-    /* An entry's box (not a frame's 1-pixel line, which the PC game draws flat too): a mod may
-     * shade it (ModDef menuFill -- the PC game's menu shading). Frame pixels: the offset added. */
-    if (w > 1 && h > 1) {
+    /* An entry's box, or a frame's 1-pixel line: a mod may draw it again (ModDef menuFill -- the
+     * PC game's menus: boxes shaded, lines flat in its palette). Frame pixels: the offset added. */
+    if (w > 0 && h > 0) {
         extern void ModHooks_MenuFill(int32_t colour, int32_t x, int32_t y, int32_t w, int32_t h);
         ModHooks_MenuFill((int32_t)color, (int32_t)x + _menu_draw_x_offset, (int32_t)y, (int32_t)w, (int32_t)h);
     }
@@ -533,6 +533,18 @@ void DrawMenuItemOuterFrame(uint16_t color, uint16_t x, uint16_t y, uint16_t w, 
 
     topLeftColor = _outerFrameColorsTable[color * 2];
     bottomRightColor = _outerFrameColorsTable[color * 2 + 1];
+#ifdef SWOS_SDL_BUILD
+    /* The PC look (the dosmenus mod) draws SWOS 2020's PC buttons: one flat line all round, in the
+     * first colour of the PC game's pair (swos.asm outerFrameColorsTable) -- grey on most, orange on
+     * the team's tactic, red on EXIT -- not the Amiga's raised edge. The mod paints it in the PC
+     * palette. The Amiga look is as it was. */
+    {
+        extern int DosMenus_PcLook(void);
+        static const uint8_t k_pcFrame[16] = { 1, 1, 1, 1, 6, 6, 15, 1, 1, 1, 1, 13, 10, 1, 1, 1 };
+        if (color < 16 && DosMenus_PcLook())
+            topLeftColor = bottomRightColor = k_pcFrame[color];
+    }
+#endif
 
     /* Top border (full width, height=1) */
     DrawMenuItemBackground((uint16_t)(int8_t)topLeftColor, x, y, w, 1);
