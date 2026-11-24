@@ -123,9 +123,19 @@ void DrawReplayOrExitMenu(void)
  * Loads background image, sets up display, then runs an event loop
  * handling up/down navigation and fire to select.
  * ================================================================ */
+#ifdef SWOS_SDL_BUILD
+/* 1 while REPLAY / EXIT is up: a menu, though the match loop still runs (GameLoop_Active), so the
+ * menus' backdrop shows behind it (platform_sdl.c backdrop_shown) -- not its key colour, blue. */
+static int32_t s_replayExitUp;
+int32_t ReplayMenu_ExitMenuUp(void) { return s_replayExitUp; }
+#endif
+
 __attribute__((used, externally_visible))
 void ReplayExitMenuAfterFriendly(void)
 {
+#ifdef SWOS_SDL_BUILD
+    s_replayExitUp = 1;
+#endif
     /* Widescreen: centre the menu over the (centred) background. The match loop left
      * _menu_draw_x_offset = 0 (game_loop.c); the REPLAY/EXIT box, text and shining-frame
      * draws below all read it via FillRectangle / blitStringToFrontBuffer, so without this
@@ -248,6 +258,9 @@ void ReplayExitMenuAfterFriendly(void)
             {
                 FadeOutToBlack();
                 _menu_draw_x_offset = saved_x_offset;
+#ifdef SWOS_SDL_BUILD
+                s_replayExitUp = 0;
+#endif
                 return;
             }
             /* No fire, just wait */

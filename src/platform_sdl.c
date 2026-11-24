@@ -1861,7 +1861,8 @@ static int backdrop_shown(void)
         intro_backdrop_update();
         return s_bd != NULL && !s_cut_on;
     }
-    return s_bd && !_gArcadeMode && ModApi_InMenus() && !s_cut_on;
+    extern int32_t ReplayMenu_ExitMenuUp(void);
+    return s_bd && !_gArcadeMode && (ModApi_InMenus() || ReplayMenu_ExitMenuUp()) && !s_cut_on;
 }
 
 /* The backdrop at w x h, covering it (cropped to its aspect, centred): ARGB, for SDL's renderer. */
