@@ -96,11 +96,11 @@ WizardStyle=modern
 ;                                       welcome and finished pages
 ;   WizardSmallImage.bmp    55 x  58 -- the badge in the top-right of every
 ;                                       other page
-; Both 24-bit uncompressed. Inno also accepts a comma-separated list of
-; higher-resolution variants (WizardImage.bmp,WizardImage125.bmp,...) if crisper
-; images at 125%/150% DPI are ever wanted.
-WizardImageFile=WizardImage.bmp
-WizardSmallImageFile=WizardSmallImage.bmp
+; Both 24-bit uncompressed, each at 100% and the larger DPI steps, from which Inno
+; picks the nearest: the menus' purple picture down the left, SWOS United's logo at
+; the top right. scripts/make_wizard_images.py makes all of them.
+WizardImageFile=WizardImage.bmp,WizardImage125.bmp,WizardImage150.bmp,WizardImage175.bmp,WizardImage200.bmp,WizardImage250.bmp
+WizardSmallImageFile=WizardSmallImage.bmp,WizardSmallImage125.bmp,WizardSmallImage150.bmp,WizardSmallImage175.bmp,WizardSmallImage200.bmp,WizardSmallImage250.bmp
 ; ~50 MB staged, and most of it is highly compressible: bin\data_json is 20 MB
 ; of JSON and the grafs tiers are raw indexed pixels. Unlike a project shipping
 ; PNG/OGG, max pays for itself here -- it is the difference between a download a
@@ -163,6 +163,45 @@ begin
   Result := '--headless';
   if (WizardForm.RunList.Items.Count > 1) and WizardForm.RunList.Checked[1] then
     Result := Result + ' --no-play';
+end;
+
+// The wizard to the front when it opens. Started from Explorer it could open BEHIND Explorer's
+// window: the install-mode dialog and the elevated restart that follows it (admin, UAC) are a
+// second process, which Windows does not let take the foreground by itself. Once the wizard is
+// up (a one-shot timer: the window exists and is shown by then) it is made topmost for a moment
+// -- that raises it over every normal window even where SetForegroundWindow is refused -- then
+// normal again, so it does not stay above everything, and given the focus.
+const
+  HWND_TOPMOST = -1;
+  HWND_NOTOPMOST = -2;
+  SWP_NOSIZE = $0001;
+  SWP_NOMOVE = $0002;
+
+function SetWindowPos(Wnd: HWND; InsertAfter: NativeInt; X, Y, CX, CY: Integer; Flags: Cardinal): BOOL;
+  external 'SetWindowPos@user32.dll stdcall';
+function SetForegroundWindow(Wnd: HWND): BOOL;
+  external 'SetForegroundWindow@user32.dll stdcall';
+function SetTimer(Wnd: HWND; IdEvent: NativeUInt; Elapse: Cardinal; TimerFunc: NativeUInt): NativeUInt;
+  external 'SetTimer@user32.dll stdcall';
+function KillTimer(Wnd: HWND; IdEvent: NativeUInt): BOOL;
+  external 'KillTimer@user32.dll stdcall';
+
+var
+  BringUpTimer: NativeUInt;
+
+procedure BringWizardUp(Wnd: HWND; Msg: Cardinal; IdEvent: NativeUInt; Time: Cardinal);
+begin
+  KillTimer(0, BringUpTimer);
+  BringUpTimer := 0;
+  SetWindowPos(WizardForm.Handle, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE or SWP_NOSIZE);
+  SetWindowPos(WizardForm.Handle, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE or SWP_NOSIZE);
+  BringToFrontAndRestore;
+  SetForegroundWindow(WizardForm.Handle);
+end;
+
+procedure InitializeWizard;
+begin
+  BringUpTimer := SetTimer(0, 0, 250, CreateCallback(@BringWizardUp));
 end;
 
 [InstallDelete]
