@@ -319,6 +319,12 @@ void Platform_ShowProgress(int permille);
  * (FRONTBUFFER_ROW_STRIDE_BYTES a row), and the HUD layer (8bpp, _screen_width a row, index 0
  * empty), NULL when the HUD is drawn in the frame itself ([video] subpixel_scroll off). */
 const uint8_t *Platform_FrameShown(void);
+/* A menu picture's pixels in their own colours (menu_extras.c): Begin once a menu frame, then each
+ * pixel drawn into the frame (x, y in the frame) with the palette entry it was given there and its
+ * 0xRRGGBB. Shown in that colour while the frame still holds that entry; gone when not given again
+ * within 100 ms. */
+void           Platform_TrueColourBegin(void);
+void           Platform_TrueColourPixel(int x, int y, uint8_t index, uint32_t rgb);
 uint8_t       *Platform_HudLayerBuffer(void);
 
 /* A cutscene over the whole picture (src/mod_api.c ModApi_Cutscene*, the PC cutscenes mod):

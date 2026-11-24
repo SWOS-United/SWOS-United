@@ -8,7 +8,8 @@
  *   "image": "<path>"             (an entry) a .bmp under the data folder (a mod's overlay first),
  *                                 drawn in the entry's box -- centred, or at "image_x" / "image_y"
  *                                 from its top left -- each colour the nearest in the palette on
- *                                 screen (mapped again when it changes: a menu fades in); black /
+ *                                 screen (mapped again when it changes: a menu fades in), and
+ *                                 shown in its own colour (Platform_TrueColourPixel); black /
  *                                 magenta (255, 0, 255) transparent. Drawn every menu frame.
  *
  * The packed format has no room for them, so the loader (menu_load_json.c) gives them here as it
@@ -260,6 +261,7 @@ void MenuExtras_Drawn(void)
     uint8_t *frame = (uint8_t *)(uintptr_t)_frontbufferBasePtr;
     const int32_t sw = _screen_width, sh = _screen_height;
     uint32_t hash = 0;
+    Platform_TrueColourBegin();         /* (each picture's own colours on screen, not only the nearest) */
     for (int32_t i = 0; i < kMaxEntries && frame; i++) {
         Extra *e = &m->entry[i];
         if (!e->imagePath)
@@ -285,8 +287,10 @@ void MenuExtras_Drawn(void)
             for (int32_t x = 0; x < e->w; x++) {
                 const int32_t fx = x0 + x;
                 const uint8_t c = e->pixels[y * e->w + x];
-                if (c != 0xFF && fx >= 0 && fx < sw)
+                if (c != 0xFF && fx >= 0 && fx < sw) {
                     frame[(size_t)fy * FRONTBUFFER_ROW_STRIDE_BYTES + (size_t)fx] = c;
+                    Platform_TrueColourPixel(fx, fy, c, e->rgb[y * e->w + x]);
+                }
             }
         }
     }
