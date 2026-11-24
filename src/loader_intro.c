@@ -17,6 +17,7 @@
 #include <strings.h>           /* strcasecmp: the intro's own pictures */
 #include "platform_sdl.h"      /* MENU_BACKDROP_KEY, Platform_SetIntroBackdrop */
 #include "mod_hooks.h"         /* ModHooks_MenuBackdrop: the menus' picture behind the intro */
+#include "swos_settings.h"     /* Settings_Save: the pad fire was pressed on at the logo, kept */
 #endif
 #endif
 extern uint8_t _rawAssetLoadBuffer[];   /* overlay/frame staging — both builds */
@@ -444,7 +445,7 @@ static int16_t loaderIntroWaitForFireOrTimeout(int16_t timeout)
 {
     int16_t remaining = timeout;
 #ifdef AGA
-    uint32_t glowFrame = 0;
+    static uint32_t glowFrame;          /* (on across calls: the logo's wait asks a frame at a time) */
 #endif
 
     while (remaining >= 0)
@@ -644,8 +645,37 @@ void LoaderIntro_EndPowered(void)
             Player1StatusProc();
         }
         s_titleGlow = 1;
-        while (loaderIntroWaitForFireOrTimeout(0x7FFF) == 0)
-            ;                           /* the logo until fire (or the window closed) */
+        {   /* The logo until fire -- player 1's, or a new press on any pad: PRESS FIRE TO START is
+             * anyone's, also where player 1 is a pad chosen on CONTROLS (the claim above is only
+             * for AUTO) -- or the window closed. */
+            extern void InputSDL_PadPressBegin(void);
+            extern int  InputSDL_PadPressPoll(int only, int *dev, int *button);
+            extern int  InputSDL_PlayerDevice(int p);
+            extern void InputSDL_GivePlayerDevice(int p, int d);
+            extern void InputSDL_DeviceLabel(int d, char *out, int cap);
+            extern void InputSDL_StoreConfig(PlatformInitOptions *o);
+            extern PlatformInitOptions *g_arcadeOpts;
+            extern const char *g_arcadeIniPath;
+            int dev = -1, button = -1;
+            InputSDL_PadPressBegin();
+            while (loaderIntroWaitForFireOrTimeout(0) == 0 && !InputSDL_PadPressPoll(-1, &dev, &button))
+                dev = -1;
+            /* The pad pressed on is player 1's from now on -- also where CONTROLS had chosen
+             * another (a pad, or the keyboard): the one fire is pressed on is the one played
+             * with. Kept (SWOS.ini), as a choice on CONTROLS is. */
+            extern const char *InputSDL_PlayerPref(int p);
+            /* (AUTO: the intro's claim has made it player 1's already, and nothing is kept) */
+            if (dev >= 0 && InputSDL_PlayerPref(0)[0] && InputSDL_PlayerDevice(0) != dev && _quitToDos == 0) {
+                char name[64];
+                InputSDL_GivePlayerDevice(0, dev);
+                InputSDL_DeviceLabel(dev, name, sizeof name);
+                fprintf(stderr, "[intro] fire on \"%s\": player 1's pad now\n", name);
+                if (g_arcadeOpts && g_arcadeIniPath) {
+                    InputSDL_StoreConfig(g_arcadeOpts);
+                    Settings_Save(g_arcadeOpts, g_arcadeIniPath);
+                }
+            }
+        }
         s_titleGlow = 0;
         InputSDL_SetIntroClaim(0);
         _fireResetFlag = 1;             /* (the fire that left the logo is not the main menu's) */

@@ -90,7 +90,6 @@ extern void        InputSDL_PadPressBegin(void);
 extern int         InputSDL_AnyPadButtonHeld(void);
 extern void        InputSDL_PostFrame(void);
 extern int         InputSDL_PadPressPoll(int only, int *dev, int *button);
-extern int         InputSDL_PadPressHeld(void);
 extern int         InputSDL_PadButtonDown(int d, int b);
 extern void        InputSDL_GivePlayerDevice(int p, int d);
 extern int         InputSDL_AutoDetect(void);
@@ -382,15 +381,10 @@ static void select_joypad(int32_t p)
     }
     snprintf(line, sizeof line, "PRESS A BUTTON ON PLAYER %d'S PAD   ESC: LEAVE IT", (int)p + 1);
     note_now(line);
+    /* The press that chose the row (a pad's fire or a key) only starts the wait -- it is held as
+     * the wait begins, so it does not count: the NEXT press picks the pad, whichever pad it is on
+     * (a row chosen with one pad can give player 1 another). */
     InputSDL_PadPressBegin();
-    /* Chosen with a pad's fire (SWOS 2020's PRESS FIRE): that pad, at once -- not a second press.
-     * Its button is still down; release_wait below lets it go. From the keyboard: the next pad a
-     * button is pressed on. */
-    if ((dev = InputSDL_PadPressHeld()) >= 0) {
-        found = 1;
-        button = -1;                    /* (its fire: what release_wait waits for) */
-        fprintf(stderr, "[settings] SELECT JOYPAD, player %d: the pad its fire came from\n", (int)p + 1);
-    }
     InputSDL_CaptureKey(1);
     /* Waiting: the row's value box in yellow (15) until a pad answers or ESC, so it shows that it
      * waits for a press (its own light blue, 13, back after). */
