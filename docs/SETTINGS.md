@@ -63,7 +63,7 @@ render_driver=auto    ; auto | opengl | direct3d11 | direct3d | software-backend
                       ; auto = SDL default (D3D11 on Windows). Use opengl if
                       ; replays/attract run in slow motion on Windows.
 fullscreen=off        ; off | desktop | exclusive
-scale=3               ; 1..4 window scale (windowed only)
+scale=auto            ; auto | 1x..8x window scale (windowed only): auto the most whole times the monitor takes
 resolution=auto       ; WxH (e.g. 2560x1080) drives the render aspect, or
                       ; auto for the desktop. Need not match the monitor.
 screen=0              ; monitor index to open on, 0 = primary. Auto-clamped.
@@ -163,7 +163,7 @@ keeps MULTIPLAYER off. Every tweak is off online and in the test rigs.
                           mode change. Always covers the taskbar (the
                           XP fix). Slower toggle, may flicker on
                           multi-monitor rigs.
---scale=<1|2|3|4>         Windowed pixel scale at startup. Default: 3.
+--scale=<auto|1..8>       Windowed pixel scale at startup. Default: auto.
                           Adjust at runtime with the + and - keys.
 --renderer=<accel|sdl|software>
                           Choose the renderer. Default: accel.
@@ -284,6 +284,13 @@ The SWOS United Launcher (a SWOS 2020-style front end) set these with SWOS 2020'
 flags; each is now a `SWOS.ini` key and a row on a settings page (OPTIONS -> SETTINGS), or a
 canonical mod's setting, so the launcher is not needed. SWOS 2020's flags still work, as it
 passed them (`--help`).
+
+WINDOW SCALE (`[video] scale`) is AUTO by default: the most whole times the picture, title bar and
+borders included, fits the usable area of the monitor the window is on -- 3X for 484 x 272 on a
+1920 x 1080 screen with a taskbar -- worked out again when the window moves to another monitor or
+the picture changes size. VIDEO OPTIONS' row goes AUTO, 1X .. that most; a number bigger than the
+monitor takes is never shown or used. Written `auto` or `2x`: a bare number is an older file's
+(the game wrote the window's scale at every save), taken as AUTO once (2026-11-25).
 
 A change "from the next start" (the note says FROM THE NEXT START) is remembered: leaving OPTIONS
 by its EXIT then asks RESTART NOW / LATER, and RESTART NOW starts the game again at once

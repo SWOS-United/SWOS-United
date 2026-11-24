@@ -77,6 +77,9 @@ static const char *const kQuickNames[10] = {
 /* [input] call_bench_p1 / call_bench_p2 read: the old call_bench (one for both) only fills what
  * they do not say, wherever its line stands in the file (a save keeps a key it no longer writes). */
 static int s_benchSeen[2];
+static int s_scaleBare;         /* [video] scale was a bare number: an older file's (Settings_Load) */
+static int s_scaleMoved;        /* ... so it is AUTO now, to save */
+int Settings_ScaleMoved(void) { return s_scaleMoved; }
 static int s_kitColoursSeen;    /* [graphics] kit_colours was in the file (Settings_Load) */
 static int s_kitColoursMoved;   /* ... and was not: moved to extended + clash kits on, to save */
 
@@ -240,8 +243,16 @@ static int handler(void *user, const char *section,
             else if (eqi(value, "desktop"))   opts->fullscreen = PLATFORM_FULLSCREEN_DESKTOP;
             else if (eqi(value, "exclusive")) opts->fullscreen = PLATFORM_FULLSCREEN_EXCLUSIVE;
         } else if (eqi(name, "scale")) {
+            /* auto | 1x..8x. A bare number is an older file's: the game wrote the window's scale
+             * there at every save, chosen or not, so it becomes AUTO (Settings_Load). */
             int n = atoi(value);
-            if (n >= 1 && n <= 4) opts->win_scale = n;
+            if (eqi(value, "auto"))
+                opts->win_scale = 0;
+            else if (n >= 1 && n <= 8) {
+                opts->win_scale = n;
+                if (!strchr(value, 'x') && !strchr(value, 'X'))
+                    s_scaleBare = 1;
+            }
         } else if (eqi(name, "widescreen")) {
             int b;
             if (eqi(value, "stretch"))       opts->widescreen = 2;
@@ -540,6 +551,7 @@ void Settings_Load(PlatformInitOptions *opts, const char *path)
      * Settings_Save. Parse errors don't abort load; the keys before
      * the bad line still apply. */
     s_kitColoursSeen = 0;
+    s_scaleBare = 0;
     int rc = ini_parse(path, handler, opts);
     if (rc > 0) {
         fprintf(stderr, "[settings] %s: parse error at line %d (continuing)\n",
@@ -559,6 +571,13 @@ void Settings_Load(PlatformInitOptions *opts, const char *path)
         opts->kit_colours = 1;
         opts->clash_kits = 1;
         s_kitColoursMoved = 1;
+    }
+    /* WINDOW SCALE AUTO (2026-11-25): an older file's number was the window's size at its last
+     * save, not a choice -- AUTO from now; a number chosen since is written "2x" and kept. */
+    if (rc != -1 && s_scaleBare) {
+        fprintf(stderr, "[settings] [video] scale %d from an older SWOS.ini: AUTO now\n", opts->win_scale);
+        opts->win_scale = 0;
+        s_scaleMoved = 1;
     }
 }
 
@@ -621,15 +640,18 @@ static const char *section_intro(const char *sec)
  * file's, for Settings_Save's baseline). */
 static int settings_build(const PlatformInitOptions *opts, IniEntry *items, char vbuf[10][24], int live)
 {
-    int scale_now = live ? Platform_GetWindowScale() : opts->win_scale;
+    int scale_now = !live ? opts->win_scale : Platform_WindowScaleAuto() ? 0 : Platform_GetWindowScale();
     PlatformFullscreenMode fs_now = live ? Platform_GetFullscreenMode() : opts->fullscreen;
-    if (scale_now < 1 || scale_now > 4) scale_now = opts->win_scale;
+    if (scale_now < 0 || scale_now > 8) scale_now = opts->win_scale;
 
     if (opts->res_w > 0 && opts->res_h > 0)
         snprintf(vbuf[0], 24, "%dx%d", opts->res_w, opts->res_h);
     else
         snprintf(vbuf[0], 24, "auto");
-    snprintf(vbuf[1], 24, "%d", scale_now);
+    if (scale_now > 0)
+        snprintf(vbuf[1], 24, "%dx", scale_now);
+    else
+        snprintf(vbuf[1], 24, "auto");
     snprintf(vbuf[2], 24, "%d", opts->arcade_game_seconds > 0 ? opts->arcade_game_seconds : 45);
     snprintf(vbuf[3], 24, "%d", opts->screen > 0 ? opts->screen : 0);
     snprintf(vbuf[4], 24, "%d", opts->crt_mask_strength);
@@ -650,7 +672,7 @@ static int settings_build(const PlatformInitOptions *opts, IniEntry *items, char
     SETTING(n) = (IniEntry){ "video",  "crt_corners", "; crt_corners: 0-100. Rounded-glass corner size. 0 = square screen", vbuf[6] };
     SETTING(n) = (IniEntry){ "video",  "render_driver", "; render_driver: auto | opengl | direct3d11 | direct3d | software-backend. auto = SDL default (D3D11 on Windows). Use opengl if replays/attract run in slow motion on Windows", opts->render_driver[0] ? opts->render_driver : "auto" };
     SETTING(n) = (IniEntry){ "video",  "fullscreen", "; fullscreen: off | desktop | exclusive", fullscreen_str(fs_now) };
-    SETTING(n) = (IniEntry){ "video",  "scale",      "; scale: window scale 1-4 (windowed only)", vbuf[1] };
+    SETTING(n) = (IniEntry){ "video",  "scale",      "; scale: auto | 1x .. 8x. The window's size, windowed only: auto the most whole times the picture fits the monitor, again when it moves to another; a number that, or the most that fits", vbuf[1] };
     SETTING(n) = (IniEntry){ "video",  "widescreen",
         "; widescreen: true | false | stretch. true fills the display's shape, showing\n"
         "; more of the pitch at the sides; false draws the view's own width -- 336 the\n"

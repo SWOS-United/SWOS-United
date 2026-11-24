@@ -73,7 +73,7 @@
 #include "world.h"              /* [general] world */
 #include "phone_fetch.h"        /* --phone-fetch */
 
-#define WIN_SCALE 3
+#define WIN_SCALE 0             /* AUTO: the most whole times the monitor takes */
 
 extern void startShim(void);
 
@@ -156,7 +156,7 @@ static void print_usage(const char *argv0)
         "                            'exclusive' = true fullscreen with display-\n"
         "                            mode change, always covers the taskbar (the\n"
         "                            XP fix). Slower toggle.\n"
-        "  --scale=<1|2|3|4>         Windowed scale at startup. Default: 3.\n"
+        "  --scale=<auto|1..8>        Windowed scale at startup: auto the most the monitor takes. Default: auto.\n"
         "                            Adjust at runtime with + and - keys.\n"
         "  --renderer=<accel|sdl|software>\n"
         "                            Choose the renderer. Default: accel.\n"
@@ -933,9 +933,9 @@ int main(int argc, char **argv)
                 return 1;
             }
         } else if ((v = match_kv(a, "scale")) != NULL) {
-            int n = atoi(v);
-            if (n < 1 || n > 4) {
-                fprintf(stderr, "Invalid --scale value '%s' (expected 1|2|3|4)\n", v);
+            int n = strcmp(v, "auto") == 0 ? 0 : atoi(v);
+            if (n < 0 || n > 8 || (n == 0 && strcmp(v, "auto") != 0)) {
+                fprintf(stderr, "Invalid --scale value '%s' (expected auto|1..8)\n", v);
                 return 1;
             }
             opts.win_scale = n;
@@ -2108,7 +2108,7 @@ int main(int argc, char **argv)
     }
     /* KIT COLOURS new to this SWOS.ini (Settings_Load): written now, not only when the game
      * ends -- after the window, which the keys it may add read their values from. */
-    if (Settings_KitColoursMoved())
+    if (Settings_KitColoursMoved() || Settings_ScaleMoved())
         Settings_Save(&opts, ini_path);
 
 #ifdef SWOS_MOBILE_BUILD

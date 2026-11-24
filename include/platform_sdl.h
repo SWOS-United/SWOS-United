@@ -68,7 +68,7 @@ typedef enum {
 enum { VIEW_STYLE_AUTO = 0, VIEW_STYLE_AMIGA = 1, VIEW_STYLE_DOS = 2 };
 
 typedef struct {
-    int                    win_scale;        /* 1, 2, 3, 4 */
+    int                    win_scale;        /* 0 auto (the most whole times the monitor takes), 1..8 */
     PlatformFullscreenMode fullscreen;       /* none / desktop / exclusive */
     PlatformRendererMode   renderer;         /* software / accelerated */
     int                    vsync;            /* 0 = off (default), 1 = on (accel only) */
@@ -269,7 +269,12 @@ void Platform_VolumeKey(int key);        /* Shift+1..6 in a match: a volume down
 
 /* Set the windowed-mode integer scale factor (1..4) at runtime. Called
  * from the +/- key handlers. No-op while fullscreen. */
-void Platform_SetWindowScale(int scale);
+void Platform_SetWindowScale(int scale);    /* 0: AUTO; a number: that, or the most that fits */
+/* WINDOW SCALE is AUTO: the most whole times the picture fits the monitor's usable area,
+ * framed, again whenever the monitor or the picture's size changes. */
+int  Platform_WindowScaleAuto(void);
+/* The most whole times the picture fits the window's monitor, framed (1 at least). */
+int  Platform_WindowScaleMax(void);
 
 /* The picture's size has changed (the DOS view is 320x200, menus are 336x272),
  * so the presenter must letterbox the new shape. The WINDOW is deliberately not

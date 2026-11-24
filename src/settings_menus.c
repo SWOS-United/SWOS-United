@@ -578,10 +578,20 @@ static void winmode_change(int32_t dir)
     save();
 }
 
-static void scale_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%dX", Platform_GetWindowScale()); }
+/* WINDOW SCALE: AUTO (the most whole times the picture fits the monitor), then 1X up to that
+ * most -- a bigger one would not fit (Platform_WindowScaleMax). */
+static void scale_show(char *o, int32_t c)
+{
+    if (Platform_WindowScaleAuto())
+        snprintf(o, (size_t)c, "AUTO (%dX)", Platform_GetWindowScale());
+    else
+        snprintf(o, (size_t)c, "%dX", Platform_GetWindowScale());
+}
 static void scale_change(int32_t dir)
 {
-    const int s = 1 + step(Platform_GetWindowScale() - 1, dir, 4);
+    const int most = Platform_WindowScaleMax();
+    const int now = Platform_WindowScaleAuto() ? 0 : Platform_GetWindowScale();
+    const int s = (int)step(now > most ? most : now, dir, most + 1);    /* (0 AUTO, 1..most) */
     Platform_SetWindowScale(s);
     O()->win_scale = s;
     if (Platform_GetFullscreenMode() != PLATFORM_FULLSCREEN_NONE)

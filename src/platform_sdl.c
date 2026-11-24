@@ -615,7 +615,9 @@ extern void Platform_PreArmIsrGlobals(void);
 
 /* ---- Lifecycle ----------------------------------------------------- */
 /* Persisted across the run so Alt+Enter / +/- keys can read them. */
-static int                    s_win_scale_current = 1;   /* clamp 1..4 */
+static int                    s_win_scale_current = 1;   /* 1..kWinScaleMax: what the window is */
+static int                    s_win_scale_auto;          /* WINDOW SCALE AUTO: s_win_scale_current follows the monitor */
+enum { kWinScaleMax = 8 };
 /* The client area [video] resolution=WxH asked for, 0 when it said 'auto'.
  * Kept so leaving fullscreen restores the size the file named: the restore used
  * to always recompute it from the scale, so an Alt-Tab round trip silently threw
@@ -672,8 +674,9 @@ int Platform_Init(const PlatformInitOptions *opts)
         opts ? opts->renderer : PLATFORM_RENDERER_ACCEL;
     int vsync = opts ? opts->vsync : 0;
 
-    if (win_scale < 1) win_scale = 1;
-    if (win_scale > 4) win_scale = 4;
+    s_win_scale_auto = win_scale <= 0;
+    if (win_scale < 1) win_scale = kWinScaleMax;       /* (AUTO: the most that fits, below) */
+    if (win_scale > kWinScaleMax) win_scale = kWinScaleMax;
 
     /* Which monitor to open on ([video] screen=N, 0 = primary). */
     int screen = opts ? opts->screen : 0;
@@ -1237,6 +1240,7 @@ void Platform_Shutdown(void)
  * (a 16:10 laptop's picture on a 21:9 monitor, even fullscreen: a tester, macOS, 2026-10-31).
  * Checked on every window event: SDL_WINDOWEVENT_DISPLAY_CHANGED where SDL has it (2.0.18+),
  * a move or resize anywhere. */
+static int window_is_fullscreen(void);
 static void check_display(void)
 {
 #ifndef SWOS_WASM_BUILD
@@ -1257,6 +1261,11 @@ static void check_display(void)
         extern void Video_DisplayChanged(int dw, int dh);
         Video_DisplayChanged(dm.w, dm.h);
     }
+    /* AUTO: the scale this monitor takes (a window moved from a laptop to a big screen). */
+    if (s_win_scale_auto && s_pinned_w <= 0 && !window_is_fullscreen() &&
+        !(SDL_GetWindowFlags(s_window) & SDL_WINDOW_MAXIMIZED) &&
+        Platform_WindowScaleMax() != s_win_scale_current)
+        Platform_SetWindowScale(0);
 #endif
 }
 
@@ -1430,6 +1439,32 @@ int Platform_GetWindowScale(void)
     return s_win_scale_current;
 }
 
+int Platform_WindowScaleAuto(void) { return s_win_scale_auto; }
+
+/* The most whole times the picture, framed (title bar and borders), fits the usable area of the
+ * monitor the window is on -- what Platform_Init's fit does at the start, for any time after. */
+int Platform_WindowScaleMax(void)
+{
+#ifndef SWOS_WASM_BUILD
+    SDL_Rect ub, db;
+    int s = kWinScaleMax, bt = 0, bl = 0, bb = 0, br = 0;
+    const int d = s_window ? SDL_GetWindowDisplayIndex(s_window) : 0;
+    if (d < 0 || SDL_GetDisplayUsableBounds(d, &ub) != 0 || ub.w <= 0 || ub.h <= 0)
+        return s_win_scale_current;
+    if (SDL_GetDisplayBounds(d, &db) == 0 && db.w > 0 && db.h > 0) {
+        if (ub.w > db.w) ub.w = db.w;   /* (a driver's whole virtual desktop: Platform_Init) */
+        if (ub.h > db.h) ub.h = db.h;
+    }
+    if (s_window)
+        SDL_GetWindowBordersSize(s_window, &bt, &bl, &bb, &br);
+    while (s > 1 && ((int)_screen_width * s + bl + br > ub.w || _screen_height * s + bt + bb > ub.h))
+        s--;
+    return s;
+#else
+    return s_win_scale_current;
+#endif
+}
+
 PlatformFullscreenMode Platform_GetFullscreenMode(void)
 {
     /* Return the *current* mode, not the launch one — Alt+Enter at
@@ -1464,6 +1499,8 @@ void Platform_ViewChanged(void)
      * Not when fullscreen (SDL letterboxes, which is right), and not when
      * [video] resolution pinned a client area -- that was asked for by name. */
     if (!s_window || s_pinned_w > 0 || window_is_fullscreen()) return;
+    if (s_win_scale_auto)               /* (a picture of another size: the scale it fits now) */
+        s_win_scale_current = Platform_WindowScaleMax();
     SDL_SetWindowSize(s_window,
                       _screen_width  * s_win_scale_current,
                       _screen_height * s_win_scale_current);
@@ -1472,9 +1509,13 @@ void Platform_ViewChanged(void)
 void Platform_SetWindowScale(int scale)
 {
     if (!s_window) return;
-    if (scale < 1) scale = 1;
-    if (scale > 4) scale = 4;
+    const int most = Platform_WindowScaleMax();
+    s_win_scale_auto = scale <= 0;
+    if (scale < 1 || scale > most)      /* (AUTO, or more than the monitor takes) */
+        scale = most;
     s_win_scale_current = scale;
+    fprintf(stderr, "[video] window scale %s%dx (the monitor takes %dx)\n",
+            s_win_scale_auto ? "AUTO: " : "", scale, most);
     /* Choosing a scale by hand overrides whatever [video] resolution pinned, and
      * keeps it overridden for the rest of the session -- otherwise the next
      * fullscreen round trip would undo what the player just pressed. */
@@ -1482,6 +1523,9 @@ void Platform_SetWindowScale(int scale)
     /* Only resize when actually windowed — fullscreen ignores the size
      * (SDL_RenderSetLogicalSize handles letterboxing for us). */
     if (!window_is_fullscreen()) {
+        /* A maximized window keeps its size whatever is asked: back to a plain one first. */
+        if (SDL_GetWindowFlags(s_window) & SDL_WINDOW_MAXIMIZED)
+            SDL_RestoreWindow(s_window);
         SDL_SetWindowSize(s_window,
             _screen_width * scale,
             _screen_height * scale);
