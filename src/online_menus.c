@@ -290,10 +290,13 @@ static int32_t my_kits(uint8_t myKit[5])
     KitLook worn[2];
     int32_t alike;
     memset(worn, 0, sizeof worn);
-    if (!p || !p->hasTeam)
+    if (!p || !p->hasTeam || (me != 1 && me != 2))
         return 0;
+    /* (the other player without a team yet: this one in his first kit, as the lobby shows him --
+     * not nothing, which read as his kit changing the moment the other picked one) */
+    KitArt_FromTeam(&p->team.team, 0, &worn[me - 1]);
     alike = kits_alike_for_me(&p->team.team, p->kitChosen, worn);
-    if (me == 1 || me == 2) {
+    {
         const KitLook *k = &worn[me - 1];
         myKit[0] = k->type; myKit[1] = k->stripes; myKit[2] = k->basic;
         myKit[3] = k->shorts; myKit[4] = k->socks;
