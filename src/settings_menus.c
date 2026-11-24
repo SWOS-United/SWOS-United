@@ -247,17 +247,33 @@ static void settingsPage_OnDraw(void) { page_refresh(); }
 
 static int32_t s_activeRow = -1;           /* the row whose change is running (page_row) */
 
+/* A press of fire steps forward, whatever the stick: the menu gives the direction held at that
+ * moment in the same event, so a stick held a little aside while fire was pressed stepped a value
+ * BACK (AMIGA to MOON on GAME STYLE). And for kFireSettleMs after a press the stick does nothing:
+ * a short press, the stick moving as it is pushed, changes one step. Fire held longer and the
+ * stick moved: left and right step as ever. */
+enum { kFireSettleMs = 250 };
+static Uint32 s_fireAt;
+
 static void page_row(int32_t i)
 {
-    int32_t dir = (_controlMask & 0x40) ? -1 : 1;      /* (0x40 left, 0x80 right, 0x20 fire) */
+    const int32_t fire = (_controlMask & 0x20) != 0;    /* (0x40 left, 0x80 right, 0x20 fire) */
+    const int32_t dir = fire ? 1 : (_controlMask & 0x40) ? -1 : 1;
+    char before[48], after[48];
     if (!s_page || i >= s_page->count)
         return;
+    if (fire)
+        s_fireAt = SDL_GetTicks();
+    else if (s_fireAt && !SDL_TICKS_PASSED(SDL_GetTicks(), s_fireAt + kFireSettleMs))
+        return;                         /* (the stick just after a press of fire) */
     note("");
-    fprintf(stderr, "[settings] %s: %s (%s)\n", s_page->title, s_page->rows[i].label,
-            (_controlMask & 0x20) ? "fire" : dir < 0 ? "left" : "right");
+    s_page->rows[i].show(before, (int32_t)sizeof before);
     s_activeRow = i;
     s_page->rows[i].change(dir);
     s_activeRow = -1;
+    s_page->rows[i].show(after, (int32_t)sizeof after);
+    fprintf(stderr, "[settings] %s: %s %s -> %s (%s)\n", s_page->title, s_page->rows[i].label,
+            before, after, fire ? "fire" : dir < 0 ? "left" : "right");
     page_refresh();
 }
 
