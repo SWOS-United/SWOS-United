@@ -168,6 +168,7 @@ typedef struct {
 
 /* A label's background (settingsPage.json's labels are grey, 7): CONTROLS tells player 1's rows
  * from player 2's by colour as well as by name. */
+enum { kWaitColour = 15 };      /* a row waiting for a press: yellow (the Amiga look; PC: yellow-green) */
 enum { kLabelGrey = 7, kLabelPlayer1 = 11, kLabelPlayer2 = 10 };   /* (purple -- the Amiga look's blue -- and red) */
 
 typedef struct {
@@ -239,6 +240,8 @@ static void settingsPage_OnInit(void)
 
 static void settingsPage_OnDraw(void) { page_refresh(); }
 
+static int32_t s_activeRow = -1;           /* the row whose change is running (page_row) */
+
 static void page_row(int32_t i)
 {
     int32_t dir = (_controlMask & 0x40) ? -1 : 1;      /* (0x40 left, 0x80 right, 0x20 fire) */
@@ -247,7 +250,9 @@ static void page_row(int32_t i)
     note("");
     fprintf(stderr, "[settings] %s: %s (%s)\n", s_page->title, s_page->rows[i].label,
             (_controlMask & 0x20) ? "fire" : dir < 0 ? "left" : "right");
+    s_activeRow = i;
     s_page->rows[i].change(dir);
+    s_activeRow = -1;
     page_refresh();
 }
 
@@ -387,6 +392,14 @@ static void select_joypad(int32_t p)
         fprintf(stderr, "[settings] SELECT JOYPAD, player %d: the pad its fire came from\n", (int)p + 1);
     }
     InputSDL_CaptureKey(1);
+    /* Waiting: the row's value box in yellow (15) until a pad answers or ESC, so it shows that it
+     * waits for a press (its own light blue, 13, back after). */
+    MenuEntry *waitBox = !found && s_activeRow >= 0 ? entry_at(Page_label0 + 2 * s_activeRow + 1) : NULL;
+    const uint16_t waitBoxWas = waitBox ? waitBox->bgColor : 0;
+    if (waitBox) {
+        waitBox->bgColor = kWaitColour;
+        CallDrawMenuItem(waitBox);
+    }
     for (; !found;) {
         MenuCheckControls();
         if (InputSDL_CapturedKey() == SDL_SCANCODE_ESCAPE)
@@ -400,6 +413,10 @@ static void select_joypad(int32_t p)
         CallDrawMenuItem(entry_at(Page_note));
     }
     InputSDL_CaptureKey(0);
+    if (waitBox) {
+        waitBox->bgColor = waitBoxWas;
+        CallDrawMenuItem(waitBox);
+    }
     fprintf(stderr, "[settings] SELECT JOYPAD, player %d: %s\n", (int)p + 1, found ? "a pad chosen" : "left");
     if (found) {
         char name[64];
