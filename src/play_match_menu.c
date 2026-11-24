@@ -583,13 +583,13 @@ void SetPlayerSurnamesOnSidePitch(void) {
  * start a match somebody can still arrange: not while the other team is being looked
  * at, not before a training match, not when the screen only shows a result.
  *
- * The bottom row has no room for a fifth button, so UNIFORM shares EDIT TACTICS' place:
- * the two are stacked, each 10 px high, in the 23 the PLAY button beside them takes.
- * Where EDIT TACTICS is not shown (computer v computer) UNIFORM has the place alone.
+ * UNIFORM stands above EXIT, EXIT's size, as far above it as the bottom row is below the
+ * tactics (2026-11-24; before, it shared EDIT TACTICS' place, the two 10 px high). EDIT TACTICS
+ * is VIEW OPPO's size, on its line, at the tactics' right edge.
  * Positions are taken from EXIT's (entry 8), which never moves, because this runs
  * again on every change of the screen without the menu being unpacked afresh.
  * ================================================================ */
-enum { kUniformEntry = 68 };
+enum { kUniformEntry = 68, kTacticsUserE = 54, kTacticsUserF = 55 };
 
 #ifdef SWOS_SDL_BUILD
 /* Set by a screen that shows this one for the line-up alone (the custom team editor,
@@ -598,10 +598,12 @@ int32_t g_playMatchNoUniform;
 #endif
 
 static void UpdateUniformButton(void) {
+    static int16_t s_exitUp = -2;           /* EXIT's own up neighbour (-2: not seen yet) */
     MenuEntry *exitBtn = &_menuEntries[8];
     MenuEntry *tactics = &_menuEntries[10];
     MenuEntry *viewOpp = &_menuEntries[7];
     MenuEntry *uniform = &_menuEntries[kUniformEntry];
+    const MenuEntry *userE = &_menuEntries[kTacticsUserE], *userF = &_menuEntries[kTacticsUserF];
 #ifdef SWOS_SDL_BUILD
     int16_t shown = _squadChangesAllowed && !_viewingOpponentTeam && !_trainingGame &&
                     !g_playMatchNoUniform;
@@ -610,36 +612,35 @@ static void UpdateUniformButton(void) {
 #endif
 
     uniform->isInvisible = !shown;
-    tactics->y = exitBtn->y;
-    tactics->dwHeight = exitBtn->dwHeight;
-    tactics->downEntry = -1;
-    viewOpp->rightEntry = 10;
-    if (!shown)
-        return;
-    uniform->x = tactics->x;
-    uniform->dwWidth = tactics->dwWidth;
-    uniform->leftEntry = 7;
-    if (tactics->isInvisible) {
-        uniform->y = exitBtn->y;
-        uniform->dwHeight = exitBtn->dwHeight;
-        uniform->upEntry = 55;                  /* the formation above, as EDIT TACTICS' */
-        viewOpp->rightEntry = kUniformEntry;
-        /* Two computer teams: the button beside this one is VIEW OTHER TEAM, 93 wide,
-         * which reaches under it (ReportBot 0031). It gets the width and the words it
-         * has when a player's team is shown. */
-        if (viewOpp->x + viewOpp->dwWidth > uniform->x - 1) {
-            viewOpp->dwWidth = uniform->x - 1 - viewOpp->x;
-            if (viewOpp->fg == (uintptr_t)_aViewOtherTeam)
-                viewOpp->fg = (uintptr_t)_aViewOppo;
-        }
-    } else {
-        tactics->y = exitBtn->y - 2;
-        tactics->dwHeight = 10;
-        tactics->downEntry = kUniformEntry;
-        uniform->y = exitBtn->y + 9;
-        uniform->dwHeight = 10;
-        uniform->upEntry = 10;
+    tactics->y = viewOpp->y;
+    tactics->dwHeight = viewOpp->dwHeight;
+    if (!tactics->isInvisible) {            /* (computer v computer: none, VIEW OTHER TEAM 93 wide) */
+        tactics->dwWidth = viewOpp->dwWidth;
+        tactics->x = (int16_t)(userF->x + userF->dwWidth - tactics->dwWidth);
     }
+    tactics->downEntry = -1;
+    viewOpp->rightEntry = tactics->isInvisible ? -1 : 10;
+    if (exitBtn->upEntry != kUniformEntry)
+        s_exitUp = exitBtn->upEntry;
+    if (!shown) {
+        if (s_exitUp != -2)
+            exitBtn->upEntry = s_exitUp;
+        return;
+    }
+    {
+        int16_t gap = (int16_t)(exitBtn->y - (userE->y + userE->dwHeight));
+        if (gap < 1 || gap > 4)
+            gap = 2;
+        uniform->x = exitBtn->x;
+        uniform->dwWidth = exitBtn->dwWidth;
+        uniform->dwHeight = exitBtn->dwHeight;
+        uniform->y = (int16_t)(exitBtn->y - gap - uniform->dwHeight);
+    }
+    uniform->upEntry = -1;
+    uniform->downEntry = 8;
+    uniform->leftEntry = exitBtn->leftEntry;
+    uniform->rightEntry = kTacticsUserE;
+    exitBtn->upEntry = kUniformEntry;
 }
 
 /* UniformSelected -- the UNIFORM button. This screen is shown to each player in turn
