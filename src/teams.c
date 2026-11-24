@@ -3177,17 +3177,18 @@ void ChooseTeamsInit(void)
         const int32_t packs = 0;
 #endif
         _menuEntries[5].isInvisible = !packs;
-        /* With the extra row, the four big buttons close up: every gap from CLUB TEAMS down to
-         * EXIT the same (7 px), CLUB TEAMS where it was. Counted up from EXIT, which never moves,
-         * so it holds however often this runs. */
+        /* With the extra row, the four big buttons close up (4 px apart) and the row follows as
+         * if it were as big, the same 4 px below them; EXIT keeps its place, so the row stands
+         * further from it. CLUB TEAMS where it was: 150 above EXIT, which never moves, so this
+         * holds however often it runs. */
         if (packs && !_menuEntries[2].isInvisible && !_menuEntries[3].isInvisible) {
-            enum { kGap = 7 };
-            int16_t y = (int16_t)(_menuEntries[4].y - kGap - _menuEntries[5].dwHeight);
-            _menuEntries[5].y = y;
-            for (int i = 3; i >= 0; i--) {
-                y = (int16_t)(y - kGap - _menuEntries[i].dwHeight);
+            enum { kGap = 4, kTopAboveExit = 150 };
+            int16_t y = (int16_t)(_menuEntries[4].y - kTopAboveExit);
+            for (int i = 0; i <= 3; i++) {
                 _menuEntries[i].y = y;
+                y = (int16_t)(y + _menuEntries[i].dwHeight + kGap);
             }
+            _menuEntries[5].y = y;
         }
         _menuEntries[3].downEntry = (int8_t)(packs ? 5 : 4);
         _menuEntries[4].upEntry = (int8_t)(packs ? 5 : 3);
