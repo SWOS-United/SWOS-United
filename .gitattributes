@@ -1,2 +1,21 @@
 packaging/android/gradlew text eol=lf
 packaging/android/gradlew.bat text eol=crlf
+
+# SWOS United's own branding (docs/FORKING.md: "a fork replaces the files themselves"). When a merge
+# from OpenSWOS meets one of these changed on both sides, United's copy is kept, never OpenSWOS's.
+# Needs, once per clone that merges:  git config merge.ours.driver true
+# (Without it git ignores the line and the file conflicts as before: nothing is lost.)
+SWOS.ico                                      merge=ours
+SWOS.icns                                     merge=ours
+include/swos_window_icon.h                    merge=ours
+packaging/icons/**                            merge=ours
+packaging/linux/hicolor/**                    merge=ours
+packaging/macos/SWOS.iconset/**               merge=ours
+packaging/ios/icons/**                        merge=ours
+packaging/android/app/src/main/res/mipmap-*/** merge=ours
+packaging/switch/swos_icon.bmp                merge=ours
+packaging/windows/WizardImage*.bmp            merge=ours
+packaging/windows/WizardSmallImage*.bmp       merge=ours
+packaging/intro/**                            merge=ours
+bin/grafs_aga/SWOSUNTD.RAW                    merge=ours
+bin/grafs_aga/POWERED.RAW                     merge=ours
