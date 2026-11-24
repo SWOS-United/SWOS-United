@@ -209,7 +209,10 @@ def main():
             row = []
             for o, u in zip(orow, urow):
                 v = o or u
-                row.append((255, 0, 255) if v == 0 else tvpal[v])
+                # (black is see-through in a menu picture, menu_extras.c: the housing's black
+                # outlines and the screen's edge drawn (1, 1, 1), still black on screen)
+                c = (255, 0, 255) if v == 0 else tvpal[v]
+                row.append((1, 1, 1) if c == (0, 0, 0) else c)
             pixels.append(row)
         path = os.path.join(OUT, "tv_%s.bmp" % state)
         if (len(pixels[0]), len(pixels)) != TV_SIZE:
