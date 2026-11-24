@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
-"""Builds every platform's application icon from one SVG.
+"""Builds every platform's application icon from one source.
 
     python3 scripts/generate_icons.py
 
-The source of truth is SWOS.svg at the repository root. Everything this writes is
+The source of truth is packaging/icons/swos-united.ico when it is there -- SWOS United's
+icon, sensiblesoccer.de's favicon: pixel art, hand-drawn at 16, 24, 32, 48 and 64 pixels --
+else SWOS.svg at the repository root (OpenSWOS's ball). The ICO's own images are used at
+their sizes, the others made from the nearest (larger ones enlarged by whole pixels from
+the 64, so the pixel art stays sharp), and every size cut to a circle with a transparent
+outside, as the site's round picture. Only the SVG needs cairosvg (Cygwin's python3 has
+Pillow: /cygdrive/c/cygwin64/bin/python3.9.exe scripts/generate_icons.py). Everything this writes is
 generated and committed, so a normal build needs neither this script nor a rasteriser --
 only someone changing the artwork runs it:
 
@@ -40,6 +46,8 @@ Needs cairosvg and Pillow:
     pip install cairosvg pillow
 """
 
+from __future__ import annotations
+
 import base64
 import io
 import struct
@@ -47,13 +55,13 @@ import sys
 from pathlib import Path
 
 try:
-    import cairosvg
-    from PIL import Image
+    from PIL import Image, ImageChops, ImageDraw
 except ImportError as exc:  # pragma: no cover - developer tooling
     sys.exit(f"{exc}. See the module docstring for what to install.")
 
 ROOT = Path(__file__).resolve().parent.parent
-SOURCE = ROOT / "SWOS.svg"
+RASTER = ROOT / "packaging" / "icons" / "swos-united.ico"
+SOURCE = RASTER if RASTER.exists() else ROOT / "SWOS.svg"
 
 # Hand-tuned bitmaps that win over the vector at the size they are named for.
 OVERRIDES = ROOT / "packaging" / "icons" / "overrides"
@@ -119,8 +127,58 @@ def render(size: int) -> Image.Image:
                 f"but it can only stand in for {size}x{size}"
             )
         return image
+    if SOURCE == RASTER:
+        return render_raster(size)
+    try:
+        import cairosvg
+    except ImportError as exc:  # pragma: no cover - developer tooling
+        sys.exit(f"{exc}. See the module docstring for what to install.")
     png = cairosvg.svg2png(url=str(SOURCE), output_width=size, output_height=size)
     return Image.open(io.BytesIO(png)).convert("RGBA")
+
+
+_raster_frames: dict[int, Image.Image] = {}
+
+
+def raster_frames() -> dict[int, Image.Image]:
+    """The ICO's images by size."""
+    if not _raster_frames:
+        ico = Image.open(RASTER)
+        for w, h in ico.info["sizes"]:
+            if w == h:
+                _raster_frames[w] = ico.ico.getimage((w, h)).convert("RGBA")
+    return _raster_frames
+
+
+def circle_mask(size: int) -> Image.Image:
+    """A filled circle the size of the square, its edge antialiased (drawn 8x, then reduced)."""
+    big = Image.new("L", (size * 8, size * 8), 0)
+    ImageDraw.Draw(big).ellipse((0, 0, size * 8 - 1, size * 8 - 1), fill=255)
+    return big.resize((size, size), Image.LANCZOS)
+
+
+def render_raster(size: int) -> Image.Image:
+    """The pixel-art icon at `size`, in a circle: its own image at a size it has; smaller ones
+    reduced from the next size up; larger ones enlarged by whole pixels from the largest
+    (nearest neighbour, then reduced to the exact size), so the art stays crisp."""
+    frames = raster_frames()
+    if size in frames:
+        art = frames[size]
+    else:
+        larger = [s for s in frames if s > size]
+        if larger:
+            art = frames[min(larger)].resize((size, size), Image.LANCZOS)
+        else:
+            top = max(frames)
+            k = -(-size // top)
+            art = frames[top].resize((top * k, top * k), Image.NEAREST)
+            if art.size != (size, size):
+                art = art.resize((size, size), Image.LANCZOS)
+    art = art.copy()
+    alpha = art.getchannel("A")
+    mask = circle_mask(size)
+    art.putalpha(ImageChops.multiply(alpha, mask))
+    return art
 
 
 def write_png(image: Image.Image, path: Path) -> None:
