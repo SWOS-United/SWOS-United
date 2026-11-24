@@ -983,7 +983,8 @@ static void career(void) { choose(CareerMenu); }
 /* ======================================================================================
  * PRACTICE (swos-2020 practice.mnu): FRIENDLY MATCH; TEAM TRAINING, PENALTY SHOOTOUT and DEMO GAME
  * are OpenSWOS's practice mod's (practice.training / .shootout / .demo, named in the JSON), shown
- * while it is on. (MODES, the mods' entries, was here until 2026-11-21.)
+ * while it is on. (MODES -- ours, the mods' entries -- hidden for good: obsolete, Playa 2026-11-15;
+ * the entry stays in the menu so the ordinals do not move.)
  * ====================================================================================== */
 enum { Prac_header, Prac_friendly, Prac_training, Prac_shootout, Prac_demo, Prac_help, Prac_exit,
        Prac_modes };
@@ -991,18 +992,14 @@ enum { Prac_header, Prac_friendly, Prac_training, Prac_shootout, Prac_demo, Prac
 static void practiceInit(void)
 {
     const int32_t practice = ModApi_FindEntry(MODPOINT_MODES, "practice") >= 0;
-    /* (no MODES here any more -- Playa, 2026-11-21: SWOS GALORE is in REPLAYS, SPEEDRUNS and
-     *  CHALLENGES in COMPETE, the practice mod's own entries above) */
-    const int32_t modes = 0;
-    const int32_t last = modes ? Prac_modes : practice ? Prac_demo : Prac_friendly;
+    const int32_t last = practice ? Prac_demo : Prac_friendly;
 
     show(Prac_training, practice);
     show(Prac_shootout, practice);
     show(Prac_demo, practice);
-    show(Prac_modes, modes);
-    nav(Prac_friendly, -1, -1, -1, practice ? Prac_training : modes ? Prac_modes : Prac_exit);
-    nav(Prac_demo, -1, -1, Prac_shootout, modes ? Prac_modes : Prac_exit);
-    nav(Prac_modes, -1, -1, practice ? Prac_demo : Prac_friendly, Prac_exit);
+    show(Prac_modes, 0);
+    nav(Prac_friendly, -1, -1, -1, practice ? Prac_training : Prac_exit);
+    nav(Prac_demo, -1, -1, Prac_shootout, Prac_exit);
     nav(Prac_exit, -1, -1, last, -1);
 }
 

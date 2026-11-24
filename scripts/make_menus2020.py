@@ -111,6 +111,29 @@ SUBMENUS = {
              "editCustomTeams": (2, -1, -1, 5), "editTactics": (2, -1, 4, 6),
              "manual": (3, -1, 5, 8), "exit": (-1, -1, 6, -1)},
     ),
+    # REPLAYS (replaysMain.mnu, replaysMenu.cpp): SWOS GALORE -- the galore2020 mod's screen, what
+    # PRACTICE's MODES opened until 2026-11-15 --, HIGHLIGHTS (the game's own), MATCH REPLAYS (the
+    # game's highlights screen with the last match's whole replay, LATEST.SRP, loaded: SWOS 2020's
+    # full-length match replays) and REPLAY CONTROLS; the line under them says what the chosen one
+    # does (replaysMainMenu_OnDraw).
+    "replaysMain": dict(
+        out="replaysMenu", onInit="replaysInit", onDraw="replaysDraw",
+        handlers={
+            "swosGalore_OnSelect": "galore",
+            "highlights_OnSelect": "highlights",
+            "matchReplays_OnSelect": "matchReplays",
+            "replayControls_OnSelect": "replayControls",
+        },
+        hide=[],
+        deferred=["desc"],
+    ),
+    # REPLAY CONTROLS (replayControls.mnu): the keys and the controller's buttons, the picture its
+    # onDraw draws (drawReplayControlsLayout) above them.
+    "replayControls": dict(
+        out="replayControlsMenu", onInit=None, onDraw="replayControlsDraw",
+        handlers={},
+        hide=[],
+    ),
     # QUIT's screen (menu.cpp showQuitMenu): QUIT TO <the system> / RETURN TO GAME, RETURN chosen;
     # fading out and in as its quitMenuOnInit / quitGame / returnToGame.
     "quit": dict(
@@ -433,6 +456,8 @@ def build_sub(doc, spec):
             hide(it)
     for name, text in spec.get("text", {}).items():
         set_text(by_name[name], text)
+    for name in spec.get("deferred", []):      # (a line its onDraw fills in: text_no_ptr)
+        set_text(by_name[name], deferred=True)
     for name, (x, y, w, h) in spec.get("move", {}).items():
         by_name[name]["coords"] = {"x": x, "y": y, "w": w, "h": h}
     for name, (picture, dx, dy) in spec.get("image", {}).items():
