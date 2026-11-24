@@ -703,6 +703,8 @@ static void fps_change(int32_t dir)
     save();
 }
 
+static void filter_show(char *o, int32_t c);       /* (DISPLAY OPTIONS' section, below) */
+static void filter_change(int32_t dir);
 static const Row k_videoRows[] = {
     { "WINDOW MODE",        winmode_show,  winmode_change },
     { "WINDOW SCALE",       scale_show,    scale_change },
@@ -710,6 +712,7 @@ static const Row k_videoRows[] = {
     { "WIDESCREEN",         wide_show,     wide_change },
     { "SMOOTH SCROLLING",   scroll_show,   scroll_change },
     { "SCALING",            scaling_show,  scaling_change },
+    { "PIXEL FILTER",       filter_show,   filter_change },     /* (beside SCALING: DISPLAY's until 2026-11-24) */
     { "MONITOR",            monitor_show,  monitor_change },
     { "RENDERER",           renderer_show, renderer_change },
     /* (launcher options, agent A) */
@@ -1167,7 +1170,8 @@ static void exact_change(int32_t dir)
 /* ===================================================================== the pages, by topic
  * (2026-11-24: sorted by what a setting is about -- GAMEPLAY how a match plays, DISPLAY how the
  * game and its menus look, RULES what competitions count and which kits clash, GENERAL the
- * replays and the start-up. The settings themselves, and SWOS.ini's keys, are as they were.) */
+ * replays, the start-up and the way into a match. KIT COLOURS is on both DISPLAY and RULES, the
+ * same setting; PIXEL FILTER is VIDEO's, beside SCALING. SWOS.ini's keys are as they were.) */
 
 static const Row k_gameplayRows[] = {
     { "GAME STYLE",              style_show,    style_change },
@@ -1178,7 +1182,6 @@ static const Row k_gameplayRows[] = {
     { "STRONGER KEEPERS",        keepers_show,  keepers_change },
 #endif
     { "CPU TACTICS",             tactics_show,  tactics_change },
-    { "PRE-MATCH PAUSE",         loadpause_show, loadpause_change },
 };
 static const Page k_gameplayPage = { "GAMEPLAY OPTIONS", k_gameplayRows, (int32_t)(sizeof k_gameplayRows / sizeof k_gameplayRows[0]) };
 _Static_assert(sizeof k_gameplayRows / sizeof k_gameplayRows[0] <= kRows, "a settings page holds kRows rows at most");
@@ -1188,7 +1191,7 @@ static const Row k_displayRows[] = {
     { "MENU LOOK",          look_show,     look_change },
     { "MENU CURSOR",        cursor_show,   cursor_change },
     { "MENU OPACITY",       opacity_show,  opacity_change },
-    { "PIXEL FILTER",       filter_show,   filter_change },
+    { "KIT COLOURS",        kitcols_show,  kitcols_change },    /* (RULES' too: which kits clash) */
     { "GK/REF CLASH KITS",  clashkits_show, clashkits_change },
     { "PITCH PALETTE",      pitchpal_show, pitchpal_change },
     { "KITS ON THE RESULT", reskits_show,  reskits_change },
@@ -1200,7 +1203,7 @@ static const Page k_displayPage = { "DISPLAY OPTIONS", k_displayRows, (int32_t)(
 _Static_assert(sizeof k_displayRows / sizeof k_displayRows[0] <= kRows, "a settings page holds kRows rows at most");
 
 static const Row k_rulesRows[] = {
-    { "KIT COLOURS",             kitcols_show,  kitcols_change },   /* (which kits clash: online, both players') */
+    { "KIT COLOURS",             kitcols_show,  kitcols_change },   /* (which kits clash: online, both players'; DISPLAY's too) */
 #if SWOS_TWEAK_FIXES
     { "LEAGUE RULES",            lrules_show,   lrules_change },
     { "POINTS FOR A WIN",        points_show,   points_change },
@@ -1218,6 +1221,7 @@ static const Row k_generalRows[] = {
     { "FRAME INFO OVERLAY",      overlay_show,  overlay_change },
     { "SKIP INTRO",              intro_show,    intro_change },
     { "INTRO PICTURES",          reels_show,    reels_change },
+    { "PRE-MATCH PAUSE",         loadpause_show, loadpause_change },
 };
 static const Page k_generalPage = { "GENERAL OPTIONS", k_generalRows, (int32_t)(sizeof k_generalRows / sizeof k_generalRows[0]) };
 _Static_assert(sizeof k_generalRows / sizeof k_generalRows[0] <= kRows, "a settings page holds kRows rows at most");

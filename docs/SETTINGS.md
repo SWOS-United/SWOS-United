@@ -298,7 +298,7 @@ passed them (`--help`).
 | Improved CPU tactics | `[gameplay] cpu_tactics = normal \| expert` | GAMEPLAY: CPU TACTICS | off line only (below) |
 | Skip intro | `[general] skip_intro` | GENERAL: SKIP INTRO | from the next start |
 | Skip image reels | `[general] skip_image_reels` | GENERAL: INTRO PICTURES (ALL / TITLE ONLY) | the intro is its title picture and tune alone, until fire |
-| No pause while loading | `[general] no_load_pause` | GAMEPLAY: PRE-MATCH PAUSE | the stadium screen's 3 seconds before a match left out; off line only |
+| No pause while loading | `[general] no_load_pause` | GENERAL: PRE-MATCH PAUSE | the stadium screen's 3 seconds before a match left out; off line only |
 | Game style, VSync, window mode, monitor, menu cursor | as before | VIDEO / GAMEPLAY / DISPLAY (menu cursor) | (they were there already) |
 | PC DOS screen / Amiga screen | none of its own | GAMEPLAY: GAME STYLE | the 320 x 200 view is part of the PC DOS style (below) |
 
@@ -337,8 +337,9 @@ OPTIONS -> SETTINGS -> **DISPLAY** (`src/settings_menus.c`, `k_displayRows`), ea
 `SWOS.ini` at once and in force at once (`Platform_SetDisplayOptions`). All of them are drawing
 only: no match state, no recording, no replay changes (`scripts/check_netplay_compat.sh`
 unchanged), and an online match plays the same whatever either player has set. KIT COLOURS,
-below, is the exception -- it decides which kits clash, and online both players' count -- and has
-been on the RULES page since 2026-11-24; GAME GRAPHICS, MENU LOOK and MENU CURSOR moved here then.
+below, is the exception -- it decides which kits clash, and online both players' count -- so it is on
+the RULES page as well (the same setting); GAME GRAPHICS, MENU LOOK and MENU CURSOR moved here on
+2026-11-24, PIXEL FILTER to VIDEO (beside SCALING).
 
 | row | SWOS.ini | SWOS 2020 / the launcher | what |
 |---|---|---|---|
