@@ -906,13 +906,22 @@ All in the loader and `UnpackMenu`. None occurs in the 47 compiled menus, and
     imported as it is from joypadConfig.mnu).
   - VIDEO OPTIONS: WINDOW MODE (windowed / fullscreen / exclusive, now: `Platform_SetFullscreenMode`),
     WINDOW SCALE (now), VSYNC, WIDESCREEN, SMOOTH SCROLLING, SCALING, MONITOR, RENDERER (from the
-    next start, said in the note), MENU CURSOR (below).
+    next start, said in the note), RESOLUTION, AUTO CENTERING, SHOW FPS.
   - AUDIO OPTIONS: the four volumes (`AudioSDL_SetKindVolumes`, 10% a step), MENU MUSIC (OPTIONS'
     row), MATCH SOUNDS and MUSIC Amiga/PC, PC MENU MUSIC midi/mp3, COMMENTARY off/on/auto (all now),
     OUTPUT mono/stereo (next start).
-  - GAMEPLAY OPTIONS: GAME STYLE (`GameplayStyle_Set`), AUTO SAVE REPLAYS (next start), HIGHLIGHT
-    DEFAULT SPEED and FRAME INFO OVERLAY (`ReplayV2_ViewerConfigure`, now) -- the rest of SWOS 2020's
-    gameplayOptions screen is OPTIONS' own rows, or other features (pitch selection, clash kits).
+  - GAMEPLAY OPTIONS (how a match plays): GAME STYLE (`GameplayStyle_Set`), BALL CONTEST, STRONGER
+    KEEPERS, CPU TACTICS, PRE-MATCH PAUSE -- the rest of SWOS 2020's gameplayOptions screen is
+    OPTIONS' own rows, or other features (pitch selection, clash kits).
+  - DISPLAY OPTIONS (how the game and its menus look): GAME GRAPHICS (`[graphics] style`), MENU
+    LOOK, MENU CURSOR (below), MENU OPACITY, PIXEL FILTER, GK/REF CLASH KITS, PITCH PALETTE, KITS ON
+    THE RESULT, RESULT BAND, SCOREBOARD, MOUSE POINTER.
+  - RULES OPTIONS: KIT COLOURS (which kits clash), LEAGUE RULES, POINTS FOR A WIN, SUBSTITUTES,
+    LEAGUE CRASH FIXES, CAREER EXACT LOADS.
+  - GENERAL OPTIONS: AUTO SAVE REPLAYS (next start), HIGHLIGHT DEFAULT SPEED and FRAME INFO
+    OVERLAY (`ReplayV2_ViewerConfigure`, now), SKIP INTRO, INTRO PICTURES.
+  The pages were sorted by topic on 2026-11-24 (ARTWORK became GAME GRAPHICS); SWOS.ini's keys
+  are as they were.
 - **F6 in a menu** (SWOS 2020's controls.cpp:2202): with a game in progress, the main menu's SAVE
   (`QuickSave_FromMenu`, the body of `SaveContest` without its `CommonMenuExit`, which sets up the
   MAIN menu's entries) from where the player is. Not on the main menu (it has SAVE), on PLAY MATCH,

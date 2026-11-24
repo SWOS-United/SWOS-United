@@ -681,7 +681,6 @@ static const Row k_videoRows[] = {
     { "SCALING",            scaling_show,  scaling_change },
     { "MONITOR",            monitor_show,  monitor_change },
     { "RENDERER",           renderer_show, renderer_change },
-    { "MENU CURSOR",        cursor_show,   cursor_change },
     /* (launcher options, agent A) */
     { "RESOLUTION",         res_show,      res_change },
     { "AUTO CENTERING",     centre_show,   centre_change },
@@ -876,7 +875,7 @@ static void keepers_change(int32_t dir)
 }
 #endif
 
-/* ARTWORK: [graphics] style amiga | dos | 2020 -- what the pitch, HUD and menus are drawn from
+/* GAME GRAPHICS: [graphics] style amiga | dos | 2020 -- what the pitch, HUD and menus are drawn from
  * (main.c reads it before anything is loaded: from the next start). */
 static int32_t art_index(void)
 {
@@ -965,20 +964,6 @@ static void loadpause_change(int32_t dir)
     save();
 }
 
-static const Row k_gameplayRows[] = {
-    { "GAME STYLE",              style_show,    style_change },
-    { "AUTO SAVE REPLAYS",       autosave_show, autosave_change },
-    { "HIGHLIGHT DEFAULT SPEED", hlspeed_show,  hlspeed_change },
-    { "FRAME INFO OVERLAY",      overlay_show,  overlay_change },
-    /* (launcher options, agent A) */
-    { "ARTWORK",                 art_show,      art_change },
-    { "MENU LOOK",               look_show,     look_change },
-    { "SKIP INTRO",              intro_show,    intro_change },
-    { "INTRO PICTURES",          reels_show,    reels_change },
-    { "PRE-MATCH PAUSE",         loadpause_show, loadpause_change },
-};
-static const Page k_gameplayPage = { "GAMEPLAY OPTIONS", k_gameplayRows, (int32_t)(sizeof k_gameplayRows / sizeof k_gameplayRows[0]) };
-_Static_assert(sizeof k_gameplayRows / sizeof k_gameplayRows[0] <= kRows, "a settings page holds kRows rows at most");
 
 /* ===================================================================== DISPLAY OPTIONS
  * (launcher options, agent B; docs/RENDERING.md "DISPLAY OPTIONS") The SWOS United Launcher's look
@@ -1078,19 +1063,6 @@ static void resband_change(int32_t d)         { mod_setting_change("display2020"
 static void board_show(char *o, int32_t c)    { mod_setting_show("scoreboard", "corner", "top-left", o, c); }
 static void board_change(int32_t d)           { mod_setting_change("scoreboard", "corner", "top-left", k_corners, 4, d); }
 
-static const Row k_displayRows[] = {
-    { "MENU OPACITY",       opacity_show,  opacity_change },
-    { "PIXEL FILTER",       filter_show,   filter_change },
-    { "KIT COLOURS",        kitcols_show,  kitcols_change },
-    { "GK/REF CLASH KITS",  clashkits_show, clashkits_change },
-    { "PITCH PALETTE",      pitchpal_show, pitchpal_change },
-    { "KITS ON THE RESULT", reskits_show,  reskits_change },
-    { "RESULT BAND",        resband_show,  resband_change },
-    { "SCOREBOARD",         board_show,    board_change },
-    { "MOUSE POINTER",      pointer_show,  pointer_change },     /* (from CONTROLS: it has CALL BENCH twice) */
-};
-static const Page k_displayPage = { "DISPLAY OPTIONS", k_displayRows, (int32_t)(sizeof k_displayRows / sizeof k_displayRows[0]) };
-_Static_assert(sizeof k_displayRows / sizeof k_displayRows[0] <= kRows, "a settings page holds kRows rows at most");
 
 /* ===================================================================== RULES
  * The tweaks that change the original's rules (include/tweaks.h): the contest fix and SWOS 2020's
@@ -1160,7 +1132,14 @@ static void exact_change(int32_t dir)
                                         : "THE ORIGINAL'S: A LOADED CAREER PLAYS ON DIFFERENTLY");
 }
 
-static const Row k_rulesRows[] = {
+
+/* ===================================================================== the pages, by topic
+ * (2026-11-24: sorted by what a setting is about -- GAMEPLAY how a match plays, DISPLAY how the
+ * game and its menus look, RULES what competitions count and which kits clash, GENERAL the
+ * replays and the start-up. The settings themselves, and SWOS.ini's keys, are as they were.) */
+
+static const Row k_gameplayRows[] = {
+    { "GAME STYLE",              style_show,    style_change },
 #if SWOS_TWEAK_FIXES
     { "BALL CONTEST",            contest_show,  contest_change },
 #endif
@@ -1168,16 +1147,49 @@ static const Row k_rulesRows[] = {
     { "STRONGER KEEPERS",        keepers_show,  keepers_change },
 #endif
     { "CPU TACTICS",             tactics_show,  tactics_change },
+    { "PRE-MATCH PAUSE",         loadpause_show, loadpause_change },
+};
+static const Page k_gameplayPage = { "GAMEPLAY OPTIONS", k_gameplayRows, (int32_t)(sizeof k_gameplayRows / sizeof k_gameplayRows[0]) };
+_Static_assert(sizeof k_gameplayRows / sizeof k_gameplayRows[0] <= kRows, "a settings page holds kRows rows at most");
+
+static const Row k_displayRows[] = {
+    { "GAME GRAPHICS",      art_show,      art_change },
+    { "MENU LOOK",          look_show,     look_change },
+    { "MENU CURSOR",        cursor_show,   cursor_change },
+    { "MENU OPACITY",       opacity_show,  opacity_change },
+    { "PIXEL FILTER",       filter_show,   filter_change },
+    { "GK/REF CLASH KITS",  clashkits_show, clashkits_change },
+    { "PITCH PALETTE",      pitchpal_show, pitchpal_change },
+    { "KITS ON THE RESULT", reskits_show,  reskits_change },
+    { "RESULT BAND",        resband_show,  resband_change },
+    { "SCOREBOARD",         board_show,    board_change },
+    { "MOUSE POINTER",      pointer_show,  pointer_change },     /* (CONTROLS has no room: CALL BENCH twice) */
+};
+static const Page k_displayPage = { "DISPLAY OPTIONS", k_displayRows, (int32_t)(sizeof k_displayRows / sizeof k_displayRows[0]) };
+_Static_assert(sizeof k_displayRows / sizeof k_displayRows[0] <= kRows, "a settings page holds kRows rows at most");
+
+static const Row k_rulesRows[] = {
+    { "KIT COLOURS",             kitcols_show,  kitcols_change },   /* (which kits clash: online, both players') */
 #if SWOS_TWEAK_FIXES
-    { "LEAGUE CRASH FIXES",      lfix_show,     lfix_change },
     { "LEAGUE RULES",            lrules_show,   lrules_change },
     { "POINTS FOR A WIN",        points_show,   points_change },
     { "SUBSTITUTES",             subs_show,     subs_change },
+    { "LEAGUE CRASH FIXES",      lfix_show,     lfix_change },
 #endif
     { "CAREER EXACT LOADS",      exact_show,    exact_change },
 };
 static const Page k_rulesPage = { "RULES OPTIONS", k_rulesRows, (int32_t)(sizeof k_rulesRows / sizeof k_rulesRows[0]) };
 _Static_assert(sizeof k_rulesRows / sizeof k_rulesRows[0] <= kRows, "a settings page holds kRows rows at most");
+
+static const Row k_generalRows[] = {
+    { "AUTO SAVE REPLAYS",       autosave_show, autosave_change },
+    { "HIGHLIGHT DEFAULT SPEED", hlspeed_show,  hlspeed_change },
+    { "FRAME INFO OVERLAY",      overlay_show,  overlay_change },
+    { "SKIP INTRO",              intro_show,    intro_change },
+    { "INTRO PICTURES",          reels_show,    reels_change },
+};
+static const Page k_generalPage = { "GENERAL OPTIONS", k_generalRows, (int32_t)(sizeof k_generalRows / sizeof k_generalRows[0]) };
+_Static_assert(sizeof k_generalRows / sizeof k_generalRows[0] <= kRows, "a settings page holds kRows rows at most");
 
 /* ===================================================================== SETTINGS (the hub) */
 
@@ -1204,6 +1216,7 @@ static void settingsMenu_audio_OnSelect(void)    { page_show(&k_audioPage); }
 static void settingsMenu_gameplay_OnSelect(void) { page_show(&k_gameplayPage); }
 static void settingsMenu_display_OnSelect(void)  { page_show(&k_displayPage); }   /* (launcher options, agent B) */
 static void settingsMenu_rules_OnSelect(void)    { page_show(&k_rulesPage); }     /* (the tweaks on by default) */
+static void settingsMenu_general_OnSelect(void)  { page_show(&k_generalPage); }   /* (replays, start-up) */
 static void settingsMenu_exit_OnSelect(void)     { SetExitMenuFlag(); }
 
 /* ===================================================================== CONTROLLER SETUP */
@@ -1476,6 +1489,7 @@ static const MenuSymbol k_handlers[] = {
     HANDLER(settingsMenu_gameplay_OnSelect),
     HANDLER(settingsMenu_display_OnSelect),
     HANDLER(settingsMenu_rules_OnSelect),
+    HANDLER(settingsMenu_general_OnSelect),
     HANDLER(settingsMenu_exit_OnSelect),
     HANDLER(settingsPage_OnInit),
     HANDLER(settingsPage_OnDraw),
@@ -1566,7 +1580,7 @@ static int DisplayOptions_SelfTest(void)
 int SettingsMenus_SelfTest(void)
 {
     static const Page *const pages[] = { &k_controlsPage, &k_videoPage, &k_audioPage, &k_gameplayPage,
-                                         &k_displayPage, &k_rulesPage };
+                                         &k_displayPage, &k_rulesPage, &k_generalPage };
     int fails = 0;
     SettingsMenus_Init();
     for (size_t p = 0; p < sizeof pages / sizeof pages[0]; p++) {
