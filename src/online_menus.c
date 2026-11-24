@@ -2516,7 +2516,7 @@ static int32_t kits_warning(const KitLook kits[2])
          * dialog instead. Not showing anything read as UNIFORM, and the team screen and this
          * went round and round. */
         static const char *const kButtons[2] = { "PLAY ANYWAY", "UNIFORM" };
-        s_kaPlay = MenuDialog_Show("THE KITS LOOK ALIKE",
+        s_kaPlay = MenuDialog_Show("KIT CLASH",
                                    "THE GAME WILL NOT CHANGE THESE KITS.|PLAY IN THEM ONLY IF BOTH OF YOU AGREE.",
                                    kButtons, 2, 0) == 0;
     } else {
