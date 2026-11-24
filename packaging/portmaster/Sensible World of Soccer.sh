@@ -23,7 +23,7 @@ exec > "$GAMEDIR/log.txt" 2>&1
 
 # No game data ships with the port: see assets/README.txt.
 if [ ! -f "$GAMEDIR/assets/ASSETS.ini" ]; then
-  pm_message "No game data. Copy the assets folder made by OpenSWOS Setup to ports/swos/assets (see assets/README.txt there)."
+  pm_message "No game data. Copy the assets folder made by SWOS United Setup to ports/swos/assets (see assets/README.txt there)."
   sleep 8
   pm_finish
   exit 1

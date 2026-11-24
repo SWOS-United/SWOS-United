@@ -1,6 +1,6 @@
 
- OPENSWOS for the Amiga
- =========================
+ SWOS UNITED for the Amiga
+ ==========================
 
  Sensible World of Soccer, rebuilt in C from the original Amiga game, so
  that one source code runs on the Amiga, Windows, macOS, Linux, the web
@@ -11,11 +11,11 @@
  ben@baker76.com
 
  "Sensible World of Soccer" (C) 1994-97 Sensible Software.
- OpenSWOS is a fan project and is not affiliated with Sensible Software
+ SWOS United is a fan project and is not affiliated with Sensible Software
  or its current rights holders.
 
  Downloads, the other versions and the changelog:
-        https://baker76.itch.io/openswos
+        https://github.com/SWOS-United/SWOS-United
 
 
  WHAT YOU NEED
@@ -36,12 +36,12 @@
  The drawer has the game but not Sensible World of Soccer's own graphics,
  sound and team data: those are made from a copy of the game you own (the
  two SWOS 96/97 disk images, .adf, and the PC version if you have it), by
- OpenSWOS Setup. The setup runs on a PC or a Mac, not on the Amiga:
+ SWOS United Setup. The setup runs on a PC or a Mac, not on the Amiga:
 
  1. Unpack the archive on the PC or Mac. You get a SWOS drawer with its
     icon.
- 2. Download OpenSWOS-Setup.zip from https://baker76.itch.io/openswos,
-    unpack it and run OpenSWOS Setup (its ReadMe.txt says how).
+ 2. Download the setup zip from https://github.com/SWOS-United/SWOS-United,
+    unpack it and run SWOS United Setup (its ReadMe.txt says how).
  3. Install from your disk images, then under "Amiga version" choose the
     SWOS drawer and press "Add the game data".
  4. Copy the drawer to your Amiga's hard drive, or to the drive of
@@ -82,7 +82,7 @@
  grafs         graphics
  grafs_aga     AGA graphics
  sound         music and sound effects
-               (these four are filled by OpenSWOS Setup)
+               (these four are filled by SWOS United Setup)
  save          your saved games
  c, s          only for booting an emulator from the drawer (above)
 
@@ -92,7 +92,7 @@
 
  Found a bug? Please report it at
 
-   github.com/benbaker76/OpenSWOS/issues
+   github.com/SWOS-United/SWOS-United/issues
 
  The version is shown at the bottom of the main menu. Please give it with
  any report, so we know which build you were playing.

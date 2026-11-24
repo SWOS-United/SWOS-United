@@ -1,9 +1,9 @@
 
- OPENSWOS SETUP
- ==============
+ SWOS UNITED SETUP
+ =================
 
- OpenSWOS does not include Sensible World of Soccer's graphics, sound or
- team data. OpenSWOS Setup makes them, once, from a copy of the game you
+ SWOS United does not include Sensible World of Soccer's graphics, sound or
+ team data. SWOS United Setup makes them, once, from a copy of the game you
  own:
 
  - the PC version (from GOG): the installed game's folder
@@ -25,7 +25,7 @@
  the Amiga, or for a game that is on another computer.
 
  Downloads, the other versions and the changelog:
-        https://baker76.itch.io/openswos
+        https://github.com/SWOS-United/SWOS-United
 
 
  RUNNING IT
@@ -35,7 +35,7 @@
  in the folder above them.
 
  Windows   Windows\openswos-setup.exe
- macOS     macOS/OpenSWOS Setup.app (Apple silicon and Intel Macs). The
+ macOS     macOS/SWOS United Setup.app (Apple silicon and Intel Macs). The
            first time, right-click it and choose Open: it is not signed.
  Linux     Linux/openswos-setup (x86-64), or Linux/swosdata
 
@@ -47,16 +47,16 @@
 
  The data goes where the game looks for it (the "Into" line shows it):
 
-   Windows   Documents\SWOS\assets
-   macOS     ~/Library/Application Support/SWOS/assets
-   Linux     ~/.swos/assets
+   Windows   Documents\SWOSUnited\assets
+   macOS     ~/Library/Application Support/SWOSUnited/assets
+   Linux     ~/.swosunited/assets
 
 
  THE AMIGA
  ---------
 
  The setup cannot run on the Amiga; run it on a PC or Mac, on its Amiga
- tab. The Amiga version of OpenSWOS needs both the Amiga version of the
+ tab. The Amiga version of SWOS United needs both the Amiga version of the
  game and the PC version. Then make one of:
 
  - SWOS drawer: copy it, with SWOS.info, to your Amiga's hard drive, or
@@ -94,11 +94,11 @@
  PROBLEMS
  --------
 
- Found a bug? Please report it at github.com/benbaker76/OpenSWOS/issues
+ Found a bug? Please report it at github.com/SWOS-United/SWOS-United/issues
  with what happened. The setup writes setup.log beside the folder it
  installs to: attach it too.
 
 
- "Sensible World of Soccer" (C) 1994-97 Sensible Software. OpenSWOS is a
+ "Sensible World of Soccer" (C) 1994-97 Sensible Software. SWOS United is a
  fan project and is not affiliated with Sensible Software or its current
  rights holders.

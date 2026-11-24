@@ -1,4 +1,4 @@
-# OpenSWOS for PortMaster
+# SWOS United for PortMaster
 
 A PortMaster port for aarch64 handhelds. Tested on an Anbernic RG35XX Plus and a
 TrimUI Brick, both on Knulli. The launcher also has a fallback for stock TrimUI
@@ -19,7 +19,7 @@ taken from `bin/`, so game data in a local `bin/` cannot reach the zip.
 
 ## Install
 
-**The easy way:** run OpenSWOS Setup on a PC or Mac, tick **Handheld**, and follow it. Its last
+**The easy way:** run SWOS United Setup on a PC or Mac, tick **Handheld**, and follow it. Its last
 screen finds the handheld's SD card by its PortMaster `ports` folder (`ports/` on ArkOS,
 ROCKNIX and AmberELEC, `roms/ports` on Knulli, `Data/ports` on stock TrimUI) and copies the
 port (`portmaster/swos.zip`, beside the setup in its zip), the game's data and the options you
@@ -32,7 +32,7 @@ chose onto it. A World 2026-27 already on the card stays. By hand:
    | Knulli | `/userdata/roms/ports/autoinstall` |
    | Stock TrimUI | `/mnt/SDCARD/Apps/PortMaster/PortMaster/autoinstall` |
 
-2. Make the game data on a PC or Mac: run OpenSWOS Setup with the GOG PC version, the
+2. Make the game data on a PC or Mac: run SWOS United Setup with the GOG PC version, the
    Amiga `.adf` floppies, or both ([INSTALL.md](../../INSTALL.md)). With both, you get
    the Amiga's music, sound and loading screens as well.
 
