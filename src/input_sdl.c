@@ -1103,11 +1103,21 @@ int InputSDL_AnyPadButtonHeld(void)
     return 0;
 }
 
+/* What each pad's buttons read at the last poll of a wait, for its log lines: a press missed
+ * there shows as no line at all, one seen but not taken as a line without "taken". */
+static uint64_t s_pressSeen[INPUTSDL_MAX_DEVICES];
+
 void InputSDL_PadPressBegin(void)
 {
     SDL_JoystickUpdate();
-    for (int d = 0; d < INPUTSDL_MAX_DEVICES; d++)
+    for (int d = 0; d < INPUTSDL_MAX_DEVICES; d++) {
         s_pressBase[d] = dev_buttons_now(d);
+        s_pressSeen[d] = s_pressBase[d];
+        if (dev_open(d))
+            fprintf(stderr, "[input] waiting for a button: pad %d \"%s\" (%s, %d buttons) held %llx\n", d,
+                    dev_name(d), s_dev_gc[d] ? "mapped" : "raw", dev_button_count(d),
+                    (unsigned long long)s_pressBase[d]);
+    }
 }
 
 /* A button pressed since InputSDL_PadPressBegin, on device `only` (or any, -1): 1 and the
@@ -1120,6 +1130,11 @@ int InputSDL_PadPressPoll(int only, int *dev, int *button)
         if (!dev_open(d) || (only >= 0 && d != only))
             continue;
         now = dev_buttons_now(d);
+        if (now != s_pressSeen[d]) {
+            fprintf(stderr, "[input] pad %d buttons %llx -> %llx%s\n", d, (unsigned long long)s_pressSeen[d],
+                    (unsigned long long)now, (now & ~s_pressBase[d]) ? " (a new press: taken)" : "");
+            s_pressSeen[d] = now;
+        }
         fresh = now & ~s_pressBase[d];
         s_pressBase[d] &= now;
         for (int b = 0; b < 64; b++) {
