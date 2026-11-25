@@ -1978,6 +1978,15 @@ static void menu_fade_over_backdrop(void)
 
 int Platform_MenuFadeAlpha(void) { return s_fadeA; }
 
+SDL_Color Platform_MenuFadeTint(void)
+{
+    extern int g_fadeLevel;
+    const int fade = g_fadeLevel < 0 ? 0 : g_fadeLevel > 0x80 ? 0x80 : g_fadeLevel;
+    const uint8_t lit = (uint8_t)(s_fadeA < 255 ? 255 : fade * 255 / 0x80);
+    const SDL_Color c = { lit, lit, lit, (uint8_t)s_fadeA };
+    return c;
+}
+
 /* An ARGB colour of the menu, its fade's alpha over the backdrop (`under`; NULL: the GPU's,
  * drawn under -- the alpha kept). */
 static uint32_t fade_over(uint32_t argb, const uint32_t *under, int fadeA)

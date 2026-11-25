@@ -350,6 +350,9 @@ void           Platform_TrueColourBegin(void);
 void           Platform_TrueColourPixel(int x, int y, uint8_t index, uint32_t rgb);
 /* The menus' fade as their opacity over the backdrop picture, 0..255; 255: none (platform_sdl.c). */
 int            Platform_MenuFadeAlpha(void);
+/* A menu overlay's colour under the menus' fade (gfx.h Gfx_DrawTextureTint): darkened as the
+ * palette is, or over the backdrop picture faded out as the menu is; white when no fade. */
+SDL_Color      Platform_MenuFadeTint(void);
 uint8_t       *Platform_HudLayerBuffer(void);
 
 /* A cutscene over the whole picture (src/mod_api.c ModApi_Cutscene*, the PC cutscenes mod):

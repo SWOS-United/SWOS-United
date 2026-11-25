@@ -218,7 +218,11 @@ static void frame_drawn(void)
     Gfx_UpdateTexture(s_tex, s_rgba, s_lw * 4);
     Gfx_SetSpace(GFX_SPACE_PICTURE);
     Gfx_SetBlend(GFX_BLEND_ALPHA);
-    Gfx_DrawTexture(s_tex, NULL, NULL);
+    /* with the menus' fade, as the frame under it (its text shows through): darkened as the
+     * palette is -- or, over the backdrop picture, faded out as the menu is -- else the shading
+     * stood full under text still coming up */
+    extern SDL_Color Platform_MenuFadeTint(void);
+    Gfx_DrawTextureTint(s_tex, NULL, NULL, Platform_MenuFadeTint());
 }
 
 const ModDef ModDef_dosmenus = {

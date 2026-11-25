@@ -1407,7 +1407,10 @@ static void world_career_paint(void)
     Gfx_UpdateTexture(s_wcTex, s_wcRgba, w * 4);
     Gfx_SetSpace(GFX_SPACE_PICTURE);
     Gfx_SetBlend(GFX_BLEND_ALPHA);
-    Gfx_DrawTexture(s_wcTex, NULL, &dst);
+    {   /* (with the menus' fade, as the button under it) */
+        extern SDL_Color Platform_MenuFadeTint(void);
+        Gfx_DrawTextureTint(s_wcTex, NULL, &dst, Platform_MenuFadeTint());
+    }
 }
 
 const ModDef ModDef_menus2020 = {
