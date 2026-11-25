@@ -366,6 +366,13 @@ static int handler(void *user, const char *section,
             opts->replay_frame_overlay = b;
         else if (eqi(name, "speed"))
             opts->replay_half_speed = eqi(value, "half");
+        else if (eqi(name, "box_x") || eqi(name, "box_y")) {
+            char *end;
+            const long v = strtol(value, &end, 10);
+            const int ok = end != value && v >= -1 && v < 4096;
+            if (eqi(name, "box_x")) opts->replay_box_x = ok ? (int)v : -1;
+            else                    opts->replay_box_y = ok ? (int)v : -1;
+        }
     } else if (eqi(section, "netplay")) {
         if (eqi(name, "matchmaker"))
             snprintf(opts->matchmaker, sizeof opts->matchmaker, "%s", value);
@@ -856,6 +863,17 @@ static int settings_build(const PlatformInitOptions *opts, IniEntry *items, char
     SETTING(n) = (IniEntry){ "replays", "speed",
         "; speed: normal | half — the speed a recording starts at in the viewer.",
         opts->replay_half_speed ? "half" : "normal" };
+    {
+        static char bx[16], by[16];
+        snprintf(bx, sizeof bx, "%d", opts->replay_box_x);
+        snprintf(by, sizeof by, "%d", opts->replay_box_y);
+        SETTING(n) = (IniEntry){ "replays", "box_x",
+            "; box_x, box_y: where the frame box is (its top left, in the picture's pixels), as\n"
+            "; dragged with the mouse (the bar's handle seeks, the rest of the box moves it);\n"
+            "; -1 the bottom left.",
+            bx };
+        SETTING(n) = (IniEntry){ "replays", "box_y", NULL, by };
+    }
     SETTING(n) = (IniEntry){ "netplay", "matchmaker",
         "; matchmaker: the server MULTIPLAYER logs in to, as \"host\" or \"host:port\"\n"
         "; (default port 19602). Empty means the public server, " PROJECT_MM_HOST ". You can type it\n"

@@ -865,6 +865,7 @@ int main(int argc, char **argv)
     opts.replay_auto_save = 0;    /* default: LATEST.SRP only, no dated copy per match */
     opts.replay_frame_overlay = 1;    /* (SWOS 2020's FRAME INFO OVERLAY: on) */
     opts.replay_half_speed = 0;
+    opts.replay_box_x = opts.replay_box_y = -1;
     opts.vol_music = opts.vol_chants = opts.vol_commentary = opts.vol_effects = 100;
     opts.netplay_name[0] = '\0';
     opts.netplay_remember = 1;    /* REMEMBER LOGIN INFO: on, as the login screen shows it */

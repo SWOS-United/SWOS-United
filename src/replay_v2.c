@@ -40,6 +40,7 @@ extern uint16_t _pitchNumberAndType;   /* low byte: the pitch condition 0-6 */
 #include "platform_sdl.h"   /* Platform_NearestColour: the prediction overlay */
 #include "dos_mode.h"       /* _gDosView: the view a recording was played in */
 #include "text_render.h"    /* DrawMenuText: the viewer's frame box */
+#include "swos_settings.h"  /* Settings_Save: where the frame box was left */
 #ifdef SWOS_NETPLAY
 #include "netplay_ghost.h"  /* Ghost_Prediction: this player's PRED and SEEN */
 #include "match_prediction.h"   /* the other player's, over the lobby's link */
@@ -2219,21 +2220,125 @@ static int32_t viewer_advance(int32_t *fresh)
     return 1;
 }
 
-/* The frame box (SWOS 2020's, the bottom left: speed; state and scene; frame; a bar). At the
- * screen's very left edge, its size kept (2026-11-25), three rows 10 apart -- the state left, the
- * scene right on one. On the HUD layer where there is one (Platform_HudLayerBuffer: SMOOTH
- * SCROLLING): the frame is shifted by the camera's fraction each frame and the box, drawn into
- * it, shook with it; the layer is not shifted. Its background is the frame darkened (+128, the
- * palette's dark half), read from the frame and put on the layer. */
+/* The frame box (SWOS 2020's, the bottom left: speed; state and scene; frame; a bar). Three rows 10
+ * apart -- the state left, the scene right on one. On the HUD layer where there is one
+ * (Platform_HudLayerBuffer: SMOOTH SCROLLING): the frame is shifted by the camera's fraction each
+ * frame and the box, drawn into it, shook with it; the layer is not shifted. Its background is the
+ * frame darkened (+128, the palette's dark half), read from the frame and put on the layer.
+ *
+ * The mouse, as the replayer on swos.eu: the bar's handle is grabbed and dragged to seek, the rest
+ * of the box drags the box -- never past the screen's edge. Where it was left is kept in SWOS.ini
+ * ([replays] box_x, box_y; -1 the bottom left, its old place at the screen's very left). */
+enum { kBoxW = 132, kBoxH = 43, kRow = 10, kBarX = 10, kBarW = 112 };
+
+static struct {
+    int32_t x, y;               /* the box's top left as drawn (-1: not placed yet) */
+    int32_t drag;               /* 0 none, 1 the handle (seeking), 2 the box (moving) */
+    int32_t dx, dy;             /* (moving: the grab's offset in the box) */
+    int32_t wasDown, lastX, lastY, moved;
+    Uint32  movedAt;
+} s_box = { -1, -1, 0, 0, 0, 0, -1, -1, 0, 0 };
+
+/* The cursor over a recording being viewed: while the mouse moves, and while it drags
+ * (menu_mouse.c leaves it alone then). */
+int ReplayV2_MouseShown(void)
+{
+    if (!s_view.active || !s_view.overlay || s_trace)
+        return 0;
+    return s_box.drag != 0 || (s_box.movedAt != 0 && SDL_GetTicks() - s_box.movedAt < 3000u);
+}
+
+static void box_clamp(void)
+{
+    const int32_t w = _screen_width, h = _screen_height;
+    if (s_box.x > w - kBoxW) s_box.x = w - kBoxW;
+    if (s_box.y > h - kBoxH) s_box.y = h - kBoxH;
+    if (s_box.x < 0) s_box.x = 0;
+    if (s_box.y < 0) s_box.y = 0;
+}
+
+/* Where the box was left, into SWOS.ini (settings_menus.c's way: the options, then the file). */
+static void box_save(void)
+{
+    extern PlatformInitOptions *g_arcadeOpts;
+    extern const char *g_arcadeIniPath;
+    if (!g_arcadeOpts || !g_arcadeIniPath)
+        return;
+    g_arcadeOpts->replay_box_x = s_box.x;
+    g_arcadeOpts->replay_box_y = s_box.y;
+    Settings_Save(g_arcadeOpts, g_arcadeIniPath);
+}
+
+/* The mouse on the box, once a drawn frame: `handle` the handle's left edge, `total` the frames. */
+static void box_mouse(int32_t handle, int32_t barY, int32_t total)
+{
+    extern int Platform_MouseToPicture(int wx, int wy, int *x, int *y);
+    int wx, wy, x, y;
+    const Uint32 buttons = SDL_GetMouseState(&wx, &wy);
+    const int down = (buttons & SDL_BUTTON_LMASK) != 0;
+    const int on = Platform_MouseToPicture(wx, wy, &x, &y) == 0;
+    if (on && s_box.lastX >= 0 && (x != s_box.lastX || y != s_box.lastY))
+        s_box.movedAt = SDL_GetTicks();
+    if (on) {
+        s_box.lastX = x;
+        s_box.lastY = y;
+    } else {
+        x = s_box.lastX;
+        y = s_box.lastY;
+    }
+    if (!down) {
+        if (s_box.drag == 2 && s_box.moved)
+            box_save();
+        s_box.drag = 0;
+    } else if (!s_box.wasDown && on && s_box.drag == 0) {      /* a press: what it grabbed */
+        if (x >= handle - 2 && x < handle + 8 && y >= barY - 2 && y < barY + 11) {
+            s_box.drag = 1;
+        } else if (x >= s_box.x && x < s_box.x + kBoxW && y >= s_box.y && y < s_box.y + kBoxH) {
+            s_box.drag = 2;
+            s_box.dx = x - s_box.x;
+            s_box.dy = y - s_box.y;
+            s_box.moved = 0;
+        }
+        if (s_box.drag)
+            s_box.movedAt = SDL_GetTicks();
+    }
+    s_box.wasDown = down;
+    if (s_box.drag == 1 && total > 0 && x >= 0) {          /* the handle's middle under the mouse */
+        int32_t f = (int32_t)((int64_t)(x - (s_box.x + kBarX)) * total / kBarW);
+        if (f < 0) f = 0;
+        if (f > total - 1) f = total - 1;
+        if (f != s_view.pos / 4)
+            s_view.jump = f;
+    } else if (s_box.drag == 2 && x >= 0) {
+        const int32_t ox = s_box.x, oy = s_box.y;
+        s_box.x = x - s_box.dx;
+        s_box.y = y - s_box.dy;
+        box_clamp();
+        if (s_box.x != ox || s_box.y != oy)
+            s_box.moved = 1;
+    }
+}
+
 static void viewer_overlay(void)
 {
     extern void *_charTables[];
     extern volatile uintptr_t _frontbufferBasePtr;
     extern uint8_t *Platform_HudLayerBuffer(void);
     extern void     Platform_HudLayerMark(int x, int y, int w, int h);
-    enum { kW = 132, kRow = 10 };
+    extern PlatformInitOptions *g_arcadeOpts;
     char buf[48];
-    const int32_t h = _screen_height, y0 = h - 20, y1 = y0 - kRow, y2 = y1 - kRow, top = y2 - 3;
+    if (s_box.x < 0 || s_box.y < 0) {   /* placed: where it was left, else the bottom left */
+        const int saved = g_arcadeOpts && g_arcadeOpts->replay_box_x >= 0 && g_arcadeOpts->replay_box_y >= 0;
+        s_box.x = saved ? g_arcadeOpts->replay_box_x : 0;
+        s_box.y = saved ? g_arcadeOpts->replay_box_y : _screen_height - kBoxH;
+    }
+    box_clamp();                        /* (the screen may have changed its shape) */
+    const int32_t frameNo = s_view.pos / 4, total = (int32_t)s_play.frameCount;
+    const int32_t bx1 = s_box.x + kBarX, bx2 = bx1 + kBarW, by = s_box.y + 3 + 2 * kRow + 9;
+    box_mouse(bx1 + (total ? (int32_t)((int64_t)(bx2 - bx1) * frameNo / total) : 0) - 3, by, total);
+    const int32_t bx = s_box.x, top = s_box.y, y2 = top + 3, y1 = y2 + kRow, y0 = y1 + kRow;
+    const int32_t xp = s_box.x + kBarX + (total ? (int32_t)((int64_t)kBarW * frameNo / total) : 0) - 3;
+    const int32_t bottom = top + kBoxH;
     uint8_t *frame = (uint8_t *)(uintptr_t)_frontbufferBasePtr;
     uint8_t *hud = Platform_HudLayerBuffer();
     uint8_t *fb = hud ? hud : frame;
@@ -2242,36 +2347,33 @@ static void viewer_overlay(void)
     const int savedX = _menu_draw_x_offset;
     if (!frame)
         return;
-    for (int32_t y = top; y < h; y++)
-        for (int32_t x = 0; x < kW; x++) {
+    for (int32_t y = top; y < bottom; y++)
+        for (int32_t x = bx; x < bx + kBoxW; x++) {
             const uint8_t c = frame[y * stride + x];
             fb[y * stride + x] = c < 128 ? (uint8_t)(c + 128) : c;
         }
     if (hud)
-        Platform_HudLayerMark(0, top, kW, h - top);
+        Platform_HudLayerMark(bx, top, kBoxW, kBoxH);
     _frontbufferBasePtr = (uintptr_t)fb;
     _menu_draw_x_offset = 0;            /* (the screen's edge, not the 4:3 picture's) */
     uint8_t *small = (uint8_t *)_charTables[0];
     snprintf(buf, sizeof buf, " REPLAY SPEED: %d.%02dX", (int)(s_view.quarter / 4), (int)(s_view.quarter % 4 * 25));
-    DrawMenuText(0, (uint16_t)y2, 2, (uint8_t *)buf, small);
-    DrawMenuText(0, (uint16_t)y1, 2, (uint8_t *)(s_view.paused ? " PAUSED" : s_view.sign < 0 ? " REWINDING" : " FORWARDING"),
-                 small);
-    DrawMenuTextRightAligned(kW - 4, (uint16_t)y1, 2, (uint8_t *)"SCENE: 1 / 1", small);
-    const int32_t frameNo = s_view.pos / 4, total = (int32_t)s_play.frameCount;
+    DrawMenuText((uint16_t)bx, (uint16_t)y2, 2, (uint8_t *)buf, small);
+    DrawMenuText((uint16_t)bx, (uint16_t)y1, 2,
+                 (uint8_t *)(s_view.paused ? " PAUSED" : s_view.sign < 0 ? " REWINDING" : " FORWARDING"), small);
+    DrawMenuTextRightAligned((uint16_t)(bx + kBoxW - 4), (uint16_t)y1, 2, (uint8_t *)"SCENE: 1 / 1", small);
     snprintf(buf, sizeof buf, " FRAME: %4d", (int)frameNo + 1);
-    DrawMenuText(0, (uint16_t)y0, 2, (uint8_t *)buf, small);
+    DrawMenuText((uint16_t)bx, (uint16_t)y0, 2, (uint8_t *)buf, small);
     snprintf(buf, sizeof buf, " / %-4d", (int)total);
-    DrawMenuText(74, (uint16_t)y0, 2, (uint8_t *)buf, small);
+    DrawMenuText((uint16_t)(bx + 74), (uint16_t)y0, 2, (uint8_t *)buf, small);
     _frontbufferBasePtr = savedBase;
     _menu_draw_x_offset = savedX;
-    const int32_t bx1 = 10, bx2 = bx1 + 112, by = y0 + 9;
-    const int32_t xp = bx1 + (total ? (int32_t)((int64_t)(bx2 - bx1) * frameNo / total) : 0) - 3;
-    for (int32_t y = by + 2; y < by + 7 && y < h; y++)
+    for (int32_t y = by + 2; y < by + 7 && y < bottom; y++)
         for (int32_t x = bx1; x < bx2; x++)
             fb[y * stride + x] = 92;
-    for (int32_t y = by; y < by + 9 && y < h; y++)
+    for (int32_t y = by; y < by + 9 && y < bottom; y++)
         for (int32_t x = xp; x < xp + 6; x++)
-            if (x >= 0)
+            if (x >= bx)
                 fb[y * stride + x] = 84;
 }
 

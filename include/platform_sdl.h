@@ -137,6 +137,9 @@ typedef struct {
     int                    replay_frame_overlay; /* 1 = the viewer's frame box shows at first (I toggles it) */
     int                    vol_music, vol_chants, vol_commentary, vol_effects;  /* 0..100 ([audio] *_volume) */
     int                    replay_half_speed;    /* 1 = recordings start at half speed in the viewer */
+    int                    replay_box_x, replay_box_y; /* the viewer's frame box, moved with the mouse:
+                                                        * its top left in picture pixels; -1 the
+                                                        * bottom left (the default) */
     char                   matchmaker[80];   /* [netplay] matchmaker: the server MULTIPLAYER logs in to,
                                               * "host" or "host:port". Typed on the login menu and saved
                                               * there; empty = a server on this machine. */

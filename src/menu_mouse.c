@@ -307,7 +307,9 @@ int32_t MenuMouse_TakeClick(void)
 /* A match frame: no cursor over the pitch, and no click kept for the next menu. */
 void MenuMouse_InMatch(void)
 {
+    extern int ReplayV2_MouseShown(void);
     s_left = s_right = s_wheel = 0;
     s_movedAt = 0;
-    Platform_ShowMouseCursor(0);
+    /* (a recording being viewed: its frame box takes the mouse, and shows the cursor: replay_v2.c) */
+    Platform_ShowMouseCursor(ReplayV2_MouseShown());
 }
