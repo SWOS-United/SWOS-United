@@ -180,7 +180,14 @@ int main(int argc, char **argv) {
                      *  the darkest and the glint orange -- brightened a little: the menu palette has no
                      *  mid red, so the body takes the bright one, the rim the dark) */
                     int idx = 0;
-                    if (!(a < 0.3 || (r < 20 && g < 20 && b < 30))) {
+                    if (a > 0.99) {             /* (a colour of the palette's own, as drawn: as it is --
+                                                 *  a button drawn pixel for pixel in it) */
+                        for (int i = 1; i < 256 && !idx; i++)
+                            if (fabs(r - pr[i]) < 0.5 && fabs(g - pg[i]) < 0.5 && fabs(b - pb[i]) < 0.5 &&
+                                i != glowInk)
+                                idx = i;
+                    }
+                    if (!idx && !(a < 0.3 || (r < 20 && g < 20 && b < 30))) {
                         double bd = 1e30, R = fmin(255, r * 1.35), G = fmin(255, g * 1.35), B = fmin(255, b * 1.35);
                         for (int i = 1; i < 256; i++) {
                             int red = pg[i] < 0.3 * pr[i] && pb[i] < 0.45 * pr[i], white = pr[i] > 200 && pg[i] > 200 && pb[i] > 200;

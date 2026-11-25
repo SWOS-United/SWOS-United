@@ -20,9 +20,10 @@ mkdir -p "$OUT"
 gcc -O2 -o "$OUT/make_loader_logos" scripts/make_loader_logos.c -Ithird_party/swosgfx/lib -Ithird_party/stb_image \
     -Iinclude "$LIB" -lm
 # (the logo at two thirds of loader1's logo area, 149x142; under it "PRESS (fire) TO START" in POWERED
-#  BY's font, the fire button 11 tall; the two on the screen's middle -- Playa, 2026-11-23. The caption's
-#  ink and the button's red in entries 31 and 128, white and red like theirs and the logo's never:
-#  src/loader_intro.c title_glow pulses them)
+#  BY's font, the fire button 11 tall; the two on the screen's middle -- Playa, 2026-11-23. The
+#  button is drawn pixel for pixel in the palette's own colours (2026-11-25), which are kept as
+#  they are. The caption's ink and the button's red in entries 31 and 128, white and red like
+#  theirs and the logo's never: src/loader_intro.c title_glow pulses them)
 "$OUT/make_loader_logos" packaging/intro/swos-united-logo.png bin/grafs_aga/SWOSUNTD.RAW "$OUT/swosuntd.png" \
     168 136 149 161 0 "PRESS () TO START" bin/grafs_aga/CHARSET.RAW 0 1 packaging/intro/fire-button.png 11 31 128
 "$OUT/make_loader_logos" packaging/intro/openswos-logo.png bin/grafs_aga/POWERED.RAW "$OUT/powered.png" \
