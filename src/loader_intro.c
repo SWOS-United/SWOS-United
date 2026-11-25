@@ -334,11 +334,14 @@ static void loaderIntroLoadFrameToFrontbufferAlt(const uint8_t *filename)
         const char *base = slash ? slash + 1 : (const char *)filename;
         const uint8_t *rgba = NULL;
         int32_t w = 0, h = 0;
+        int rule = 0;
+        extern int MenuBackdrop_Pick(const uint8_t **rgba, int32_t *w, int32_t *h, int *rule);
         if ((strcasecmp(base, "swosuntd.raw") == 0 || strcasecmp(base, "powered.raw") == 0) &&
-            ModHooks_MenuBackdrop(&rgba, &w, &h) && rgba) {
+            MenuBackdrop_Pick(&rgba, &w, &h, &rule) && rgba) {
             for (uint32_t i = 0; i < FRONTBUFFER_SIZE_TOTAL_BYTES; i++)
                 if (dstAlt[i] == 0)
                     dstAlt[i] = MENU_BACKDROP_KEY;
+            Platform_SetMenuBackdropRule(rule);
             Platform_SetIntroBackdrop(rgba, w, h);
         }
     }

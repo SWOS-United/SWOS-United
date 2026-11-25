@@ -1862,6 +1862,10 @@ static uint32_t      *s_bdSmall;
 static int            s_bdSmallW, s_bdSmallH;
 static uint32_t       s_bdSmallSerial;
 
+static int s_bdRule;                    /* Platform_SetMenuBackdropRule */
+static int s_bdTint = 255;              /* the intro's fade: the backdrop's brightness, 0..255 */
+void Platform_SetMenuBackdropRule(int rule) { s_bdRule = rule; }
+
 void Platform_SetMenuBackdrop(const uint8_t *rgba, int w, int h)
 {
     if (s_render_mtx)
@@ -1905,6 +1909,7 @@ void Platform_SetIntroBackdrop(const uint8_t *rgba, int w, int h)
         Platform_SetMenuBackdrop(NULL, 0, 0);
         free(s_introFaded);
         s_introFaded = NULL;
+        s_bdTint = 255;
     }
     if (s_render_mtx)
         SDL_UnlockMutex(s_render_mtx);
@@ -1914,20 +1919,13 @@ static void intro_backdrop_update(void)
 {
     extern int g_fadeLevel;
     const int level = g_fadeLevel < 0 ? 0 : g_fadeLevel > 0x80 ? 0x80 : g_fadeLevel;
-    const size_t n = (size_t)s_introW * s_introH * 4;
-    if (level == s_introLevel && s_introFaded)
+    if (level == s_introLevel && s_bd == s_introSrc)
         return;
-    if (!s_introFaded && !(s_introFaded = (uint8_t *)malloc(n)))
-        return;
-    for (size_t i = 0; i < n; i += 4) {
-        s_introFaded[i]     = (uint8_t)(s_introSrc[i]     * level >> 7);
-        s_introFaded[i + 1] = (uint8_t)(s_introSrc[i + 1] * level >> 7);
-        s_introFaded[i + 2] = (uint8_t)(s_introSrc[i + 2] * level >> 7);
-        s_introFaded[i + 3] = 255;
-    }
+    /* (the fade a brightness the presenter draws it with: a darkened copy at each step was a
+     *  7680 x 2160 picture copied and sent to the GPU again, the intro stalling, 2026-11-25) */
     s_introLevel = level;
-    Platform_SetMenuBackdrop(s_introFaded, s_introW, s_introH);
-    s_bdSerial++;                       /* (the same buffer, new pixels) */
+    s_bdTint = level >= 0x80 ? 255 : level * 2;
+    Platform_SetMenuBackdrop(s_introSrc, s_introW, s_introH);
 }
 
 /* The backdrop shows: there is one, and the menus are up (in a match or a replay the key colour
@@ -1947,8 +1945,20 @@ static int backdrop_shown(void)
 /* The backdrop at w x h, covering it (cropped to its aspect, centred): ARGB, for SDL's renderer. */
 static const uint32_t *backdrop_small(int w, int h)
 {
-    if (s_bdSmall && s_bdSmallW == w && s_bdSmallH == h && s_bdSmallSerial == s_bdSerial)
+    static int smallTint = -1, smallRule = -1;
+    static float smallPs = -1.0f;
+    float ps = 1.0f;                    /* (screen pixels a picture pixel: the window's scale) */
+    if (s_renderer) {
+        float sy = 1.0f;
+        SDL_RenderGetScale(s_renderer, &ps, &sy);
+        ps = sy > 0.0f ? sy : ps;
+    }
+    if (s_bdSmall && s_bdSmallW == w && s_bdSmallH == h && s_bdSmallSerial == s_bdSerial &&
+        smallTint == s_bdTint && smallRule == s_bdRule && (s_bdRule == 0 || smallPs == ps))
         return s_bdSmall;
+    smallTint = s_bdTint;
+    smallRule = s_bdRule;
+    smallPs = ps;
     free(s_bdSmall);
     s_bdSmall = (uint32_t *)malloc((size_t)w * h * 4);
     if (!s_bdSmall)
@@ -1956,7 +1966,13 @@ static const uint32_t *backdrop_small(int w, int h)
     {
         /* (the frame's pixels are not square: it is shown at the window's aspect, so cover the
          * picture's display aspect -- the logical size's -- not w : h) */
-        const float scale = SDL_max((float)w / (float)s_bdW, (float)h / (float)s_bdH);
+        /* rule 0 covers the picture; rule 1 (ours): 1:1 to the screen at 3X, below 3X scaled with
+         * the picture, scaled up only where it no longer fills -- in the frame's pixels: a frame
+         * pixel is `ps` screen pixels */
+        const float cover = SDL_max((float)w * ps / (float)s_bdW, (float)h * ps / (float)s_bdH);
+        const float base = ps / 3.0f < 1.0f ? ps / 3.0f : 1.0f;
+        const float scale = s_bdRule == 1 ? SDL_max(base, cover) / ps
+                                          : SDL_max((float)w / (float)s_bdW, (float)h / (float)s_bdH);
         const float cw = (float)w / scale, ch = (float)h / scale;
         const float x0 = ((float)s_bdW - cw) / 2.0f, y0 = ((float)s_bdH - ch) / 2.0f;
         for (int y = 0; y < h; y++)
@@ -1966,7 +1982,8 @@ static const uint32_t *backdrop_small(int w, int h)
                 sx = sx < 0 ? 0 : sx >= s_bdW ? s_bdW - 1 : sx;
                 sy = sy < 0 ? 0 : sy >= s_bdH ? s_bdH - 1 : sy;
                 const uint8_t *p = s_bd + ((size_t)sy * s_bdW + sx) * 4;
-                s_bdSmall[(size_t)y * w + x] = 0xFF000000u | ((uint32_t)p[0] << 16) | ((uint32_t)p[1] << 8) | p[2];
+                s_bdSmall[(size_t)y * w + x] = 0xFF000000u | ((uint32_t)(p[0] * s_bdTint / 255) << 16) |
+                                               ((uint32_t)(p[1] * s_bdTint / 255) << 8) | (uint32_t)(p[2] * s_bdTint / 255);
             }
     }
     s_bdSmallW = w;
@@ -3007,6 +3024,8 @@ static void render_frame_gpu(int pump_full)
         f.backdropH = s_bdH;
         f.backdropKey = MENU_BACKDROP_KEY;
         f.backdropSerial = s_bdSerial;
+        f.backdropRule = s_bdRule;
+        f.backdropTint = s_bdTint;
     }
 
     if ((f.index || f.argb) && GpuPresent_Begin(&f, NULL)) {

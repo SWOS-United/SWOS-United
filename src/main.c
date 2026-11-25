@@ -1809,6 +1809,10 @@ int main(int argc, char **argv)
     /* The built-in mods that are on, set up (include/mod_api.h ModDef.init): their entries and
      * their menus' handlers -- before the menus are built from JSON, which name them. */
     { extern void ModHooks_Init(void); ModHooks_Init(); }
+    {   /* SWOS United's own menu background, decoded on its thread from now (menu_backgrounds.c) */
+        extern void MenuBackgrounds_Choose(int which);
+        MenuBackgrounds_Choose(opts.menu_background);
+    }
     Startup_Mark("mods");
     if (getenv("SWOS_MOD_RELOAD_TEST")) {   /* (mods on and off without a restart: Mods_Reload) */
         extern int32_t Main_Relaunch(void);

@@ -164,12 +164,14 @@ typedef struct {
     void (*show)(char *out, int32_t cap);
     void (*change)(int32_t dir);            /* +1: fire or right, -1: left */
     uint16_t    labelColor;                 /* its label's background, kLabel* (0: the page's grey) */
+    int       (*off)(void);                 /* non-zero: greyed out, nothing to choose (NULL: never) */
 } Row;
 
 /* A label's background (settingsPage.json's labels are grey, 7): CONTROLS tells player 1's rows
  * from player 2's by colour as well as by name. */
 enum { kWaitColour = 15 };      /* a row waiting for a press: yellow (the Amiga look; PC: yellow-green) */
-enum { kLabelGrey = 7, kLabelPlayer1 = 11, kLabelPlayer2 = 10 };   /* (purple -- the Amiga look's blue -- and red) */
+enum { kLabelGrey = 7, kLabelPlayer1 = 11, kLabelPlayer2 = 10 };
+enum { kValueOn = 13, kValueOff = 9 };  /* a value's background (settingsPage.json's 13), greyed (Row.off) */   /* (purple -- the Amiga look's blue -- and red) */
 
 typedef struct {
     const char *title;
@@ -229,6 +231,8 @@ static void page_refresh(void)
         label->fg = (uintptr_t)s_page->rows[i].label;
         label->bgColor = s_page->rows[i].labelColor ? s_page->rows[i].labelColor : kLabelGrey;
         value->fg = (uintptr_t)s_values[i];
+        if (s_page->rows[i].off)        /* (only such rows: SELECT JOYPAD's wait colours its own) */
+            value->bgColor = (uint16_t)((value->bgColor & 0xFFF0) | (s_page->rows[i].off() ? kValueOff : kValueOn));
     }
     entry_at(Page_note)->fg = (uintptr_t)s_note;
 }
@@ -1124,6 +1128,36 @@ static void clashkits_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", O(
 /* Which kits are too alike ([graphics] kit_colours, kit_variants.h): EXTENDED judges by how alike the
  * colours look (CIEDE2000), ORIGINAL by the original's tables. */
 static void kitcols_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", O()->kit_colours ? "EXTENDED" : "ORIGINAL"); }
+/* MENU BACKGROUND: SWOS United's own picture behind the menus (menu_backgrounds.c), AMIGA (black
+ * and purple, the default) or PC (blue and black), at once. Greyed with the Menu backgrounds mod
+ * on: its picture is shown then. */
+static int menubg_off(void)
+{
+    extern int32_t Mods_IsOn(const char *slug);
+    return Mods_IsOn("backgrounds");
+}
+static void menubg_show(char *o, int32_t c)
+{
+    snprintf(o, (size_t)c, "%s", menubg_off() ? "MOD" : O()->menu_background == 1 ? "PC" : "AMIGA");
+}
+static void menubg_change(int32_t dir)
+{
+    extern void MenuBackgrounds_Choose(int which);
+    extern uint8_t _aGrafsMenubgRaw[];
+    extern void LoadOverlayToFrontbuffer(const uint8_t *path);
+    extern void DrawMenu(void);
+    (void)dir;
+    if (menubg_off()) {
+        note("THE MENU BACKGROUNDS MOD IS ON: ITS PICTURE");
+        return;
+    }
+    O()->menu_background = !O()->menu_background;
+    MenuBackgrounds_Choose(O()->menu_background);
+    save();
+    LoadOverlayToFrontbuffer(_aGrafsMenubgRaw);   /* (the menus' backdrop again, the new one) */
+    DrawMenu();
+}
+
 static void kitcols_change(int32_t dir)
 {
     (void)dir;
@@ -1279,6 +1313,7 @@ _Static_assert(sizeof k_gameplayRows / sizeof k_gameplayRows[0] <= kRows, "a set
 static const Row k_displayRows[] = {
     { "GAME GRAPHICS",      art_show,      art_change },
     { "MENU LOOK",          look_show,     look_change },
+    { "MENU BACKGROUND",    menubg_show,   menubg_change, 0, menubg_off },
     { "MENU CURSOR",        cursor_show,   cursor_change },
     { "MENU OPACITY",       opacity_show,  opacity_change },
     { "KIT COLOURS",        kitcols_show,  kitcols_change },    /* (RULES' too: which kits clash) */

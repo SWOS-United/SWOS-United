@@ -9,7 +9,7 @@
   "sdl"
  ],
  "changes": "cosmetic",
- "default": true,
+ "default": false,
  "settings": [
   {
    "key": "image",

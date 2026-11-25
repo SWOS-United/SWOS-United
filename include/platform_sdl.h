@@ -117,6 +117,7 @@ typedef struct {
     int                    hair_shading;     /* 1 = shade hair the game leaves flat (black), 0 = as the game has it */
     int                    shade_step;       /* sixteenths between kit shades: 16, 16-N, 16-2N, 16-3N; hair too */
     int                    clash_kits;       /* [graphics] clash_kits: SWOS 2020's GK/REF CLASH KITS (clash_kits.c), 0 = off */
+    int                    menu_background;  /* [graphics] menu_background: 0 amiga (default), 1 pc (menu_backgrounds.c) */
     int                    kit_colours;      /* [graphics] kit_colours: KIT_RULE_EXTENDED (default) or KIT_RULE_ORIGINAL (kit_variants.h) */
     int                    kit_art;          /* the UNIFORM screen's kit drawings: 0 = the Amiga's, 1 = the Jaguar's (kit_art.h) */
     int                    sound_style;      /* a match's sounds: 0 = the Amiga's, 1 = the PC game's samples (dos_sound.h) */
@@ -247,6 +248,10 @@ int  Platform_OpenUrl(const char *url);
  * the game's). 62: a colour of the game's own backdrop (33-62), which no menu element uses. */
 #define MENU_BACKDROP_KEY 62
 void Platform_SetMenuBackdrop(const uint8_t *rgba, int w, int h);
+/* How the next backdrop set is drawn: 0 covering the window, cropped to its aspect (a mod's
+ * picture); 1 SWOS United's own (menu_backgrounds.c): pixel for pixel from its centre at the
+ * picture's 3X and above, scaled up only where it no longer fills, below 3X scaled with it. */
+void Platform_SetMenuBackdropRule(int rule);
 /* 1 while a true-colour backdrop is set: the menus' backdrop panel is MENU_BACKDROP_KEY. */
 int  Platform_MenuBackdropOn(void);
 /* The menus' picture behind the intro's pictures, faded with them (their key-colour pixels show
