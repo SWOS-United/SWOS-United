@@ -461,7 +461,7 @@ def build_main(doc):
         beta["coords"] = {"x": logo["coords"]["x"], "y": logo["coords"]["y"] + LOGO_INK[1] + BETA_GAP,
                           "w": LOGO_INK[0], "h": SMALL_FONT_H}
         beta["commands"] = [{"op": "colors", "frame_color": 0, "background_color": 0},
-                            {"op": "text", "flags": "0x2", "literal": "BETA"}]   # (the small font, white, centred)
+                            {"op": "text", "flags": "0x7", "literal": "BETA"}]   # (the small font, grey as the build line, centred)
 
     for it, _o in ordered:          # (all of it lower, but the logo and BETA: placed above)
         if it is not logo and it is not beta and "coords" in it:
