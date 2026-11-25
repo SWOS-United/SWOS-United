@@ -327,11 +327,11 @@ static void yearMonth_Inc_onSelect(void)
 #include "united_api.h"
 #include "united_records.h"
 #include "https_client.h"
-#include "text_render.h"
-#include "input_text.h"
 #include "platform_sdl.h"
 #include "swos_io.h"
 #endif
+#include "text_render.h"   /* (every build: shorten_to and the name entry -- the recordings player has no HTTPS) */
+#include "input_text.h"
 
 enum { kDarkBlue = 3, kLightBlue = 13, kGreenBack = 14 };
 
