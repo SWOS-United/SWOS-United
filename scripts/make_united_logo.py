@@ -8,7 +8,9 @@ white, then down into the dark, a chrome rim) over "UNITED" white to grey in a r
 Amiga's title stands over SOCCER, SWOS as wide as its "Sensible" (STACKED; side by side as well).
 Built on the picture's own pixel grid: the capitals CAP pixels tall (200 units), UNITED's straight
 edges, each rim's steps and the lines on whole pixels, so it comes out sharp at its size; only
-the curves and slants are shaded by how much of a pixel they cover (16 x 16 samples a pixel).
+the curves and slants are shaded by how much of a pixel they cover (32 x 32 samples a pixel).
+Beside it logo_hd.png, 4 times as big each way, for the mod's logo = hd (drawn smooth in its
+place, menu_extras.c ModApi_SetMenuImageHD).
 The edges' alpha is kept: a PNG the menu shows over whatever is under it (menu_extras.c,
 MenuExtras_Present). Writes bin/mods/menus2020/grafs_united/logo.png (committed: the logo is
 ours); the size it prints is make_menus2020.py's LOGO_SIZE: keep the two the same. Needs Pillow
@@ -27,10 +29,12 @@ from PIL import Image, ImageDraw
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(REPO, "bin", "mods", "menus2020", "grafs_united", "logo.png")
+OUT_HD = OUT.replace("logo.png", "logo_hd.png")     # (HD times as many pixels each way)
+HD = 4
 
 CAP = 27                # (pixels) the capitals' height: SWOS as wide as the Amiga title's "Sensible"
 PX = 200 / CAP          # units a pixel (the letters are drawn 200 units tall)
-SS = 16                 # samples a pixel, each way
+SS = 32                 # samples a pixel, each way (8 an HD pixel)
 TOP = 3 * PX            # the capitals' top: 3 pixels for the rims above, 3 below
 STACKED = True          # SWOS over UNITED (as the Amiga's title over SOCCER); else side by side
 LINE_GAP = 6            # (pixels) stacked: between SWOS's capitals and UNITED's
@@ -301,9 +305,11 @@ class Canvas:
         cols = np.array([hexrgb(c) for _, c in stops])
         return np.stack([np.interp(ys, rows, cols[:, i]) for i in range(3)], 1)
 
-    def pixels(self, w, h):
-        rgb = self.rgb.reshape(h, SS, w, SS, 3).mean((1, 3))
-        a = self.a.reshape(h, SS, w, SS).mean((1, 3))
+    def pixels(self, w, h, scale=1):
+        """w x h pixels, `scale` times as many each way (SS / scale samples each)."""
+        w, h, n = w * scale, h * scale, SS // scale
+        rgb = self.rgb.reshape(h, n, w, n, 3).mean((1, 3))
+        a = self.a.reshape(h, n, w, n).mean((1, 3))
         straight = np.where(a[..., None] > 0, rgb / np.maximum(a[..., None], 1e-9), 0)
         out = np.zeros((h, w, 4), np.uint8)
         out[..., :3] = np.clip(straight * 255 + 0.5, 0, 255)
@@ -337,7 +343,7 @@ def build():
     for letter in uni:
         m |= cv.mask([[(x, y + TOP + U_Y * PX) for x, y in c] for c in letter])
     cv.paint(m, cv.gradient(UFACE, U_Y))
-    return cv.pixels(W, H), uni
+    return cv.pixels(W, H), cv.pixels(W, H, HD), uni
 
 
 def svg_of(W, uni):
@@ -374,10 +380,11 @@ def main():
     ap.add_argument("--svg", help="also write the drawing as an SVG here")
     ap.add_argument("--preview", help="also write a 3x preview over a dark and a green ground here")
     args = ap.parse_args()
-    px, uni = build()
+    px, hd, uni = build()
     h, w = px.shape[:2]
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     Image.fromarray(px, "RGBA").save(OUT)
+    Image.fromarray(hd, "RGBA").save(OUT_HD)     # (the menus2020 mod's logo = hd: drawn smooth in its place)
     print("  -> %s (%dx%d)" % (os.path.relpath(OUT, REPO), w, h))
     if args.svg:
         open(args.svg, "w").write(svg_of(w, uni))

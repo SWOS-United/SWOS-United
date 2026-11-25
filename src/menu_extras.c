@@ -50,6 +50,10 @@ typedef struct {
     int32_t  w, h, failed;
     uint8_t *rgba;              /* a .png: R, G, B, A bytes (then no rgb / pixels) */
     GfxTexture *tex;            /* ... its texture, made at its first present */
+    char    *hdPath;            /* ... its HD copy (ModApi_SetMenuImageHD), NULL none */
+    uint8_t *hdRgba;
+    int32_t  hdW, hdH, hdFailed;
+    GfxTexture *hdTex;          /* (filtered: drawn smaller than it is) */
 } Extra;
 
 /* The .png pictures the last menu frame drew: shown over the picture by MenuExtras_Present. */
@@ -66,6 +70,13 @@ static void free_picture(Extra *e)
         stbi_image_free(e->rgba);
     if (e->tex)
         Gfx_DestroyTexture(e->tex);
+    if (e->hdRgba)
+        stbi_image_free(e->hdRgba);
+    if (e->hdTex)
+        Gfx_DestroyTexture(e->hdTex);
+    e->hdRgba = NULL;
+    e->hdTex = NULL;
+    e->hdFailed = 0;
     for (int32_t i = 0; i < s_shownCount; i++)
         if (s_shown[i].e == e)
             s_shown[i].e = NULL;
@@ -149,6 +160,7 @@ void MenuExtras_Commit(const uint8_t *menu)
         for (int32_t i = 0; i < kMaxEntries; i++) {
             free(m->entry[i].description);
             free(m->entry[i].imagePath);
+            free(m->entry[i].hdPath);
             free_picture(&m->entry[i]);
         }
     }
@@ -197,6 +209,26 @@ void ModApi_SetMenuImage(int32_t entry, const char *path)
     free_picture(e);
     e->imagePath = path ? strdup(path) : NULL;
     e->failed = 0;
+}
+
+/* A .png image's HD copy, changed while its menu is up: loaded at its next draw. */
+void ModApi_SetMenuImageHD(int32_t entry, const char *path)
+{
+    MenuExtras *m = current();
+    if (!m || entry < 0 || entry >= kMaxEntries)
+        return;
+    Extra *e = &m->entry[entry];
+    if ((!e->hdPath && !path) || (e->hdPath && path && strcmp(e->hdPath, path) == 0))
+        return;
+    free(e->hdPath);
+    e->hdPath = path ? strdup(path) : NULL;
+    if (e->hdRgba)
+        stbi_image_free(e->hdRgba);
+    if (e->hdTex)
+        Gfx_DestroyTexture(e->hdTex);
+    e->hdRgba = NULL;
+    e->hdTex = NULL;
+    e->hdFailed = 0;
 }
 
 /* The current menu's ticker box, -1 none (ModApi_MenuTickerEntry). */
@@ -322,6 +354,17 @@ void MenuExtras_Drawn(void)
         if (!e->rgb && !e->rgba && !e->failed)
             load_image(e);
         if (e->rgba) {                  /* (a .png: over the finished picture, MenuExtras_Present) */
+            if (e->hdPath && !e->hdRgba && !e->hdFailed) {
+                char path[1280];
+                int w = 0, h = 0, c = 0;
+                e->hdRgba = stbi_load(swos_data_path(e->hdPath, path, sizeof path), &w, &h, &c, 4);
+                e->hdW = w;
+                e->hdH = h;
+                if (!e->hdRgba) {
+                    e->hdFailed = 1;
+                    fprintf(stderr, "[menu-extras] %s: %s\n", e->hdPath, stbi_failure_reason());
+                }
+            }
             if (s_shownCount < kMaxShown) {
                 s_shown[s_shownCount].e = e;
                 s_shown[s_shownCount].x = ent->x + _menu_draw_x_offset +
@@ -387,14 +430,37 @@ void MenuExtras_Present(void)
         Extra *e = s_shown[i].e;
         if (!e || !e->rgba)
             continue;
-        if (!e->tex) {
-            e->tex = Gfx_CreateTexture(e->w, e->h, 0);
-            if (!e->tex)
-                continue;
-            Gfx_UpdateTexture(e->tex, e->rgba, e->w * 4);
+        GfxTexture *tex;
+        if (e->hdPath && e->hdRgba) {   /* (its HD copy, in its place: filtered) */
+            if (!e->hdTex) {
+                e->hdTex = Gfx_CreateTexture(e->hdW, e->hdH, 1);
+                if (!e->hdTex)
+                    continue;
+                Gfx_UpdateTexture(e->hdTex, e->hdRgba, e->hdW * 4);
+            }
+            tex = e->hdTex;
+        } else {
+            if (!e->tex) {
+                e->tex = Gfx_CreateTexture(e->w, e->h, 0);
+                if (!e->tex)
+                    continue;
+                Gfx_UpdateTexture(e->tex, e->rgba, e->w * 4);
+            }
+            tex = e->tex;
         }
-        const float x0 = (float)s_shown[i].x, y0 = (float)s_shown[i].y;
-        const float x1 = x0 + (float)e->w, y1 = y0 + (float)e->h;
+        float x0 = (float)s_shown[i].x, y0 = (float)s_shown[i].y;
+        float x1 = x0 + (float)e->w, y1 = y0 + (float)e->h;
+        if (tex == e->hdTex) {          /* (in the window's pixels: SDL's renderer scales the picture's) */
+            float px, py, pw, ph;
+            Gfx_PictureRect(&px, &py, &pw, &ph);
+            if (pw <= 0.0f || ph <= 0.0f)
+                continue;
+            const float sx = pw / (float)_screen_width, sy = ph / (float)_screen_height;
+            x0 = px + x0 * sx; x1 = px + x1 * sx;
+            y0 = py + y0 * sy; y1 = py + y1 * sy;
+            Gfx_SetSpace(GFX_SPACE_OUTPUT);
+        } else
+            Gfx_SetSpace(GFX_SPACE_PICTURE);
         const float px[6] = { x0, x1, x0, x1, x1, x0 }, py[6] = { y0, y0, y1, y0, y1, y1 };
         const float tu[6] = { 0, 1, 0, 1, 1, 0 }, tv[6] = { 0, 0, 1, 0, 1, 1 };
         GfxVertex v[6];
@@ -407,7 +473,7 @@ void MenuExtras_Present(void)
             v[k].tex_coord.x = tu[k];
             v[k].tex_coord.y = tv[k];
         }
-        Gfx_Geometry(e->tex, v, 6, NULL, 0);
+        Gfx_Geometry(tex, v, 6, NULL, 0);
     }
     Gfx_SetBlend(blend);
     Gfx_SetSpace(space);

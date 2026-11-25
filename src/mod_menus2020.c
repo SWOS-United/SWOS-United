@@ -86,7 +86,7 @@ static void show(int32_t ordinal, int32_t visible) { entry(ordinal)->isInvisible
 enum {
     Main_multi, Main_compete, Main_practice,        /* (main.mnu's competition, practice, replays) */
     Main_options, Main_extras, Main_replays,        /* (its options, editing, extras) */
-    Main_quit, Main_ticker, Main_liveCast,
+    Main_quit, Main_ticker, Main_liveCast, Main_logo,
     /* 14 and 16, the game's own MULTIPLAYER and MODES places: SWOS United's two careers
      * (scripts/make_menus2020.py CAREER_BUTTONS; src/career_seasons.c) */
     Main_continue = 11, Main_save, Main_load, Main_classicCareer, Main_credits, Main_worldCareer,
@@ -651,8 +651,18 @@ static void shirt_dump(const char *path)
     exit(ok ? 0 : 1);
 }
 
+/* The logo as the player chose ([mod.menus2020] logo): its pixels, or its HD copy drawn smooth at
+ * the window's resolution (scripts/make_united_logo.py, menu_extras.c) -- set as the menu opens and
+ * as it is come back to (from OPTIONS -> MODS, where it is chosen). */
+static void logo_as_chosen(void)
+{
+    ModApi_SetMenuImageHD(Main_logo, strcmp(ModApi_Setting(SLUG, "logo", "pixel"), "hd") == 0
+                                     ? "grafs_united/logo_hd.png" : NULL);
+}
+
 static void mainInit(void)
 {
+    logo_as_chosen();
     if (getenv("SWOS_SHIRT_DUMP"))
         shirt_dump(getenv("SWOS_SHIRT_DUMP"));
     if (getenv("SWOS_PLAYER_DUMP")) {   /* (the PC graphics' match players: color_sprites.c) */
@@ -675,6 +685,7 @@ static void mainInit(void)
 /* Each frame of the main menu: the TV shows a match when one is live (SWOS 2020's drawTvIcon). */
 static void mainDrawn(void)
 {
+    logo_as_chosen();
     {   /* Back without this menu's layout -- a way to the main menu that unpacked it again and ran only
          * the game's CommonMenuExit (LOAD on CONTINUE's row, but at its own x: Playa, 2026-11-22) --
          * laid out again. */

@@ -5,7 +5,20 @@
  "version": "0.1",
  "author": "SWOS United (the menus: SWOS 2020's, github.com/SWOS-United)",
  "about": "SWOS 2020's main menu: COMPETE, PRACTICE, REPLAYS, OPTIONS, EDITING, EXTRAS, and the screens they open.",
- "targets": ["sdl"],
+ "targets": [
+  "sdl"
+ ],
  "changes": "cosmetic",
- "default": false
+ "default": false,
+ "settings": [
+  {
+   "key": "logo",
+   "label": "Logo",
+   "choices": [
+    "pixel",
+    "hd"
+   ],
+   "default": "pixel"
+  }
+ ]
 }
