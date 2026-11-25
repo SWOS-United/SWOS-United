@@ -51,15 +51,16 @@ SPREAD = 8              # (units) more room between SWOS's letters than the draw
 SWOS = [(k, d, x + i * SPREAD) for i, (k, d, x) in
         enumerate([("S", S_PATH, 0.0), ("W", W_PATH, 181.0), ("O", O_PATH, 481.1), ("S2", S_PATH, 706.1)])]
 SWOS_W = 890.1 + 3 * SPREAD
-INNER, INNER_SHADE = 0.5, 0.7     # (pixels, and how much of the face's colour) the face's inner edge
 # each letter: its colour, the glow and the pastel it lightens through into white
-COLOURS = {"S": ("#f80000", "#ff4a3a", "#ffc8c0"), "W": ("#fbc900", "#ffdc30", "#fff2a8"),
-           "O": ("#0026f9", "#3a7cff", "#b8e4ff"), "S2": ("#06a606", "#3ad23a", "#c4f5c4")}
+COLOURS = {"S": ("#f80000", "#ff4a3a", "#ffc8c0", "#d30000"), "W": ("#fbc900", "#ffdc30", "#fff2a8", "#cf9400"),
+           "O": ("#0026f9", "#3a7cff", "#b8e4ff", "#0020d4"), "S2": ("#06a606", "#3ad23a", "#c4f5c4", "#058d05")}
 
 
-def swos_face(base, glow, pastel):      # (pixel rows of the capitals, colour)
-    return [(-1, base), (8, base), (9.5, glow), (10.5, pastel), (11.5, "#ffffff"), (15, "#ffffff"),
-            (18, "#a8a8a8"), (22, "#0c0c0c"), (26, "#060606")]
+def swos_face(base, glow, pastel, top=None):     # (pixel rows of the capitals, colour)
+    """`top`: a darker colour at the very top, into `base` by row 5 (apart from the light rim)."""
+    head = [(-1, top), (5, base)] if top else [(-1, base)]
+    return head + [(8, base), (9.5, glow), (10.5, pastel), (11.5, "#ffffff"), (15, "#ffffff"),
+                   (18, "#a8a8a8"), (22, "#0c0c0c"), (26, "#060606")]
 
 
 CHROME = [(-3, "#ffffff"), (10, "#d4d4d4"), (12, "#6e6e6e"), (15, "#a0a0a0"), (21, "#f0f0f0"),
@@ -269,16 +270,6 @@ class Canvas:
             m |= np.asarray(img, bool)
         return m
 
-    def band(self, contours, width):
-        """A band `width` units wide centred on the contours' lines."""
-        k = SS / PX
-        img = Image.new("1", (self.w, self.h), 0)
-        dr = ImageDraw.Draw(img)
-        for c in contours:
-            pts = [(x * k, y * k) for x, y in c]
-            dr.line(pts + [pts[0]], fill=1, width=max(1, int(round(width * k))), joint="curve")
-        return np.asarray(img, bool)
-
     def paint(self, m, colour):
         """Over what is there: m (bool) in colour, one colour (3,) or one a row (h, 3)."""
         col = np.broadcast_to(colour if np.ndim(colour) == 1 else colour[:, None, :], self.rgb.shape)
@@ -317,11 +308,7 @@ def build():
         c = path_contours(d, SWOS_X + x, TOP)
         cv.paint(cv.mask(c, 2.5 * PX), hexrgb("#000000"))
         cv.paint(cv.mask(c, 1.5 * PX), chrome)
-        face = cv.mask(c)
-        grad = cv.gradient(swos_face(*COLOURS[k]))
-        cv.paint(face, grad)
-        if INNER > 0:           # its edge a little darker: apart from the light rim
-            cv.paint(face & cv.band(c, 2 * INNER * PX), grad * INNER_SHADE)
+        cv.paint(cv.mask(c), cv.gradient(swos_face(*COLOURS[k])))
     # UNITED: a black edge, dark red, bright red (a pixel each), the face
     for grow, colour in ((2.5, "#000000"), (2.0, "#8a0000"), (1.0, "#ff1c1c")):
         m = np.zeros((cv.h, cv.w), bool)
@@ -336,6 +323,7 @@ def build():
 
 
 def svg_of(W, uni):
+    """The same drawing as an SVG: each SWOS letter whole (black edge, chrome, face), then UNITED."""
     def stops(lst):
         return "".join('<stop offset="%.4f" stop-color="%s"/>' % ((r * PX) / 200, c) for r, c in lst)
 
@@ -348,15 +336,17 @@ def svg_of(W, uni):
                 % (col, col, 2 * half, join, body))
     defs = [grad("f_" + k, swos_face(*v)) for k, v in COLOURS.items()]
     defs += [grad("chrome", CHROME), grad("uface", UFACE)]
-    sw = "".join('<path transform="translate(%s,0)" d="%s"/>' % (x, d) for _, d, x in SWOS)
-    swf = "".join('<path transform="translate(%s,0)" fill="url(#f_%s)" d="%s"/>' % (x, k, d) for k, d, x in SWOS)
+    sw = []
+    for k, d, x in SWOS:
+        path = '<path transform="translate(%s,0)" d="%s"/>' % (x, d)
+        sw.append(lay(path, "#000", 2.5 * PX, "round") + lay(path, "url(#chrome)", 1.5 * PX, "round")
+                  + '<path transform="translate(%s,0)" fill="url(#f_%s)" d="%s"/>' % (x, k, d))
     ud = "".join('<path d="%s"/>' % " ".join("M" + " L".join("%g,%g" % p for p in c) + " Z" for c in letter)
                  for letter in uni)
     return ('<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d"><defs>%s</defs>'
-            '<g transform="translate(%d,%d)" fill-rule="evenodd">%s%s%s</g>'
+            '<g transform="translate(%d,%d)" fill-rule="evenodd">%s</g>'
             '<g transform="translate(0,%d)" fill-rule="evenodd">%s%s%s<g fill="url(#uface)">%s</g></g></svg>\n'
-            % (W * PX, H * PX, W * PX, H * PX, "".join(defs), SWOS_X, TOP,
-               lay(sw, "#000", 2 * PX, "round"), lay(sw, "url(#chrome)", 1.5 * PX, "round"), swf, TOP,
+            % (W * PX, H * PX, W * PX, H * PX, "".join(defs), SWOS_X, TOP, "".join(sw), TOP,
                lay(ud, "#000", 2.5 * PX, "miter"), lay(ud, "#8a0000", 2 * PX, "miter"),
                lay(ud, "#ff1c1c", PX, "miter"), ud))
 
