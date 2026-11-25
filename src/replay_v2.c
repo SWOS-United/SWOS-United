@@ -261,6 +261,9 @@ void ReplayRec_Configure(const char *path, int32_t autoSave)
     s_rec.autoSave = autoSave;
 }
 
+/* GENERAL OPTIONS' AUTO SAVE REPLAYS at once: read when a match's recording is saved. */
+void ReplayRec_SetAutoSave(int32_t on) { s_rec.autoSave = on; }
+
 int32_t ReplayRec_Recording(void)
 {
     return s_rec.on;

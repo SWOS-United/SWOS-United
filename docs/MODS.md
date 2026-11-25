@@ -1113,9 +1113,11 @@ start -- a `"career"` or `"data"` mod, a Jaguar sprite set, a mod that saves int
 (`careerSave` / `careerLoad`), and any mod carrying files other than its pictures, shaders, clips,
 flags, pitch maps, challenges and its OWN menus (`data_json/menus/<slug>/`): competitions, teams,
 tactics, translations, the game's menus, graphics, sounds, music, a world. For those the screen
-says "... WHEN YOU LEAVE: THE GAME STARTS AGAIN", and EXIT starts the same program with the same
-arguments, the intro skipped, and closes this one (`Main_Relaunch`: desktops; the browser, phones
-and the Switch say "FROM THE NEXT START"). Of the canonical mods only `euro36` is one.
+says "... FROM THE NEXT START", and EXIT asks RESTART NOW / LATER -- the question every setting of
+the next start asks when its screen is left (OPTIONS' LANGUAGE and WORLD, SETTINGS; 2026-11-25:
+it started again unasked before); RESTART NOW starts the same program with the same arguments,
+the intro skipped, and closes this one (`Main_Relaunch`: desktops; the browser, phones and the
+Switch do not ask). Of the canonical mods only `euro36` is one.
 
 `SWOS_MOD_RELOAD_TEST=1` turns practice, speedrun and dosmenus off and on 40 times through
 `Mods_Reload`: each off with its MODES row gone, on with it back once, nothing refused or run out

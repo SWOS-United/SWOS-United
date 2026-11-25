@@ -195,9 +195,11 @@ static void note(const char *text)
     snprintf(s_note, sizeof s_note, "%s", text);
 }
 
-/* A change that takes hold only at the next start: leaving OPTIONS asks whether to start the
- * game again now (settingsMenu_exit_OnSelect). */
+/* A change that takes hold only at the next start -- here, OPTIONS' LANGUAGE (menus.c), a mod
+ * turned on or off (mods_menu.c): leaving the screen asks whether to start the game again now
+ * (Options_AskRestart), the same question wherever it was made. */
 static int32_t s_restartPending;
+void Options_RestartNeeded(void) { s_restartPending = 1; }
 
 static void later(void)
 {
@@ -963,9 +965,10 @@ static void autosave_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", on_
 static void autosave_change(int32_t dir)
 {
     (void)dir;
+    extern void ReplayRec_SetAutoSave(int32_t on);
     O()->replay_auto_save = !O()->replay_auto_save;
-    note(O()->replay_auto_save ? "A DATED COPY OF EVERY MATCH, FROM THE NEXT START"
-                               : "LATEST.SRP ONLY, FROM THE NEXT START");
+    ReplayRec_SetAutoSave(O()->replay_auto_save);
+    note(O()->replay_auto_save ? "A DATED COPY OF EVERY MATCH" : "LATEST.SRP ONLY");
     save();
 }
 
@@ -1339,18 +1342,25 @@ static void settingsMenu_gameplay_OnSelect(void) { page_show(&k_gameplayPage); }
 static void settingsMenu_display_OnSelect(void)  { page_show(&k_displayPage); }   /* (launcher options, agent B) */
 static void settingsMenu_rules_OnSelect(void)    { page_show(&k_rulesPage); }     /* (the tweaks on by default) */
 static void settingsMenu_general_OnSelect(void)  { page_show(&k_generalPage); }   /* (replays, start-up) */
-static void settingsMenu_exit_OnSelect(void)
+/* A change made that needs the game started again: RESTART NOW / LATER, once per such change. 1
+ * when the game is starting again (the caller leaves it at that), 0 to go on. */
+int32_t Options_AskRestart(void)
 {
     extern int32_t Main_CanRelaunch(void);
     extern int32_t Main_Relaunch(void);
-    if (s_restartPending && Main_CanRelaunch()) {
-        static const char *const kButtons[2] = { "RESTART NOW", "LATER" };
-        s_restartPending = 0;           /* (asked once; a later change asks again) */
-        fprintf(stderr, "[settings] a change needs a restart: asking\n");
-        if (MenuDialog_Show("RESTART", "SOME OF YOUR CHANGES TAKE EFFECT ONLY WHEN THE GAME STARTS AGAIN."
-                            "|RESTART THE GAME NOW?", kButtons, 2, 0) == 0 && Main_Relaunch())
-            return;                     /* (the game closes; the new one is starting) */
-    }
+    if (!s_restartPending || !Main_CanRelaunch())
+        return 0;
+    static const char *const kButtons[2] = { "RESTART NOW", "LATER" };
+    s_restartPending = 0;               /* (asked once; a later change asks again) */
+    fprintf(stderr, "[settings] a change needs a restart: asking\n");
+    return MenuDialog_Show("RESTART", "SOME OF YOUR CHANGES TAKE EFFECT ONLY WHEN THE GAME STARTS AGAIN."
+                           "|RESTART THE GAME NOW?", kButtons, 2, 0) == 0 && Main_Relaunch();
+}
+
+static void settingsMenu_exit_OnSelect(void)
+{
+    if (Options_AskRestart())
+        return;                         /* (the game closes; the new one is starting) */
     SetExitMenuFlag();
 }
 

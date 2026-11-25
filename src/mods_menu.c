@@ -181,18 +181,18 @@ static void modsMenu_OnDraw(void)
 }
 
 /* A change from this screen, made now (2026-11-17): live (Mods_Reload) unless it is installed
- * once at start (Mods_NeedsRestart) -- then the game starts again by itself when the screen is
- * left (Main_Relaunch), or, where it cannot (the browser, phones, the Switch), at the next start. */
+ * once at start (Mods_NeedsRestart) -- then leaving the screen asks RESTART NOW / LATER, as every
+ * such setting does (Options_AskRestart, 2026-11-25; it started again unasked before), or, where
+ * it cannot (the browser, phones, the Switch), it is the next start's. */
 extern void    Mods_Reload(void);
-extern int32_t Main_CanRelaunch(void);
-extern int32_t Main_Relaunch(void);
-static int32_t s_restartPending;
+extern void    Options_RestartNeeded(void);
+extern int32_t Options_AskRestart(void);
 
 static int32_t apply_change(const ModInfo *m)
 {
     char why[80];
     if (Mods_NeedsRestart(m, why, sizeof why)) {
-        s_restartPending = 1;
+        Options_RestartNeeded();        /* (leaving asks RESTART NOW / LATER, as OPTIONS does) */
         fprintf(stderr, "[mods] %s: needs the game started again (%s)\n", m->slug, why);
         return 0;
     }
@@ -225,8 +225,6 @@ static void toggle(int32_t i)
             on ? "on" : "off", g_arcadeOpts->mods, g_arcadeOpts->mods_disabled);
     if (apply_change(m))
         note(on && !m->cosmetic ? "ON NOW: ONLINE, SAME MODS ONLY" : on ? "ON NOW" : "OFF NOW");
-    else if (Main_CanRelaunch())
-        note(on ? "ON WHEN YOU LEAVE: THE GAME STARTS AGAIN" : "OFF WHEN YOU LEAVE: THE GAME STARTS AGAIN");
     else
         note(on ? "ON FROM THE NEXT START" : "OFF FROM THE NEXT START");
 }
@@ -242,10 +240,8 @@ static void modsMenu_row7_OnSelect(void) { toggle(7); }
 
 static void modsMenu_exit_OnSelect(void)
 {
-    if (s_restartPending && Main_CanRelaunch() && Main_Relaunch()) {
-        s_restartPending = 0;
+    if (Options_AskRestart())
         return;                         /* (the game closes; the new one is starting) */
-    }
     SetExitMenuFlag();
 }
 
@@ -660,7 +656,7 @@ static void pick_row(int32_t i)
         return;
     ModApi_SetSetting(s_page.slug, ps->key, ps->choices[c]);
     fprintf(stderr, "[mods] %s: %s = %s\n", s_page.slug, ps->key, ps->choices[c]);
-    note(Mods_IsOn(s_page.slug) && !apply_change(&s_page) ? "CHANGED: WHEN THE GAME STARTS AGAIN" : "CHANGED");
+    note(Mods_IsOn(s_page.slug) && !apply_change(&s_page) ? "CHANGED: FROM THE NEXT START" : "CHANGED");
     SetExitMenuFlag();
 }
 
@@ -708,7 +704,7 @@ static void page_cycle(int32_t i)
     const char *next = ps->choices[(at + 1) % ps->choiceCount];
     ModApi_SetSetting(s_page.slug, ps->key, next);
     fprintf(stderr, "[mods] %s: %s = %s\n", s_page.slug, ps->key, next);
-    note(Mods_IsOn(s_page.slug) && !apply_change(&s_page) ? "CHANGED: WHEN THE GAME STARTS AGAIN" : "CHANGED");
+    note(Mods_IsOn(s_page.slug) && !apply_change(&s_page) ? "CHANGED: FROM THE NEXT START" : "CHANGED");
 }
 
 static void modPageMenu_row0_OnSelect(void) { page_cycle(0); }

@@ -310,9 +310,12 @@ border, the menus' backdrop behind it. SMOOTH fills the window, resampled evenly
 Taken at once: SMOOTH SCROLLING, SCALING and OUTPUT (each read at every frame or audio tick).
 Only at a start: VSYNC (the pacing is set up by it), WIDESCREEN (the picture's width), RENDERER,
 GAME GRAPHICS (the artwork) -- and SKIP INTRO, which is about the start itself, so it asks for no
-restart. A change "from the next start" (the note says FROM THE NEXT START) is remembered: leaving
-OPTIONS by its EXIT then asks RESTART NOW / LATER, and RESTART NOW starts the game again at once
-(`Main_Relaunch`, as OPTIONS -> MODS does) where it can; where it cannot (the browser, phones),
+restart. AUTO SAVE REPLAYS is taken at once too. PC TITLE MUSIC and INTRO PICTURES, like SKIP INTRO, are
+about the start itself: the next start's, no restart asked for. A change "from the next start"
+(the note says FROM THE NEXT START) -- here, OPTIONS' LANGUAGE and WORLD, a mod in MODS -- is
+remembered: leaving that screen by its EXIT then asks RESTART NOW / LATER, the same question
+everywhere, and RESTART NOW starts the game again at once
+(`Main_Relaunch`) where it can; where it cannot (the browser, phones),
 nothing is asked.
 
 | launcher option | `SWOS.ini` | in the game | |
