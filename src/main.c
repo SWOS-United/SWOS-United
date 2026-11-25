@@ -1796,6 +1796,12 @@ int main(int argc, char **argv)
      * does not have, and the log they actually send us is the thing that has to
      * answer "which build is this?" on its own. */
     fprintf(stderr, "[build] %s\n", Build_Version());
+    {   /* (what SWOS.ini gave, in the log: the lines that say so come before it is open) */
+        static const char *const kStyle[] = { "amiga", "dos", "xbox", "amiga60", "moon" };
+        fprintf(stderr, "[settings] read: [gameplay] style %s, [graphics] kit_colours %s, [video] screen %d, "
+                "renderer %d (game %d)\n", opts.dos_gameplay >= 0 && opts.dos_gameplay <= 4 ? kStyle[opts.dos_gameplay] : "?",
+                opts.kit_colours ? "extended" : "original", opts.screen, (int)opts.renderer, (int)getpid());
+    }
 
     /* The mods (include/mods.h): --mods, else SWOS_MODS_ENABLED, else SWOS.ini's [mods] enabled.
      * Before anything reads the game's data -- translations included, which a mod may carry. */
