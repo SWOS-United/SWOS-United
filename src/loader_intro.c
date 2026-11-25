@@ -431,13 +431,13 @@ static int32_t intro_clicked(void)
 #ifdef AGA
 /* The title picture's caption glows (Playa, 2026-11-23): its ink and the fire button's bright red
  * are palette entries 31 and 128, white and red like the logo's own but never its pixels
- * (scripts/make_loader_logos.sh), so their copper colours pulse slowly -- between 70% and full
- * over three seconds. The copper has 4 bits a channel, five steps in that range: the SDL build
- * shows the pulse in 8 bits (Platform_PaletteFine), smooth. (No random dips any more: a pulse,
+ * (scripts/make_loader_logos.sh), so their copper colours pulse -- between 35% and full, every
+ * 1.6 s (Playa, 2026-11-25: the 70% over three seconds was too tame). The copper has 4 bits a
+ * channel: the SDL build shows the pulse in 8 bits (Platform_PaletteFine), smooth. (No random dips any more: a pulse,
  * not a flicker -- Playa, 2026-11-25.) The picture's fades write them back from the palette
  * (ApplyFadeStep), so nothing needs restoring. */
 static int32_t s_titleGlow;
-enum { kGlowInk = 31, kGlowRed = 128, kGlowPeriod = 150 };
+enum { kGlowInk = 31, kGlowRed = 128, kGlowPeriod = 80, kGlowMin = 90 };   /* (1.6 s; 35% .. full) */
 
 static void title_glow(uint32_t frame)
 {
@@ -453,7 +453,7 @@ static void title_glow(uint32_t frame)
     const uint16_t *palette = (const uint16_t *)_paletteTable[_paletteIndex];
     const uint32_t ph = (frame % kGlowPeriod) * 16u * 16u / kGlowPeriod;    /* 0..255 */
     const int32_t c0 = kCos16[ph >> 4], c1 = kCos16[((ph >> 4) + 1) & 15];
-    const int32_t level = 179 + (77 * (c0 + (c1 - c0) * (int32_t)(ph & 15) / 16)) / 256;   /* 0.7 .. 1 of 256 */
+    const int32_t level = kGlowMin + ((256 - kGlowMin) * (c0 + (c1 - c0) * (int32_t)(ph & 15) / 16)) / 256;
     for (int32_t k = 0; k < 2; k++) {
         const int32_t idx = k ? kGlowRed : kGlowInk;
         const uint16_t c = palette[idx];
