@@ -13,6 +13,11 @@
  *                                 shown in its own colour (Platform_TrueColourPixel); black /
  *                                 magenta (255, 0, 255) transparent. Drawn every menu frame, over
  *                                 the box but not the chosen entry's frame line (DrawSelectedMenuItemFrame).
+ *                                 A .png instead: its alpha kept -- see-through in part at its soft
+ *                                 edges -- so not drawn into the 8bpp frame at all but over the
+ *                                 finished picture (MenuExtras_Present, through gfx.h: either
+ *                                 presenter, blended with whatever is under it, the menus' backdrop
+ *                                 picture too), in the picture's pixels, darkened with the fade.
  *
  * The packed format has no room for them, so the loader (menu_load_json.c) gives them here as it
  * builds, filed under the menu's final packed bytes: the pointer ShowMenu is given and
@@ -21,6 +26,7 @@
 #ifdef SWOS_SDL_BUILD
 
 #include "display.h"
+#include "gfx.h"
 #include "menu_system.h"
 #include "platform_sdl.h"
 #include "swos_io.h"
@@ -29,6 +35,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "../third_party/stb_image/stb_image.h"
 
 enum { kMaxMenus = 64, kMaxEntries = 128, kCentred = -32768 };
 
@@ -40,7 +48,32 @@ typedef struct {
     uint8_t *pixels;            /* ... as palette indices (0xFF transparent), for `paletteHash` */
     uint32_t paletteHash;
     int32_t  w, h, failed;
+    uint8_t *rgba;              /* a .png: R, G, B, A bytes (then no rgb / pixels) */
+    GfxTexture *tex;            /* ... its texture, made at its first present */
 } Extra;
+
+/* The .png pictures the last menu frame drew: shown over the picture by MenuExtras_Present. */
+enum { kMaxShown = 8 };
+static struct { Extra *e; int32_t x, y; } s_shown[kMaxShown];
+static int32_t s_shownCount;
+static Uint64  s_shownAt;
+
+static void free_picture(Extra *e)
+{
+    free(e->rgb);
+    free(e->pixels);
+    if (e->rgba)
+        stbi_image_free(e->rgba);
+    if (e->tex)
+        Gfx_DestroyTexture(e->tex);
+    for (int32_t i = 0; i < s_shownCount; i++)
+        if (s_shown[i].e == e)
+            s_shown[i].e = NULL;
+    e->rgb = NULL;
+    e->pixels = NULL;
+    e->rgba = NULL;
+    e->tex = NULL;
+}
 
 typedef struct {
     const uint8_t *menu;        /* the packed bytes (its key) */
@@ -116,8 +149,7 @@ void MenuExtras_Commit(const uint8_t *menu)
         for (int32_t i = 0; i < kMaxEntries; i++) {
             free(m->entry[i].description);
             free(m->entry[i].imagePath);
-            free(m->entry[i].rgb);
-            free(m->entry[i].pixels);
+            free_picture(&m->entry[i]);
         }
     }
     *m = s_pending;
@@ -162,11 +194,8 @@ void ModApi_SetMenuImage(int32_t entry, const char *path)
     if (e->imagePath && path && strcmp(e->imagePath, path) == 0)
         return;
     free(e->imagePath);
-    free(e->rgb);
-    free(e->pixels);
+    free_picture(e);
     e->imagePath = path ? strdup(path) : NULL;
-    e->rgb = NULL;
-    e->pixels = NULL;
     e->failed = 0;
 }
 
@@ -198,7 +227,20 @@ static void load_image(Extra *e)
 {
     char path[1280];
     SDL_Surface *raw, *rgb;
+    const size_t n = strlen(e->imagePath);
     e->failed = 1;
+    if (n > 4 && SDL_strcasecmp(e->imagePath + n - 4, ".png") == 0) {
+        int w = 0, h = 0, c = 0;
+        e->rgba = stbi_load(swos_data_path(e->imagePath, path, sizeof path), &w, &h, &c, 4);
+        if (!e->rgba) {
+            fprintf(stderr, "[menu-extras] %s: %s\n", e->imagePath, stbi_failure_reason());
+            return;
+        }
+        e->w = w;
+        e->h = h;
+        e->failed = 0;
+        return;
+    }
     raw = SDL_LoadBMP(swos_data_path(e->imagePath, path, sizeof path));
     if (!raw) {
         fprintf(stderr, "[menu-extras] %s: %s\n", e->imagePath, SDL_GetError());
@@ -264,6 +306,7 @@ void MenuExtras_Drawn(void)
     const int32_t sw = _screen_width, sh = _screen_height;
     uint32_t hash = 0;
     Platform_TrueColourBegin();         /* (each picture's own colours on screen, not only the nearest) */
+    s_shownCount = 0;
     for (int32_t i = 0; i < kMaxEntries && frame; i++) {
         Extra *e = &m->entry[i];
         if (!e->imagePath)
@@ -271,8 +314,19 @@ void MenuExtras_Drawn(void)
         const MenuEntry *ent = CalcMenuEntryAddress((uint16_t)i);
         if (!ent || ent->isInvisible)
             continue;
-        if (!e->rgb && !e->failed)
+        if (!e->rgb && !e->rgba && !e->failed)
             load_image(e);
+        if (e->rgba) {                  /* (a .png: over the finished picture, MenuExtras_Present) */
+            if (s_shownCount < kMaxShown) {
+                s_shown[s_shownCount].e = e;
+                s_shown[s_shownCount].x = ent->x + _menu_draw_x_offset +
+                                          (e->imageX != kCentred ? e->imageX : ((int32_t)ent->dwWidth - e->w) / 2);
+                s_shown[s_shownCount].y = ent->y + (e->imageY != kCentred ? e->imageY : ((int32_t)ent->dwHeight - e->h) / 2);
+                s_shownCount++;
+                s_shownAt = Platform_NowMs();
+            }
+            continue;
+        }
         if (!e->rgb || !e->pixels)
             continue;
         if (!hash)
@@ -304,6 +358,50 @@ void MenuExtras_Drawn(void)
             }
         }
     }
+}
+
+/* Over the finished picture (ModHooks_FrameDrawn), each frame the window shows: the .png pictures
+ * the menu's last frame drew, in the picture's pixels, blended by their alpha and darkened with
+ * the menus' fade. Gone 100 ms after the last menu frame (a match, another screen). */
+void MenuExtras_Present(void)
+{
+    extern int g_fadeLevel;
+    if (!s_shownCount || !Gfx_InFrame() || Platform_NowMs() - s_shownAt > 100)
+        return;
+    const int fade = g_fadeLevel < 0 ? 0 : g_fadeLevel > 0x80 ? 0x80 : g_fadeLevel;
+    const uint8_t lit = (uint8_t)(fade * 255 / 0x80);
+    const GfxSpace space = Gfx_Space();
+    const GfxBlend blend = Gfx_Blend();
+    Gfx_SetSpace(GFX_SPACE_PICTURE);
+    Gfx_SetBlend(GFX_BLEND_ALPHA);
+    for (int32_t i = 0; i < s_shownCount; i++) {
+        Extra *e = s_shown[i].e;
+        if (!e || !e->rgba)
+            continue;
+        if (!e->tex) {
+            e->tex = Gfx_CreateTexture(e->w, e->h, 0);
+            if (!e->tex)
+                continue;
+            Gfx_UpdateTexture(e->tex, e->rgba, e->w * 4);
+        }
+        const float x0 = (float)s_shown[i].x, y0 = (float)s_shown[i].y;
+        const float x1 = x0 + (float)e->w, y1 = y0 + (float)e->h;
+        const float px[6] = { x0, x1, x0, x1, x1, x0 }, py[6] = { y0, y0, y1, y0, y1, y1 };
+        const float tu[6] = { 0, 1, 0, 1, 1, 0 }, tv[6] = { 0, 0, 1, 0, 1, 1 };
+        GfxVertex v[6];
+        for (int k = 0; k < 6; k++) {
+            memset(&v[k], 0, sizeof v[k]);
+            v[k].position.x = px[k];
+            v[k].position.y = py[k];
+            v[k].color.r = v[k].color.g = v[k].color.b = lit;
+            v[k].color.a = 255;
+            v[k].tex_coord.x = tu[k];
+            v[k].tex_coord.y = tv[k];
+        }
+        Gfx_Geometry(e->tex, v, 6, NULL, 0);
+    }
+    Gfx_SetBlend(blend);
+    Gfx_SetSpace(space);
 }
 
 #endif /* SWOS_SDL_BUILD */

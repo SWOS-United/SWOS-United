@@ -148,6 +148,10 @@ void ModHooks_FrameDrawn(void)
         extern void EscConfirm_Present(void);
         EscConfirm_Present();
     }
+    {   /* a menu's .png pictures (menu_extras.c): their soft edges over what is under them */
+        extern void MenuExtras_Present(void);
+        MenuExtras_Present();
+    }
 #endif
     EACH(frameUnder) (*m_)->frameUnder();
     EACH(frameDrawn) (*m_)->frameDrawn();
