@@ -79,7 +79,7 @@
         },
         {
           "op": "input_func",
-          "mask": "0x21",
+          "mask": "0xE1",
           "func": "settingsPage_row0_OnSelect"
         }
       ]
@@ -133,7 +133,7 @@
         },
         {
           "op": "input_func",
-          "mask": "0x21",
+          "mask": "0xE1",
           "func": "settingsPage_row1_OnSelect"
         }
       ]
@@ -187,7 +187,7 @@
         },
         {
           "op": "input_func",
-          "mask": "0x21",
+          "mask": "0xE1",
           "func": "settingsPage_row2_OnSelect"
         }
       ]
@@ -241,7 +241,7 @@
         },
         {
           "op": "input_func",
-          "mask": "0x21",
+          "mask": "0xE1",
           "func": "settingsPage_row3_OnSelect"
         }
       ]
@@ -295,7 +295,7 @@
         },
         {
           "op": "input_func",
-          "mask": "0x21",
+          "mask": "0xE1",
           "func": "settingsPage_row4_OnSelect"
         }
       ]
@@ -349,7 +349,7 @@
         },
         {
           "op": "input_func",
-          "mask": "0x21",
+          "mask": "0xE1",
           "func": "settingsPage_row5_OnSelect"
         }
       ]
@@ -403,7 +403,7 @@
         },
         {
           "op": "input_func",
-          "mask": "0x21",
+          "mask": "0xE1",
           "func": "settingsPage_row6_OnSelect"
         }
       ]
@@ -457,7 +457,7 @@
         },
         {
           "op": "input_func",
-          "mask": "0x21",
+          "mask": "0xE1",
           "func": "settingsPage_row7_OnSelect"
         }
       ]
@@ -511,7 +511,7 @@
         },
         {
           "op": "input_func",
-          "mask": "0x21",
+          "mask": "0xE1",
           "func": "settingsPage_row8_OnSelect"
         }
       ]
@@ -565,7 +565,7 @@
         },
         {
           "op": "input_func",
-          "mask": "0x21",
+          "mask": "0xE1",
           "func": "settingsPage_row9_OnSelect"
         }
       ]
@@ -619,7 +619,7 @@
         },
         {
           "op": "input_func",
-          "mask": "0x21",
+          "mask": "0xE1",
           "func": "settingsPage_row10_OnSelect"
         }
       ]
@@ -673,7 +673,7 @@
         },
         {
           "op": "input_func",
-          "mask": "0x21",
+          "mask": "0xE1",
           "func": "settingsPage_row11_OnSelect"
         }
       ]

@@ -243,24 +243,15 @@ static void settingsPage_OnInit(void)
     page_refresh();
 }
 
-static int32_t s_fireHeld;              /* fire pressed on this page and held since (page_row) */
-
-static void settingsPage_OnDraw(void)
-{
-    if (!_fire)
-        s_fireHeld = 0;
-    page_refresh();
-}
+static void settingsPage_OnDraw(void) { page_refresh(); }
 
 static int32_t s_activeRow = -1;           /* the row whose change is running (page_row) */
 
-/* As in the original game, only fire changes a value: a press one step on, held it runs on --
- * kHoldFirstMs after the press, then every kHoldEveryMs. The stick does nothing here (its rows'
- * mask: fire pressed, 0x20, and held, 0x01): a shaky stick changed values by itself (2026-11-25).
- * Rows that open a screen of their own or move the window are not run on (no_repeat). */
-enum { kHoldFirstMs = 400, kHoldEveryMs = 150 };
-static Uint32 s_holdNext;
-
+/* Only fire changes a value (a shaky stick changed values by itself, 2026-11-25): a press of fire
+ * one step on, whatever the stick; fire held and the stick pushed left or right one step back or on
+ * (and on, as the stick repeats); the stick alone nothing (the rows' mask: fire pressed 0x20, held
+ * 0x01, left 0x40, right 0x80). Rows that open a screen of their own or move the window take the
+ * press alone (no_repeat). */
 static void p1_select(int32_t dir), p2_select(int32_t dir), p1_setup(int32_t dir), p2_setup(int32_t dir),
             keys_change(int32_t dir), winmode_change(int32_t dir), scale_change(int32_t dir),
             monitor_change(int32_t dir), res_change(int32_t dir), renderer_change(int32_t dir);
@@ -280,18 +271,13 @@ static int32_t no_repeat(void (*change)(int32_t))
 static void page_row(int32_t i)
 {
     const int32_t fire = (_controlMask & 0x20) != 0;    /* (0x20 fire pressed, 0x01 held) */
-    const int32_t dir = 1;
+    const int32_t side = _controlMask & 0xC0;           /* (0x40 left, 0x80 right) */
+    const int32_t dir = fire ? 1 : (side & 0x40) ? -1 : 1;
     char before[48], after[48];
     if (!s_page || i >= s_page->count)
         return;
-    if (fire) {
-        s_fireHeld = 1;
-        s_holdNext = SDL_GetTicks() + kHoldFirstMs;
-    } else {                            /* (held: on, after a while, where it may) */
-        if (!s_fireHeld || no_repeat(s_page->rows[i].change) || !SDL_TICKS_PASSED(SDL_GetTicks(), s_holdNext))
-            return;
-        s_holdNext = SDL_GetTicks() + kHoldEveryMs;
-    }
+    if (!fire && (!side || !(_controlMask & 0x01) || no_repeat(s_page->rows[i].change)))
+        return;                         /* (the stick alone, fire held alone, or a row of its own) */
     note("");
     s_page->rows[i].show(before, (int32_t)sizeof before);
     s_activeRow = i;
@@ -299,7 +285,7 @@ static void page_row(int32_t i)
     s_activeRow = -1;
     s_page->rows[i].show(after, (int32_t)sizeof after);
     fprintf(stderr, "[settings] %s: %s %s -> %s (%s)\n", s_page->title, s_page->rows[i].label,
-            before, after, fire ? "fire" : "fire held");
+            before, after, fire ? "fire" : dir < 0 ? "fire + left" : "fire + right");
     page_refresh();
 }
 
