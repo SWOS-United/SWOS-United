@@ -956,13 +956,13 @@ static int settings_build(const PlatformInitOptions *opts, IniEntry *items, char
         "; black, each changing to the colour that differs most when a team is too alike; with\n"
         "; original: against a dark kit, keepers green (or grey), referee yellow (or light blue).\n"
         "; Only how they look.\n"
-        "; On by default, as in SWOS 2020 (DISPLAY OPTIONS: GK/REF CLASH KITS).",
+        "; On by default, as in SWOS 2020 (APPEARANCE OPTIONS: GK/REF CLASH KITS).",
         opts->clash_kits ? "true" : "false" };
     SETTING(n) = (IniEntry){ "graphics", "kit_colours",
         "; kit_colours: extended | original -- which kits are too alike, so that one team changes.\n"
         "; extended: judged by how alike the colours look (CIEDE2000), for every kit colour; original:\n"
         "; the original's own tables. A net game plays extended only if both players do. Default extended\n"
-        "; (DISPLAY OPTIONS: KIT COLOURS).",
+        "; (APPEARANCE OPTIONS: KIT COLOURS).",
         opts->kit_colours ? "extended" : "original" };
     SETTING(n) = (IniEntry){ "graphics", "kit_art",
         "; kit_art: amiga | jaguar. The shirts, shorts and socks drawn on the UNIFORM\n"

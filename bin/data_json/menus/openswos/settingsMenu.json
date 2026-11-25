@@ -1,6 +1,6 @@
 {
   "name": "settingsMenu",
-  "comment": "OpenSWOS's SETTINGS: SWOS 2020's OPTIONS buttons -- CONTROLS, VIDEO, AUDIO, GAMEPLAY -- each a settingsPage -- DISPLAY (the look), RULES and GENERAL (replays, start-up) -- each later one last in the list, so the others keep their numbers. JSON-only (docs/MENUS.md section 10); handlers in src/settings_menus.c. Opened from OPTIONS (the SETTINGS row).",
+  "comment": "OpenSWOS's SETTINGS: SWOS 2020's OPTIONS buttons -- CONTROLS, VIDEO, AUDIO, GAMEPLAY -- each a settingsPage -- APPEARANCE (the look), RULES and GENERAL (replays, start-up) -- each later one last in the list, so the others keep their numbers. JSON-only (docs/MENUS.md section 10); handlers in src/settings_menus.c. Opened from OPTIONS (the SETTINGS row).",
   "menu_flags": {
     "dos_redraw": true
   },
@@ -242,7 +242,7 @@
         {
           "op": "text",
           "flags": "0x0",
-          "literal": "DISPLAY"
+          "literal": "APPEARANCE"
         },
         {
           "op": "colors",

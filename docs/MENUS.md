@@ -913,10 +913,10 @@ All in the loader and `UnpackMenu`. None occurs in the 47 compiled menus, and
   - GAMEPLAY OPTIONS (how a match plays): GAME STYLE (`GameplayStyle_Set`), BALL CONTEST, STRONGER
     KEEPERS, CPU TACTICS -- the rest of SWOS 2020's gameplayOptions screen is
     OPTIONS' own rows, or other features (pitch selection, clash kits).
-  - DISPLAY OPTIONS (how the game and its menus look): GAME GRAPHICS (`[graphics] style`), MENU
+  - APPEARANCE OPTIONS (how the game and its menus look; DISPLAY until 2026-11-25): GAME GRAPHICS (`[graphics] style`), MENU
     LOOK, MENU CURSOR (below), MENU OPACITY, KIT COLOURS (RULES' too), GK/REF CLASH KITS, PITCH
     PALETTE, KITS ON THE RESULT, RESULT BAND, SCOREBOARD, MOUSE POINTER.
-  - RULES OPTIONS: KIT COLOURS (which kits clash; DISPLAY's too, the same setting), LEAGUE RULES, POINTS FOR A WIN, SUBSTITUTES,
+  - RULES OPTIONS: KIT COLOURS (which kits clash; APPEARANCE's too, the same setting), LEAGUE RULES, POINTS FOR A WIN, SUBSTITUTES,
     LEAGUE CRASH FIXES, CAREER EXACT LOADS.
   - GENERAL OPTIONS: AUTO SAVE REPLAYS (next start), HIGHLIGHT DEFAULT SPEED and FRAME INFO
     OVERLAY (`ReplayV2_ViewerConfigure`, now), SKIP INTRO, INTRO PICTURES, PRE-MATCH PAUSE.

@@ -775,7 +775,7 @@ static void fps_change(int32_t dir)
     save();
 }
 
-static void filter_show(char *o, int32_t c);       /* (DISPLAY OPTIONS' section, below) */
+static void filter_show(char *o, int32_t c);       /* (APPEARANCE OPTIONS' section, below) */
 static void filter_change(int32_t dir);
 static const Row k_videoRows[] = {
     { "WINDOW MODE",        winmode_show,  winmode_change },
@@ -784,7 +784,7 @@ static const Row k_videoRows[] = {
     { "WIDESCREEN",         wide_show,     wide_change },
     { "SMOOTH SCROLLING",   scroll_show,   scroll_change },
     { "SCALING",            scaling_show,  scaling_change },
-    { "PIXEL FILTER",       filter_show,   filter_change },     /* (beside SCALING: DISPLAY's until 2026-11-24) */
+    { "PIXEL FILTER",       filter_show,   filter_change },     /* (beside SCALING: APPEARANCE's until 2026-11-24) */
     { "MONITOR",            monitor_show,  monitor_change },
     { "RENDERER",           renderer_show, renderer_change },
     /* (launcher options, agent A) */
@@ -1241,9 +1241,9 @@ static void exact_change(int32_t dir)
 
 
 /* ===================================================================== the pages, by topic
- * (2026-11-24: sorted by what a setting is about -- GAMEPLAY how a match plays, DISPLAY how the
+ * (2026-11-24: sorted by what a setting is about -- GAMEPLAY how a match plays, APPEARANCE how the
  * game and its menus look, RULES what competitions count and which kits clash, GENERAL the
- * replays, the start-up and the way into a match. KIT COLOURS is on both DISPLAY and RULES, the
+ * replays, the start-up and the way into a match. KIT COLOURS is on both APPEARANCE and RULES, the
  * same setting; PIXEL FILTER is VIDEO's, beside SCALING. SWOS.ini's keys are as they were.) */
 
 static const Row k_gameplayRows[] = {
@@ -1272,7 +1272,7 @@ static const Row k_displayRows[] = {
     { "SCOREBOARD",         board_show,    board_change },
     { "MOUSE POINTER",      pointer_show,  pointer_change },     /* (CONTROLS has no room: CALL BENCH twice) */
 };
-static const Page k_displayPage = { "DISPLAY OPTIONS", k_displayRows, (int32_t)(sizeof k_displayRows / sizeof k_displayRows[0]) };
+static const Page k_displayPage = { "APPEARANCE OPTIONS", k_displayRows, (int32_t)(sizeof k_displayRows / sizeof k_displayRows[0]) };
 _Static_assert(sizeof k_displayRows / sizeof k_displayRows[0] <= kRows, "a settings page holds kRows rows at most");
 
 static const Row k_rulesRows[] = {

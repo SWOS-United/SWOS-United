@@ -92,7 +92,7 @@ clash_kits=true       ; SWOS 2020's GK/REF CLASH KITS (src/clash_kits.c): when e
                       ; wears a dark kit (black, blue, burgundy), both keepers wear green
                       ; (grey if a team wears green) and the referee yellow (light blue if a
                       ; team wears yellow). Drawing only: no effect online. On by default, as
-                      ; in SWOS 2020 (false: the original's colours); DISPLAY OPTIONS ->
+                      ; in SWOS 2020 (false: the original's colours); APPEARANCE OPTIONS ->
                       ; GK/REF CLASH KITS. Not with the Jaguar's sprites; SDL only
 
 [dos]                 ; PC-only extras (Amiga is the definitive version)
@@ -313,16 +313,16 @@ nothing is asked.
 | Resolution | `[video] resolution = auto \| WxH` | VIDEO: ASPECT RATIO (AUTO, 4:3, 16:10, 16:9, 21:9, 32:9) | the render's SHAPE, not its size; with widescreen on it is taken at once |
 | Auto centering | `[video] auto_centering` | VIDEO: AUTO CENTERING | a window resized, maximized or moved goes back to the middle of the display it is on (SWOS 2020's controls.cpp); windowed only |
 | Show FPS | `[video] show_fps` | VIDEO: SHOW FPS | the frames presented a second, top right, drawn over the picture (`src/fps_overlay.c`), never into the game's frame |
-| Mouse cursor | `[input] mouse_cursor = system \| workbench2 \| workbench1` | DISPLAY OPTIONS: MOUSE POINTER | SWOS 2020's `cursor1.bmp` / `cursor2.bmp` as the launcher numbered them, as pixel maps in `src/mouse_cursors.c` |
-| Graphics | `[graphics] style = amiga \| dos \| 2020` | DISPLAY: GAME GRAPHICS | from the next start (the artwork is loaded at start-up) |
-| Menu style | `[mod.dosmenus] look = amiga \| pc` | DISPLAY: MENU LOOK, and the PC menu shading mod's page | the look each start shows; F5 still flips it for the run. Unset: `PROJECT_MENU_LOOK_AMIGA` |
+| Mouse cursor | `[input] mouse_cursor = system \| workbench2 \| workbench1` | APPEARANCE: MOUSE POINTER | SWOS 2020's `cursor1.bmp` / `cursor2.bmp` as the launcher numbered them, as pixel maps in `src/mouse_cursors.c` |
+| Graphics | `[graphics] style = amiga \| dos \| 2020` | APPEARANCE: GAME GRAPHICS | from the next start (the artwork is loaded at start-up) |
+| Menu style | `[mod.dosmenus] look = amiga \| pc` | APPEARANCE: MENU LOOK, and the PC menu shading mod's page | the look each start shows; F5 still flips it for the run. Unset: `PROJECT_MENU_LOOK_AMIGA` |
 | Background image | `[mod.backgrounds] image = auto \| random \| off \| <file>` | the Menu backgrounds mod's page | `auto` the mod's own first picture, `random` one of every picture it lists, once a start. The launcher's "PC DOS" and "Amiga" were SWOS 2020's bg-images, not shipped: put them in `backgrounds/` |
 | Stronger goalkeeper AI | `[tweaks] stronger_goalkeeper_ai` | GAMEPLAY: STRONGER KEEPERS | off line only; built with `PROJECT_TWEAK_STRONGER_GK` (project_identity.h) even when `PROJECT_TWEAKS` is 0 |
 | Improved CPU tactics | `[gameplay] cpu_tactics = normal \| expert` | GAMEPLAY: CPU TACTICS | off line only (below) |
 | Skip intro | `[general] skip_intro` | GENERAL: SKIP INTRO | from the next start |
 | Skip image reels | `[general] skip_image_reels` | GENERAL: INTRO PICTURES (ALL / TITLE ONLY) | the intro is its title picture and tune alone, until fire |
 | No pause while loading | `[general] no_load_pause` | GENERAL: PRE-MATCH PAUSE | the stadium screen's 3 seconds before a match left out; off line only |
-| Game style, VSync, window mode, monitor, menu cursor | as before | VIDEO / GAMEPLAY / DISPLAY (menu cursor) | (they were there already) |
+| Game style, VSync, window mode, monitor, menu cursor | as before | VIDEO / GAMEPLAY / APPEARANCE (menu cursor) | (they were there already) |
 | PC DOS screen / Amiga screen | none of its own | GAMEPLAY: GAME STYLE | the 320 x 200 view is part of the PC DOS style (below) |
 
 **CPU TACTICS = EXPERT** is SWOS 2020's `--improved-cpu-tactics` (options.cpp
@@ -353,10 +353,10 @@ and `random`.
 `SWOS_MOD_PAGE_TEST=<slug>` (a mod page's choices), and `--settings-menus-selftest` (every row
 shows a value).
 
-### DISPLAY OPTIONS: the SWOS United Launcher's look options (launcher options, agent B)
+### APPEARANCE OPTIONS (DISPLAY until 2026-11-25): the SWOS United Launcher's look options (launcher options, agent B)
 
 The launcher set these with SWOS 2020's command-line flags; they are now in the game:
-OPTIONS -> SETTINGS -> **DISPLAY** (`src/settings_menus.c`, `k_displayRows`), each saved to
+OPTIONS -> SETTINGS -> **APPEARANCE** (`src/settings_menus.c`, `k_displayRows`), each saved to
 `SWOS.ini` at once and in force at once (`Platform_SetDisplayOptions`). All of them are drawing
 only: no match state, no recording, no replay changes (`scripts/check_netplay_compat.sh`
 unchanged), and an online match plays the same whatever either player has set. KIT COLOURS,
