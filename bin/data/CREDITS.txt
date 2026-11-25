@@ -34,6 +34,7 @@ SWOS 2020 Lead Developer       starwindz
 Multiplayer (GGPO-X)           thd79
 Webmaster                      ElMichaJ
 Manic SWOS Preacher            Redhair
+Menu Backgrounds               Redhair
 
 SWOS 2020
 
