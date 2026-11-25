@@ -376,9 +376,21 @@ void GpuPresent_PictureRect(float *x, float *y, float *w, float *h)
     *x = G.picX; *y = G.picY; *w = G.picW; *h = G.picH;
 }
 
-/* Where the picture lands: SDL2's logical size, or the whole window (stretch). */
-static void picture_rect(int stretch, int lw, int lh)
+/* Where the picture lands: SDL2's logical size, or the whole window (stretch). `whole`
+ * (SCALING SHARP): the picture times the biggest whole number the window takes, centred, so
+ * every pixel stays square and as big as the next -- the rest is border (2026-11-25). */
+static void picture_rect(int stretch, int lw, int lh, int whole)
 {
+    if (!stretch && whole && lw > 0 && lh > 0) {
+        const int n = G.outW / lw < G.outH / lh ? G.outW / lw : G.outH / lh;
+        if (n >= 1) {
+            G.picW = (float)(lw * n);
+            G.picH = (float)(lh * n);
+            G.picX = (float)((G.outW - lw * n) / 2);
+            G.picY = (float)((G.outH - lh * n) / 2);
+            return;
+        }
+    }
     if (stretch || lw <= 0 || lh <= 0) {
         G.picX = G.picY = 0.0f;
         G.picW = (float)G.outW;
@@ -565,7 +577,7 @@ int32_t GpuPresent_Begin(const GpuFrame *f, const uint8_t clear[3])
     s_clear[0] = clear ? clear[0] / 255.0f : 0.0f;
     s_clear[1] = clear ? clear[1] / 255.0f : 0.0f;
     s_clear[2] = clear ? clear[2] / 255.0f : 0.0f;
-    picture_rect(f ? f->stretch : 0, f ? f->w : 0, f ? f->h : 0);
+    picture_rect(f ? f->stretch : 0, f ? f->w : 0, f ? f->h : 0, f ? !f->smooth : 0);
     G.frames++;
 #if defined(GPU_NATIVE)
     GpuNative_FrameBegin();             /* (GpuNative_FrameEnd in GpuPresent_End) */

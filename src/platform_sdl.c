@@ -641,8 +641,12 @@ static void apply_picture_scaling(void)
         return;
     if (!s_stretch) {
         SDL_RenderSetLogicalSize(s_renderer, _screen_width, _screen_height);
+        /* SCALING SHARP: whole multiples only, so every pixel stays square (the GPU presenter's
+         * picture_rect does the same) */
+        SDL_RenderSetIntegerScale(s_renderer, s_scaling_smooth ? SDL_FALSE : SDL_TRUE);
         return;
     }
+    SDL_RenderSetIntegerScale(s_renderer, SDL_FALSE);
     SDL_RenderSetLogicalSize(s_renderer, 0, 0);
     if (SDL_GetRendererOutputSize(s_renderer, &ow, &oh) == 0 && ow > 0 && oh > 0)
         SDL_RenderSetScale(s_renderer, (float)ow / (float)_screen_width,
@@ -1417,7 +1421,7 @@ int Platform_WindowScaleAuto(void) { return s_win_scale_auto; }
 
 /* SMOOTH SCROLLING and SCALING at once: both are read at every frame presented. */
 void Platform_SetSubpixelScroll(int on) { s_subpixel_scroll = on ? 1 : 0; }
-void Platform_SetScalingSmooth(int on)  { s_scaling_smooth = on ? 1 : 0; }
+void Platform_SetScalingSmooth(int on)  { s_scaling_smooth = on ? 1 : 0; apply_picture_scaling(); }
 
 int Platform_DisplayCount(void)
 {

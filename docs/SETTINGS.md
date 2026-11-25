@@ -303,6 +303,10 @@ and the game opens there from then on (`[video] screen`, 0 the first). A window 
 monitor is remembered the same way. With one monitor there is nothing to pick. The start's log
 lists the monitors (`[video] monitor N: "name" WxH at x,y`).
 
+SCALING SHARP shows the picture only ever a whole number of times its size (the biggest the window
+or screen takes), so every pixel is square and as big as the next; what it does not fill is
+border, the menus' backdrop behind it. SMOOTH fills the window, resampled evenly (2026-11-25).
+
 Taken at once: SMOOTH SCROLLING, SCALING and OUTPUT (each read at every frame or audio tick).
 Only at a start: VSYNC (the pacing is set up by it), WIDESCREEN (the picture's width), RENDERER,
 GAME GRAPHICS (the artwork) -- and SKIP INTRO, which is about the start itself, so it asks for no
