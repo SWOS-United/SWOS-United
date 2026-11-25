@@ -729,10 +729,45 @@ static int32_t shape_index(void)
     return -1;
 }
 
+/* The display the game's window is on: its desktop size (16:9 when it can't be had). */
+static void display_size(int *dw, int *dh)
+{
+    SDL_DisplayMode dm;
+    SDL_Window *w = SDL_GetKeyboardFocus();        /* (the game's window: it has the keys) */
+    const int d = w ? SDL_GetWindowDisplayIndex(w) : O()->screen;
+    *dw = 16;
+    *dh = 9;
+    if (SDL_GetDesktopDisplayMode(d >= 0 ? d : 0, &dm) == 0 && dm.w > 0 && dm.h > 0) {
+        *dw = dm.w;
+        *dh = dm.h;
+    }
+}
+
+/* AUTO's shape, as WINDOW SCALE's AUTO shows its factor: the nearest of the shapes when it is
+ * within 3 % of one (3440x1440 is 21:9, as sold), else the display's own, reduced. */
+static void auto_shape(char *o, int32_t c)
+{
+    int dw, dh;
+    display_size(&dw, &dh);
+    const double r = (double)dw / dh;
+    for (int32_t i = 1; i < kShapes; i++) {
+        const double k = (double)k_shapes[i].w / k_shapes[i].h;
+        if (r > k * 0.97 && r < k * 1.03) {
+            snprintf(o, (size_t)c, "AUTO (%s)", k_shapes[i].name);
+            return;
+        }
+    }
+    int a = dw, b = dh;
+    while (b) { const int t = a % b; a = b; b = t; }
+    snprintf(o, (size_t)c, "AUTO (%d:%d)", dw / a, dh / a);
+}
+
 static void res_show(char *o, int32_t c)
 {
     const int32_t i = shape_index();
-    if (i >= 0)
+    if (i == 0)
+        auto_shape(o, c);
+    else if (i > 0)
         snprintf(o, (size_t)c, "%s", k_shapes[i].name);
     else
         snprintf(o, (size_t)c, "%dX%d", O()->res_w, O()->res_h);
@@ -749,13 +784,7 @@ static void res_change(int32_t dir)
         dw = O()->res_w;
         dh = O()->res_h;
     } else {
-        SDL_DisplayMode dm;
-        SDL_Window *w = SDL_GetKeyboardFocus();        /* (the game's window: it has the keys) */
-        const int d = w ? SDL_GetWindowDisplayIndex(w) : O()->screen;
-        if (SDL_GetDesktopDisplayMode(d >= 0 ? d : 0, &dm) == 0 && dm.h > 0) {
-            dw = dm.w;
-            dh = dm.h;
-        }
+        display_size(&dw, &dh);
     }
     if (Video_ResolutionChanged(O(), dw, dh))
         note(i ? "THE PICTURE'S SHAPE: MORE PITCH WHEN WIDER" : "THE DISPLAY'S OWN SHAPE");
