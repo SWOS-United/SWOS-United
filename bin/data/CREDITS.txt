@@ -32,6 +32,7 @@ Project Manager                Playaveli
 Engineering Lead               benbaker76
 SWOS 2020 Lead Developer       starwindz
 Multiplayer (GGPO-X)           thd79
+Programming                    Redhair
 Webmaster                      ElMichaJ
 Manic SWOS Preacher            Redhair
 Menu Backgrounds               Redhair
