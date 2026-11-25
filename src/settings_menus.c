@@ -1076,7 +1076,7 @@ static void look_change(int32_t dir)
     const char *v = ModApi_Setting("dosmenus", "look", PROJECT_MENU_LOOK_AMIGA ? "amiga" : "pc");
     (void)dir;
     ModApi_SetSetting("dosmenus", "look", strcmp(v, "pc") == 0 ? "amiga" : "pc");
-    if (!Mods_IsOn("dosmenus"))
+    if (!Mods_IsOn("dosmenus"))         /* (part of SWOS United: never off there; an OpenSWOS player's may be) */
         note("THE PC MENU SHADING MOD IS OFF: OPTIONS, MODS");
     else if (!swos_data_exists("grafs_dos/FILL.256"))
         note("PC DOS NEEDS THE PC GAME'S DATA");
@@ -1158,16 +1158,24 @@ static void clashkits_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", O(
  * colours look (CIEDE2000), ORIGINAL by the original's tables. */
 static void kitcols_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", O()->kit_colours ? "EXTENDED" : "ORIGINAL"); }
 /* MENU BACKGROUND: SWOS United's own picture behind the menus (menu_backgrounds.c), AMIGA (black
- * and purple, the default) or PC (blue and black), at once. Greyed with the Menu backgrounds mod
- * on: its picture is shown then. */
+ * and purple, the default) or PC (blue and black), at once -- each also with HD: the main menu's
+ * logo drawn smooth at the window's resolution ([mod.menus2020] logo = hd, mod_menus2020.c; the
+ * mod is part of the game, never listed under MODS, so its one setting is here). With the Menu
+ * backgrounds mod on, its picture is shown: MOD and MOD HD then. */
 static int menubg_off(void)
 {
     extern int32_t Mods_IsOn(const char *slug);
     return Mods_IsOn("backgrounds");
 }
+static int logo_hd(void)
+{
+    extern const char *ModApi_Setting(const char *slug, const char *key, const char *fallback);
+    return strcmp(ModApi_Setting("menus2020", "logo", "pixel"), "hd") == 0;
+}
 static void menubg_show(char *o, int32_t c)
 {
-    snprintf(o, (size_t)c, "%s", menubg_off() ? "MOD" : O()->menu_background == 1 ? "PC BLUE" : "AMIGA PURPLE");
+    snprintf(o, (size_t)c, "%s%s", menubg_off() ? "MOD" : O()->menu_background == 1 ? "PC BLUE" : "AMIGA PURPLE",
+             logo_hd() ? " HD" : "");
 }
 static void menubg_change(int32_t dir)
 {
@@ -1175,12 +1183,16 @@ static void menubg_change(int32_t dir)
     extern uint8_t _aGrafsMenubgRaw[];
     extern void LoadOverlayToFrontbuffer(const uint8_t *path);
     extern void DrawMenu(void);
-    (void)dir;
-    if (menubg_off()) {
-        note("THE MENU BACKGROUNDS MOD IS ON: ITS PICTURE");
+    extern int32_t ModApi_SetSetting(const char *slug, const char *key, const char *value);
+    /* (in order: AMIGA PURPLE, AMIGA PURPLE HD, PC BLUE, PC BLUE HD; the mod's: MOD, MOD HD) */
+    const int hd = logo_hd();
+    const int step = menubg_off() ? 2 : 4;
+    const int at = ((menubg_off() ? 0 : O()->menu_background * 2) + hd + (dir < 0 ? step - 1 : 1)) % step;
+    if ((at & 1) != hd)
+        ModApi_SetSetting("menus2020", "logo", at & 1 ? "hd" : "pixel");
+    if (menubg_off() || (at >> 1) == O()->menu_background)
         return;
-    }
-    O()->menu_background = !O()->menu_background;
+    O()->menu_background = at >> 1;
     MenuBackgrounds_Choose(O()->menu_background);
     save();
     LoadOverlayToFrontbuffer(_aGrafsMenubgRaw);   /* (the menus' backdrop again, the new one) */
@@ -1342,7 +1354,7 @@ _Static_assert(sizeof k_gameplayRows / sizeof k_gameplayRows[0] <= kRows, "a set
 static const Row k_displayRows[] = {
     { "GAME GRAPHICS",      art_show,      art_change },
     { "MENU BUTTON LOOK",   look_show,     look_change },     /* (the buttons' shading; MENU BACKGROUND below) */
-    { "MENU BACKGROUND",    menubg_show,   menubg_change, 0, menubg_off },
+    { "MENU BACKGROUND",    menubg_show,   menubg_change },    /* (and the logo: HD) */
     { "MENU CURSOR",        cursor_show,   cursor_change },
     { "MENU OPACITY",       opacity_show,  opacity_change },
     { "KIT COLOURS",        kitcols_show,  kitcols_change },    /* (RULES' too: which kits clash) */
