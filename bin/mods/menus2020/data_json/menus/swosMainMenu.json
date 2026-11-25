@@ -321,7 +321,7 @@
       "kind": "entry",
       "coords": {
         "x": 88,
-        "y": -25,
+        "y": -29,
         "w": 130,
         "h": 66
       },
@@ -338,16 +338,24 @@
     {
       "kind": "entry",
       "coords": {
-        "x": 0,
-        "y": 10,
-        "w": 1,
-        "h": 1
+        "x": 88,
+        "y": 39,
+        "w": 129,
+        "h": 6
       },
       "commands": [
         {
-          "op": "invisible"
+          "op": "colors",
+          "frame_color": 0,
+          "background_color": 0
+        },
+        {
+          "op": "text",
+          "flags": "0x2",
+          "literal": "BETA"
         }
-      ]
+      ],
+      "name": "beta"
     },
     {
       "kind": "entry",
