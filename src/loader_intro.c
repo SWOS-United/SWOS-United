@@ -430,7 +430,8 @@ static int32_t intro_clicked(void)
 
 #ifdef AGA
 /* The title picture's caption glows (Playa, 2026-11-23): its ink and the fire button's bright red
- * are palette entries 31 and 128, white and red like the logo's own but never its pixels
+ * are palette entries 31 and 128, the button's other colours 138, 150, 158 and 160 (its glint the
+ * ink's white) -- the whole button pulses -- like the logo's own but never its pixels
  * (scripts/make_loader_logos.sh), so their copper colours pulse -- between 35% and full, every
  * 1.6 s (Playa, 2026-11-25: the 70% over three seconds was too tame). The copper has 4 bits a
  * channel: the SDL build shows the pulse in 8 bits (Platform_PaletteFine), smooth. (No random dips any more: a pulse,
@@ -454,8 +455,10 @@ static void title_glow(uint32_t frame)
     const uint32_t ph = (frame % kGlowPeriod) * 16u * 16u / kGlowPeriod;    /* 0..255 */
     const int32_t c0 = kCos16[ph >> 4], c1 = kCos16[((ph >> 4) + 1) & 15];
     const int32_t level = kGlowMin + ((256 - kGlowMin) * (c0 + (c1 - c0) * (int32_t)(ph & 15) / 16)) / 256;
-    for (int32_t k = 0; k < 2; k++) {
-        const int32_t idx = k ? kGlowRed : kGlowInk;
+    static const int16_t kGlowing[] = { kGlowInk, kGlowRed, 138, 150, 158, 160 };  /* (the button's all:
+                                                 *  make_loader_logos.c k_buttonGlow, the logo's never) */
+    for (int32_t k = 0; k < (int32_t)(sizeof kGlowing / sizeof kGlowing[0]); k++) {
+        const int32_t idx = kGlowing[k];
         const uint16_t c = palette[idx];
         const uint16_t r = (uint16_t)((((c >> 8) & 15) * level + 128) >> 8);
         const uint16_t g = (uint16_t)((((c >> 4) & 15) * level + 128) >> 8);

@@ -25,9 +25,14 @@
 extern int32_t Sg_RncUnpack(const SgBuf *in, SgBuf *out, char *err);
 enum { W = 352, H = 272 };
 static double pr[256], pg[256], pb[256];
+/* Entries the logo must not take: the caption's glow pulses them (its ink, the button's colours). */
+static unsigned char s_glowOnly[256];
+static const int k_buttonGlow[] = { 138, 150, 158, 160 };  /* (the button's highlights and dark ring) */
+
 static int nearest(double r, double g, double b) {
     int best = 0; double bd = 1e30;
     for (int i = 0; i < 256; i++) {
+        if (s_glowOnly[i]) continue;
         double dr = r - pr[i], dg = g - pg[i], db = b - pb[i];
         double rm = (r + pr[i]) / 2, d = (2 + rm / 256) * dr * dr + 4 * dg * dg + (2 + (255 - rm) / 256) * db * db;
         if (d < bd) { bd = d; best = i; }
@@ -41,7 +46,7 @@ static int nearest_grey(double r, double g, double b, int skip1, int skip2) {
     int best = 3; double bd = 1e30;
     for (int i = 1; i < 256; i++) {
         double mx = fmax(pr[i], fmax(pg[i], pb[i])), mn = fmin(pr[i], fmin(pg[i], pb[i]));
-        if (mx - mn > 12 || i == skip1 || i == skip2) continue;
+        if (mx - mn > 12 || i == skip1 || i == skip2 || s_glowOnly[i]) continue;
         double dr = r - pr[i], dg = g - pg[i], db = b - pb[i], d = dr * dr + dg * dg + db * db;
         if (d < bd) { bd = d; best = i; }
     }
@@ -57,6 +62,11 @@ int main(int argc, char **argv) {
     int bw = 0, bh = 0, bn; unsigned char *btn = NULL; int bth = 0, btw = 0;
     if (argc > 14) { btn = stbi_load(argv[13], &bw, &bh, &bn, 4); bth = atoi(argv[14]); btw = (int)lround((double)bw * bth / bh); }
     const int glowInk = argc > 16 ? atoi(argv[15]) : -1, glowRed = argc > 16 ? atoi(argv[16]) : -1;
+    if (glowInk >= 0) {     /* (the whole button pulses with the caption: its entries the caption's alone) */
+        s_glowOnly[glowInk] = s_glowOnly[glowRed] = 1;
+        for (size_t k = 0; k < sizeof k_buttonGlow / sizeof k_buttonGlow[0]; k++)
+            s_glowOnly[k_buttonGlow[k]] = 1;
+    }
     for (int i = 0; i < 256; i++) { uint32_t c = Sg_AmigaRawDosMenuPal[i]; pr[i] = c >> 16 & 255; pg[i] = c >> 8 & 255; pb[i] = c & 255; }
     /* the black around the logo, and the black panels open to it: background (clear), flooded from
      * the picture's edges through clear and near-black pixels -- a near-black the logo encloses (an
@@ -137,7 +147,7 @@ int main(int argc, char **argv) {
                       fmax(r, fmax(g, b)) - fmin(r, fmin(g, b)) < 28 ? nearest_grey(rr, gg, bb, glowInk, glowRed) :
                       nearest(rr, gg, bb);
             if (idx == 0 && a >= 0.5) idx = 3;
-            if (glowInk >= 0 && (idx == glowInk || idx == glowRed))     /* (the glow's: the caption's alone) */
+            if (s_glowOnly[idx])        /* (the glow's: the caption's alone -- black never is) */
                 idx = idx == glowInk ? 2 : 10;
             px[(logoTop + oy) * W + left + ox] = (uint8_t)idx;
             if (dith && idx) {
@@ -154,7 +164,7 @@ int main(int argc, char **argv) {
     }
     if (caption && glowInk >= 0) {     /* (the glow's entries: the logo's own pixels never) */
         for (int i = 0; i < W * H; i++)
-            if (px[i] == glowInk || px[i] == glowRed) { fprintf(stderr, "glow entry %d is the logo's\n", px[i]); return 1; }
+            if (s_glowOnly[px[i]]) { fprintf(stderr, "glow entry %d is the logo's\n", px[i]); return 1; }
     }
     if (caption) {
         int x = cx - capw / 2;
@@ -186,6 +196,8 @@ int main(int argc, char **argv) {
                             if (fabs(r - pr[i]) < 0.5 && fabs(g - pg[i]) < 0.5 && fabs(b - pb[i]) < 0.5 &&
                                 i != glowInk)
                                 idx = i;
+                        if (idx == 2 && glowInk >= 0)
+                            idx = glowInk;      /* (its white glint: the caption's glowing white) */
                     }
                     if (!idx && !(a < 0.3 || (r < 20 && g < 20 && b < 30))) {
                         double bd = 1e30, R = fmin(255, r * 1.35), G = fmin(255, g * 1.35), B = fmin(255, b * 1.35);
