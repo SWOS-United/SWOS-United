@@ -152,6 +152,10 @@ void ModHooks_FrameDrawn(void)
         extern void MenuExtras_Present(void);
         MenuExtras_Present();
     }
+    {   /* the CREDITS photos in their own colours (credits_menu.c) */
+        extern void CreditsMenu_PhotosPresent(void);
+        CreditsMenu_PhotosPresent();
+    }
 #endif
     EACH(frameUnder) (*m_)->frameUnder();
     EACH(frameDrawn) (*m_)->frameDrawn();

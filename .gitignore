@@ -179,6 +179,7 @@ tests/career-golden/
 # sound and the commentary README.
 bin/data/*
 !bin/data/credits_icons.bmp
+!bin/data/credits_icons.png
 !bin/data/CREDITS.txt
 !bin/data/backgrounds/
 bin/grafs/*
