@@ -1675,6 +1675,9 @@ int32_t Menu_IsMainMenu(void)
 
 void DrawMenu(void)
 {
+#ifdef SWOS_SDL_BUILD
+    { extern void Perf_Begin(int); Perf_Begin(2 /* PERF_MENU */); }
+#endif
     Menu *menu = (Menu *)_currentMenu;
     MenuEntry *entry;
     int16_t i, count;
@@ -1770,6 +1773,9 @@ void DrawMenu(void)
     { extern void MenuExtras_Drawn(void); MenuExtras_Drawn(); }       /* (a JSON menu's images) */
 #endif
     { extern void ModHooks_MenuDrawn(void); ModHooks_MenuDrawn(); }   /* (a mod's menu overlay) */
+#ifdef SWOS_SDL_BUILD
+    { extern void Perf_End(int); Perf_End(2 /* PERF_MENU */); }
+#endif
     WaitForVSync();
     BlitterCopyOverlayToScreen();
 }

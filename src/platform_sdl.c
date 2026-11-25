@@ -13,6 +13,7 @@
 #include <stdint.h>
 #include "project_identity.h"
 #include "platform_sdl.h"
+#include "perf_stats.h"
 #include "mod_hooks.h"
 #include "swos_settings.h"  /* Settings_Save: the volume keys' */
 #include "text_render.h"    /* DrawMenuText: their readout */      /* ModHooks_FrameDrawn: the built-in mods' drawing */
@@ -1125,6 +1126,7 @@ int Platform_Init(const PlatformInitOptions *opts)
 
     s_perf_freq = SDL_GetPerformanceFrequency();
     s_next_frame_perf = SDL_GetPerformanceCounter();
+    Perf_Init();                        /* (SWOS_PERF=1: what the steps cost, perf_stats.h) */
 
     s_render_mtx = SDL_CreateMutex();
     s_isr_mtx    = SDL_CreateMutex();
@@ -3036,6 +3038,7 @@ static int frame_captures_wanted(int pump_full);
 static void render_frame_gpu(int pump_full)
 {
     SDL_LockMutex(s_render_mtx);
+    Perf_Begin(PERF_PRESENT);
     refresh_palette_from_copper();
     menu_fade_over_backdrop();
 
@@ -3126,8 +3129,10 @@ static void render_frame_gpu(int pump_full)
         draw_overlays();
         Gfx_EndFrame();
         capture_presented_frame();
+        Perf_End(PERF_PRESENT);         /* (not the present itself: the wait for the screen) */
         GpuPresent_End();
     }
+    Perf_End(PERF_PRESENT);
     SDL_UnlockMutex(s_render_mtx);
 }
 
@@ -3218,6 +3223,7 @@ static void render_frame_impl(int pump_full)
     if (pump_full && s_frame_skip_now) return;
 
     SDL_LockMutex(s_render_mtx);
+    Perf_Begin(PERF_PRESENT);
 
     /* Upload into the next texture in the ring (not the one the GPU is still
      * sampling from a recent frame) — see the s_textures[] comment. */
@@ -3288,6 +3294,7 @@ static void render_frame_impl(int pump_full)
     draw_overlays();
     Gfx_EndFrame();
     capture_presented_frame();     /* after every draw, before the swap */
+    Perf_End(PERF_PRESENT);
     SDL_RenderPresent(s_renderer);
 
     SDL_UnlockMutex(s_render_mtx);
