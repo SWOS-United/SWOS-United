@@ -803,6 +803,9 @@ void DrawReplayFrame(void)
         extern int32_t  ReplayV2_Loaded(void);
         extern void     ReplayV2_DrawFrame(void);
         if (_playHighlightFlag != 0 && ReplayV2_Loaded()) {
+            /* (the HUD layer cleared before the frame: the frame box goes on it, then the score) */
+            extern void Platform_HudLayerReset(void);
+            Platform_HudLayerReset();
             ReplayV2_DrawFrame();
             if (_replayState == 0)
                 return;
@@ -1041,9 +1044,13 @@ after_decode:
         if (hudLayer) {
             /* Cleared first: the layer is reset by DrawSprites (sprites.c), which a replay
              * never runs, so each frame's score was drawn over every one before it -- a whole
-             * match's 2-0 on top of its 1-0 and 0-0 (the recordings player, 2026-11-07). */
+             * match's 2-0 on top of its 1-0 and 0-0 (the recordings player, 2026-11-07). A .SRP's
+             * frame cleared it before its frame (above): its frame box is on it already. */
             extern void Platform_HudLayerReset(void);
-            Platform_HudLayerReset();
+            extern int32_t ReplayV2_Loaded(void);
+            extern uint16_t _playHighlightFlag;
+            if (!(_playHighlightFlag != 0 && ReplayV2_Loaded()))
+                Platform_HudLayerReset();
             _frontbufferBasePtr = (uintptr_t)hudLayer;
             extern int _menu_draw_x_offset;
             Platform_HudLayerMark((int)bx + _menu_draw_x_offset, (int)by, 64, 32);

@@ -2219,39 +2219,60 @@ static int32_t viewer_advance(int32_t *fresh)
     return 1;
 }
 
-/* The frame box (SWOS 2020's, the bottom left: speed, state, scene, frame and a bar). */
+/* The frame box (SWOS 2020's, the bottom left: speed; state and scene; frame; a bar). At the
+ * screen's very left edge, its size kept (2026-11-25), three rows 10 apart -- the state left, the
+ * scene right on one. On the HUD layer where there is one (Platform_HudLayerBuffer: SMOOTH
+ * SCROLLING): the frame is shifted by the camera's fraction each frame and the box, drawn into
+ * it, shook with it; the layer is not shifted. Its background is the frame darkened (+128, the
+ * palette's dark half), read from the frame and put on the layer. */
 static void viewer_overlay(void)
 {
     extern void *_charTables[];
     extern volatile uintptr_t _frontbufferBasePtr;
+    extern uint8_t *Platform_HudLayerBuffer(void);
+    extern void     Platform_HudLayerMark(int x, int y, int w, int h);
+    enum { kW = 132, kRow = 10 };
     char buf[48];
-    const int32_t h = _screen_height, y0 = h - 22, y1 = y0 - 13, y2 = y1 - 13, y3 = y2 - 13;
-    uint8_t *fb = (uint8_t *)(uintptr_t)_frontbufferBasePtr;
-    const int32_t x0 = _menu_draw_x_offset, stride = FRONTBUFFER_ROW_STRIDE_BYTES;
-    for (int32_t y = y3 - 5; y < h; y++)
-        for (int32_t x = x0; x < x0 + 132; x++)
-            if (fb[y * stride + x] < 128)
-                fb[y * stride + x] += 128;
+    const int32_t h = _screen_height, y0 = h - 20, y1 = y0 - kRow, y2 = y1 - kRow, top = y2 - 3;
+    uint8_t *frame = (uint8_t *)(uintptr_t)_frontbufferBasePtr;
+    uint8_t *hud = Platform_HudLayerBuffer();
+    uint8_t *fb = hud ? hud : frame;
+    const int32_t stride = FRONTBUFFER_ROW_STRIDE_BYTES;    /* (the layer's too: the screen's width) */
+    const uintptr_t savedBase = _frontbufferBasePtr;
+    const int savedX = _menu_draw_x_offset;
+    if (!frame)
+        return;
+    for (int32_t y = top; y < h; y++)
+        for (int32_t x = 0; x < kW; x++) {
+            const uint8_t c = frame[y * stride + x];
+            fb[y * stride + x] = c < 128 ? (uint8_t)(c + 128) : c;
+        }
+    if (hud)
+        Platform_HudLayerMark(0, top, kW, h - top);
+    _frontbufferBasePtr = (uintptr_t)fb;
+    _menu_draw_x_offset = 0;            /* (the screen's edge, not the 4:3 picture's) */
     uint8_t *small = (uint8_t *)_charTables[0];
     snprintf(buf, sizeof buf, " REPLAY SPEED: %d.%02dX", (int)(s_view.quarter / 4), (int)(s_view.quarter % 4 * 25));
-    DrawMenuText(0, (uint16_t)y3, 2, (uint8_t *)buf, small);
-    DrawMenuText(0, (uint16_t)y2, 2, (uint8_t *)(s_view.paused ? " PAUSED" : s_view.sign < 0 ? " REWINDING" : " FORWARDING"),
+    DrawMenuText(0, (uint16_t)y2, 2, (uint8_t *)buf, small);
+    DrawMenuText(0, (uint16_t)y1, 2, (uint8_t *)(s_view.paused ? " PAUSED" : s_view.sign < 0 ? " REWINDING" : " FORWARDING"),
                  small);
-    DrawMenuText(0, (uint16_t)y1, 2, (uint8_t *)" SCENE: 1 / 1", small);
-    const int32_t frame = s_view.pos / 4, total = (int32_t)s_play.frameCount;
-    snprintf(buf, sizeof buf, " FRAME: %4d", (int)frame + 1);
+    DrawMenuTextRightAligned(kW - 4, (uint16_t)y1, 2, (uint8_t *)"SCENE: 1 / 1", small);
+    const int32_t frameNo = s_view.pos / 4, total = (int32_t)s_play.frameCount;
+    snprintf(buf, sizeof buf, " FRAME: %4d", (int)frameNo + 1);
     DrawMenuText(0, (uint16_t)y0, 2, (uint8_t *)buf, small);
     snprintf(buf, sizeof buf, " / %-4d", (int)total);
     DrawMenuText(74, (uint16_t)y0, 2, (uint8_t *)buf, small);
-    const int32_t bx1 = 10, bx2 = bx1 + 112;
-    const int32_t xp = bx1 + (total ? (int32_t)((int64_t)(bx2 - bx1) * frame / total) : 0) - 3;
-    for (int32_t y = y0 + 11; y < y0 + 16; y++)
+    _frontbufferBasePtr = savedBase;
+    _menu_draw_x_offset = savedX;
+    const int32_t bx1 = 10, bx2 = bx1 + 112, by = y0 + 9;
+    const int32_t xp = bx1 + (total ? (int32_t)((int64_t)(bx2 - bx1) * frameNo / total) : 0) - 3;
+    for (int32_t y = by + 2; y < by + 7 && y < h; y++)
         for (int32_t x = bx1; x < bx2; x++)
-            fb[y * stride + x0 + x] = 92;
-    for (int32_t y = y0 + 9; y < y0 + 18 && y < h; y++)
+            fb[y * stride + x] = 92;
+    for (int32_t y = by; y < by + 9 && y < h; y++)
         for (int32_t x = xp; x < xp + 6; x++)
             if (x >= 0)
-                fb[y * stride + x0 + x] = 84;
+                fb[y * stride + x] = 84;
 }
 
 void ReplayV2_DrawFrame(void)
