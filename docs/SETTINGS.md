@@ -292,6 +292,11 @@ the picture changes size. VIDEO OPTIONS' row goes AUTO, 1X .. that most; a numbe
 monitor takes is never shown or used. Written `auto` or `2x`: a bare number is an older file's
 (the game wrote the window's scale at every save), taken as AUTO once (2026-11-25).
 
+On the OPTIONS pages, as in the original game, only fire changes a value: a press one step on,
+held it runs on (after 0.4 s, then every 0.15 s; not on the rows that open a screen or move the
+window). The stick only moves between rows -- left and right do nothing there, so a shaky stick
+cannot change a value (2026-11-25). Each change is logged with its value before and after.
+
 A change "from the next start" (the note says FROM THE NEXT START) is remembered: leaving OPTIONS
 by its EXIT then asks RESTART NOW / LATER, and RESTART NOW starts the game again at once
 (`Main_Relaunch`, as OPTIONS -> MODS does) where it can; where it cannot (the browser, phones),

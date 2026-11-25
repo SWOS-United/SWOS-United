@@ -243,37 +243,54 @@ static void settingsPage_OnInit(void)
     page_refresh();
 }
 
-static int32_t s_stickArmed;            /* left / right let go of since the last fire (page_row) */
+static int32_t s_fireHeld;              /* fire pressed on this page and held since (page_row) */
 
 static void settingsPage_OnDraw(void)
 {
-    extern uint8_t _left, _right;       /* (both players', held: menu_system.c) */
-    if (!_left && !_right)
-        s_stickArmed = 1;
+    if (!_fire)
+        s_fireHeld = 0;
     page_refresh();
 }
 
 static int32_t s_activeRow = -1;           /* the row whose change is running (page_row) */
 
-/* A press of fire steps forward, whatever the stick: the menu gives the direction held at that
- * moment in the same event, so a stick held a little aside while fire was pressed stepped a value
- * BACK (AMIGA to MOON on GAME STYLE). And a direction counts only once the stick has been back in
- * the middle (left and right let go of: settingsPage_OnDraw) -- the stick held aside as fire was
- * pressed does nothing until it is let go; fire held and the stick then moved steps as ever. */
+/* As in the original game, only fire changes a value: a press one step on, held it runs on --
+ * kHoldFirstMs after the press, then every kHoldEveryMs. The stick does nothing here (its rows'
+ * mask: fire pressed, 0x20, and held, 0x01): a shaky stick changed values by itself (2026-11-25).
+ * Rows that open a screen of their own or move the window are not run on (no_repeat). */
+enum { kHoldFirstMs = 400, kHoldEveryMs = 150 };
+static Uint32 s_holdNext;
+
+static void p1_select(int32_t dir), p2_select(int32_t dir), p1_setup(int32_t dir), p2_setup(int32_t dir),
+            keys_change(int32_t dir), winmode_change(int32_t dir), scale_change(int32_t dir),
+            monitor_change(int32_t dir), res_change(int32_t dir), renderer_change(int32_t dir);
+
+static int32_t no_repeat(void (*change)(int32_t))
+{
+    static void (*const k[])(int32_t) = {
+        p1_select, p2_select, p1_setup, p2_setup, keys_change,
+        winmode_change, scale_change, monitor_change, res_change, renderer_change,
+    };
+    for (uint32_t i = 0; i < sizeof k / sizeof k[0]; i++)
+        if (k[i] == change)
+            return 1;
+    return 0;
+}
 
 static void page_row(int32_t i)
 {
-    const int32_t fire = (_controlMask & 0x20) != 0;    /* (0x40 left, 0x80 right, 0x20 fire) */
-    const int32_t dir = fire ? 1 : (_controlMask & 0x40) ? -1 : 1;
+    const int32_t fire = (_controlMask & 0x20) != 0;    /* (0x20 fire pressed, 0x01 held) */
+    const int32_t dir = 1;
     char before[48], after[48];
     if (!s_page || i >= s_page->count)
         return;
-    {
-        extern uint8_t _left, _right;
-        if (fire && (_left || _right))
-            s_stickArmed = 0;           /* (aside as fire was pressed: not a direction) */
-        else if (!fire && !s_stickArmed)
-            return;                     /* (not back in the middle since) */
+    if (fire) {
+        s_fireHeld = 1;
+        s_holdNext = SDL_GetTicks() + kHoldFirstMs;
+    } else {                            /* (held: on, after a while, where it may) */
+        if (!s_fireHeld || no_repeat(s_page->rows[i].change) || !SDL_TICKS_PASSED(SDL_GetTicks(), s_holdNext))
+            return;
+        s_holdNext = SDL_GetTicks() + kHoldEveryMs;
     }
     note("");
     s_page->rows[i].show(before, (int32_t)sizeof before);
@@ -282,7 +299,7 @@ static void page_row(int32_t i)
     s_activeRow = -1;
     s_page->rows[i].show(after, (int32_t)sizeof after);
     fprintf(stderr, "[settings] %s: %s %s -> %s (%s)\n", s_page->title, s_page->rows[i].label,
-            before, after, fire ? "fire" : dir < 0 ? "left" : "right");
+            before, after, fire ? "fire" : "fire held");
     page_refresh();
 }
 
