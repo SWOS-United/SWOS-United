@@ -1895,10 +1895,31 @@ void Platform_SetMenuBackdropRule(int rule) { s_bdRule = rule; }
 
 void Platform_SetMenuBackdrop(const uint8_t *rgba, int w, int h)
 {
+    /* (a picture is new only when it is another one: none in between -- the intro's ends, the
+     *  menus set the same picture again -- keeps the last one's serial, so the GPU keeps its
+     *  texture: a 7680 x 2160 upload is ~380 ms, a stall as the main menu comes up) */
+    static const uint8_t *s_bdLast;
+    static int s_bdLastW, s_bdLastH;
+    static uint32_t s_bdLastSum;
     if (s_render_mtx)
         SDL_LockMutex(s_render_mtx);    /* (the timer thread's fallback render reads it too) */
-    if (rgba != s_bd || w != s_bdW || h != s_bdH)
-        s_bdSerial++;
+    if (rgba && w > 0 && h > 0) {
+        /* (and a sample of it: another picture where a freed one was is new too) */
+        uint32_t sum = 2166136261u;
+        const size_t n = (size_t)w * (size_t)h;
+        for (size_t k = 0; k < 256; k++) {
+            uint32_t px;
+            memcpy(&px, rgba + (n * k / 256) * 4, 4);
+            sum = (sum ^ px) * 16777619u;
+        }
+        if (rgba != s_bdLast || w != s_bdLastW || h != s_bdLastH || sum != s_bdLastSum) {
+            s_bdSerial++;
+            s_bdLast = rgba;
+            s_bdLastW = w;
+            s_bdLastH = h;
+            s_bdLastSum = sum;
+        }
+    }
     s_bd = rgba && w > 0 && h > 0 ? rgba : NULL;
     s_bdW = w;
     s_bdH = h;

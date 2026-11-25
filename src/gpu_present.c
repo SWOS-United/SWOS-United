@@ -657,12 +657,17 @@ int32_t GpuPresent_Begin(const GpuFrame *f, const uint8_t clear[3])
          * image, the picture), cropped to its aspect, centred. */
         if (!G.backdrop || G.backdropSerial != f->backdropSerial ||
             G.backdrop->w != f->backdropW || G.backdrop->h != f->backdropH) {
+            extern int g_perfOn;
+            const Uint64 t0 = g_perfOn ? SDL_GetPerformanceCounter() : 0;
             if (G.backdrop)
                 GpuGfx_DestroyTexture(G.backdrop);
             G.backdrop = GpuGfx_CreateTexture(f->backdropW, f->backdropH, 1);
             if (G.backdrop)
                 GpuGfx_UpdateTexture(G.backdrop, f->backdrop, f->backdropW * 4);
             G.backdropSerial = f->backdropSerial;
+            if (g_perfOn)               /* (SWOS_PERF: the backdrop's upload, perf_stats.h) */
+                fprintf(stderr, "[perf] backdrop upload %dx%d: %.1f ms\n", f->backdropW, f->backdropH,
+                        1000.0 * (double)(SDL_GetPerformanceCounter() - t0) / (double)SDL_GetPerformanceFrequency());
         }
         if (G.backdrop) {
             const GfxSpace space = G.toOff ? GFX_SPACE_PICTURE : GFX_SPACE_OUTPUT;
