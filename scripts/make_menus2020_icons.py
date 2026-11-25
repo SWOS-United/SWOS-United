@@ -158,8 +158,9 @@ def main():
             sys.exit("make_menus2020_icons: %s has %d rows, not %d" % (name, len(lines), rows))
         return lines
 
-    def small(rows_of_indices, name):
-        pixels = [[(255, 0, 255) if v == 0 else pal[v] for v in row] for row in rows_of_indices]
+    def small(rows_of_indices, name, lift_black=None):
+        pixels = [[(255, 0, 255) if v == 0 else lift_black if v == 3 and lift_black else pal[v]
+                   for v in row] for row in rows_of_indices]
         path = os.path.join(OUT, name + ".bmp")
         write_bmp(path, pixels)
         print("  -> %s" % os.path.relpath(path, REPO))
@@ -168,7 +169,10 @@ def main():
     for k, name in ((1, "save"), (2, "load")):
         small([[int(c, 16) for c in row[:16]] for row in disk[14 * k:14 * (k + 1)]], name)
     logo = char_map("swos_united_logo_24x14_1x1_Map", 14)
-    small([[int(c, 16) for c in row[:24]] for row in logo[:14]], "credits")
+    # (the players' black hair lifted to a very dark grey: on the button's dark blue black vanished;
+    # just to be made out, not grey. Only the black; the menus show a picture's own colours,
+    # menu_extras.c, so it needs no palette entry. 2026-11-25)
+    small([[int(c, 16) for c in row[:24]] for row in logo[:14]], "credits", lift_black=(26, 26, 30))
     # The news lists' page arrows (tickerMenu_OnDraw: arrows_12x12_13x1_Map's 11th and 12th).
     arrows = char_map("arrows_12x12_13x1_Map", 12)
     for k, name in ((10, "arrow_up"), (11, "arrow_down")):
