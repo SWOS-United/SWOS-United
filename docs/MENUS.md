@@ -1038,8 +1038,9 @@ Two things a JSON menu may say that the packed format has no room for, for SWOS 
   A `.png` instead (2026-11-25) keeps its alpha: not drawn into the 8bpp frame but over the
   finished picture through `gfx.h` (`MenuExtras_Present`, from `ModHooks_FrameDrawn`), either
   presenter, in the picture's pixels, its part-clear edges blended with whatever is under them
-  (the backdrop picture too) and darkened with the menus' fade; gone 100 ms after the menu's last
-  frame. Over everything drawn in the frame: for a picture nothing else covers (the main menu's logo).
+  (the backdrop picture too) and darkened with the menus' fade (over the backdrop: faded out by it,
+  as the menu is); shown only while its menu is the one up, in the menus. Over everything drawn in
+  the frame: for a picture nothing else covers (the main menu's logo).
 
 The loader gives them to `menu_extras.c` as it builds a menu, and they are filed under the menu's
 final packed bytes (the pointer ShowMenu gets, `_currentMenuPtr`): a JSON-installed engine menu

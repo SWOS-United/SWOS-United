@@ -1942,6 +1942,55 @@ static int backdrop_shown(void)
     return s_bd && !_gArcadeMode && (ModApi_InMenus() || ReplayMenu_ExitMenuUp()) && !s_cut_on;
 }
 
+/* The menus' fade over their backdrop picture: the game fades a menu in and out through its
+ * palette, from and to black -- but the backdrop is a picture of its own, bright throughout, so
+ * the menu's text and buttons came up black on it before they were white. Over the backdrop
+ * the menu fades as its opacity instead: its palette full bright (the palette the fade steps
+ * from, fade.c ApplyFadeStep), the fade's level its alpha (s_fadeA, 255 none) -- the GPU's
+ * palette alpha, chunky_to_rgba's blend, the menus' own-colour pictures and their .png ones
+ * (Platform_MenuFadeAlpha). Not the intro's backdrop: that one fades with the picture. Called
+ * after refresh_palette_from_copper, each frame. */
+static int s_fadeA = 255;
+static uint32_t blend_argb(SDL_Color c, uint32_t under, int a);
+
+static void menu_fade_over_backdrop(void)
+{
+    extern int g_fadeLevel;
+    extern void *_paletteTable[];
+    extern uint16_t _paletteIndex;
+    extern volatile uint16_t _playGame, _playHighlightFlag;
+    const int level = g_fadeLevel < 0 ? 0 : g_fadeLevel > 0x80 ? 0x80 : g_fadeLevel;
+    s_fadeA = 255;
+    if (level >= 0x80 || s_cut_on || s_introSrc || _playGame || _playHighlightFlag || !backdrop_shown())
+        return;
+    const uint16_t *pal = (const uint16_t *)_paletteTable[_paletteIndex];
+    if (!pal)
+        return;
+    for (int i = 0; i < 256; i++) {
+        const uint16_t v = pal[i];
+        s_palette[i].r = (uint8_t)(((v >> 8) & 0x0F) * 17);
+        s_palette[i].g = (uint8_t)(((v >> 4) & 0x0F) * 17);
+        s_palette[i].b = (uint8_t)((v & 0x0F) * 17);
+        s_palette[i].a = 255;
+    }
+    s_fadeA = level * 255 / 0x80;
+}
+
+int Platform_MenuFadeAlpha(void) { return s_fadeA; }
+
+/* An ARGB colour of the menu, its fade's alpha over the backdrop (`under`; NULL: the GPU's,
+ * drawn under -- the alpha kept). */
+static uint32_t fade_over(uint32_t argb, const uint32_t *under, int fadeA)
+{
+    if (fadeA >= 255)
+        return argb;
+    if (under) {
+        const SDL_Color c = { (uint8_t)(argb >> 16), (uint8_t)(argb >> 8), (uint8_t)argb, 255 };
+        return blend_argb(c, *under, fadeA);
+    }
+    return ((((argb >> 24) * (uint32_t)fadeA) / 255u) << 24) | (argb & 0xFFFFFFu);
+}
+
 /* The backdrop at w x h, covering it (cropped to its aspect, centred): ARGB, for SDL's renderer. */
 static const uint32_t *backdrop_small(int w, int h)
 {
@@ -2150,7 +2199,8 @@ static void chunky_to_rgba(uint32_t *dst, int dst_pitch_pixels)
     extern int g_fadeLevel;
     const int tcOn = s_tcCount && s_tcW == _screen_width && s_tcH == _screen_height &&
                      Platform_NowMs() - s_tcStamp < 100;
-    const int tcFade = g_fadeLevel < 0 ? 0 : g_fadeLevel > 0x80 ? 0x80 : g_fadeLevel;
+    const int fadeA = keyed ? s_fadeA : 255;    /* (the fade as the menu's alpha over the backdrop) */
+    const int tcFade = fadeA < 255 ? 0x80 : g_fadeLevel < 0 ? 0 : g_fadeLevel > 0x80 ? 0x80 : g_fadeLevel;
     for (int y = 0; y < _screen_height; ++y) {
         const uint8_t *line = fb + (size_t)y * FRONTBUFFER_ROW_STRIDE_BYTES;
         const uint8_t *uline = under ? under + (size_t)y * FRONTBUFFER_ROW_STRIDE_BYTES : NULL;
@@ -2162,6 +2212,7 @@ static void chunky_to_rgba(uint32_t *dst, int dst_pitch_pixels)
                 const uint32_t c = tc[x];
                 out[x] = 0xFF000000u | ((((c >> 16) & 0xFF) * (uint32_t)tcFade >> 7) << 16) |
                          ((((c >> 8) & 0xFF) * (uint32_t)tcFade >> 7) << 8) | ((c & 0xFF) * (uint32_t)tcFade >> 7);
+                out[x] = fade_over(out[x], bd ? &bd[(size_t)y * _screen_width + x] : NULL, fadeA);
                 continue;
             }
             if (keyed && line[x] == MENU_BACKDROP_KEY) {   /* the menus' true-colour backdrop */
@@ -2177,6 +2228,7 @@ static void chunky_to_rgba(uint32_t *dst, int dst_pitch_pixels)
                     const SDL_Color uc = s_palette[uline[x]];
                     out[x] = blend_argb(mc, 0xFF000000u | ((uint32_t)uc.r << 16) | ((uint32_t)uc.g << 8) | uc.b, alpha);
                 }
+                out[x] = fade_over(out[x], bd ? &bd[(size_t)y * _screen_width + x] : NULL, fadeA);
                 continue;
             }
             SDL_Color c = s_palette[line[x]];
@@ -2184,6 +2236,8 @@ static void chunky_to_rgba(uint32_t *dst, int dst_pitch_pixels)
                      ((uint32_t)c.r  << 16) |
                      ((uint32_t)c.g  <<  8) |
                      ((uint32_t)c.b  <<  0);
+            if (fadeA < 255)
+                out[x] = fade_over(out[x], bd ? &bd[(size_t)y * _screen_width + x] : NULL, fadeA);
         }
     }
 }
@@ -2945,6 +2999,7 @@ static void render_frame_gpu(int pump_full)
 {
     SDL_LockMutex(s_render_mtx);
     refresh_palette_from_copper();
+    menu_fade_over_backdrop();
 
     GpuFrame f;
     SDL_memset(&f, 0, sizeof f);
@@ -2999,9 +3054,9 @@ static void render_frame_gpu(int pump_full)
     }
     {   /* the menus' opacity over a backdrop picture: the palette's alpha (the shader blends) */
         static uint8_t alphas[256];
-        if (menuAlpha < 255 && backdrop_shown()) {
+        if ((menuAlpha < 255 || s_fadeA < 255) && backdrop_shown()) {   /* (and its fade's: s_fadeA) */
             for (int i = 0; i < 256; i++)
-                alphas[i] = menu_solid(i) ? 255 : (uint8_t)menuAlpha;
+                alphas[i] = (uint8_t)((menu_solid(i) ? 255 : menuAlpha) * s_fadeA / 255);
             f.paletteAlpha = alphas;
         }
     }
@@ -3135,6 +3190,7 @@ static void render_frame_impl(int pump_full)
      * into the texture's mapped memory — that's the D3D11 write-combined trap. The
      * buffer is tightly packed so the row pitch in pixels is exactly _screen_width. */
     refresh_palette_from_copper();
+    menu_fade_over_backdrop();
 
     uint32_t *fb   = s_frame_rgba;
     const int fbpx = _screen_width;              /* row pitch, in pixels */

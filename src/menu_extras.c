@@ -57,6 +57,7 @@ enum { kMaxShown = 8 };
 static struct { Extra *e; int32_t x, y; } s_shown[kMaxShown];
 static int32_t s_shownCount;
 static Uint64  s_shownAt;
+static uintptr_t s_shownMenu;   /* (the menu they are its: none of them once another is up) */
 
 static void free_picture(Extra *e)
 {
@@ -307,6 +308,7 @@ void MenuExtras_Drawn(void)
     uint32_t hash = 0;
     Platform_TrueColourBegin();         /* (each picture's own colours on screen, not only the nearest) */
     s_shownCount = 0;
+    s_shownMenu = (uintptr_t)m->menu;
     for (int32_t i = 0; i < kMaxEntries && frame; i++) {
         Extra *e = &m->entry[i];
         if (!e->imagePath)
@@ -362,14 +364,19 @@ void MenuExtras_Drawn(void)
 
 /* Over the finished picture (ModHooks_FrameDrawn), each frame the window shows: the .png pictures
  * the menu's last frame drew, in the picture's pixels, blended by their alpha and darkened with
- * the menus' fade. Gone 100 ms after the last menu frame (a match, another screen). */
+ * the menus' fade (over the backdrop picture: faded out by it, Platform_MenuFadeAlpha). Gone as soon as another menu is up, or the menus are not (and 100 ms after
+ * the menu's last frame, whatever else took the screen). */
 void MenuExtras_Present(void)
 {
     extern int g_fadeLevel;
-    if (!s_shownCount || !Gfx_InFrame() || Platform_NowMs() - s_shownAt > 100)
+    extern int32_t ModApi_InMenus(void);
+    if (!s_shownCount || !Gfx_InFrame() || Platform_NowMs() - s_shownAt > 100 ||
+        s_shownMenu != _currentMenuPtr || !ModApi_InMenus())
         return;
     const int fade = g_fadeLevel < 0 ? 0 : g_fadeLevel > 0x80 ? 0x80 : g_fadeLevel;
-    const uint8_t lit = (uint8_t)(fade * 255 / 0x80);
+    const int overA = Platform_MenuFadeAlpha();     /* (over the backdrop: the fade as alpha) */
+    const uint8_t lit = (uint8_t)(overA < 255 ? 255 : fade * 255 / 0x80);
+    const uint8_t alpha = (uint8_t)(overA < 255 ? overA : 255);
     const GfxSpace space = Gfx_Space();
     const GfxBlend blend = Gfx_Blend();
     Gfx_SetSpace(GFX_SPACE_PICTURE);
@@ -394,7 +401,7 @@ void MenuExtras_Present(void)
             v[k].position.x = px[k];
             v[k].position.y = py[k];
             v[k].color.r = v[k].color.g = v[k].color.b = lit;
-            v[k].color.a = 255;
+            v[k].color.a = alpha;
             v[k].tex_coord.x = tu[k];
             v[k].tex_coord.y = tv[k];
         }
