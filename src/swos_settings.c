@@ -546,6 +546,12 @@ static int handler(void *user, const char *section,
 static PlatformInitOptions s_baseline;
 static int                 s_haveBaseline;
 static char                s_baselinePath[1024];   /* (it is that file's: a save to another writes all) */
+/* What the file holds after this game's last save, key by key (SETTINGS_MAX entries in
+ * settings_build's order): the baseline from then on. Compared with the values at the start
+ * instead, a setting changed and changed back (AUTO -> 32:9 -> AUTO, AMIGA -> .. MOON -> AMIGA)
+ * counted as untouched and the file kept the last value saved in between (2026-11-25). */
+static char                s_savedVal[192][300];   /* (SETTINGS_MAX, below) */
+static int                 s_haveSaved;
 
 void Settings_Load(PlatformInitOptions *opts, const char *path)
 {
@@ -563,6 +569,7 @@ void Settings_Load(PlatformInitOptions *opts, const char *path)
     }
     s_baseline = *opts;
     s_haveBaseline = 1;
+    s_haveSaved = 0;
     snprintf(s_baselinePath, sizeof s_baselinePath, "%s", path);
     /* A SWOS.ini from before KIT COLOURS (2026-11-24): the player never had the choice, so the
      * kits and their officials as they are meant -- extended, and GK/REF CLASH KITS on even where
@@ -626,6 +633,7 @@ static const char *crt_mask_str(int m)
  * which checks its stack, and corrupted it quietly everywhere else (2026-10-05). Every
  * append is bounded now (SETTING), and a full table says so. */
 #define SETTINGS_MAX 192
+_Static_assert(sizeof s_savedVal / sizeof s_savedVal[0] == SETTINGS_MAX, "s_savedVal holds every key");
 #define SETTING(n)  if ((n) < SETTINGS_MAX) items[(n)++]
 
 /* Inline comment appended to a section-header line in a freshly-created file. */
@@ -1355,7 +1363,10 @@ void Settings_Save(const PlatformInitOptions *opts, const char *path)
      * (s_baseline). Built from the same table, so entry k is the same key in both. */
     unsigned char keep[SETTINGS_MAX];
     memset(keep, 0, sizeof keep);
-    if (s_haveBaseline && strcmp(s_baselinePath, path) == 0) {
+    if (s_haveBaseline && strcmp(s_baselinePath, path) == 0 && s_haveSaved) {
+        for (int k = 0; k < n; k++)
+            keep[k] = strcmp(s_savedVal[k], items[k].value) == 0;
+    } else if (s_haveBaseline && strcmp(s_baselinePath, path) == 0) {
         IniEntry was[SETTINGS_MAX];
         char wbuf[10][24];
         const int nw = settings_build(&s_baseline, was, wbuf, 0);
@@ -1369,6 +1380,9 @@ void Settings_Save(const PlatformInitOptions *opts, const char *path)
     char **lines = Settings_ReadLines(path, &n_lines);
     if (!lines) {                                           /* absent -> create it */
         settings_write_full(opts, path);
+        for (int k = 0; k < n; k++)                         /* (the file is ours, whole) */
+            snprintf(s_savedVal[k], sizeof s_savedVal[k], "%s", items[k].value);
+        s_haveSaved = strcmp(s_baselinePath, path) == 0;
         swos_save_commit();     /* as below: the web's localStorage copy, the Switch's commit */
         return;
     }
@@ -1419,6 +1433,7 @@ void Settings_Save(const PlatformInitOptions *opts, const char *path)
         Settings_FreeLines(lines, n_lines);
         return;
     }
+    char (*finalVal)[300] = (char (*)[300])calloc((size_t)SETTINGS_MAX, 300);  /* (each key's, as written) */
 
     /* Pass 2: rewrite, updating changed values and preserving everything else. */
     memset(seen, 0, sizeof seen);
@@ -1471,6 +1486,8 @@ void Settings_Save(const PlatformInitOptions *opts, const char *path)
         seen[idx] = 1;
         char fileval[300];
         copy_value(eq + 1, fileval, sizeof fileval);
+        if (finalVal)
+            snprintf(finalVal[idx], 300, "%s", keep[idx] ? fileval : items[idx].value);
         if (keep[idx] || strcmp(fileval, items[idx].value) == 0) {
             fputs(ln, out);                                /* unchanged (or not ours) -> verbatim */
         } else {
@@ -1503,7 +1520,12 @@ void Settings_Save(const PlatformInitOptions *opts, const char *path)
             fprintf(out, "%s=%s\n", items[k].key, items[k].value);
         }
     }
-    ini_commit(out, tmp, path);
+    if (ini_commit(out, tmp, path) == 0 && finalVal && strcmp(s_baselinePath, path) == 0) {
+        for (int k = 0; k < n; k++)             /* (the file as it is now: the next save's baseline) */
+            snprintf(s_savedVal[k], sizeof s_savedVal[k], "%s", seen[k] && finalVal[k][0] ? finalVal[k] : items[k].value);
+        s_haveSaved = 1;
+    }
+    free(finalVal);
     Settings_FreeLines(lines, n_lines);
     /* Closed first — the Switch's save commit requires it, and without the
      * commit SWOS.ini reads back fine all session and is gone next launch.
@@ -1570,6 +1592,41 @@ int Settings_GameOptionsSelfTest(void)
     }
     remove(in);
     remove(out);
+    {   /* A setting changed and changed back in one run: the file has it back (2026-11-25: AUTO ->
+         * 32:9 -> AUTO left 32:9 there, AMIGA -> .. MOON -> AMIGA left MOON). */
+        PlatformInitOptions o;
+        FILE *f = fopen(in, "w");
+        char line[256];
+        int back = 0;
+        if (f) {
+            fputs("[gameplay]\nstyle=amiga\n[video]\nresolution=auto\n", f);
+            fclose(f);
+            memset(&o, 0, sizeof o);
+            Settings_Load(&o, in);
+            o.dos_gameplay = GAMEPLAY_MOON;
+            o.res_w = 3840; o.res_h = 1080;
+            Settings_Save(&o, in);
+            o.dos_gameplay = GAMEPLAY_AMIGA;
+            o.res_w = o.res_h = 0;
+            Settings_Save(&o, in);
+            if ((f = fopen(in, "r")) != NULL) {
+                char sec[32] = "";
+                while (fgets(line, sizeof line, f)) {
+                    if (line[0] == '[')
+                        sscanf(line, "[%31[^]]", sec);
+                    back += (!strcmp(sec, "gameplay") && !strncmp(line, "style=amiga", 11)) ||
+                            (!strcmp(sec, "video") && !strncmp(line, "resolution=auto", 15));
+                }
+                fclose(f);
+            }
+            remove(in);
+        }
+        checked += 2;
+        if (back != 2) {
+            bad += 2 - back;
+            fprintf(stderr, "game-options: a setting changed and changed back is not back in the file\n");
+        }
+    }
     printf("game-options self-test: %d of %d values come back%s\n", (int)(checked - bad), (int)checked,
            bad ? " -- FAILED" : "");
     return bad ? 1 : 0;
