@@ -1747,6 +1747,23 @@ static void cutscene_show_locked(const uint8_t *pixels, int w, int h, const uint
 static volatile uint32_t s_press_count;
 uint32_t Platform_PressCount(void) { return s_press_count; }
 
+/* A palette entry finer than the copper's 4 bits a channel (Platform_PaletteFine): kept while the
+ * copper still holds the word it was given with, and for 100 ms -- a fade writing the entry, or the
+ * caller stopping, ends it. */
+static struct { uint16_t cop; uint8_t r, g, b, on; Uint64 at; } s_palFine[256];
+
+void Platform_PaletteFine(int idx, uint16_t copperWord, uint8_t r, uint8_t g, uint8_t b)
+{
+    if (idx < 0 || idx > 255)
+        return;
+    s_palFine[idx].cop = copperWord;
+    s_palFine[idx].r = r;
+    s_palFine[idx].g = g;
+    s_palFine[idx].b = b;
+    s_palFine[idx].on = 1;
+    s_palFine[idx].at = Platform_NowMs();
+}
+
 static void refresh_palette_from_copper(void)
 {
     if (s_cut_on) {
@@ -1830,6 +1847,14 @@ static void refresh_palette_from_copper(void)
             s_palette[idx].g = (uint8_t)(((v >> 4) & 0x0F) * 17);
             s_palette[idx].b = (uint8_t)(((v >> 0) & 0x0F) * 17);
             s_palette[idx].a = 255;
+            if (s_palFine[idx].on) {            /* (its finer colour, while it is still the one) */
+                if (s_palFine[idx].cop == (v & 0x0FFF) && Platform_NowMs() - s_palFine[idx].at < 100) {
+                    s_palette[idx].r = s_palFine[idx].r;
+                    s_palette[idx].g = s_palFine[idx].g;
+                    s_palette[idx].b = s_palFine[idx].b;
+                } else
+                    s_palFine[idx].on = 0;
+            }
         }
     }
 #else

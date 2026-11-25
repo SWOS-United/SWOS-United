@@ -350,6 +350,9 @@ void           Platform_TrueColourBegin(void);
 void           Platform_TrueColourPixel(int x, int y, uint8_t index, uint32_t rgb);
 /* The menus' fade as their opacity over the backdrop picture, 0..255; 255: none (platform_sdl.c). */
 int            Platform_MenuFadeAlpha(void);
+/* A palette entry in 8 bits a channel where the copper has 4 (a glow that should pulse, not
+ * step): shown while the copper still holds `copperWord` there, given again each frame. */
+void           Platform_PaletteFine(int idx, uint16_t copperWord, uint8_t r, uint8_t g, uint8_t b);
 /* A menu overlay's colour under the menus' fade (gfx.h Gfx_DrawTextureTint): darkened as the
  * palette is, or over the backdrop picture faded out as the menu is; white when no fade. */
 SDL_Color      Platform_MenuFadeTint(void);

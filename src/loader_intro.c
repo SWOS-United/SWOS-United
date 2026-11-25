@@ -432,8 +432,10 @@ static int32_t intro_clicked(void)
 /* The title picture's caption glows (Playa, 2026-11-23): its ink and the fire button's bright red
  * are palette entries 31 and 128, white and red like the logo's own but never its pixels
  * (scripts/make_loader_logos.sh), so their copper colours pulse slowly -- between 70% and full
- * over three seconds -- with now and then a one-step flicker. The picture's fades write them back
- * from the palette (ApplyFadeStep), so nothing needs restoring. */
+ * over three seconds. The copper has 4 bits a channel, five steps in that range: the SDL build
+ * shows the pulse in 8 bits (Platform_PaletteFine), smooth. (No random dips any more: a pulse,
+ * not a flicker -- Playa, 2026-11-25.) The picture's fades write them back from the palette
+ * (ApplyFadeStep), so nothing needs restoring. */
 static int32_t s_titleGlow;
 enum { kGlowInk = 31, kGlowRed = 128, kGlowPeriod = 150 };
 
@@ -448,16 +450,10 @@ static void title_glow(uint32_t frame)
     static const int16_t kCos16[16] = {   /* 0.5 + 0.5 cos, x 256, a sixteenth of a turn each */
         256, 246, 219, 177, 128, 79, 37, 10, 0, 10, 37, 79, 128, 177, 219, 246
     };
-    static uint32_t s_seed = 0x2026u, s_flickerUntil;
     const uint16_t *palette = (const uint16_t *)_paletteTable[_paletteIndex];
     const uint32_t ph = (frame % kGlowPeriod) * 16u * 16u / kGlowPeriod;    /* 0..255 */
     const int32_t c0 = kCos16[ph >> 4], c1 = kCos16[((ph >> 4) + 1) & 15];
-    int32_t level = 179 + (77 * (c0 + (c1 - c0) * (int32_t)(ph & 15) / 16)) / 256;   /* 0.7 .. 1 of 256 */
-    s_seed = s_seed * 1103515245u + 12345u;
-    if (((s_seed >> 16) & 63) == 0)     /* (about once a second: a short dip) */
-        s_flickerUntil = frame + 3;
-    if (frame < s_flickerUntil)
-        level -= 26;
+    const int32_t level = 179 + (77 * (c0 + (c1 - c0) * (int32_t)(ph & 15) / 16)) / 256;   /* 0.7 .. 1 of 256 */
     for (int32_t k = 0; k < 2; k++) {
         const int32_t idx = k ? kGlowRed : kGlowInk;
         const uint16_t c = palette[idx];
@@ -469,6 +465,15 @@ static void title_glow(uint32_t frame)
         __asm__ volatile ("move.w %0,(%1)" : : "d"((uint16_t)(r << 8 | g << 4 | b)), "a"(dst) : "memory");
 #else
         *dst = (uint16_t)(r << 8 | g << 4 | b);
+#endif
+#ifdef SWOS_SDL_BUILD
+        {   /* (the same level in 8 bits a channel: smooth) */
+            extern void Platform_PaletteFine(int idx, uint16_t copperWord, uint8_t r, uint8_t g, uint8_t b);
+            Platform_PaletteFine(idx, (uint16_t)(r << 8 | g << 4 | b),
+                                 (uint8_t)(((c >> 8) & 15) * 17 * level / 256),
+                                 (uint8_t)(((c >> 4) & 15) * 17 * level / 256),
+                                 (uint8_t)((c & 15) * 17 * level / 256));
+        }
 #endif
     }
 }
