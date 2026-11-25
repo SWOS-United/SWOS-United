@@ -303,8 +303,11 @@ and the game opens there from then on (`[video] screen`, 0 the first). A window 
 monitor is remembered the same way. With one monitor there is nothing to pick. The start's log
 lists the monitors (`[video] monitor N: "name" WxH at x,y`).
 
-A change "from the next start" (the note says FROM THE NEXT START) is remembered: leaving OPTIONS
-by its EXIT then asks RESTART NOW / LATER, and RESTART NOW starts the game again at once
+Taken at once: SMOOTH SCROLLING, SCALING and OUTPUT (each read at every frame or audio tick).
+Only at a start: VSYNC (the pacing is set up by it), WIDESCREEN (the picture's width), RENDERER,
+GAME GRAPHICS (the artwork) -- and SKIP INTRO, which is about the start itself, so it asks for no
+restart. A change "from the next start" (the note says FROM THE NEXT START) is remembered: leaving
+OPTIONS by its EXIT then asks RESTART NOW / LATER, and RESTART NOW starts the game again at once
 (`Main_Relaunch`, as OPTIONS -> MODS does) where it can; where it cannot (the browser, phones),
 nothing is asked.
 

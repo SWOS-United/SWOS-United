@@ -149,6 +149,12 @@ static SDL_Thread  *s_pump_thread;
 static volatile int s_pump_run;
 static int audio_pump_thread(void *unused);
 
+/* AUDIO OPTIONS' OUTPUT at once: the mixer reads it at every tick. */
+void AudioSDL_SetMono(int mono)
+{
+    s_audio_mono = mono ? 1 : 0;
+}
+
 int AudioSDL_Init(int mono)
 {
     s_audio_mono = mono ? 1 : 0;

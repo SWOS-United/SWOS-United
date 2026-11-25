@@ -1457,6 +1457,10 @@ int Platform_GetWindowScale(void)
 
 int Platform_WindowScaleAuto(void) { return s_win_scale_auto; }
 
+/* SMOOTH SCROLLING and SCALING at once: both are read at every frame presented. */
+void Platform_SetSubpixelScroll(int on) { s_subpixel_scroll = on ? 1 : 0; }
+void Platform_SetScalingSmooth(int on)  { s_scaling_smooth = on ? 1 : 0; }
+
 int Platform_DisplayCount(void)
 {
 #ifndef SWOS_WASM_BUILD

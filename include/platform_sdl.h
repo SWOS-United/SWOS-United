@@ -273,6 +273,9 @@ void Platform_SetWindowScale(int scale);    /* 0: AUTO; a number: that, or the m
 /* WINDOW SCALE is AUTO: the most whole times the picture fits the monitor's usable area,
  * framed, again whenever the monitor or the picture's size changes. */
 int  Platform_WindowScaleAuto(void);
+/* VIDEO OPTIONS' SMOOTH SCROLLING and SCALING, taken at once (read at every frame). */
+void Platform_SetSubpixelScroll(int on);
+void Platform_SetScalingSmooth(int on);
 /* The most whole times the picture fits the window's monitor, framed (1 at least). */
 int  Platform_WindowScaleMax(void);
 /* The monitors: how many (1 at least), the one the window is on, and one's size as "1920X1080". */

@@ -205,6 +205,13 @@ static void later(void)
     note("FROM THE NEXT START");
 }
 
+/* A setting only the start reads (SKIP INTRO): the next start's, and no restart asked for --
+ * starting again would only show what it is about. */
+static void next_start_only(void)
+{
+    note("FROM THE NEXT START");
+}
+
 static void page_refresh(void)
 {
     int32_t i;
@@ -652,10 +659,10 @@ static void wide_show(char *o, int32_t c)
 static void wide_change(int32_t dir) { O()->widescreen = step(O()->widescreen, dir, 3); later(); save(); }
 
 static void scroll_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", on_off(O()->subpixel_scroll)); }
-static void scroll_change(int32_t dir) { (void)dir; O()->subpixel_scroll = !O()->subpixel_scroll; later(); save(); }
+static void scroll_change(int32_t dir) { (void)dir; O()->subpixel_scroll = !O()->subpixel_scroll; Platform_SetSubpixelScroll(O()->subpixel_scroll); save(); }
 
 static void scaling_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", O()->scaling_smooth ? "SMOOTH" : "SHARP"); }
-static void scaling_change(int32_t dir) { (void)dir; O()->scaling_smooth = !O()->scaling_smooth; later(); save(); }
+static void scaling_change(int32_t dir) { (void)dir; O()->scaling_smooth = !O()->scaling_smooth; Platform_SetScalingSmooth(O()->scaling_smooth); save(); }
 
 /* MONITOR: the one the game is on and opens on ([video] screen), its size beside its number;
  * a change moves the window there at once (Platform_MoveToDisplay). One monitor: nothing to pick. */
@@ -907,7 +914,14 @@ static void commentary_change(int32_t dir)
 }
 
 static void mono_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", O()->audio_mono ? "MONO" : "STEREO"); }
-static void mono_change(int32_t dir) { (void)dir; O()->audio_mono = !O()->audio_mono; later(); save(); }
+static void mono_change(int32_t dir)
+{
+    extern void AudioSDL_SetMono(int mono);
+    (void)dir;
+    O()->audio_mono = !O()->audio_mono;
+    AudioSDL_SetMono(O()->audio_mono);
+    save();
+}
 
 static const Row k_audioRows[] = {
     { "MUSIC VOLUME",           volm_show,       volm_change },
@@ -1049,7 +1063,7 @@ static void tactics_change(int32_t dir)
 /* START-UP: [general] skip_intro, skip_image_reels, no_load_pause (SWOS 2020's --no-intro,
  * --no-image-reels, --no-load-pause). */
 static void intro_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", O()->skip_intro ? "SKIP" : "PLAY"); }
-static void intro_change(int32_t dir) { (void)dir; O()->skip_intro = !O()->skip_intro; later(); save(); }
+static void intro_change(int32_t dir) { (void)dir; O()->skip_intro = !O()->skip_intro; next_start_only(); save(); }
 
 static void reels_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", O()->skip_image_reels ? "TITLE ONLY" : "ALL"); }
 static void reels_change(int32_t dir)
