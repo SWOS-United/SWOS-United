@@ -781,57 +781,15 @@ int Platform_Init(const PlatformInitOptions *opts)
     static char s_title[96];
     snprintf(s_title, sizeof s_title, PROJECT_NAME " %s (%s)", Build_Id(), Build_Platform());
 
-    /* [video] resolution=WxH IS THE CLIENT AREA, when one is named.
-     *
-     * It used to set only the render ASPECT, so "resolution=320x200, scale=1" opened a
-     * 436x272 window -- the number in the file appeared nowhere on screen, which is what a
-     * tester reported. A resolution the game never shows you is a strange thing to ask a
-     * player to set, so now it is exactly the size of the client rect and `scale` applies
-     * only to 'auto'. The render is letterboxed inside it by SDL_RenderSetLogicalSize,
-     * which is already how fullscreen works. */
+    /* [video] resolution is the picture's SHAPE (VIDEO OPTIONS' ASPECT RATIO: 21:9 is written
+     * 2560x1080), never the window's size: the window is the picture times a whole number, so
+     * every pixel is as big as the next. From 2026-09-22 a WxH there was the client area -- 21:9
+     * on a 1920 wide monitor became a 1920x810 window, 2.98 times the picture, its rows of
+     * pixels unequal (2026-11-25). */
     int client_w = (int)_screen_width * win_scale;
     int client_h = _screen_height * win_scale;
     int pinned = 0;
     s_pinned_w = s_pinned_h = 0;
-    if (opts && opts->res_w > 0 && opts->res_h > 0 && fs_mode == PLATFORM_FULLSCREEN_NONE) {
-        client_w = opts->res_w;
-        client_h = opts->res_h;
-        pinned = 1;
-        s_pinned_w = client_w;
-        s_pinned_h = client_h;
-        /* A client area SMALLER than the picture shrinks it to fit, which is
-         * almost never what was meant: "resolution=320x200" reads like "run at
-         * the DOS size" but the picture is 336x272, so it comes out at 0.73x --
-         * blurry, non-integer, and smaller than 1:1 (reported 2026-09-22). Say
-         * so, and name the setting that does what they wanted. */
-        if (client_w < (int)_screen_width || client_h < _screen_height)
-            fprintf(stderr,
-                "[video] %dx%d is smaller than the %dx%d picture, so it is being shrunk "
-                "to fit (%.2fx). For a crisp window use 'resolution=auto' with 'scale=N'; "
-                "the picture is always %d lines tall -- the render SIZE is not settable\n",
-                client_w, client_h, (int)_screen_width, _screen_height,
-                (double)client_w / (double)_screen_width < (double)client_h / (double)_screen_height
-                    ? (double)client_w / (double)_screen_width
-                    : (double)client_h / (double)_screen_height,
-                _screen_height);
-#ifndef SWOS_WASM_BUILD
-        /* A window bigger than the monitor is not a setting, it is a mistake nobody can
-         * undo from inside the game -- the title bar ends up off-screen. Clamp to the
-         * usable area, keeping the shape asked for. */
-        {
-            SDL_Rect ub;
-            if (SDL_GetDisplayUsableBounds(screen, &ub) == 0 && ub.w > 0 && ub.h > 0 &&
-                (client_w > ub.w || client_h > ub.h)) {
-                int fit_w = ub.w, fit_h = (int)((long)ub.w * client_h / client_w);
-                if (fit_h > ub.h) { fit_h = ub.h; fit_w = (int)((long)ub.h * client_w / client_h); }
-                fprintf(stderr, "[video] %dx%d does not fit this display, using %dx%d\n",
-                        client_w, client_h, fit_w, fit_h);
-                client_w = fit_w; client_h = fit_h;
-                s_pinned_w = client_w; s_pinned_h = client_h;
-            }
-        }
-#endif
-    }
     s_window = SDL_CreateWindow(
         s_title,
         SDL_WINDOWPOS_CENTERED_DISPLAY(screen),
@@ -1566,8 +1524,11 @@ void Platform_ViewChanged(void)
      * Not when fullscreen (SDL letterboxes, which is right), and not when
      * [video] resolution pinned a client area -- that was asked for by name. */
     if (!s_window || s_pinned_w > 0 || window_is_fullscreen()) return;
-    if (s_win_scale_auto)               /* (a picture of another size: the scale it fits now) */
-        s_win_scale_current = Platform_WindowScaleMax();
+    {   /* (a picture of another size: AUTO's scale for it, a chosen one no bigger than fits) */
+        const int most = Platform_WindowScaleMax();
+        if (s_win_scale_auto || s_win_scale_current > most)
+            s_win_scale_current = most;
+    }
     SDL_SetWindowSize(s_window,
                       _screen_width  * s_win_scale_current,
                       _screen_height * s_win_scale_current);
