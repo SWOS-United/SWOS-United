@@ -44,6 +44,10 @@
 
 #include <ctype.h>
 #include <errno.h>
+#if !defined(SWOS_SWITCH_BUILD) && !defined(SWOS_WASM_BUILD)
+#include <unistd.h>     /* getpid: the log's writer */
+#define SETTINGS_ATOMIC 1
+#endif
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -1168,17 +1172,63 @@ static int settings_build(const PlatformInitOptions *opts, IniEntry *items, char
 }
 
 /* Create a full default file. Only used when SWOS.ini doesn't exist yet. */
+/* SWOS.ini written whole, then put in place in one step (rename): a reader -- another copy of the
+ * game, one starting again (Main_Relaunch) -- never sees a half-written file. The old way wrote it
+ * in place, and a reader of a part filled the missing keys from its own memory, stale. */
+static FILE *ini_open_write(const char *path, char *tmp, size_t cap)
+{
+#ifdef SETTINGS_ATOMIC
+    snprintf(tmp, cap, "%s.%d.tmp", path, (int)getpid());
+    return fopen(tmp, "w");
+#else
+    snprintf(tmp, cap, "%s", path);
+    return fopen(path, "w");
+#endif
+}
+
+static int ini_commit(FILE *f, const char *tmp, const char *path)
+{
+    if (fclose(f) != 0) {
+        fprintf(stderr, "[settings] cannot write %s: %s\n", tmp, strerror(errno));
+        return -1;
+    }
+#ifdef SETTINGS_ATOMIC
+    if (rename(tmp, path) != 0) {
+        remove(path);                   /* (a rename that will not replace a file: Windows' own) */
+        if (rename(tmp, path) != 0) {
+            fprintf(stderr, "[settings] cannot put %s in place: %s\n", path, strerror(errno));
+            remove(tmp);
+            return -1;
+        }
+    }
+#else
+    (void)tmp; (void)path;
+#endif
+    return 0;
+}
+
+static int settings_pid(void)
+{
+#ifdef SETTINGS_ATOMIC
+    return (int)getpid();
+#else
+    return 0;
+#endif
+}
+
 static void settings_write_full(const PlatformInitOptions *opts, const char *path)
 {
     IniEntry items[SETTINGS_MAX];
     char vbuf[10][24];
     int n = settings_build(opts, items, vbuf, 1);
 
-    FILE *f = fopen(path, "w");
+    char tmp[1100];
+    FILE *f = ini_open_write(path, tmp, sizeof tmp);
     if (!f) {
         fprintf(stderr, "[settings] cannot create %s: %s\n", path, strerror(errno));
         return;
     }
+    fprintf(stderr, "[settings] SWOS.ini written whole (game %d)\n", settings_pid());
     fprintf(f,
         "; SWOS — display, audio and gameplay settings.\n"
         "; Hand-edit freely: SWOS only updates values you change and adds missing\n"
@@ -1200,7 +1250,7 @@ static void settings_write_full(const PlatformInitOptions *opts, const char *pat
             fprintf(f, "%s=%s\n", items[j].key, items[j].value);
         }
     }
-    fclose(f);
+    ini_commit(f, tmp, path);
     swos_save_commit();   /* as Settings_Save does -- a fresh ini must survive the launch */
 }
 
@@ -1372,7 +1422,8 @@ void Settings_Save(const PlatformInitOptions *opts, const char *path)
 
     /* Pass 2: rewrite, updating changed values and preserving everything else. */
     memset(seen, 0, sizeof seen);
-    FILE *out = fopen(path, "w");
+    char tmp[1100];
+    FILE *out = ini_open_write(path, tmp, sizeof tmp);
     if (!out) {
         fprintf(stderr, "[settings] cannot write %s: %s\n", path, strerror(errno));
         Settings_FreeLines(lines, n_lines);
@@ -1426,6 +1477,8 @@ void Settings_Save(const PlatformInitOptions *opts, const char *path)
             size_t prefix = (size_t)(eq - ln) + 1;         /* keep "key=" verbatim */
             fwrite(ln, 1, prefix, out);
             fprintf(out, "%s\n", items[idx].value);        /* ...replace the value */
+            fprintf(stderr, "[settings] saved [%s] %s: %s -> %s (game %d)\n", items[idx].section,
+                    items[idx].key, fileval, items[idx].value, settings_pid());
         }
     }
     /* EOF: flush the final section's still-missing keys into its block. */
@@ -1437,6 +1490,7 @@ void Settings_Save(const PlatformInitOptions *opts, const char *path)
     int missing = 0;
     for (int k = 0; k < n; k++) if (!seen[k]) missing++;
     if (missing) {
+        fprintf(stderr, "[settings] %d keys added to SWOS.ini (game %d)\n", missing, settings_pid());
         fputs("\n; --- keys added by a newer SWOS build (defaults; edit as you like) ---\n", out);
         const char *cur = NULL;
         for (int k = 0; k < n; k++) {
@@ -1449,7 +1503,7 @@ void Settings_Save(const PlatformInitOptions *opts, const char *path)
             fprintf(out, "%s=%s\n", items[k].key, items[k].value);
         }
     }
-    fclose(out);
+    ini_commit(out, tmp, path);
     Settings_FreeLines(lines, n_lines);
     /* Closed first — the Switch's save commit requires it, and without the
      * commit SWOS.ini reads back fine all session and is gone next launch.

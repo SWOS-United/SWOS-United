@@ -633,6 +633,26 @@ static void note_self(char **argv)
 
 int32_t Main_CanRelaunch(void) { return s_selfPath[0] != 0; }
 
+/* The game started again by itself (Main_Relaunch): the one that started it closes as this one
+ * starts, and saved SWOS.ini on its way out -- read too soon, this one had another moment's
+ * settings, and wrote them back (2026-11-25: MOON and KIT COLOURS ORIGINAL, chosen in no run).
+ * So it waits until that one has gone, 10 s at most, before it reads SWOS.ini. */
+static void wait_for_parent(void)
+{
+    const char *e = getenv("SWOS_RELAUNCH_PARENT");
+    const pid_t parent = e ? (pid_t)atoi(e) : 0;
+    int waited = 0;
+    unsetenv("SWOS_RELAUNCH_PARENT");   /* (its own restart sets its own) */
+    if (parent <= 0)
+        return;
+    while (kill(parent, 0) == 0 && waited < 10000) {
+        usleep(20 * 1000);
+        waited += 20;
+    }
+    fprintf(stderr, "[settings] started again: waited %d ms for the game before to close%s\n", waited,
+            waited >= 10000 ? " (it is still there)" : "");
+}
+
 int32_t Main_Relaunch(void)
 {
     pid_t pid;
@@ -640,6 +660,11 @@ int32_t Main_Relaunch(void)
         return 0;
     setenv("SWOS_SKIP_INTRO", "1", 1);
     setenv("SWOS_RELAUNCHED", "1", 1);  /* (the intro skipped, not chosen off: Main_RelaunchSkippedIntro) */
+    {   /* (the new one reads SWOS.ini once this one is gone: Main_WaitForParent) */
+        char pid[24];
+        snprintf(pid, sizeof pid, "%d", (int)getpid());
+        setenv("SWOS_RELAUNCH_PARENT", pid, 1);
+    }
     s_selfArgv[0] = s_selfPath;
     if (posix_spawn(&pid, s_selfPath, NULL, NULL, s_selfArgv, environ) != 0) {
         fprintf(stderr, "[mods] could not start %s again\n", s_selfPath);
@@ -651,6 +676,7 @@ int32_t Main_Relaunch(void)
 }
 #else
 static void note_self(char **argv) { (void)argv; }
+static void wait_for_parent(void) {}
 int32_t Main_CanRelaunch(void) { return 0; }
 int32_t Main_Relaunch(void) { return 0; }
 #endif
@@ -909,6 +935,7 @@ int main(int argc, char **argv)
      * — so an edited SWOS.ini that "does nothing" is usually the game reading a
      * different one. Print it before loading so the answer is in the log even
      * if the load then fails. */
+    wait_for_parent();
     {
         FILE *probe = fopen(ini_path, "rb");
         fprintf(stderr, "[settings] SWOS.ini: %s (%s)\n",
