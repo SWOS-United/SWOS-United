@@ -143,6 +143,12 @@ void ModHooks_Reload(void)
 void ModHooks_FrameDrawn(void)
 {
     ModApi_NotePresent();
+#ifdef SWOS_SDL_BUILD
+    {   /* the ESC screen's panel (esc_confirm.c): under the mods' drawing */
+        extern void EscConfirm_Present(void);
+        EscConfirm_Present();
+    }
+#endif
     EACH(frameUnder) (*m_)->frameUnder();
     EACH(frameDrawn) (*m_)->frameDrawn();
 }

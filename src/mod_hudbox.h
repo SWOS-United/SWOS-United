@@ -37,6 +37,11 @@ typedef struct {
     int32_t   black;                /* set after HudBox_Draw: a palette index drawn black (SWOS 2020's
                                      * VGA 3, whatever the match's palette has there); -1 none */
     uint8_t   bg[3];                /* HUDBOX_SOLID's colour */
+    const uint8_t *cut;             /* set after HudBox_Draw: a picture-sized 8bpp layer (the HUD
+                                     * layer); where it has a pixel the box is left out, so what is
+                                     * drawn there shows through; NULL none */
+    int32_t   cutStride;
+    int32_t   radius;               /* set after HudBox_Draw: the corners rounded off; 0 square */
     uint16_t *px;                   /* w * h: a palette index, 0xFFFF the background */
     int32_t   cap;
     uint64_t  ms;                   /* the last match frame that drew it; 0 off */
