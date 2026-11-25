@@ -906,7 +906,7 @@ All in the loader and `UnpackMenu`. None occurs in the 47 compiled menus, and
     imported as it is from joypadConfig.mnu).
   - VIDEO OPTIONS: WINDOW MODE (windowed / fullscreen / exclusive, now: `Platform_SetFullscreenMode`),
     WINDOW SCALE (now), VSYNC, WIDESCREEN, SMOOTH SCROLLING, SCALING, PIXEL FILTER, MONITOR, RENDERER
-    (from the next start, said in the note), RESOLUTION, AUTO CENTERING, SHOW FPS.
+    (from the next start, said in the note), ASPECT RATIO, AUTO CENTERING, SHOW FPS.
   - AUDIO OPTIONS: the four volumes (`AudioSDL_SetKindVolumes`, 10% a step), MENU MUSIC (OPTIONS'
     row), MATCH SOUNDS and MUSIC Amiga/PC, PC MENU MUSIC midi/mp3, COMMENTARY off/on/auto (all now),
     OUTPUT mono/stereo (next start).

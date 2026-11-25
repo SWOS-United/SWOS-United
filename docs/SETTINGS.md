@@ -310,7 +310,7 @@ nothing is asked.
 
 | launcher option | `SWOS.ini` | in the game | |
 |---|---|---|---|
-| Resolution | `[video] resolution = auto \| WxH` | VIDEO: RESOLUTION (AUTO, 4:3, 16:10, 16:9, 21:9, 32:9) | the render's SHAPE, not its size; with widescreen on it is taken at once |
+| Resolution | `[video] resolution = auto \| WxH` | VIDEO: ASPECT RATIO (AUTO, 4:3, 16:10, 16:9, 21:9, 32:9) | the render's SHAPE, not its size; with widescreen on it is taken at once |
 | Auto centering | `[video] auto_centering` | VIDEO: AUTO CENTERING | a window resized, maximized or moved goes back to the middle of the display it is on (SWOS 2020's controls.cpp); windowed only |
 | Show FPS | `[video] show_fps` | VIDEO: SHOW FPS | the frames presented a second, top right, drawn over the picture (`src/fps_overlay.c`), never into the game's frame |
 | Mouse cursor | `[input] mouse_cursor = system \| workbench2 \| workbench1` | DISPLAY OPTIONS: MOUSE POINTER | SWOS 2020's `cursor1.bmp` / `cursor2.bmp` as the launcher numbered them, as pixel maps in `src/mouse_cursors.c` |

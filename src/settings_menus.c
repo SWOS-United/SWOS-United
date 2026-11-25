@@ -788,7 +788,7 @@ static const Row k_videoRows[] = {
     { "MONITOR",            monitor_show,  monitor_change },
     { "RENDERER",           renderer_show, renderer_change },
     /* (launcher options, agent A) */
-    { "RESOLUTION",         res_show,      res_change },
+    { "ASPECT RATIO",       res_show,      res_change },     /* ([video] resolution: the shape, not a size) */
     { "AUTO CENTERING",     centre_show,   centre_change },
     { "SHOW FPS",           fps_show,      fps_change },
 };
