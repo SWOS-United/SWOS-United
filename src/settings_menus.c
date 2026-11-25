@@ -243,17 +243,23 @@ static void settingsPage_OnInit(void)
     page_refresh();
 }
 
-static void settingsPage_OnDraw(void) { page_refresh(); }
+static int32_t s_stickArmed;            /* left / right let go of since the last fire (page_row) */
+
+static void settingsPage_OnDraw(void)
+{
+    extern uint8_t _left, _right;       /* (both players', held: menu_system.c) */
+    if (!_left && !_right)
+        s_stickArmed = 1;
+    page_refresh();
+}
 
 static int32_t s_activeRow = -1;           /* the row whose change is running (page_row) */
 
 /* A press of fire steps forward, whatever the stick: the menu gives the direction held at that
  * moment in the same event, so a stick held a little aside while fire was pressed stepped a value
- * BACK (AMIGA to MOON on GAME STYLE). And for kFireSettleMs after a press the stick does nothing:
- * a short press, the stick moving as it is pushed, changes one step. Fire held longer and the
- * stick moved: left and right step as ever. */
-enum { kFireSettleMs = 250 };
-static Uint32 s_fireAt;
+ * BACK (AMIGA to MOON on GAME STYLE). And a direction counts only once the stick has been back in
+ * the middle (left and right let go of: settingsPage_OnDraw) -- the stick held aside as fire was
+ * pressed does nothing until it is let go; fire held and the stick then moved steps as ever. */
 
 static void page_row(int32_t i)
 {
@@ -262,10 +268,13 @@ static void page_row(int32_t i)
     char before[48], after[48];
     if (!s_page || i >= s_page->count)
         return;
-    if (fire)
-        s_fireAt = SDL_GetTicks();
-    else if (s_fireAt && !SDL_TICKS_PASSED(SDL_GetTicks(), s_fireAt + kFireSettleMs))
-        return;                         /* (the stick just after a press of fire) */
+    {
+        extern uint8_t _left, _right;
+        if (fire && (_left || _right))
+            s_stickArmed = 0;           /* (aside as fire was pressed: not a direction) */
+        else if (!fire && !s_stickArmed)
+            return;                     /* (not back in the middle since) */
+    }
     note("");
     s_page->rows[i].show(before, (int32_t)sizeof before);
     s_activeRow = i;
