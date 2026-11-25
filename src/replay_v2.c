@@ -2248,6 +2248,23 @@ int ReplayV2_MouseShown(void)
     return s_box.drag != 0 || (s_box.movedAt != 0 && SDL_GetTicks() - s_box.movedAt < 3000u);
 }
 
+/* Where the box was drawn into the HUD layer: cleared at each frame's start, before the sprites
+ * (the scoreboard among them) draw again -- else, moved, its old shading stayed in the layer, dark
+ * bars over the score (the viewer's loop does not reset the layer as a match's does). */
+static int32_t s_boxHudX = -1, s_boxHudY = -1;
+
+static void box_hud_clear(void)
+{
+    extern uint8_t *Platform_HudLayerBuffer(void);
+    uint8_t *hud = Platform_HudLayerBuffer();
+    if (!hud || s_boxHudX < 0)
+        return;
+    for (int32_t y = s_boxHudY; y < s_boxHudY + kBoxH && y < _screen_height; y++)
+        for (int32_t x = s_boxHudX; x < s_boxHudX + kBoxW && x < _screen_width; x++)
+            hud[y * FRONTBUFFER_ROW_STRIDE_BYTES + x] = 0;
+    s_boxHudX = s_boxHudY = -1;
+}
+
 static void box_clamp(void)
 {
     const int32_t w = _screen_width, h = _screen_height;
@@ -2317,6 +2334,12 @@ static void box_mouse(int32_t handle, int32_t barY, int32_t total)
         if (s_box.x != ox || s_box.y != oy)
             s_box.moved = 1;
     }
+    /* The cursor: shown while the mouse moves, gone after 3 s still. The viewer runs a loop of
+     * its own (not the match's, whose MenuMouse_InMatch would): it is asked here. */
+    {
+        extern void Platform_ShowMouseCursor(int on);
+        Platform_ShowMouseCursor(ReplayV2_MouseShown());
+    }
 }
 
 static void viewer_overlay(void)
@@ -2352,8 +2375,11 @@ static void viewer_overlay(void)
             const uint8_t c = frame[y * stride + x];
             fb[y * stride + x] = c < 128 ? (uint8_t)(c + 128) : c;
         }
-    if (hud)
+    if (hud) {
+        s_boxHudX = bx;                 /* (cleared at the next frame's start: box_hud_clear) */
+        s_boxHudY = top;
         Platform_HudLayerMark(bx, top, kBoxW, kBoxH);
+    }
     _frontbufferBasePtr = (uintptr_t)fb;
     _menu_draw_x_offset = 0;            /* (the screen's edge, not the 4:3 picture's) */
     uint8_t *small = (uint8_t *)_charTables[0];
@@ -2389,6 +2415,7 @@ void ReplayV2_DrawFrame(void)
 
     if (!s_play.loaded)
         return;
+    box_hud_clear();                    /* (the frame box's last place in the HUD layer) */
     { extern void LiveCast_Pump(void); LiveCast_Pump(); }   /* (a live match's new frames: src/live_cast.c) */
     if (s_player.on) {
         /* No sound carries across a jump or a pause: a seek skips what would have
