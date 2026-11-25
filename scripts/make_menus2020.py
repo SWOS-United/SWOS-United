@@ -191,10 +191,14 @@ CONTINUE_Y = 154        # (on screen 154..173: 3 under the last row's 150, 4 ove
 # The SWOS United logo's place in the CREDITS entry: SWOS 2020's 293,185 less the entry's 281,182
 # and ConvertMenu's +8 (mod_menus2020.c kCreditsPicX / kCreditsPicY: keep the two the same).
 CREDITS_PICTURE_AT = (293 - 281 - 8, 185 - 182)
-# The logo's size (scripts/make_united_logo.py writes it): 31 high, in the band above the buttons
-# (0..40) right of the TV (1..42).
-LOGO_SIZE = (239, 31)
-LOGO_INK_RIGHT = 238        # (the D's last column in it: the logo ends where the right buttons do)
+# The logo's size (scripts/make_united_logo.py writes it): SWOS over UNITED, SWOS as wide as the
+# Amiga title's "Sensible"; its ink fills it but for the last column (LOGO_INK).
+LOGO_SIZE = (130, 66)
+LOGO_INK = (129, 66)
+# The whole menu but the logo this much lower than SWOS 2020's (2026-11-25: the stacked logo above
+# it, the Amiga's look): there is room under the ticker (the picture's 272 rows, the menu's at 36).
+MENU_DOWN = 10
+MENU_TOP = 36               # (the menu's 0 on the picture: menu_load_json.c's +36)
 # The LIVE CAST TV's size (scripts/make_menus2020_icons.py TV_SIZE): SWOS 2020's 42x38, pixel for
 # pixel, at the left buttons' edge (x 1) in the band above them (y 1..38). It was four fifths as big
 # from 2026-11-20 (Playa: clear of the banner); the banner is narrower instead.
@@ -438,12 +442,19 @@ def build_main(doc):
     # in the mod (its soft edges' alpha kept: menu_extras.c), made LOGO_SIZE by scripts/make_united_logo.py.
     logo = ordered[filler + 2][0]
     logo["name"] = "logo"
-    # (its last letter's last column, LOGO_INK_RIGHT, on the right buttons' last: 155 + 148 - 1)
-    logo["coords"] = {"x": 155 + 148 - 1 - LOGO_INK_RIGHT, "y": (40 - LOGO_SIZE[1] + 1) // 2,
+    # centred over the buttons (1 .. 155 + 148 - 1), and between the picture's top and the first
+    # row's (ROW_Y, its origin 1, MENU_DOWN lower) the same room above and below it -- reaching up
+    # out of the menu's 0 (a y down to -MENU_TOP is still on the picture)
+    first_row = MENU_TOP + ROW_Y + 1 + MENU_DOWN
+    logo["coords"] = {"x": round((1 + 155 + 148 - 1) / 2 - (LOGO_INK[0] - 1) / 2),
+                      "y": (first_row - LOGO_INK[1]) // 2 - MENU_TOP,
                       "w": LOGO_SIZE[0], "h": LOGO_SIZE[1]}
     logo["image"] = "grafs_united/logo.png"
     logo["commands"] = [{"op": "colors", "frame_color": 0, "background_color": 0}]
 
+    for it, _o in ordered:          # (all of it lower, but the logo: placed above)
+        if it is not logo and "coords" in it:
+            it["coords"]["y"] += MENU_DOWN
     doc["items"] = emit(ordered)
     doc["name"] = "swosMainMenu"
     doc["onInit"] = mod("mainInit")

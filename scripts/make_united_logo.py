@@ -4,14 +4,15 @@
     scripts/make_united_logo.py [--svg out.svg] [--preview out.png]
 
 "SWOS" in the colours of the Sensible title (each letter's colour from the top, lightening into
-white, then down into the dark, a chrome rim) and "UNITED" white to grey in a red rim, built on
-the picture's own pixel grid: 8 units a pixel, the capitals 200 units = 25 pixels tall, every
-straight edge of UNITED, each rim's steps and the gradients' bands on whole pixels, so it comes
-out sharp at its size; only the curves and slants are shaded by how much of a pixel they cover
-(16 x 16 samples a pixel). The edges' alpha is kept: a PNG the menu shows over whatever is under
-it (menu_extras.c, MenuExtras_Present). Writes bin/mods/menus2020/grafs_united/logo.png
-(committed: the logo is ours); the size it prints is make_menus2020.py's LOGO_SIZE: keep the two
-the same. Needs Pillow and numpy only.
+white, then down into the dark, a chrome rim) over "UNITED" white to grey in a red rim -- as the
+Amiga's title stands over SOCCER, SWOS as wide as its "Sensible" (STACKED; side by side as well).
+Built on the picture's own pixel grid: the capitals CAP pixels tall (200 units), UNITED's straight
+edges, each rim's steps and the lines on whole pixels, so it comes out sharp at its size; only
+the curves and slants are shaded by how much of a pixel they cover (16 x 16 samples a pixel).
+The edges' alpha is kept: a PNG the menu shows over whatever is under it (menu_extras.c,
+MenuExtras_Present). Writes bin/mods/menus2020/grafs_united/logo.png (committed: the logo is
+ours); the size it prints is make_menus2020.py's LOGO_SIZE: keep the two the same. Needs Pillow
+and numpy only.
 
 --svg writes the same drawing as an SVG (to look at, or for a bigger copy); --preview a 3x view
 of it over a dark and a green ground.
@@ -27,10 +28,13 @@ from PIL import Image, ImageDraw
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(REPO, "bin", "mods", "menus2020", "grafs_united", "logo.png")
 
-PX = 8                  # units a pixel
+CAP = 27                # (pixels) the capitals' height: SWOS as wide as the Amiga title's "Sensible"
+PX = 200 / CAP          # units a pixel (the letters are drawn 200 units tall)
 SS = 16                 # samples a pixel, each way
-H = 31                  # the picture's height (the band above the buttons is 40)
 TOP = 3 * PX            # the capitals' top: 3 pixels for the rims above, 3 below
+STACKED = True          # SWOS over UNITED (as the Amiga's title over SOCCER); else side by side
+LINE_GAP = 6            # (pixels) stacked: between SWOS's capitals and UNITED's
+H = 3 + CAP + LINE_GAP + CAP + 3 if STACKED else CAP + 6     # the picture's height
 
 # ---------------------------------------------------------------- SWOS: the letters' outlines
 # (units; capitals 0..200, the round letters 4 over; the S's ends cut upright)
@@ -47,25 +51,31 @@ W_PATH = ("M0,0 H62.9 L96.36,105.3 L125.1,0 H188 L216.76,105.3 L250.2,0 H313.1 L
 O_PATH = ("M0,100 A111,104 0 1 1 222,100 A111,104 0 1 1 0,100 Z "
           "M61,100 A50,49 0 1 0 161,100 A50,49 0 1 0 61,100 Z")
 SWOS_X = 3 * PX
-SPREAD = 8              # (units) more room between SWOS's letters than the drawing had: one pixel
+CHROME_W = 1.5          # (pixels) SWOS's chrome rim
+EDGE_W = 1.0            # (pixels) the black edge round it
+SPREAD = PX             # (units) more room between SWOS's letters than the drawing had: one pixel
 SWOS = [(k, d, x + i * SPREAD) for i, (k, d, x) in
         enumerate([("S", S_PATH, 0.0), ("W", W_PATH, 181.0), ("O", O_PATH, 481.1), ("S2", S_PATH, 706.1)])]
 SWOS_W = 890.1 + 3 * SPREAD
 # each letter: its colour, the glow and the pastel it lightens through into white
-COLOURS = {"S": ("#f80000", "#ff4a3a", "#ffc8c0", "#d30000"), "W": ("#fbc900", "#ffdc30", "#fff2a8", "#cf9400"),
-           "O": ("#0026f9", "#3a7cff", "#b8e4ff", "#0020d4"), "S2": ("#06a606", "#3ad23a", "#c4f5c4", "#058d05")}
+COLOURS = {"S": ("#f80000", "#ff4a3a", "#ffc8c0", "#ba0000"), "W": ("#fbc900", "#ffdc30", "#fff2a8", "#cf9400"),
+           "O": ("#0026f9", "#3a7cff", "#b8e4ff", "#001cbb"), "S2": ("#06a606", "#3ad23a", "#c4f5c4", "#047c04")}
+
+
+def rows(stops):        # (the stops' rows are a 25-pixel capital's: at CAP's)
+    return [(r * CAP / 25, c) for r, c in stops]
 
 
 def swos_face(base, glow, pastel, top=None):     # (pixel rows of the capitals, colour)
     """`top`: a darker colour at the very top, into `base` by row 5 (apart from the light rim)."""
     head = [(-1, top), (5, base)] if top else [(-1, base)]
-    return head + [(8, base), (9.5, glow), (10.5, pastel), (11.5, "#ffffff"), (15, "#ffffff"),
-                   (18, "#a8a8a8"), (22, "#0c0c0c"), (26, "#060606")]
+    return rows(head + [(8, base), (9.5, glow), (10.5, pastel), (11.5, "#ffffff"), (15, "#ffffff"),
+                        (18, "#a8a8a8"), (22, "#0c0c0c"), (26, "#060606")])
 
 
-CHROME = [(-3, "#ffffff"), (10, "#d4d4d4"), (12, "#6e6e6e"), (15, "#a0a0a0"), (21, "#f0f0f0"),
-          (28, "#c0c0c0")]
-UFACE = [(0, "#fcfcfc"), (11, "#f2f2f2"), (25, "#9a9a9a")]
+CHROME = rows([(-3, "#ffffff"), (10, "#d4d4d4"), (12, "#6e6e6e"), (15, "#a0a0a0"), (21, "#f0f0f0"),
+               (28, "#c0c0c0")])
+UFACE = rows([(0, "#fcfcfc"), (11, "#f2f2f2"), (25, "#9a9a9a")])
 
 
 # ---------------------------------------------------------------- UNITED, on whole pixels
@@ -73,42 +83,50 @@ def P(v):
     return v * PX
 
 
+# (each letter in whole pixels for 27-pixel capitals: U, T, E stems 8, N and I 7, bars 7)
+assert CAP == 27, "UNITED is drawn for 27-pixel capitals"
+
+
 def u_letter():
-    w, st, ch, cb = 19, 7, 4, 19
-    return w, [[(0, 0), (st, 0), (st, cb), (w - st, cb), (w - st, 0), (w, 0), (w, 25 - ch), (w - ch, 25),
-                (ch, 25), (0, 25 - ch)]]
+    w, st, ch, cb = 21, 8, 4, 21
+    return w, [[(0, 0), (st, 0), (st, cb), (w - st, cb), (w - st, 0), (w, 0), (w, CAP - ch), (w - ch, CAP),
+                (ch, CAP), (0, CAP - ch)]]
 
 
 def n_letter():
-    w, st = 18, 6
-    return w, [[(0, 0), (st, 0), (w - st, 11), (w - st, 0), (w, 0), (w, 25), (w - st, 25), (st, 14),
-                (st, 25), (0, 25)]]
+    w, st = 19, 7
+    return w, [[(0, 0), (st, 0), (w - st, 12), (w - st, 0), (w, 0), (w, CAP), (w - st, CAP), (st, 15),
+                (st, CAP), (0, CAP)]]
 
 
 def i_letter():
-    return 6, [[(0, 0), (6, 0), (6, 25), (0, 25)]]
+    return 7, [[(0, 0), (7, 0), (7, CAP), (0, CAP)]]
 
 
 def t_letter():
-    w, st, bar = 14, 7, 6
+    w, st, bar = 16, 8, 7
     a = (w - st) / 2
-    return w, [[(0, 0), (w, 0), (w, bar), (w - a, bar), (w - a, 25), (a, 25), (a, bar), (0, bar)]]
+    return w, [[(0, 0), (w, 0), (w, bar), (w - a, bar), (w - a, CAP), (a, CAP), (a, bar), (0, bar)]]
 
 
 def e_letter():
-    w, st, mw = 17, 7, 15
-    return w, [[(0, 0), (w, 0), (w, 6), (st, 6), (st, 10), (mw, 10), (mw, 15), (st, 15), (st, 19), (w, 19),
-                (w, 25), (0, 25)]]
+    w, st, mw = 18, 8, 16
+    return w, [[(0, 0), (w, 0), (w, 7), (st, 7), (st, 11), (mw, 11), (mw, 16), (st, 16), (st, 20), (w, 20),
+                (w, CAP), (0, CAP)]]
 
 
 def d_letter():
-    w, ch, c0, c1 = 20, 4, 7, 12
-    return w, [[(0, 0), (w - ch, 0), (w, ch), (w, 25 - ch), (w - ch, 25), (0, 25)],
-               [(c0, 6), (c0, 19), (c1, 19), (c1, 6)]]
+    w, ch, c0, c1 = 22, 4, 8, 13
+    return w, [[(0, 0), (w - ch, 0), (w, ch), (w, CAP - ch), (w - ch, CAP), (0, CAP)],
+               [(c0, 7), (c0, 20), (c1, 20), (c1, 7)]]
 
 
 U_GAP = 3
-U_X = round((SWOS_X + SWOS_W + 80) / PX)        # (pixels) where UNITED starts
+U_WIDTH = 21 + 19 + 7 + 16 + 18 + 22 + 5 * U_GAP   # (pixels) UNITED's letters and gaps
+# (pixels) where UNITED starts and its capitals' top below TOP: stacked, centred under SWOS
+# (on a whole pixel), a line lower; else beside it
+U_X = round((SWOS_X + SWOS_W / 2) / PX - U_WIDTH / 2) if STACKED else round((SWOS_X + SWOS_W + 80) / PX)
+U_Y = CAP + LINE_GAP if STACKED else 0
 
 
 def united():
@@ -276,9 +294,9 @@ class Canvas:
         self.rgb[m] = col[m]
         self.a[m] = 1.0
 
-    def gradient(self, stops):
+    def gradient(self, stops, below=0):
         """A column of colours, the stops at pixel rows of the capitals (row 0 at TOP)."""
-        ys = (np.arange(self.h) + 0.5) / SS - TOP / PX
+        ys = (np.arange(self.h) + 0.5) / SS - TOP / PX - below
         rows = np.array([r for r, _ in stops], float)
         cols = np.array([hexrgb(c) for _, c in stops])
         return np.stack([np.interp(ys, rows, cols[:, i]) for i in range(3)], 1)
@@ -299,26 +317,26 @@ def hexrgb(c):
 
 def build():
     uni, uend = united()
-    W = uend + 3
+    W = math.ceil((2 * SWOS_X + SWOS_W) / PX) if STACKED else uend + 3
     cv = Canvas(W, H)
     # SWOS: each letter whole -- a black edge a pixel wide, the chrome rim, its face -- back to
     # front, so each one's black edge parts it from the one before
     chrome = cv.gradient(CHROME)
     for k, d, x in SWOS:
         c = path_contours(d, SWOS_X + x, TOP)
-        cv.paint(cv.mask(c, 2.5 * PX), hexrgb("#000000"))
-        cv.paint(cv.mask(c, 1.5 * PX), chrome)
+        cv.paint(cv.mask(c, (CHROME_W + EDGE_W) * PX), hexrgb("#000000"))
+        cv.paint(cv.mask(c, CHROME_W * PX), chrome)
         cv.paint(cv.mask(c), cv.gradient(swos_face(*COLOURS[k])))
     # UNITED: a black edge, dark red, bright red (a pixel each), the face
     for grow, colour in ((2.5, "#000000"), (2.0, "#8a0000"), (1.0, "#ff1c1c")):
         m = np.zeros((cv.h, cv.w), bool)
         for letter in uni:
-            m |= cv.mask(mitre([[(x, y + TOP) for x, y in c] for c in letter], grow * PX))
+            m |= cv.mask(mitre([[(x, y + TOP + U_Y * PX) for x, y in c] for c in letter], grow * PX))
         cv.paint(m, hexrgb(colour))
     m = np.zeros((cv.h, cv.w), bool)
     for letter in uni:
-        m |= cv.mask([[(x, y + TOP) for x, y in c] for c in letter])
-    cv.paint(m, cv.gradient(UFACE))
+        m |= cv.mask([[(x, y + TOP + U_Y * PX) for x, y in c] for c in letter])
+    cv.paint(m, cv.gradient(UFACE, U_Y))
     return cv.pixels(W, H), uni
 
 
@@ -339,14 +357,14 @@ def svg_of(W, uni):
     sw = []
     for k, d, x in SWOS:
         path = '<path transform="translate(%s,0)" d="%s"/>' % (x, d)
-        sw.append(lay(path, "#000", 2.5 * PX, "round") + lay(path, "url(#chrome)", 1.5 * PX, "round")
+        sw.append(lay(path, "#000", (CHROME_W + EDGE_W) * PX, "round") + lay(path, "url(#chrome)", CHROME_W * PX, "round")
                   + '<path transform="translate(%s,0)" fill="url(#f_%s)" d="%s"/>' % (x, k, d))
     ud = "".join('<path d="%s"/>' % " ".join("M" + " L".join("%g,%g" % p for p in c) + " Z" for c in letter)
                  for letter in uni)
     return ('<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d"><defs>%s</defs>'
             '<g transform="translate(%d,%d)" fill-rule="evenodd">%s</g>'
             '<g transform="translate(0,%d)" fill-rule="evenodd">%s%s%s<g fill="url(#uface)">%s</g></g></svg>\n'
-            % (W * PX, H * PX, W * PX, H * PX, "".join(defs), SWOS_X, TOP, "".join(sw), TOP,
+            % (W * PX, H * PX, W * PX, H * PX, "".join(defs), SWOS_X, TOP, "".join(sw), TOP + U_Y * PX,
                lay(ud, "#000", 2.5 * PX, "miter"), lay(ud, "#8a0000", 2 * PX, "miter"),
                lay(ud, "#ff1c1c", PX, "miter"), ud))
 

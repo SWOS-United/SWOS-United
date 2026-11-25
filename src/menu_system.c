@@ -1762,8 +1762,8 @@ void DrawMenu(void)
      * STR_COLOR_MASK / STR_FLAGS_MASK / YELLOW_GREEN_BLACK_15 as enum constants
      * while menu_system.h defines the same three names as macros, so the two
      * headers cannot meet in one translation unit. */
-    if (Menu_IsMainMenu())
-        DrawMenuText(4, 256, 7, (uint8_t *)Build_ScreenText(),
+    if (Menu_IsMainMenu())      /* (263: under menus2020's ticker, its menu 10 lower since 2026-11-25) */
+        DrawMenuText(4, 263, 7, (uint8_t *)Build_ScreenText(),
                      (uint8_t *)_charTables[0]);   /* [0] = the small font */
 
 #ifdef SWOS_SDL_BUILD
