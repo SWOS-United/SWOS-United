@@ -74,13 +74,17 @@ def read_bmp_palette(path):
 
 
 def write_bmp(path, pixels):
-    """pixels: rows of (r, g, b), top first -> a 24-bit bottom-up BMP."""
+    """pixels: rows of (r, g, b), top first -> a 24-bit bottom-up BMP. Black is see-through in a
+    menu picture (menu_extras.c), as magenta is: an icon's own black -- hair, outlines -- is
+    written (1, 1, 1), still black on screen (2026-11-25: the credits players' black hair gone)."""
     h, w = len(pixels), len(pixels[0])
     stride = (w * 3 + 3) & ~3
     body = bytearray()
     for row in reversed(pixels):
         line = bytearray()
         for r, g, b in row:
+            if (r, g, b) == (0, 0, 0):
+                r = g = b = 1
             line += bytes((b, g, r))
         body += line + b"\0" * (stride - len(line))
     head = struct.pack("<2sIHHI", b"BM", 54 + len(body), 0, 0, 54)
