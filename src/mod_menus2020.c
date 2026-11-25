@@ -43,6 +43,7 @@
 #include "dos_mode.h"           /* _gDosGraphicsDir */
 #include "edit_tactics.h"       /* FillSkinColorConversionTable */
 #include "file_io.h"            /* LoadFileEx */
+#include "swos_io.h"            /* swos_data_path: is the run-in's file there */
 #include "math68k.h"            /* CalculateDeltaXAndY */
 #include "gfx.h"
 #include "display.h"            /* _screen_width, _menu_draw_x_offset: the dark-yellow box */
@@ -254,6 +255,18 @@ static void run_load(void)
     uint32_t size = 0, at = 0;
     s_runLoaded = -1;
     snprintf(path, sizeof path, "%s/team2.dat", _gDosGraphicsDir);
+    {   /* (the PC game's sprites: game data made without the PC game -- the Amiga's, SWOS 2020's --
+         *  has none. LoadFileEx retries a missing file for ever, the original's "insert the disk",
+         *  so the main menu never came: testers' "hangs fading to the main menu", 2026-11-25. No
+         *  file, no run-in.) */
+        char real[1200];
+        FILE *f = fopen(swos_data_path(path, real, (uint32_t)sizeof real), "rb");
+        if (!f) {
+            fprintf(stderr, "[menus2020] no %s (game data without the PC game's): no run-in\n", path);
+            return;
+        }
+        fclose(f);
+    }
     if (LoadFileEx((uint8_t *)path, file, &size) != 0 || size == 0 || size > sizeof file)
         return;
     for (int32_t i = 0; i < kRunImages; i++) {
