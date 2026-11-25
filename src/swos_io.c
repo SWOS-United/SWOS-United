@@ -13,7 +13,9 @@
  * the fork puts in SDL_filesystem.h rather than a header of its own. */
 #include <SDL.h>
 #endif
+#include <ctype.h>
 #include <stdarg.h>
+#include <stdlib.h>
 #include <string.h>
 #include "mods.h"
 #ifdef SWOS_WASM_BUILD
@@ -547,15 +549,131 @@ static int find_nocase(const char *root, const char *rel, char *out, uint32_t ca
 }
 #endif
 
+#if !defined(SWOS_SWITCH_BUILD) && !defined(SWOS_WASM_BUILD)
+/* Every file and folder of an enabled mod, read once: its path in lower case (the key) and as it
+ * is on disk, sorted by the key. swos_data_path asked each mod's folder for every file the game
+ * read -- a stat and a directory read per mod, some twenty mods, for files no mod has: seconds
+ * of a start on Windows (Cygwin, the virus scanner on every call), the window "not responding"
+ * (2026-11-25). Built when first asked, again when the mod at that place changes (Mods_Reload). */
+typedef struct { char *key, *real; } ModFile;
+typedef struct { char dir[1024]; ModFile *f; int32_t n, cap, built; } ModIndex;
+enum { kModIndexMax = 64, kModIndexDepth = 10 };
+static ModIndex s_modIndex[kModIndexMax];
+static volatile int s_modIndexLock;
+
+static void mod_index_add(ModIndex *m, const char *rel)
+{
+    if (m->n == m->cap) {
+        int32_t cap = m->cap ? m->cap * 2 : 256;
+        ModFile *f = (ModFile *)realloc(m->f, (size_t)cap * sizeof *f);
+        if (!f)
+            return;
+        m->f = f;
+        m->cap = cap;
+    }
+    char *real = strdup(rel), *key = strdup(rel);
+    if (!real || !key) {
+        free(real);
+        free(key);
+        return;
+    }
+    for (char *c = key; *c; c++)
+        *c = (char)tolower((unsigned char)*c);
+    m->f[m->n].key = key;
+    m->f[m->n].real = real;
+    m->n++;
+}
+
+static void mod_index_walk(ModIndex *m, const char *rel, int depth)
+{
+    char path[1400];
+    snprintf(path, sizeof path, "%s%s%s", m->dir, rel[0] ? "/" : "", rel);
+    DIR *d = opendir(path);
+    if (!d)
+        return;
+    struct dirent *e;
+    while ((e = readdir(d)) != NULL) {
+        if (e->d_name[0] == '.' && (!e->d_name[1] || (e->d_name[1] == '.' && !e->d_name[2])))
+            continue;
+        char child[1024];
+        struct stat st;
+        snprintf(child, sizeof child, "%s%s%s", rel, rel[0] ? "/" : "", e->d_name);
+        mod_index_add(m, child);
+        snprintf(path, sizeof path, "%s/%s", m->dir, child);
+        if (depth < kModIndexDepth && stat(path, &st) == 0 && S_ISDIR(st.st_mode))
+            mod_index_walk(m, child, depth + 1);
+    }
+    closedir(d);
+}
+
+static int mod_file_cmp(const void *a, const void *b)
+{
+    return strcmp(((const ModFile *)a)->key, ((const ModFile *)b)->key);
+}
+
+static void mod_index_build(ModIndex *m, const char *dir)
+{
+    for (int32_t i = 0; i < m->n; i++) {
+        free(m->f[i].key);
+        free(m->f[i].real);
+    }
+    m->n = 0;
+    snprintf(m->dir, sizeof m->dir, "%s", dir);
+    mod_index_walk(m, "", 0);
+    qsort(m->f, (size_t)m->n, sizeof *m->f, mod_file_cmp);
+    m->built = 1;
+}
+
+/* `rel` in mod i, as on disk: 0 found (out the path), -1 not there, -2 not indexed (ask the disk). */
+static int mod_index_find(int32_t i, const char *rel, char *out, uint32_t cap)
+{
+    char key[1024];
+    size_t k = 0;
+    if (i >= kModIndexMax || strstr(rel, ".."))
+        return -2;
+    while (*rel == '.' && rel[1] == '/')
+        rel += 2;
+    for (const char *c = rel; *c && k + 1 < sizeof key; c++) {
+        char ch = *c == '\\' ? '/' : (char)tolower((unsigned char)*c);
+        if (ch == '/' && (k == 0 || key[k - 1] == '/'))
+            continue;                   /* (a leading or a doubled slash) */
+        key[k++] = ch;
+    }
+    while (k && key[k - 1] == '/')
+        k--;
+    key[k] = '\0';
+    if (!k)
+        return -2;
+#if defined(__GNUC__)
+    while (__sync_lock_test_and_set(&s_modIndexLock, 1))
+        ;
+#endif
+    ModIndex *m = &s_modIndex[i];
+    if (!m->built || strcmp(m->dir, Mods_Dir(i)) != 0)
+        mod_index_build(m, Mods_Dir(i));
+    ModFile probe = { key, NULL };
+    const ModFile *hit = (const ModFile *)bsearch(&probe, m->f, (size_t)m->n, sizeof *m->f, mod_file_cmp);
+    if (hit)
+        snprintf(out, cap, "%s/%s", m->dir, hit->real);
+#if defined(__GNUC__)
+    __sync_lock_release(&s_modIndexLock);
+#endif
+    return hit ? 0 : -1;
+}
+#endif
+
 const char *swos_data_path(const char *rel, char *buf, uint32_t buf_sz)
 {
 #if !defined(SWOS_SWITCH_BUILD) && !defined(SWOS_WASM_BUILD)
     /* The enabled mods first, in their order (include/mods.h): a file a mod has is read
-     * from it. Writes go through swos_data_path_base, which never looks there. */
+     * from it. Writes go through swos_data_path_base, which never looks there. Each mod's
+     * files from its index (mod_index_find), the disk only where it has none. */
     if (rel && buf && buf_sz && rel[0] != '/' && rel[0] != '\\' && !strchr(rel, ':'))
-        for (int32_t i = 0; i < Mods_Count(); i++)
-            if (find_nocase(Mods_Dir(i), rel, buf, buf_sz) == 0)
+        for (int32_t i = 0; i < Mods_Count(); i++) {
+            const int r = mod_index_find(i, rel, buf, buf_sz);
+            if (r == 0 || (r == -2 && find_nocase(Mods_Dir(i), rel, buf, buf_sz) == 0))
                 return buf;
+        }
 #endif
     return swos_data_path_base(rel, buf, buf_sz);
 }
