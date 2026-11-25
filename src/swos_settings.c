@@ -682,7 +682,7 @@ static int settings_build(const PlatformInitOptions *opts, IniEntry *items, char
         opts->widescreen == 2 ? "stretch" : opts->widescreen ? "true" : "false" };
 
     SETTING(n) = (IniEntry){ "video",  "resolution", "; resolution: WxH (e.g. 2560x1080) drives the render ASPECT, or 'auto' for the desktop.\n; It is not the render SIZE: the picture is always 272 lines tall and 336..672 wide,\n; so a wider shape shows more pitch and a small one (320x200) just clamps to 336x272", vbuf[0] };
-    SETTING(n) = (IniEntry){ "video",  "screen",     "; screen: monitor index to open on, 0 = primary. Auto-clamped if out of range; window size auto-fits that screen", vbuf[3] };
+    SETTING(n) = (IniEntry){ "video",  "screen",     "; screen: the monitor the game opens on, 0 the first (VIDEO OPTIONS' MONITOR shows it + 1). Set by MONITOR, and when the window is moved to another; one no longer there: the first", vbuf[3] };
     SETTING(n) = (IniEntry){ "video",  "menu_cursor", "; menu_cursor: flashing | steady. The menus' cursor frame (SWOS 2020's flashing menu cursor)",
         opts->menu_cursor ? "steady" : "flashing" };   /* (SWOS 2020 port, agent A) */
     SETTING(n) = (IniEntry){ "audio",  "mode",       "; mode: mono | stereo", opts->audio_mono ? "mono" : "stereo" };

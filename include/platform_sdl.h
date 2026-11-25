@@ -275,6 +275,13 @@ void Platform_SetWindowScale(int scale);    /* 0: AUTO; a number: that, or the m
 int  Platform_WindowScaleAuto(void);
 /* The most whole times the picture fits the window's monitor, framed (1 at least). */
 int  Platform_WindowScaleMax(void);
+/* The monitors: how many (1 at least), the one the window is on, and one's size as "1920X1080". */
+int  Platform_DisplayCount(void);
+int  Platform_WindowDisplay(void);
+void Platform_DisplayDesc(int display, char *out, int cap);
+/* The window onto monitor `display`, centred there -- fullscreen stays fullscreen, there; AUTO's
+ * scale is that monitor's. VIDEO OPTIONS' MONITOR ([video] screen, where the game opens). */
+void Platform_MoveToDisplay(int display);
 
 /* The picture's size has changed (the DOS view is 320x200, menus are 336x272),
  * so the presenter must letterbox the new shape. The WINDOW is deliberately not

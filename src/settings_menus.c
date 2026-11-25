@@ -657,12 +657,26 @@ static void scroll_change(int32_t dir) { (void)dir; O()->subpixel_scroll = !O()-
 static void scaling_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", O()->scaling_smooth ? "SMOOTH" : "SHARP"); }
 static void scaling_change(int32_t dir) { (void)dir; O()->scaling_smooth = !O()->scaling_smooth; later(); save(); }
 
-static void monitor_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%d", O()->screen + 1); }
+/* MONITOR: the one the game is on and opens on ([video] screen), its size beside its number;
+ * a change moves the window there at once (Platform_MoveToDisplay). One monitor: nothing to pick. */
+static void monitor_show(char *o, int32_t c)
+{
+    const int n = Platform_DisplayCount();
+    const int d = O()->screen >= 0 && O()->screen < n ? O()->screen : 0;
+    char size[24];
+    Platform_DisplayDesc(d, size, (int)sizeof size);
+    snprintf(o, (size_t)c, "%d: %s", d + 1, size);
+}
 static void monitor_change(int32_t dir)
 {
-    int n = SDL_GetNumVideoDisplays();
-    O()->screen = step(O()->screen, dir, n > 0 ? n : 1);
-    later();
+    const int n = Platform_DisplayCount();
+    if (n < 2) {
+        note("ONLY ONE MONITOR");
+        return;
+    }
+    O()->screen = step(O()->screen >= 0 && O()->screen < n ? O()->screen : 0, dir, n);
+    Platform_MoveToDisplay(O()->screen);
+    note("THE GAME IS ON IT NOW, AND STARTS THERE");
     save();
 }
 

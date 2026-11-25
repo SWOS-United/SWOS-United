@@ -691,6 +691,13 @@ int Platform_Init(const PlatformInitOptions *opts)
     {
         int nd = SDL_GetNumVideoDisplays();
         if (nd < 1) nd = 1;
+        for (int d = 0; d < nd; d++) {  /* (the monitors, for a report: MONITOR's numbers are these + 1) */
+            SDL_Rect b = { 0, 0, 0, 0 };
+            const char *name = SDL_GetDisplayName(d);
+            SDL_GetDisplayBounds(d, &b);
+            fprintf(stderr, "[video] monitor %d: \"%s\" %dx%d at %d,%d%s\n", d + 1, name ? name : "?",
+                    b.w, b.h, b.x, b.y, d == screen ? " (opening here: [video] screen)" : "");
+        }
         if (screen >= nd) screen = 0;
         if (fs_mode == PLATFORM_FULLSCREEN_NONE) {
             SDL_Rect ub;
@@ -1255,6 +1262,15 @@ static void check_display(void)
     if (first || SDL_GetDesktopDisplayMode(d, &dm) != 0)
         return;
     fprintf(stderr, "[video] the window is on display %d now: %dx%d @%dHz\n", d, dm.w, dm.h, dm.refresh_rate);
+    {   /* (the next start opens there: [video] screen, MONITOR) */
+        extern PlatformInitOptions *g_arcadeOpts;
+        extern const char *g_arcadeIniPath;
+        if (g_arcadeOpts && g_arcadeOpts->screen != d) {
+            g_arcadeOpts->screen = d;
+            if (g_arcadeIniPath)
+                Settings_Save(g_arcadeOpts, g_arcadeIniPath);
+        }
+    }
     if (dm.refresh_rate > 0)
         s_display_hz = dm.refresh_rate;
     {
@@ -1441,6 +1457,53 @@ int Platform_GetWindowScale(void)
 
 int Platform_WindowScaleAuto(void) { return s_win_scale_auto; }
 
+int Platform_DisplayCount(void)
+{
+#ifndef SWOS_WASM_BUILD
+    const int n = SDL_GetNumVideoDisplays();
+    return n > 0 ? n : 1;
+#else
+    return 1;
+#endif
+}
+
+int Platform_WindowDisplay(void)
+{
+    const int d = s_window ? SDL_GetWindowDisplayIndex(s_window) : 0;
+    return d > 0 ? d : 0;
+}
+
+void Platform_DisplayDesc(int display, char *out, int cap)
+{
+    SDL_DisplayMode dm;
+    if (SDL_GetDesktopDisplayMode(display, &dm) == 0)
+        snprintf(out, (size_t)cap, "%dX%d", dm.w, dm.h);
+    else
+        snprintf(out, (size_t)cap, "?");
+}
+
+void Platform_MoveToDisplay(int display)
+{
+#ifndef SWOS_WASM_BUILD
+    if (!s_window || display < 0 || display >= Platform_DisplayCount())
+        return;
+    const Uint32 fsFlags = SDL_GetWindowFlags(s_window) & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP);
+    if (fsFlags)
+        SDL_SetWindowFullscreen(s_window, 0);           /* (a fullscreen window cannot be moved) */
+    if (SDL_GetWindowFlags(s_window) & SDL_WINDOW_MAXIMIZED)
+        SDL_RestoreWindow(s_window);
+    SDL_SetWindowPosition(s_window, SDL_WINDOWPOS_CENTERED_DISPLAY(display), SDL_WINDOWPOS_CENTERED_DISPLAY(display));
+    if (fsFlags)
+        SDL_SetWindowFullscreen(s_window, fsFlags);
+    else if (s_win_scale_auto && s_pinned_w <= 0)
+        Platform_SetWindowScale(0);                     /* (that monitor's scale, centred there) */
+    fprintf(stderr, "[video] window moved to monitor %d\n", display + 1);
+    check_display();
+#else
+    (void)display;
+#endif
+}
+
 /* The most whole times the picture, framed (title bar and borders), fits the usable area of the
  * monitor the window is on -- what Platform_Init's fit does at the start, for any time after. */
 int Platform_WindowScaleMax(void)
@@ -1531,8 +1594,11 @@ void Platform_SetWindowScale(int scale)
             _screen_height * scale);
         /* Re-centre on the desktop after a size change so a 4× window
          * doesn't end up clipped against the bottom-right of the screen. */
-        SDL_SetWindowPosition(s_window,
-            SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+        {   /* (on the monitor it is on: SDL_WINDOWPOS_CENTERED is the first monitor's) */
+            int d = SDL_GetWindowDisplayIndex(s_window);
+            if (d < 0) d = 0;
+            SDL_SetWindowPosition(s_window, SDL_WINDOWPOS_CENTERED_DISPLAY(d), SDL_WINDOWPOS_CENTERED_DISPLAY(d));
+        }
     }
 }
 

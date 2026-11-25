@@ -297,6 +297,12 @@ held it runs on (after 0.4 s, then every 0.15 s; not on the rows that open a scr
 window). The stick only moves between rows -- left and right do nothing there, so a shaky stick
 cannot change a value (2026-11-25). Each change is logged with its value before and after.
 
+MONITOR (VIDEO) shows the monitor the game is on, its number and size ("2: 1920X1080"), and moves
+the window there at once -- centred, fullscreen staying fullscreen, AUTO's scale that monitor's --
+and the game opens there from then on (`[video] screen`, 0 the first). A window dragged to another
+monitor is remembered the same way. With one monitor there is nothing to pick. The start's log
+lists the monitors (`[video] monitor N: "name" WxH at x,y`).
+
 A change "from the next start" (the note says FROM THE NEXT START) is remembered: leaving OPTIONS
 by its EXIT then asks RESTART NOW / LATER, and RESTART NOW starts the game again at once
 (`Main_Relaunch`, as OPTIONS -> MODS does) where it can; where it cannot (the browser, phones),
