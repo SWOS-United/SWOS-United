@@ -56,7 +56,6 @@ typedef struct {
 enum { kMaxShown = 8 };
 static struct { Extra *e; int32_t x, y; } s_shown[kMaxShown];
 static int32_t s_shownCount;
-static Uint64  s_shownAt;
 static uintptr_t s_shownMenu;   /* (the menu they are its: none of them once another is up) */
 
 static void free_picture(Extra *e)
@@ -301,8 +300,12 @@ void MenuExtras_Drawn(void)
 {
     extern volatile uintptr_t _frontbufferBasePtr;
     MenuExtras *m = current();
-    if (!m)
+    if (!m) {                           /* (a menu without pictures: none of the last one's left) */
+        if (s_shownCount)
+            s_shownCount = 0;
+        Platform_TrueColourBegin();
         return;
+    }
     uint8_t *frame = (uint8_t *)(uintptr_t)_frontbufferBasePtr;
     const int32_t sw = _screen_width, sh = _screen_height;
     uint32_t hash = 0;
@@ -325,7 +328,6 @@ void MenuExtras_Drawn(void)
                                           (e->imageX != kCentred ? e->imageX : ((int32_t)ent->dwWidth - e->w) / 2);
                 s_shown[s_shownCount].y = ent->y + (e->imageY != kCentred ? e->imageY : ((int32_t)ent->dwHeight - e->h) / 2);
                 s_shownCount++;
-                s_shownAt = Platform_NowMs();
             }
             continue;
         }
@@ -364,14 +366,14 @@ void MenuExtras_Drawn(void)
 
 /* Over the finished picture (ModHooks_FrameDrawn), each frame the window shows: the .png pictures
  * the menu's last frame drew, in the picture's pixels, blended by their alpha and darkened with
- * the menus' fade (over the backdrop picture: faded out by it, Platform_MenuFadeAlpha). Gone as soon as another menu is up, or the menus are not (and 100 ms after
- * the menu's last frame, whatever else took the screen). */
+ * the menus' fade (over the backdrop picture: faded out by it, Platform_MenuFadeAlpha). Shown
+ * while their menu is the one up, in the menus -- not by time: the window shows frames the menu
+ * did not draw (moved or resized on Windows, the menu loop held: the timer's frames). */
 void MenuExtras_Present(void)
 {
     extern int g_fadeLevel;
     extern int32_t ModApi_InMenus(void);
-    if (!s_shownCount || !Gfx_InFrame() || Platform_NowMs() - s_shownAt > 100 ||
-        s_shownMenu != _currentMenuPtr || !ModApi_InMenus())
+    if (!s_shownCount || !Gfx_InFrame() || s_shownMenu != _currentMenuPtr || !ModApi_InMenus())
         return;
     const int fade = g_fadeLevel < 0 ? 0 : g_fadeLevel > 0x80 ? 0x80 : g_fadeLevel;
     const int overA = Platform_MenuFadeAlpha();     /* (over the backdrop: the fade as alpha) */

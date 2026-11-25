@@ -2126,7 +2126,8 @@ static const uint8_t *frame_source(void);
  * few brownish ones). Beside that, each of its pixels gives its own colour here; the frame is
  * shown with it wherever the pixel still holds the entry it was drawn with (anything drawn on
  * top afterwards wins), darkened with the menus' fade. Given again every menu frame: a picture
- * not given for 100 ms (a match, another screen) is gone. */
+ * not given for 100 ms out of the menus (a match) is gone; in them it stays, each pixel only where
+ * the frame still holds its entry (the window moved on Windows: frames the menu did not draw). */
 static uint32_t *s_tc;                  /* 0xRRGGBB | 0xFF000000 when set, per frame pixel */
 static uint8_t  *s_tcIdx;               /* the palette entry the frame got there */
 static int       s_tcW, s_tcH, s_tcCount;
@@ -2197,8 +2198,11 @@ static void chunky_to_rgba(uint32_t *dst, int dst_pitch_pixels)
     const int alpha = menu_alpha_now();     /* (launcher options, agent B: the menus' opacity) */
     const uint8_t *under = alpha < 255 && fb != _frontbufferMaskBuffer ? _frontbufferMaskBuffer : NULL;
     extern int g_fadeLevel;
+    extern int32_t ModApi_InMenus(void);
+    /* (in the menus as long as they are up: the window shows frames the menu did not draw -- moved
+     *  on Windows, its loop held -- and each pixel is checked against its entry anyway) */
     const int tcOn = s_tcCount && s_tcW == _screen_width && s_tcH == _screen_height &&
-                     Platform_NowMs() - s_tcStamp < 100;
+                     (ModApi_InMenus() || Platform_NowMs() - s_tcStamp < 100);
     const int fadeA = keyed ? s_fadeA : 255;    /* (the fade as the menu's alpha over the backdrop) */
     const int tcFade = fadeA < 255 ? 0x80 : g_fadeLevel < 0 ? 0 : g_fadeLevel > 0x80 ? 0x80 : g_fadeLevel;
     for (int y = 0; y < _screen_height; ++y) {
