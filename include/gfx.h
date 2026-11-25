@@ -47,6 +47,8 @@ GfxBlend Gfx_Blend(void);
 
 /* `src` NULL: the whole texture; `dst` NULL: the whole space. */
 void    Gfx_DrawTexture(GfxTexture *t, const SDL_Rect *src, const SDL_FRect *dst);
+/* ... its colours times `tint` (and its alpha times tint.a): Platform_MenuFadeTint's, say. */
+void    Gfx_DrawTextureTint(GfxTexture *t, const SDL_Rect *src, const SDL_FRect *dst, SDL_Color tint);
 /* Triangles; `tex` NULL draws the colours alone; `indices` NULL takes the vertices in threes. */
 void    Gfx_Geometry(GfxTexture *tex, const GfxVertex *v, int nv, const int *indices, int ni);
 void    Gfx_FillRect(const SDL_FRect *r, SDL_Color c);

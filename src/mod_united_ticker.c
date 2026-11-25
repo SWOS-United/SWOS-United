@@ -291,6 +291,8 @@ static void ticker_frame_drawn(void)
     if (x0 < boxL) { u0 = (boxL - x0) / (float)s_texW; x0 = boxL; }
     if (x1 > boxR) { u1 = 1.0f - (x1 - boxR) / (float)s_texW; x1 = boxR; }
     {
+        extern SDL_Color Platform_MenuFadeTint(void);
+        const SDL_Color tint = Platform_MenuFadeTint();
         GfxVertex v[6];
         const float px[6] = { x0, x1, x0, x1, x1, x0 }, py[6] = { y0, y0, y1, y0, y1, y1 };
         const float tu[6] = { u0, u1, u0, u1, u1, u0 }, tv[6] = { 0, 0, 1, 0, 1, 1 };
@@ -298,7 +300,7 @@ static void ticker_frame_drawn(void)
             memset(&v[i], 0, sizeof v[i]);
             v[i].position.x = px[i];
             v[i].position.y = py[i];
-            v[i].color.r = v[i].color.g = v[i].color.b = v[i].color.a = 255;
+            v[i].color = tint;          /* (with the menus' fade) */
             v[i].tex_coord.x = tu[i];
             v[i].tex_coord.y = tv[i];
         }

@@ -164,12 +164,14 @@ typedef struct {
     void (*show)(char *out, int32_t cap);
     void (*change)(int32_t dir);            /* +1: fire or right, -1: left */
     uint16_t    labelColor;                 /* its label's background, kLabel* (0: the page's grey) */
+    int       (*off)(void);                 /* non-zero: greyed out, nothing to choose (NULL: never) */
 } Row;
 
 /* A label's background (settingsPage.json's labels are grey, 7): CONTROLS tells player 1's rows
  * from player 2's by colour as well as by name. */
 enum { kWaitColour = 15 };      /* a row waiting for a press: yellow (the Amiga look; PC: yellow-green) */
-enum { kLabelGrey = 7, kLabelPlayer1 = 11, kLabelPlayer2 = 10 };   /* (purple -- the Amiga look's blue -- and red) */
+enum { kLabelGrey = 7, kLabelPlayer1 = 11, kLabelPlayer2 = 10 };
+enum { kValueOn = 13, kValueOff = 9 };  /* a value's background (settingsPage.json's 13), greyed (Row.off) */   /* (purple -- the Amiga look's blue -- and red) */
 
 typedef struct {
     const char *title;
@@ -229,6 +231,8 @@ static void page_refresh(void)
         label->fg = (uintptr_t)s_page->rows[i].label;
         label->bgColor = s_page->rows[i].labelColor ? s_page->rows[i].labelColor : kLabelGrey;
         value->fg = (uintptr_t)s_values[i];
+        if (s_page->rows[i].off)        /* (only such rows: SELECT JOYPAD's wait colours its own) */
+            value->bgColor = (uint16_t)((value->bgColor & 0xFFF0) | (s_page->rows[i].off() ? kValueOff : kValueOn));
     }
     entry_at(Page_note)->fg = (uintptr_t)s_note;
 }
@@ -725,10 +729,45 @@ static int32_t shape_index(void)
     return -1;
 }
 
+/* The display the game's window is on: its desktop size (16:9 when it can't be had). */
+static void display_size(int *dw, int *dh)
+{
+    SDL_DisplayMode dm;
+    SDL_Window *w = SDL_GetKeyboardFocus();        /* (the game's window: it has the keys) */
+    const int d = w ? SDL_GetWindowDisplayIndex(w) : O()->screen;
+    *dw = 16;
+    *dh = 9;
+    if (SDL_GetDesktopDisplayMode(d >= 0 ? d : 0, &dm) == 0 && dm.w > 0 && dm.h > 0) {
+        *dw = dm.w;
+        *dh = dm.h;
+    }
+}
+
+/* AUTO's shape, as WINDOW SCALE's AUTO shows its factor: the nearest of the shapes when it is
+ * within 3 % of one (3440x1440 is 21:9, as sold), else the display's own, reduced. */
+static void auto_shape(char *o, int32_t c)
+{
+    int dw, dh;
+    display_size(&dw, &dh);
+    const double r = (double)dw / dh;
+    for (int32_t i = 1; i < kShapes; i++) {
+        const double k = (double)k_shapes[i].w / k_shapes[i].h;
+        if (r > k * 0.97 && r < k * 1.03) {
+            snprintf(o, (size_t)c, "AUTO (%s)", k_shapes[i].name);
+            return;
+        }
+    }
+    int a = dw, b = dh;
+    while (b) { const int t = a % b; a = b; b = t; }
+    snprintf(o, (size_t)c, "AUTO (%d:%d)", dw / a, dh / a);
+}
+
 static void res_show(char *o, int32_t c)
 {
     const int32_t i = shape_index();
-    if (i >= 0)
+    if (i == 0)
+        auto_shape(o, c);
+    else if (i > 0)
         snprintf(o, (size_t)c, "%s", k_shapes[i].name);
     else
         snprintf(o, (size_t)c, "%dX%d", O()->res_w, O()->res_h);
@@ -745,13 +784,7 @@ static void res_change(int32_t dir)
         dw = O()->res_w;
         dh = O()->res_h;
     } else {
-        SDL_DisplayMode dm;
-        SDL_Window *w = SDL_GetKeyboardFocus();        /* (the game's window: it has the keys) */
-        const int d = w ? SDL_GetWindowDisplayIndex(w) : O()->screen;
-        if (SDL_GetDesktopDisplayMode(d >= 0 ? d : 0, &dm) == 0 && dm.h > 0) {
-            dw = dm.w;
-            dh = dm.h;
-        }
+        display_size(&dw, &dh);
     }
     if (Video_ResolutionChanged(O(), dw, dh))
         note(i ? "THE PICTURE'S SHAPE: MORE PITCH WHEN WIDER" : "THE DISPLAY'S OWN SHAPE");
@@ -1026,7 +1059,7 @@ static void art_change(int32_t dir)
     save();
 }
 
-/* MENU LOOK: [mod.dosmenus] look amiga | pc -- the PC menu shading mod's (src/mod_dosmenus.c, which
+/* MENU BUTTON LOOK: [mod.dosmenus] look amiga | pc -- the PC menu shading mod's (src/mod_dosmenus.c, which
  * follows it at once; F5 still flips it for the run). */
 static void look_show(char *o, int32_t c)
 {
@@ -1043,7 +1076,7 @@ static void look_change(int32_t dir)
     const char *v = ModApi_Setting("dosmenus", "look", PROJECT_MENU_LOOK_AMIGA ? "amiga" : "pc");
     (void)dir;
     ModApi_SetSetting("dosmenus", "look", strcmp(v, "pc") == 0 ? "amiga" : "pc");
-    if (!Mods_IsOn("dosmenus"))
+    if (!Mods_IsOn("dosmenus"))         /* (part of SWOS United: never off there; an OpenSWOS player's may be) */
         note("THE PC MENU SHADING MOD IS OFF: OPTIONS, MODS");
     else if (!swos_data_exists("grafs_dos/FILL.256"))
         note("PC DOS NEEDS THE PC GAME'S DATA");
@@ -1124,6 +1157,51 @@ static void clashkits_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", O(
 /* Which kits are too alike ([graphics] kit_colours, kit_variants.h): EXTENDED judges by how alike the
  * colours look (CIEDE2000), ORIGINAL by the original's tables. */
 static void kitcols_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", O()->kit_colours ? "EXTENDED" : "ORIGINAL"); }
+/* MENU BACKGROUND: SWOS United's own picture behind the menus (menu_backgrounds.c), AMIGA (black
+ * and purple, the default) or PC (blue and black), at once. Greyed with the Menu backgrounds mod
+ * on: its picture is shown then. */
+static int menubg_off(void)
+{
+    extern int32_t Mods_IsOn(const char *slug);
+    return Mods_IsOn("backgrounds");
+}
+static int logo_hd(void)
+{
+    extern const char *ModApi_Setting(const char *slug, const char *key, const char *fallback);
+    return strcmp(ModApi_Setting("menus2020", "logo", "pixel"), "hd") == 0;
+}
+static void menubg_show(char *o, int32_t c)
+{
+    snprintf(o, (size_t)c, "%s", menubg_off() ? "MOD" : O()->menu_background == 1 ? "PC BLUE" : "AMIGA PURPLE");
+}
+/* MENU LOGO: the main menu's logo as its pixels (PIXEL) or drawn smooth at the window's resolution
+ * (HD) -- [mod.menus2020] logo, mod_menus2020.c (the mod is part of the game, never listed under
+ * MODS, so its one setting is here). Seen as the main menu is come back to. */
+static void logo_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", logo_hd() ? "HD" : "PIXEL"); }
+static void logo_change(int32_t dir)
+{
+    extern int32_t ModApi_SetSetting(const char *slug, const char *key, const char *value);
+    (void)dir;
+    ModApi_SetSetting("menus2020", "logo", logo_hd() ? "pixel" : "hd");
+}
+static void menubg_change(int32_t dir)
+{
+    extern void MenuBackgrounds_Choose(int which);
+    extern uint8_t _aGrafsMenubgRaw[];
+    extern void LoadOverlayToFrontbuffer(const uint8_t *path);
+    extern void DrawMenu(void);
+    (void)dir;
+    if (menubg_off()) {
+        note("THE MENU BACKGROUNDS MOD IS ON: ITS PICTURE");
+        return;
+    }
+    O()->menu_background = !O()->menu_background;
+    MenuBackgrounds_Choose(O()->menu_background);
+    save();
+    LoadOverlayToFrontbuffer(_aGrafsMenubgRaw);   /* (the menus' backdrop again, the new one) */
+    DrawMenu();
+}
+
 static void kitcols_change(int32_t dir)
 {
     (void)dir;
@@ -1278,7 +1356,9 @@ _Static_assert(sizeof k_gameplayRows / sizeof k_gameplayRows[0] <= kRows, "a set
 
 static const Row k_displayRows[] = {
     { "GAME GRAPHICS",      art_show,      art_change },
-    { "MENU LOOK",          look_show,     look_change },
+    { "MENU BUTTON LOOK",   look_show,     look_change },     /* (the buttons' shading; MENU BACKGROUND below) */
+    { "MENU BACKGROUND",    menubg_show,   menubg_change, 0, menubg_off },
+    { "MENU LOGO",          logo_show,     logo_change },
     { "MENU CURSOR",        cursor_show,   cursor_change },
     { "MENU OPACITY",       opacity_show,  opacity_change },
     { "KIT COLOURS",        kitcols_show,  kitcols_change },    /* (RULES' too: which kits clash) */
@@ -1287,7 +1367,6 @@ static const Row k_displayRows[] = {
     { "KITS ON THE RESULT", reskits_show,  reskits_change },
     { "RESULT BAND",        resband_show,  resband_change },
     { "SCOREBOARD",         board_show,    board_change },
-    { "MOUSE POINTER",      pointer_show,  pointer_change },     /* (CONTROLS has no room: CALL BENCH twice) */
 };
 static const Page k_displayPage = { "APPEARANCE OPTIONS", k_displayRows, (int32_t)(sizeof k_displayRows / sizeof k_displayRows[0]) };
 _Static_assert(sizeof k_displayRows / sizeof k_displayRows[0] <= kRows, "a settings page holds kRows rows at most");
@@ -1312,6 +1391,7 @@ static const Row k_generalRows[] = {
     { "SKIP INTRO",              intro_show,    intro_change },
     { "INTRO PICTURES",          reels_show,    reels_change },
     { "PRE-MATCH PAUSE",         loadpause_show, loadpause_change },
+    { "MOUSE POINTER",           pointer_show,  pointer_change },   /* (APPEARANCE's till 2026-11-25: MENU LOGO took its row) */
 };
 static const Page k_generalPage = { "GENERAL OPTIONS", k_generalRows, (int32_t)(sizeof k_generalRows / sizeof k_generalRows[0]) };
 _Static_assert(sizeof k_generalRows / sizeof k_generalRows[0] <= kRows, "a settings page holds kRows rows at most");

@@ -19,7 +19,7 @@
  * F5 (ModApi_AddHotkey; [mod.dosmenus] hotkey to change it) switches between the PC shading and
  * the Amiga's flat menus while the game runs -- Playa's ask, 2026-11-08. Not remembered: each
  * start shows the look [mod.dosmenus] look says -- amiga | pc, the SWOS United Launcher's "Menu
- * style" (launcher options, agent A), on this mod's page and GAMEPLAY OPTIONS' MENU LOOK, which
+ * style" (launcher options, agent A), on this mod's page and APPEARANCE OPTIONS' MENU BUTTON LOOK, which
  * change it at once -- and without that line the game's own, PROJECT_MENU_LOOK_AMIGA
  * (include/project_identity.h: the Amiga's flat menus, in OpenSWOS and SWOS United alike).
  */
@@ -86,7 +86,7 @@ static void load_pc(void)
 static int s_amigaLook = PROJECT_MENU_LOOK_AMIGA;  /* F5: the Amiga's flat menus for now */
 static char s_lookSetting[8] = "?";                /* [mod.dosmenus] look as last seen */
 
-/* The setting changed (the mod's page, GAMEPLAY OPTIONS' MENU LOOK; at start): its look now. */
+/* The setting changed (the mod's page, APPEARANCE OPTIONS' MENU BUTTON LOOK; at start): its look now. */
 static void follow_setting(void)
 {
     const char *v = ModApi_Setting(SLUG, "look", "");
@@ -218,7 +218,11 @@ static void frame_drawn(void)
     Gfx_UpdateTexture(s_tex, s_rgba, s_lw * 4);
     Gfx_SetSpace(GFX_SPACE_PICTURE);
     Gfx_SetBlend(GFX_BLEND_ALPHA);
-    Gfx_DrawTexture(s_tex, NULL, NULL);
+    /* with the menus' fade, as the frame under it (its text shows through): darkened as the
+     * palette is -- or, over the backdrop picture, faded out as the menu is -- else the shading
+     * stood full under text still coming up */
+    extern SDL_Color Platform_MenuFadeTint(void);
+    Gfx_DrawTextureTint(s_tex, NULL, NULL, Platform_MenuFadeTint());
 }
 
 const ModDef ModDef_dosmenus = {

@@ -72,6 +72,9 @@ void HudBox_Draw(HudBox *b, int32_t x, int32_t y, int32_t w, int32_t h, int32_t 
     b->scale = 1;
     b->pal16 = NULL;
     b->black = -1;
+    b->cut = NULL;
+    b->cutStride = 0;
+    b->radius = 0;
     b->bg[0] = r;
     b->bg[1] = g;
     b->bg[2] = bl;
@@ -109,6 +112,21 @@ void HudBox_Present(HudBox *b)
             const uint16_t c = b->px[j * w + i];
             const int32_t fx = b->x + i, fy = b->y + j;
             p[3] = 255;
+            if (b->radius > 0) {        /* outside a rounded corner: nothing */
+                const int32_t r = b->radius;
+                const int32_t cx = i < r ? r : i >= w - r ? w - r : i;
+                const int32_t cy = j < r ? r : j >= h - r ? h - r : j;
+                const float dx = (float)i + 0.5f - (float)cx, dy = (float)j + 0.5f - (float)cy;
+                if ((cx != i || cy != j) && dx * dx + dy * dy > (float)(r * r)) {
+                    p[0] = p[1] = p[2] = p[3] = 0;
+                    continue;
+                }
+            }
+            if (b->cut && fx >= 0 && fy >= 0 && fx < _screen_width && fy < _screen_height &&
+                b->cut[(size_t)fy * b->cutStride + fx]) {
+                p[0] = p[1] = p[2] = p[3] = 0;
+                continue;
+            }
             if (c != 0xFFFF && (int32_t)c == b->black) {
                 p[0] = p[1] = p[2] = 0;
             } else if (c != 0xFFFF && b->pal16 && c < 16) {

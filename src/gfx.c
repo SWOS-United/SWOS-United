@@ -221,6 +221,27 @@ void Gfx_DrawTexture(GfxTexture *t, const SDL_Rect *src, const SDL_FRect *dst)
     }
 }
 
+void Gfx_DrawTextureTint(GfxTexture *t, const SDL_Rect *src, const SDL_FRect *dst, SDL_Color tint)
+{
+    if (!t)
+        return;
+    int sw, sh;
+    Gfx_SpaceSize(&sw, &sh);
+    const SDL_FRect d = dst ? *dst : (SDL_FRect){ 0.0f, 0.0f, (float)sw, (float)sh };
+    if (t->gpu) {
+        const SDL_Rect s = src ? *src : (SDL_Rect){ 0, 0, t->w, t->h };
+        gpu_quad(t->gpu, d.x, d.y, d.x + d.w, d.y + d.h, (float)s.x / t->w, (float)s.y / t->h,
+                 (float)(s.x + s.w) / t->w, (float)(s.y + s.h) / t->h, tint);
+    } else if (t->sdl && s_sdl) {
+        SDL_SetTextureBlendMode(t->sdl, sdl_blend(s_blend));
+        SDL_SetTextureColorMod(t->sdl, tint.r, tint.g, tint.b);
+        SDL_SetTextureAlphaMod(t->sdl, tint.a);
+        SDL_RenderCopyF(s_sdl, t->sdl, src, &d);
+        SDL_SetTextureColorMod(t->sdl, 255, 255, 255);
+        SDL_SetTextureAlphaMod(t->sdl, 255);
+    }
+}
+
 void Gfx_Geometry(GfxTexture *tex, const GfxVertex *v, int nv, const int *indices, int ni)
 {
     if (!v || nv <= 0)

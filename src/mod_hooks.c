@@ -143,6 +143,20 @@ void ModHooks_Reload(void)
 void ModHooks_FrameDrawn(void)
 {
     ModApi_NotePresent();
+#ifdef SWOS_SDL_BUILD
+    {   /* the ESC screen's panel (esc_confirm.c): under the mods' drawing */
+        extern void EscConfirm_Present(void);
+        EscConfirm_Present();
+    }
+    {   /* a menu's .png pictures (menu_extras.c): their soft edges over what is under them */
+        extern void MenuExtras_Present(void);
+        MenuExtras_Present();
+    }
+    {   /* the CREDITS photos in their own colours (credits_menu.c) */
+        extern void CreditsMenu_PhotosPresent(void);
+        CreditsMenu_PhotosPresent();
+    }
+#endif
     EACH(frameUnder) (*m_)->frameUnder();
     EACH(frameDrawn) (*m_)->frameDrawn();
 }

@@ -13,6 +13,7 @@
 #include <stdint.h>
 #include "project_identity.h"
 #include "platform_sdl.h"
+#include "perf_stats.h"
 #include "mod_hooks.h"
 #include "swos_settings.h"  /* Settings_Save: the volume keys' */
 #include "text_render.h"    /* DrawMenuText: their readout */      /* ModHooks_FrameDrawn: the built-in mods' drawing */
@@ -1125,6 +1126,7 @@ int Platform_Init(const PlatformInitOptions *opts)
 
     s_perf_freq = SDL_GetPerformanceFrequency();
     s_next_frame_perf = SDL_GetPerformanceCounter();
+    Perf_Init();                        /* (SWOS_PERF=1: what the steps cost, perf_stats.h) */
 
     s_render_mtx = SDL_CreateMutex();
     s_isr_mtx    = SDL_CreateMutex();
@@ -1747,6 +1749,23 @@ static void cutscene_show_locked(const uint8_t *pixels, int w, int h, const uint
 static volatile uint32_t s_press_count;
 uint32_t Platform_PressCount(void) { return s_press_count; }
 
+/* A palette entry finer than the copper's 4 bits a channel (Platform_PaletteFine): kept while the
+ * copper still holds the word it was given with, and for 100 ms -- a fade writing the entry, or the
+ * caller stopping, ends it. */
+static struct { uint16_t cop; uint8_t r, g, b, on; Uint64 at; } s_palFine[256];
+
+void Platform_PaletteFine(int idx, uint16_t copperWord, uint8_t r, uint8_t g, uint8_t b)
+{
+    if (idx < 0 || idx > 255)
+        return;
+    s_palFine[idx].cop = copperWord;
+    s_palFine[idx].r = r;
+    s_palFine[idx].g = g;
+    s_palFine[idx].b = b;
+    s_palFine[idx].on = 1;
+    s_palFine[idx].at = Platform_NowMs();
+}
+
 static void refresh_palette_from_copper(void)
 {
     if (s_cut_on) {
@@ -1830,6 +1849,14 @@ static void refresh_palette_from_copper(void)
             s_palette[idx].g = (uint8_t)(((v >> 4) & 0x0F) * 17);
             s_palette[idx].b = (uint8_t)(((v >> 0) & 0x0F) * 17);
             s_palette[idx].a = 255;
+            if (s_palFine[idx].on) {            /* (its finer colour, while it is still the one) */
+                if (s_palFine[idx].cop == (v & 0x0FFF) && Platform_NowMs() - s_palFine[idx].at < 100) {
+                    s_palette[idx].r = s_palFine[idx].r;
+                    s_palette[idx].g = s_palFine[idx].g;
+                    s_palette[idx].b = s_palFine[idx].b;
+                } else
+                    s_palFine[idx].on = 0;
+            }
         }
     }
 #else
@@ -1862,12 +1889,37 @@ static uint32_t      *s_bdSmall;
 static int            s_bdSmallW, s_bdSmallH;
 static uint32_t       s_bdSmallSerial;
 
+static int s_bdRule;                    /* Platform_SetMenuBackdropRule */
+static int s_bdTint = 255;              /* the intro's fade: the backdrop's brightness, 0..255 */
+void Platform_SetMenuBackdropRule(int rule) { s_bdRule = rule; }
+
 void Platform_SetMenuBackdrop(const uint8_t *rgba, int w, int h)
 {
+    /* (a picture is new only when it is another one: none in between -- the intro's ends, the
+     *  menus set the same picture again -- keeps the last one's serial, so the GPU keeps its
+     *  texture: a 7680 x 2160 upload is ~380 ms, a stall as the main menu comes up) */
+    static const uint8_t *s_bdLast;
+    static int s_bdLastW, s_bdLastH;
+    static uint32_t s_bdLastSum;
     if (s_render_mtx)
         SDL_LockMutex(s_render_mtx);    /* (the timer thread's fallback render reads it too) */
-    if (rgba != s_bd || w != s_bdW || h != s_bdH)
-        s_bdSerial++;
+    if (rgba && w > 0 && h > 0) {
+        /* (and a sample of it: another picture where a freed one was is new too) */
+        uint32_t sum = 2166136261u;
+        const size_t n = (size_t)w * (size_t)h;
+        for (size_t k = 0; k < 256; k++) {
+            uint32_t px;
+            memcpy(&px, rgba + (n * k / 256) * 4, 4);
+            sum = (sum ^ px) * 16777619u;
+        }
+        if (rgba != s_bdLast || w != s_bdLastW || h != s_bdLastH || sum != s_bdLastSum) {
+            s_bdSerial++;
+            s_bdLast = rgba;
+            s_bdLastW = w;
+            s_bdLastH = h;
+            s_bdLastSum = sum;
+        }
+    }
     s_bd = rgba && w > 0 && h > 0 ? rgba : NULL;
     s_bdW = w;
     s_bdH = h;
@@ -1905,6 +1957,7 @@ void Platform_SetIntroBackdrop(const uint8_t *rgba, int w, int h)
         Platform_SetMenuBackdrop(NULL, 0, 0);
         free(s_introFaded);
         s_introFaded = NULL;
+        s_bdTint = 255;
     }
     if (s_render_mtx)
         SDL_UnlockMutex(s_render_mtx);
@@ -1914,20 +1967,13 @@ static void intro_backdrop_update(void)
 {
     extern int g_fadeLevel;
     const int level = g_fadeLevel < 0 ? 0 : g_fadeLevel > 0x80 ? 0x80 : g_fadeLevel;
-    const size_t n = (size_t)s_introW * s_introH * 4;
-    if (level == s_introLevel && s_introFaded)
+    if (level == s_introLevel && s_bd == s_introSrc)
         return;
-    if (!s_introFaded && !(s_introFaded = (uint8_t *)malloc(n)))
-        return;
-    for (size_t i = 0; i < n; i += 4) {
-        s_introFaded[i]     = (uint8_t)(s_introSrc[i]     * level >> 7);
-        s_introFaded[i + 1] = (uint8_t)(s_introSrc[i + 1] * level >> 7);
-        s_introFaded[i + 2] = (uint8_t)(s_introSrc[i + 2] * level >> 7);
-        s_introFaded[i + 3] = 255;
-    }
+    /* (the fade a brightness the presenter draws it with: a darkened copy at each step was a
+     *  7680 x 2160 picture copied and sent to the GPU again, the intro stalling, 2026-11-25) */
     s_introLevel = level;
-    Platform_SetMenuBackdrop(s_introFaded, s_introW, s_introH);
-    s_bdSerial++;                       /* (the same buffer, new pixels) */
+    s_bdTint = level >= 0x80 ? 255 : level * 2;
+    Platform_SetMenuBackdrop(s_introSrc, s_introW, s_introH);
 }
 
 /* The backdrop shows: there is one, and the menus are up (in a match or a replay the key colour
@@ -1944,11 +1990,81 @@ static int backdrop_shown(void)
     return s_bd && !_gArcadeMode && (ModApi_InMenus() || ReplayMenu_ExitMenuUp()) && !s_cut_on;
 }
 
+/* The menus' fade over their backdrop picture: the game fades a menu in and out through its
+ * palette, from and to black -- but the backdrop is a picture of its own, bright throughout, so
+ * the menu's text and buttons came up black on it before they were white. Over the backdrop
+ * the menu fades as its opacity instead: its palette full bright (the palette the fade steps
+ * from, fade.c ApplyFadeStep), the fade's level its alpha (s_fadeA, 255 none) -- the GPU's
+ * palette alpha, chunky_to_rgba's blend, the menus' own-colour pictures and their .png ones
+ * (Platform_MenuFadeAlpha). Not the intro's backdrop: that one fades with the picture. Called
+ * after refresh_palette_from_copper, each frame. */
+static int s_fadeA = 255;
+static uint32_t blend_argb(SDL_Color c, uint32_t under, int a);
+
+static void menu_fade_over_backdrop(void)
+{
+    extern int g_fadeLevel;
+    extern void *_paletteTable[];
+    extern uint16_t _paletteIndex;
+    extern volatile uint16_t _playGame, _playHighlightFlag;
+    const int level = g_fadeLevel < 0 ? 0 : g_fadeLevel > 0x80 ? 0x80 : g_fadeLevel;
+    s_fadeA = 255;
+    if (level >= 0x80 || s_cut_on || s_introSrc || _playGame || _playHighlightFlag || !backdrop_shown())
+        return;
+    const uint16_t *pal = (const uint16_t *)_paletteTable[_paletteIndex];
+    if (!pal)
+        return;
+    for (int i = 0; i < 256; i++) {
+        const uint16_t v = pal[i];
+        s_palette[i].r = (uint8_t)(((v >> 8) & 0x0F) * 17);
+        s_palette[i].g = (uint8_t)(((v >> 4) & 0x0F) * 17);
+        s_palette[i].b = (uint8_t)((v & 0x0F) * 17);
+        s_palette[i].a = 255;
+    }
+    s_fadeA = level * 255 / 0x80;
+}
+
+int Platform_MenuFadeAlpha(void) { return s_fadeA; }
+
+SDL_Color Platform_MenuFadeTint(void)
+{
+    extern int g_fadeLevel;
+    const int fade = g_fadeLevel < 0 ? 0 : g_fadeLevel > 0x80 ? 0x80 : g_fadeLevel;
+    const uint8_t lit = (uint8_t)(s_fadeA < 255 ? 255 : fade * 255 / 0x80);
+    const SDL_Color c = { lit, lit, lit, (uint8_t)s_fadeA };
+    return c;
+}
+
+/* An ARGB colour of the menu, its fade's alpha over the backdrop (`under`; NULL: the GPU's,
+ * drawn under -- the alpha kept). */
+static uint32_t fade_over(uint32_t argb, const uint32_t *under, int fadeA)
+{
+    if (fadeA >= 255)
+        return argb;
+    if (under) {
+        const SDL_Color c = { (uint8_t)(argb >> 16), (uint8_t)(argb >> 8), (uint8_t)argb, 255 };
+        return blend_argb(c, *under, fadeA);
+    }
+    return ((((argb >> 24) * (uint32_t)fadeA) / 255u) << 24) | (argb & 0xFFFFFFu);
+}
+
 /* The backdrop at w x h, covering it (cropped to its aspect, centred): ARGB, for SDL's renderer. */
 static const uint32_t *backdrop_small(int w, int h)
 {
-    if (s_bdSmall && s_bdSmallW == w && s_bdSmallH == h && s_bdSmallSerial == s_bdSerial)
+    static int smallTint = -1, smallRule = -1;
+    static float smallPs = -1.0f;
+    float ps = 1.0f;                    /* (screen pixels a picture pixel: the window's scale) */
+    if (s_renderer) {
+        float sy = 1.0f;
+        SDL_RenderGetScale(s_renderer, &ps, &sy);
+        ps = sy > 0.0f ? sy : ps;
+    }
+    if (s_bdSmall && s_bdSmallW == w && s_bdSmallH == h && s_bdSmallSerial == s_bdSerial &&
+        smallTint == s_bdTint && smallRule == s_bdRule && (s_bdRule == 0 || smallPs == ps))
         return s_bdSmall;
+    smallTint = s_bdTint;
+    smallRule = s_bdRule;
+    smallPs = ps;
     free(s_bdSmall);
     s_bdSmall = (uint32_t *)malloc((size_t)w * h * 4);
     if (!s_bdSmall)
@@ -1956,7 +2072,13 @@ static const uint32_t *backdrop_small(int w, int h)
     {
         /* (the frame's pixels are not square: it is shown at the window's aspect, so cover the
          * picture's display aspect -- the logical size's -- not w : h) */
-        const float scale = SDL_max((float)w / (float)s_bdW, (float)h / (float)s_bdH);
+        /* rule 0 covers the picture; rule 1 (ours): 1:1 to the screen at 3X, below 3X scaled with
+         * the picture, scaled up only where it no longer fills -- in the frame's pixels: a frame
+         * pixel is `ps` screen pixels */
+        const float cover = SDL_max((float)w * ps / (float)s_bdW, (float)h * ps / (float)s_bdH);
+        const float base = ps / 3.0f < 1.0f ? ps / 3.0f : 1.0f;
+        const float scale = s_bdRule == 1 ? SDL_max(base, cover) / ps
+                                          : SDL_max((float)w / (float)s_bdW, (float)h / (float)s_bdH);
         const float cw = (float)w / scale, ch = (float)h / scale;
         const float x0 = ((float)s_bdW - cw) / 2.0f, y0 = ((float)s_bdH - ch) / 2.0f;
         for (int y = 0; y < h; y++)
@@ -1966,7 +2088,8 @@ static const uint32_t *backdrop_small(int w, int h)
                 sx = sx < 0 ? 0 : sx >= s_bdW ? s_bdW - 1 : sx;
                 sy = sy < 0 ? 0 : sy >= s_bdH ? s_bdH - 1 : sy;
                 const uint8_t *p = s_bd + ((size_t)sy * s_bdW + sx) * 4;
-                s_bdSmall[(size_t)y * w + x] = 0xFF000000u | ((uint32_t)p[0] << 16) | ((uint32_t)p[1] << 8) | p[2];
+                s_bdSmall[(size_t)y * w + x] = 0xFF000000u | ((uint32_t)(p[0] * s_bdTint / 255) << 16) |
+                                               ((uint32_t)(p[1] * s_bdTint / 255) << 8) | (uint32_t)(p[2] * s_bdTint / 255);
             }
     }
     s_bdSmallW = w;
@@ -2060,7 +2183,8 @@ static const uint8_t *frame_source(void);
  * few brownish ones). Beside that, each of its pixels gives its own colour here; the frame is
  * shown with it wherever the pixel still holds the entry it was drawn with (anything drawn on
  * top afterwards wins), darkened with the menus' fade. Given again every menu frame: a picture
- * not given for 100 ms (a match, another screen) is gone. */
+ * not given for 100 ms out of the menus (a match) is gone; in them it stays, each pixel only where
+ * the frame still holds its entry (the window moved on Windows: frames the menu did not draw). */
 static uint32_t *s_tc;                  /* 0xRRGGBB | 0xFF000000 when set, per frame pixel */
 static uint8_t  *s_tcIdx;               /* the palette entry the frame got there */
 static int       s_tcW, s_tcH, s_tcCount;
@@ -2131,9 +2255,13 @@ static void chunky_to_rgba(uint32_t *dst, int dst_pitch_pixels)
     const int alpha = menu_alpha_now();     /* (launcher options, agent B: the menus' opacity) */
     const uint8_t *under = alpha < 255 && fb != _frontbufferMaskBuffer ? _frontbufferMaskBuffer : NULL;
     extern int g_fadeLevel;
+    extern int32_t ModApi_InMenus(void);
+    /* (in the menus as long as they are up: the window shows frames the menu did not draw -- moved
+     *  on Windows, its loop held -- and each pixel is checked against its entry anyway) */
     const int tcOn = s_tcCount && s_tcW == _screen_width && s_tcH == _screen_height &&
-                     Platform_NowMs() - s_tcStamp < 100;
-    const int tcFade = g_fadeLevel < 0 ? 0 : g_fadeLevel > 0x80 ? 0x80 : g_fadeLevel;
+                     (ModApi_InMenus() || Platform_NowMs() - s_tcStamp < 100);
+    const int fadeA = keyed ? s_fadeA : 255;    /* (the fade as the menu's alpha over the backdrop) */
+    const int tcFade = fadeA < 255 ? 0x80 : g_fadeLevel < 0 ? 0 : g_fadeLevel > 0x80 ? 0x80 : g_fadeLevel;
     for (int y = 0; y < _screen_height; ++y) {
         const uint8_t *line = fb + (size_t)y * FRONTBUFFER_ROW_STRIDE_BYTES;
         const uint8_t *uline = under ? under + (size_t)y * FRONTBUFFER_ROW_STRIDE_BYTES : NULL;
@@ -2145,6 +2273,7 @@ static void chunky_to_rgba(uint32_t *dst, int dst_pitch_pixels)
                 const uint32_t c = tc[x];
                 out[x] = 0xFF000000u | ((((c >> 16) & 0xFF) * (uint32_t)tcFade >> 7) << 16) |
                          ((((c >> 8) & 0xFF) * (uint32_t)tcFade >> 7) << 8) | ((c & 0xFF) * (uint32_t)tcFade >> 7);
+                out[x] = fade_over(out[x], bd ? &bd[(size_t)y * _screen_width + x] : NULL, fadeA);
                 continue;
             }
             if (keyed && line[x] == MENU_BACKDROP_KEY) {   /* the menus' true-colour backdrop */
@@ -2160,6 +2289,7 @@ static void chunky_to_rgba(uint32_t *dst, int dst_pitch_pixels)
                     const SDL_Color uc = s_palette[uline[x]];
                     out[x] = blend_argb(mc, 0xFF000000u | ((uint32_t)uc.r << 16) | ((uint32_t)uc.g << 8) | uc.b, alpha);
                 }
+                out[x] = fade_over(out[x], bd ? &bd[(size_t)y * _screen_width + x] : NULL, fadeA);
                 continue;
             }
             SDL_Color c = s_palette[line[x]];
@@ -2167,6 +2297,8 @@ static void chunky_to_rgba(uint32_t *dst, int dst_pitch_pixels)
                      ((uint32_t)c.r  << 16) |
                      ((uint32_t)c.g  <<  8) |
                      ((uint32_t)c.b  <<  0);
+            if (fadeA < 255)
+                out[x] = fade_over(out[x], bd ? &bd[(size_t)y * _screen_width + x] : NULL, fadeA);
         }
     }
 }
@@ -2927,7 +3059,9 @@ static int frame_captures_wanted(int pump_full);
 static void render_frame_gpu(int pump_full)
 {
     SDL_LockMutex(s_render_mtx);
+    Perf_Begin(PERF_PRESENT);
     refresh_palette_from_copper();
+    menu_fade_over_backdrop();
 
     GpuFrame f;
     SDL_memset(&f, 0, sizeof f);
@@ -2982,9 +3116,9 @@ static void render_frame_gpu(int pump_full)
     }
     {   /* the menus' opacity over a backdrop picture: the palette's alpha (the shader blends) */
         static uint8_t alphas[256];
-        if (menuAlpha < 255 && backdrop_shown()) {
+        if ((menuAlpha < 255 || s_fadeA < 255) && backdrop_shown()) {   /* (and its fade's: s_fadeA) */
             for (int i = 0; i < 256; i++)
-                alphas[i] = menu_solid(i) ? 255 : (uint8_t)menuAlpha;
+                alphas[i] = (uint8_t)((menu_solid(i) ? 255 : menuAlpha) * s_fadeA / 255);
             f.paletteAlpha = alphas;
         }
     }
@@ -3007,6 +3141,8 @@ static void render_frame_gpu(int pump_full)
         f.backdropH = s_bdH;
         f.backdropKey = MENU_BACKDROP_KEY;
         f.backdropSerial = s_bdSerial;
+        f.backdropRule = s_bdRule;
+        f.backdropTint = s_bdTint;
     }
 
     if ((f.index || f.argb) && GpuPresent_Begin(&f, NULL)) {
@@ -3014,8 +3150,10 @@ static void render_frame_gpu(int pump_full)
         draw_overlays();
         Gfx_EndFrame();
         capture_presented_frame();
+        Perf_End(PERF_PRESENT);         /* (not the present itself: the wait for the screen) */
         GpuPresent_End();
     }
+    Perf_End(PERF_PRESENT);
     SDL_UnlockMutex(s_render_mtx);
 }
 
@@ -3106,6 +3244,7 @@ static void render_frame_impl(int pump_full)
     if (pump_full && s_frame_skip_now) return;
 
     SDL_LockMutex(s_render_mtx);
+    Perf_Begin(PERF_PRESENT);
 
     /* Upload into the next texture in the ring (not the one the GPU is still
      * sampling from a recent frame) — see the s_textures[] comment. */
@@ -3116,6 +3255,7 @@ static void render_frame_impl(int pump_full)
      * into the texture's mapped memory — that's the D3D11 write-combined trap. The
      * buffer is tightly packed so the row pitch in pixels is exactly _screen_width. */
     refresh_palette_from_copper();
+    menu_fade_over_backdrop();
 
     uint32_t *fb   = s_frame_rgba;
     const int fbpx = _screen_width;              /* row pitch, in pixels */
@@ -3175,6 +3315,7 @@ static void render_frame_impl(int pump_full)
     draw_overlays();
     Gfx_EndFrame();
     capture_presented_frame();     /* after every draw, before the swap */
+    Perf_End(PERF_PRESENT);
     SDL_RenderPresent(s_renderer);
 
     SDL_UnlockMutex(s_render_mtx);

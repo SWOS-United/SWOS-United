@@ -18,7 +18,15 @@ the photos while it is open and gives back when it closes (credits_menu.c). Inde
 is never used, so a pixel is always part of a photo. The colours are 12-bit, as the
 Amiga-style palette stores them (4 bits a channel), quantized together to 128.
 
-  scripts/make_credits_icons.py --first PORTRAIT.jpg [--swos2020 DIR] [-o OUT]
+Beside it, bin/data/credits_icons.png: the same strip in its own colours (2026-11-25), the
+six from the 200 px truecolour sheet (dev_icons_200px_truecolor.bmp, the same 3x3 grid) made
+40 px, benbaker76's from --first -- or, without it, as he is in the 8-bit strip. The SDL build
+shows these over the 8-bit ones (credits_menu.c CreditsMenu_PhotosPresent, any renderer); the
+8-bit strip stays for the Amiga and as the fallback.
+
+  scripts/make_credits_icons.py [--first PORTRAIT.jpg] [--swos2020 DIR] [-o OUT] [--png PNG]
+
+Without --first only the PNG is written (benbaker76's from the 8-bit strip there).
 """
 import argparse
 import os
@@ -42,10 +50,32 @@ def square(img):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("--first", required=True, help="OpenSWOS developer's portrait (any size, cropped square)")
+    ap.add_argument("--first", help="OpenSWOS developer's portrait (any size, cropped square); "
+                                    "without it the 8-bit strip is kept and only the PNG made")
     ap.add_argument("--swos2020", default=os.environ.get("SWOS2020_DIR", "/mnt/c/Projects/GitHub/swos-2020"))
     ap.add_argument("-o", "--out", default=os.path.join(REPO, "bin", "data", "credits_icons.bmp"))
+    ap.add_argument("--png", default=os.path.join(REPO, "bin", "data", "credits_icons.png"))
     args = ap.parse_args()
+
+    # the strip in its own colours: the six from the 200 px sheet, benbaker76's as he is
+    big_path = os.path.join(args.swos2020, "developer_icons", "dev_icons_200px_truecolor.bmp")
+    big = Image.open(big_path).convert("RGB")
+    if big.size != (600, 600):
+        sys.exit("make_credits_icons: %s is %dx%d, expected 600x600" % ((big_path,) + big.size))
+    photos = [big.crop((col * 200, row * 200, (col + 1) * 200, (row + 1) * 200)).resize((CELL, CELL), Image.LANCZOS)
+              for col, row in SWOS2020_ORDER]
+    if args.first:
+        first = square(Image.open(args.first).convert("RGB")).resize((CELL, CELL), Image.LANCZOS)
+    else:
+        first = Image.open(args.out).convert("RGB").crop((PORTRAIT_AT * CELL, 0, (PORTRAIT_AT + 1) * CELL, CELL))
+    photos.insert(PORTRAIT_AT, first)
+    strip = Image.new("RGB", (CELL * len(photos), CELL))
+    for i, p in enumerate(photos):
+        strip.paste(p, (i * CELL, 0))
+    strip.save(args.png)
+    print("make_credits_icons: %d photos in their own colours -> %s" % (len(photos), os.path.relpath(args.png, REPO)))
+    if not args.first:
+        return
 
     sheet_path = os.path.join(args.swos2020, "developer_icons", "dev_icons_40px_truecolor.bmp")
     sheet = Image.open(sheet_path).convert("RGB")

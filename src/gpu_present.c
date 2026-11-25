@@ -657,18 +657,30 @@ int32_t GpuPresent_Begin(const GpuFrame *f, const uint8_t clear[3])
          * image, the picture), cropped to its aspect, centred. */
         if (!G.backdrop || G.backdropSerial != f->backdropSerial ||
             G.backdrop->w != f->backdropW || G.backdrop->h != f->backdropH) {
+            extern int g_perfOn;
+            const Uint64 t0 = g_perfOn ? SDL_GetPerformanceCounter() : 0;
             if (G.backdrop)
                 GpuGfx_DestroyTexture(G.backdrop);
             G.backdrop = GpuGfx_CreateTexture(f->backdropW, f->backdropH, 1);
             if (G.backdrop)
                 GpuGfx_UpdateTexture(G.backdrop, f->backdrop, f->backdropW * 4);
             G.backdropSerial = f->backdropSerial;
+            if (g_perfOn)               /* (SWOS_PERF: the backdrop's upload, perf_stats.h) */
+                fprintf(stderr, "[perf] backdrop upload %dx%d: %.1f ms\n", f->backdropW, f->backdropH,
+                        1000.0 * (double)(SDL_GetPerformanceCounter() - t0) / (double)SDL_GetPerformanceFrequency());
         }
         if (G.backdrop) {
             const GfxSpace space = G.toOff ? GFX_SPACE_PICTURE : GFX_SPACE_OUTPUT;
             const float W = G.toOff ? (float)f->w : (float)G.outW, H = G.toOff ? (float)f->h : (float)G.outH;
             const float aw = G.toOff ? G.picW : (float)G.outW, ah = G.toOff ? G.picH : (float)G.outH;
-            const float scale = fmaxf(aw / (float)f->backdropW, ah / (float)f->backdropH);
+            /* rule 1, SWOS United's own (menu_backgrounds.c): pixel for pixel at the picture's 3X
+             * and above (more of it seen), below 3X scaled with the picture, scaled up only where
+             * it no longer fills; rule 0 (a mod's) covers the window */
+            const float cover = fmaxf(aw / (float)f->backdropW, ah / (float)f->backdropH);
+            const float ps = f->h > 0 ? G.picH / (float)f->h : 1.0f;
+            const float scale = f->backdropRule == 1 ? fmaxf(fminf(ps / 3.0f, 1.0f), cover) : cover;
+            const uint8_t tint = (uint8_t)(f->backdropTint > 0 && f->backdropTint < 255 ? f->backdropTint
+                                           : f->backdropTint <= 0 ? 0 : 255);
             const float cu = aw / scale / (float)f->backdropW, cv = ah / scale / (float)f->backdropH;
             const float u0 = (1.0f - cu) / 2.0f, v0 = (1.0f - cv) / 2.0f, u1 = u0 + cu, v1 = v0 + cv;
             GfxVertex v[6];
@@ -678,7 +690,8 @@ int32_t GpuPresent_Begin(const GpuFrame *f, const uint8_t clear[3])
                 memset(&v[i], 0, sizeof v[i]);
                 v[i].position.x = px[i];
                 v[i].position.y = py[i];
-                v[i].color.r = v[i].color.g = v[i].color.b = v[i].color.a = 255;
+                v[i].color.r = v[i].color.g = v[i].color.b = tint;
+                v[i].color.a = 255;
                 v[i].tex_coord.x = tu[i];
                 v[i].tex_coord.y = tv[i];
             }

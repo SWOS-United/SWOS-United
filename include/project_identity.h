@@ -136,14 +136,15 @@
  * fork lists the mods its game is built on. A downloaded (DLC) mod is never static. */
 /* SWOS United: every SWOS 2020 mod is part of the game (the owner and Playaveli, 2026-11-07) --
  * its main menu, its challenge and speedrun screens, SWOS Galore, the news ticker, and the
- * records read from SWOS 2020's servers. */
-#define PROJECT_STATIC_MODS     "menus2020, challenges2020, swos2020-challenges, speedrun2020, galore2020, ticker, online-records, discord2020, teamimport2020"
+ * records read from SWOS 2020's servers. And the PC menu shading (dosmenus, 2026-11-25): APPEARANCE
+ * OPTIONS' MENU BUTTON LOOK = PC is its, so it is the game's, not a mod to turn off. */
+#define PROJECT_STATIC_MODS     "menus2020, challenges2020, swos2020-challenges, speedrun2020, galore2020, ticker, online-records, discord2020, teamimport2020, dosmenus"
 
 /* DEFAULT MODS: canonical mods this game turns ON by default whatever their manifest's "default"
  * says -- still listed, and a player may turn them off ([mods] disabled), unlike a static one.
  * Slugs, separated by commas or spaces. OpenSWOS: none (each mod.json's "default" decides). A
- * fork lists the ones its look is built on (SWOS United: dosmenus). */
-#define PROJECT_DEFAULT_MODS    "dosmenus, display2020, scoreboard"   /* (display2020: OpenSWOS's since 2026-11-10, off
+ * fork lists the ones its look is built on (SWOS United: display2020, scoreboard). */
+#define PROJECT_DEFAULT_MODS    "display2020, scoreboard"   /* (display2020: OpenSWOS's since 2026-11-10, off
                                                                             *  there; its scoreboard part is the scoreboard mod's) */
 
 /* OFF MODS: canonical mods this game turns OFF by default whatever their manifest's "default"

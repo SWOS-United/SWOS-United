@@ -81,8 +81,11 @@ void LoadOverlayToFrontbuffer(const uint8_t *path)
         const uint8_t *rgba = NULL;
         int32_t w = 0, h = 0;
         name = name ? name + 1 : (const char *)path;
-        if ((SDL_strncasecmp(name, "menubg", 6) == 0) && ModHooks_MenuBackdrop(&rgba, &w, &h) && rgba) {
+        int rule = 0;
+        extern int MenuBackdrop_Pick(const uint8_t **rgba, int32_t *w, int32_t *h, int *rule);
+        if ((SDL_strncasecmp(name, "menubg", 6) == 0) && MenuBackdrop_Pick(&rgba, &w, &h, &rule) && rgba) {
             memset(_frontbufferMaskBuffer, MENU_BACKDROP_KEY, FRONTBUFFER_SIZE_TOTAL_BYTES);
+            Platform_SetMenuBackdropRule(rule);   /* (a mod's covers the window; ours: menu_backgrounds.c) */
             Platform_SetMenuBackdrop(rgba, w, h);
         } else {
             Platform_SetMenuBackdrop(NULL, 0, 0);

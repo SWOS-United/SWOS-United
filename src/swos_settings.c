@@ -366,6 +366,13 @@ static int handler(void *user, const char *section,
             opts->replay_frame_overlay = b;
         else if (eqi(name, "speed"))
             opts->replay_half_speed = eqi(value, "half");
+        else if (eqi(name, "box_x") || eqi(name, "box_y")) {
+            char *end;
+            const long v = strtol(value, &end, 10);
+            const int ok = end != value && v >= -1 && v < 4096;
+            if (eqi(name, "box_x")) opts->replay_box_x = ok ? (int)v : -1;
+            else                    opts->replay_box_y = ok ? (int)v : -1;
+        }
     } else if (eqi(section, "netplay")) {
         if (eqi(name, "matchmaker"))
             snprintf(opts->matchmaker, sizeof opts->matchmaker, "%s", value);
@@ -433,6 +440,10 @@ static int handler(void *user, const char *section,
         }
         else if (eqi(name, "clash_kits") && parse_bool(value, &b))   /* (SWOS 2020 port, agent D) */
             opts->clash_kits = b;
+        else if (eqi(name, "menu_background")) {                       /* (menu_backgrounds.c) */
+            if      (eqi(value, "amiga")) opts->menu_background = 0;
+            else if (eqi(value, "pc"))    opts->menu_background = 1;
+        }
         else if (eqi(name, "kit_colours")) {                           /* (kit_variants.h) */
             s_kitColoursSeen = 1;                                       /* (Settings_Load: no move to it) */
             if      (eqi(value, "extended")) opts->kit_colours = 1;
@@ -852,6 +863,17 @@ static int settings_build(const PlatformInitOptions *opts, IniEntry *items, char
     SETTING(n) = (IniEntry){ "replays", "speed",
         "; speed: normal | half — the speed a recording starts at in the viewer.",
         opts->replay_half_speed ? "half" : "normal" };
+    {
+        static char bx[16], by[16];
+        snprintf(bx, sizeof bx, "%d", opts->replay_box_x);
+        snprintf(by, sizeof by, "%d", opts->replay_box_y);
+        SETTING(n) = (IniEntry){ "replays", "box_x",
+            "; box_x, box_y: where the frame box is (its top left, in the picture's pixels), as\n"
+            "; dragged with the mouse (the bar's handle seeks, the rest of the box moves it);\n"
+            "; -1 the bottom left.",
+            bx };
+        SETTING(n) = (IniEntry){ "replays", "box_y", NULL, by };
+    }
     SETTING(n) = (IniEntry){ "netplay", "matchmaker",
         "; matchmaker: the server MULTIPLAYER logs in to, as \"host\" or \"host:port\"\n"
         "; (default port 19602). Empty means the public server, " PROJECT_MM_HOST ". You can type it\n"
@@ -966,6 +988,11 @@ static int settings_build(const PlatformInitOptions *opts, IniEntry *items, char
         "; Only how they look.\n"
         "; On by default, as in SWOS 2020 (APPEARANCE OPTIONS: GK/REF CLASH KITS).",
         opts->clash_kits ? "true" : "false" };
+    SETTING(n) = (IniEntry){ "graphics", "menu_background",
+        "; menu_background: amiga | pc -- SWOS United's own picture behind the menus: amiga black and\n"
+        "; purple (the default), pc blue and black. The Menu backgrounds mod's, when it is on, instead\n"
+        "; (APPEARANCE OPTIONS: MENU BACKGROUND).",
+        opts->menu_background == 1 ? "pc" : "amiga" };
     SETTING(n) = (IniEntry){ "graphics", "kit_colours",
         "; kit_colours: extended | original -- which kits are too alike, so that one team changes.\n"
         "; extended: judged by how alike the colours look (CIEDE2000), for every kit colour; original:\n"
