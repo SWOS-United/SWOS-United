@@ -1030,7 +1030,7 @@ static void art_change(int32_t dir)
     save();
 }
 
-/* MENU LOOK: [mod.dosmenus] look amiga | pc -- the PC menu shading mod's (src/mod_dosmenus.c, which
+/* MENU BUTTON LOOK: [mod.dosmenus] look amiga | pc -- the PC menu shading mod's (src/mod_dosmenus.c, which
  * follows it at once; F5 still flips it for the run). */
 static void look_show(char *o, int32_t c)
 {
@@ -1138,7 +1138,7 @@ static int menubg_off(void)
 }
 static void menubg_show(char *o, int32_t c)
 {
-    snprintf(o, (size_t)c, "%s", menubg_off() ? "MOD" : O()->menu_background == 1 ? "PC" : "AMIGA");
+    snprintf(o, (size_t)c, "%s", menubg_off() ? "MOD" : O()->menu_background == 1 ? "PC BLUE" : "AMIGA PURPLE");
 }
 static void menubg_change(int32_t dir)
 {
@@ -1312,7 +1312,7 @@ _Static_assert(sizeof k_gameplayRows / sizeof k_gameplayRows[0] <= kRows, "a set
 
 static const Row k_displayRows[] = {
     { "GAME GRAPHICS",      art_show,      art_change },
-    { "MENU LOOK",          look_show,     look_change },
+    { "MENU BUTTON LOOK",   look_show,     look_change },     /* (the buttons' shading; MENU BACKGROUND below) */
     { "MENU BACKGROUND",    menubg_show,   menubg_change, 0, menubg_off },
     { "MENU CURSOR",        cursor_show,   cursor_change },
     { "MENU OPACITY",       opacity_show,  opacity_change },
