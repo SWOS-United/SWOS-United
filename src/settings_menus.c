@@ -1158,10 +1158,8 @@ static void clashkits_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", O(
  * colours look (CIEDE2000), ORIGINAL by the original's tables. */
 static void kitcols_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", O()->kit_colours ? "EXTENDED" : "ORIGINAL"); }
 /* MENU BACKGROUND: SWOS United's own picture behind the menus (menu_backgrounds.c), AMIGA (black
- * and purple, the default) or PC (blue and black), at once -- each also with HD: the main menu's
- * logo drawn smooth at the window's resolution ([mod.menus2020] logo = hd, mod_menus2020.c; the
- * mod is part of the game, never listed under MODS, so its one setting is here). With the Menu
- * backgrounds mod on, its picture is shown: MOD and MOD HD then. */
+ * and purple, the default) or PC (blue and black), at once. Greyed with the Menu backgrounds mod
+ * on: its picture is shown then. */
 static int menubg_off(void)
 {
     extern int32_t Mods_IsOn(const char *slug);
@@ -1174,8 +1172,17 @@ static int logo_hd(void)
 }
 static void menubg_show(char *o, int32_t c)
 {
-    snprintf(o, (size_t)c, "%s%s", menubg_off() ? "MOD" : O()->menu_background == 1 ? "PC BLUE" : "AMIGA PURPLE",
-             logo_hd() ? " HD" : "");
+    snprintf(o, (size_t)c, "%s", menubg_off() ? "MOD" : O()->menu_background == 1 ? "PC BLUE" : "AMIGA PURPLE");
+}
+/* MENU LOGO: the main menu's logo as its pixels (PIXEL) or drawn smooth at the window's resolution
+ * (HD) -- [mod.menus2020] logo, mod_menus2020.c (the mod is part of the game, never listed under
+ * MODS, so its one setting is here). Seen as the main menu is come back to. */
+static void logo_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", logo_hd() ? "HD" : "PIXEL"); }
+static void logo_change(int32_t dir)
+{
+    extern int32_t ModApi_SetSetting(const char *slug, const char *key, const char *value);
+    (void)dir;
+    ModApi_SetSetting("menus2020", "logo", logo_hd() ? "pixel" : "hd");
 }
 static void menubg_change(int32_t dir)
 {
@@ -1183,16 +1190,12 @@ static void menubg_change(int32_t dir)
     extern uint8_t _aGrafsMenubgRaw[];
     extern void LoadOverlayToFrontbuffer(const uint8_t *path);
     extern void DrawMenu(void);
-    extern int32_t ModApi_SetSetting(const char *slug, const char *key, const char *value);
-    /* (in order: AMIGA PURPLE, AMIGA PURPLE HD, PC BLUE, PC BLUE HD; the mod's: MOD, MOD HD) */
-    const int hd = logo_hd();
-    const int step = menubg_off() ? 2 : 4;
-    const int at = ((menubg_off() ? 0 : O()->menu_background * 2) + hd + (dir < 0 ? step - 1 : 1)) % step;
-    if ((at & 1) != hd)
-        ModApi_SetSetting("menus2020", "logo", at & 1 ? "hd" : "pixel");
-    if (menubg_off() || (at >> 1) == O()->menu_background)
+    (void)dir;
+    if (menubg_off()) {
+        note("THE MENU BACKGROUNDS MOD IS ON: ITS PICTURE");
         return;
-    O()->menu_background = at >> 1;
+    }
+    O()->menu_background = !O()->menu_background;
     MenuBackgrounds_Choose(O()->menu_background);
     save();
     LoadOverlayToFrontbuffer(_aGrafsMenubgRaw);   /* (the menus' backdrop again, the new one) */
@@ -1354,7 +1357,8 @@ _Static_assert(sizeof k_gameplayRows / sizeof k_gameplayRows[0] <= kRows, "a set
 static const Row k_displayRows[] = {
     { "GAME GRAPHICS",      art_show,      art_change },
     { "MENU BUTTON LOOK",   look_show,     look_change },     /* (the buttons' shading; MENU BACKGROUND below) */
-    { "MENU BACKGROUND",    menubg_show,   menubg_change },    /* (and the logo: HD) */
+    { "MENU BACKGROUND",    menubg_show,   menubg_change, 0, menubg_off },
+    { "MENU LOGO",          logo_show,     logo_change },
     { "MENU CURSOR",        cursor_show,   cursor_change },
     { "MENU OPACITY",       opacity_show,  opacity_change },
     { "KIT COLOURS",        kitcols_show,  kitcols_change },    /* (RULES' too: which kits clash) */
@@ -1363,7 +1367,6 @@ static const Row k_displayRows[] = {
     { "KITS ON THE RESULT", reskits_show,  reskits_change },
     { "RESULT BAND",        resband_show,  resband_change },
     { "SCOREBOARD",         board_show,    board_change },
-    { "MOUSE POINTER",      pointer_show,  pointer_change },     /* (CONTROLS has no room: CALL BENCH twice) */
 };
 static const Page k_displayPage = { "APPEARANCE OPTIONS", k_displayRows, (int32_t)(sizeof k_displayRows / sizeof k_displayRows[0]) };
 _Static_assert(sizeof k_displayRows / sizeof k_displayRows[0] <= kRows, "a settings page holds kRows rows at most");
@@ -1388,6 +1391,7 @@ static const Row k_generalRows[] = {
     { "SKIP INTRO",              intro_show,    intro_change },
     { "INTRO PICTURES",          reels_show,    reels_change },
     { "PRE-MATCH PAUSE",         loadpause_show, loadpause_change },
+    { "MOUSE POINTER",           pointer_show,  pointer_change },   /* (APPEARANCE's till 2026-11-25: MENU LOGO took its row) */
 };
 static const Page k_generalPage = { "GENERAL OPTIONS", k_generalRows, (int32_t)(sizeof k_generalRows / sizeof k_generalRows[0]) };
 _Static_assert(sizeof k_generalRows / sizeof k_generalRows[0] <= kRows, "a settings page holds kRows rows at most");
