@@ -320,9 +320,9 @@
     {
       "kind": "entry",
       "coords": {
-        "x": 46,
+        "x": 64,
         "y": 5,
-        "w": 258,
+        "w": 239,
         "h": 31
       },
       "commands": [
@@ -333,7 +333,7 @@
         }
       ],
       "name": "logo",
-      "image": "grafs_united/logo.bmp"
+      "image": "grafs_united/logo.png"
     },
     {
       "kind": "entry",

@@ -191,10 +191,10 @@ CONTINUE_Y = 154        # (on screen 154..173: 3 under the last row's 150, 4 ove
 # The SWOS United logo's place in the CREDITS entry: SWOS 2020's 293,185 less the entry's 281,182
 # and ConvertMenu's +8 (mod_menus2020.c kCreditsPicX / kCreditsPicY: keep the two the same).
 CREDITS_PICTURE_AT = (293 - 281 - 8, 185 - 182)
-# The banner's size (scripts/make_united_logo.py writes it): 31 high, in the band above the buttons
+# The logo's size (scripts/make_united_logo.py writes it): 31 high, in the band above the buttons
 # (0..40) right of the TV (1..42).
-LOGO_SIZE = (258, 31)
-LOGO_INK_RIGHT = 256        # (the D's last column in it: the banner ends where the right buttons do)
+LOGO_SIZE = (239, 31)
+LOGO_INK_RIGHT = 238        # (the D's last column in it: the logo ends where the right buttons do)
 # The LIVE CAST TV's size (scripts/make_menus2020_icons.py TV_SIZE): SWOS 2020's 42x38, pixel for
 # pixel, at the left buttons' edge (x 1) in the band above them (y 1..38). It was four fifths as big
 # from 2026-11-20 (Playa: clear of the banner); the banner is narrower instead.
@@ -434,14 +434,14 @@ def build_main(doc):
     # SWOS United's banner across the top, right of the TV (1..42) in the band above the buttons
     # (they start at 41), centred in x 50..311 (the menu's right edge: SWOS 2020's screen 319, our
     # 4:3 screen's 335), y 0..40: the third filler, never chosen (no handler,
-    # nothing leads to it). Its picture is ours, not SWOS 2020's -- committed, grafs_united/logo.bmp
-    # in the mod, made LOGO_SIZE from docs/images/swosunited-banner.png by scripts/make_united_logo.py.
+    # nothing leads to it). Its picture is ours, not SWOS 2020's -- committed, grafs_united/logo.png
+    # in the mod (its soft edges' alpha kept: menu_extras.c), made LOGO_SIZE by scripts/make_united_logo.py.
     logo = ordered[filler + 2][0]
     logo["name"] = "logo"
     # (its last letter's last column, LOGO_INK_RIGHT, on the right buttons' last: 155 + 148 - 1)
     logo["coords"] = {"x": 155 + 148 - 1 - LOGO_INK_RIGHT, "y": (40 - LOGO_SIZE[1] + 1) // 2,
                       "w": LOGO_SIZE[0], "h": LOGO_SIZE[1]}
-    logo["image"] = "grafs_united/logo.bmp"
+    logo["image"] = "grafs_united/logo.png"
     logo["commands"] = [{"op": "colors", "frame_color": 0, "background_color": 0}]
 
     doc["items"] = emit(ordered)

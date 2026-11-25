@@ -151,8 +151,8 @@ LOAD, QUIT (asks), CREDITS.
   mod (`UnitedTicker_News`, include/united_ticker.h: a bad item is skipped, the mod's own news.json
   when the saved one has none), and a row opens its link only when it is http:// or https://. QUIT
   fades out and in as `quitMenuOnInit` / `returnToGame` (the game's FadeOutToBlack / FadeIn).
-  MULTIPLAYER is hidden in a build without netplay. Across the top, SWOS United's wide banner
-  (docs/images/swosunited-banner.png, 262x31 at 50,5 by `scripts/make_united_logo.py`). `SWOS_MENUS2020_TEST=1` unpacks every menus2020 menu.
+  MULTIPLAYER is hidden in a build without netplay. Across the top, SWOS United's logo
+  (`grafs_united/logo.png`, 239x31 with soft edges, drawn on its pixel grid by `scripts/make_united_logo.py`). `SWOS_MENUS2020_TEST=1` unpacks every menus2020 menu.
 - Checked: SDL headless -- the menu, COMPETE -> DIY -> back, PRACTICE; both targets build;
   `--menu-selftest`, the mod-match test.
 
