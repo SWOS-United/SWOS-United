@@ -323,9 +323,10 @@ nothing is asked.
 | Resolution | `[video] resolution = auto \| WxH` | VIDEO: ASPECT RATIO (AUTO, 4:3, 16:10, 16:9, 21:9, 32:9) | the render's SHAPE, not its size; with widescreen on it is taken at once |
 | Auto centering | `[video] auto_centering` | VIDEO: AUTO CENTERING | a window resized, maximized or moved goes back to the middle of the display it is on (SWOS 2020's controls.cpp); windowed only |
 | Show FPS | `[video] show_fps` | VIDEO: SHOW FPS | the frames presented a second, top right, drawn over the picture (`src/fps_overlay.c`), never into the game's frame |
-| Mouse cursor | `[input] mouse_cursor = system \| workbench2 \| workbench1` | APPEARANCE: MOUSE POINTER | SWOS 2020's `cursor1.bmp` / `cursor2.bmp` as the launcher numbered them, as pixel maps in `src/mouse_cursors.c` |
+| Mouse cursor | `[input] mouse_cursor = system \| workbench2 \| workbench1` | GENERAL: MOUSE POINTER | SWOS 2020's `cursor1.bmp` / `cursor2.bmp` as the launcher numbered them, as pixel maps in `src/mouse_cursors.c` |
+| Menu logo | `[mod.menus2020] logo = pixel \| hd` | APPEARANCE: MENU LOGO | the main menu's logo as its pixels, or drawn smooth at the window's resolution from `logo_hd.png` (`menu_extras.c`, `ModApi_SetMenuImageHD`) |
 | Graphics | `[graphics] style = amiga \| dos \| 2020` | APPEARANCE: GAME GRAPHICS | from the next start (the artwork is loaded at start-up) |
-| Menu style | `[mod.dosmenus] look = amiga \| pc` | APPEARANCE: MENU LOOK, and the PC menu shading mod's page | the look each start shows; F5 still flips it for the run. Unset: `PROJECT_MENU_LOOK_AMIGA` |
+| Menu style | `[mod.dosmenus] look = amiga \| pc` | APPEARANCE: MENU BUTTON LOOK, and the PC menu shading mod's page | the look each start shows; F5 still flips it for the run. Unset: `PROJECT_MENU_LOOK_AMIGA` |
 | Background image | `[mod.backgrounds] image = auto \| random \| off \| <file>` | the Menu backgrounds mod's page | `auto` the mod's own first picture, `random` one of every picture it lists, once a start. The launcher's "PC DOS" and "Amiga" were SWOS 2020's bg-images, not shipped: put them in `backgrounds/` |
 | Stronger goalkeeper AI | `[tweaks] stronger_goalkeeper_ai` | GAMEPLAY: STRONGER KEEPERS | off line only; built with `PROJECT_TWEAK_STRONGER_GK` (project_identity.h) even when `PROJECT_TWEAKS` is 0 |
 | Improved CPU tactics | `[gameplay] cpu_tactics = normal \| expert` | GAMEPLAY: CPU TACTICS | off line only (below) |
@@ -371,7 +372,7 @@ OPTIONS -> SETTINGS -> **APPEARANCE** (`src/settings_menus.c`, `k_displayRows`),
 only: no match state, no recording, no replay changes (`scripts/check_netplay_compat.sh`
 unchanged), and an online match plays the same whatever either player has set. KIT COLOURS,
 below, is the exception -- it decides which kits clash, and online both players' count -- so it is on
-the RULES page as well (the same setting); GAME GRAPHICS, MENU LOOK and MENU CURSOR moved here on
+the RULES page as well (the same setting); GAME GRAPHICS, MENU BUTTON LOOK and MENU CURSOR moved here on
 2026-11-24, PIXEL FILTER to VIDEO (beside SCALING).
 
 | row | SWOS.ini | SWOS 2020 / the launcher | what |

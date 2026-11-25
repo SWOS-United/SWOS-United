@@ -11,7 +11,10 @@
  * The photos come from bin/data/credits_icons.bmp, made by scripts/make_credits_icons.py:
  * one 8-bit strip, 40 px a photo, whose pixels are already palette indices 128..255. The
  * menu screens use only 0..31, so those entries are LENT to the photos while this screen
- * is up and given back when it closes.
+ * is up and given back when it closes. Over them, in their own colours (2026-11-25), the same
+ * strip as a PNG, bin/data/credits_icons.png: drawn over the finished picture through gfx.h
+ * (CreditsMenu_PhotosPresent, from ModHooks_FrameDrawn) -- any renderer -- exactly on the 8-bit
+ * ones, which stay as the fallback (no PNG: those are seen).
  */
 #include "credits_menu.h"
 
@@ -25,6 +28,8 @@
 #include "credits_text.h"
 #include "gfx.h"            /* the full credits: drawn over the picture */
 #include "chat_font.h"      /* ... in the chat's typeface */
+#include "platform_sdl.h"   /* Platform_MenuFadeAlpha */
+#include "../third_party/stb_image/stb_image.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -68,6 +73,14 @@ static uint8_t  s_creditPixels[kCreditPhoto][kCreditPhoto * CREDITS_STRIP_COUNT]
 static uint16_t s_creditPal[256 - kCreditPalBase];     /* 12-bit, the photos' */
 static uint16_t s_creditSaved[256 - kCreditPalBase];   /* what they borrowed */
 static int32_t  s_creditLoaded;                         /* 1 ok, -1 failed, 0 not tried */
+
+/* The photos in their own colours (credits_icons.png), and where the last frame drew them. */
+static uint8_t    *s_photoRgba;                         /* the strip, R G B A */
+static int32_t     s_photoTried;
+static GfxTexture *s_photoTex;
+static struct { int32_t x, y, strip; } s_photoAt[kCreditPhotos];
+static int32_t     s_photoCount;
+static uintptr_t   s_photoMenu;                         /* (the menu they are on: shown while it is up) */
 
 static uint32_t le32(const uint8_t *p) { return p[0] | p[1] << 8 | p[2] << 16 | (uint32_t)p[3] << 24; }
 
@@ -140,6 +153,27 @@ static int32_t draw_photos(int32_t cx, int32_t y)
                        src + row * sizeof s_creditPixels[0], kCreditPhoto);
         }
     }
+    if (!s_photoTried) {                /* (their own colours, over these: CreditsMenu_PhotosPresent) */
+        enum { W = kCreditPhoto * CREDITS_STRIP_COUNT, H = kCreditPhoto };
+        int w = 0, h = 0, c = 0;
+        s_photoTried = 1;
+        s_photoRgba = stbi_load("data/credits_icons.png", &w, &h, &c, 4);
+        if (s_photoRgba && (w != W || h != H)) {
+            fprintf(stderr, "[credits] data/credits_icons.png is not %dx%d: the 8-bit photos\n", W, H);
+            stbi_image_free(s_photoRgba);
+            s_photoRgba = NULL;
+        }
+    }
+    if (s_photoRgba) {
+        extern uintptr_t _currentMenuPtr;
+        for (p = 0; p < kCreditPhotos; p++) {
+            s_photoAt[p].x = _menu_draw_x_offset + x0 + p * kCreditStep;
+            s_photoAt[p].y = y;
+            s_photoAt[p].strip = k_creditPhotos[p].strip;
+        }
+        s_photoCount = kCreditPhotos;
+        s_photoMenu = _currentMenuPtr;
+    }
     for (p = 0; p < kCreditPhotos; p++)
         DrawMenuTextCentered((uint16_t)(x0 + p * kCreditStep + kCreditPhoto / 2),
                              (uint16_t)(y + kCreditPhoto + CREDITS_NAME_DROP +
@@ -167,6 +201,53 @@ static void openswosCredits_OnDraw(void)
             y += CREDITS_LINE_PITCH;
         }
     }
+}
+
+/* Over the finished picture (ModHooks_FrameDrawn): the photos in their own colours, where the
+ * screen's last frame drew the 8-bit ones, while it is the menu up; dimmed with the menus' fade
+ * (over the backdrop: faded out by it, as the menu). */
+void CreditsMenu_PhotosPresent(void)
+{
+    extern uintptr_t _currentMenuPtr;
+    extern int32_t ModApi_InMenus(void);
+    extern int g_fadeLevel;
+    enum { W = kCreditPhoto * CREDITS_STRIP_COUNT };
+    if (!s_photoCount || !s_photoRgba || !Gfx_InFrame() || s_photoMenu != _currentMenuPtr || !ModApi_InMenus())
+        return;
+    if (!s_photoTex) {
+        s_photoTex = Gfx_CreateTexture(W, kCreditPhoto, 0);
+        if (!s_photoTex)
+            return;
+        Gfx_UpdateTexture(s_photoTex, s_photoRgba, W * 4);
+    }
+    const int fade = g_fadeLevel < 0 ? 0 : g_fadeLevel > 0x80 ? 0x80 : g_fadeLevel;
+    const int overA = Platform_MenuFadeAlpha();
+    const uint8_t lit = (uint8_t)(overA < 255 ? 255 : fade * 255 / 0x80);
+    const uint8_t alpha = (uint8_t)(overA < 255 ? overA : 255);
+    const GfxSpace space = Gfx_Space();
+    const GfxBlend blend = Gfx_Blend();
+    Gfx_SetSpace(GFX_SPACE_PICTURE);
+    Gfx_SetBlend(GFX_BLEND_ALPHA);
+    for (int32_t p = 0; p < s_photoCount; p++) {
+        const float x0 = (float)s_photoAt[p].x, y0 = (float)s_photoAt[p].y;
+        const float x1 = x0 + kCreditPhoto, y1 = y0 + kCreditPhoto;
+        const float u0 = (float)(s_photoAt[p].strip * kCreditPhoto) / W, u1 = u0 + (float)kCreditPhoto / W;
+        const float px[6] = { x0, x1, x0, x1, x1, x0 }, py[6] = { y0, y0, y1, y0, y1, y1 };
+        const float tu[6] = { u0, u1, u0, u1, u1, u0 }, tv[6] = { 0, 0, 1, 0, 1, 1 };
+        GfxVertex v[6];
+        for (int k = 0; k < 6; k++) {
+            memset(&v[k], 0, sizeof v[k]);
+            v[k].position.x = px[k];
+            v[k].position.y = py[k];
+            v[k].color.r = v[k].color.g = v[k].color.b = lit;
+            v[k].color.a = alpha;
+            v[k].tex_coord.x = tu[k];
+            v[k].tex_coord.y = tv[k];
+        }
+        Gfx_Geometry(s_photoTex, v, 6, NULL, 0);
+    }
+    Gfx_SetBlend(blend);
+    Gfx_SetSpace(space);
 }
 
 static void openswosCredits_exit_OnSelect(void)

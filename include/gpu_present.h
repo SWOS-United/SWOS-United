@@ -48,6 +48,8 @@ typedef struct {
     const uint8_t  *backdrop;   /* R, G, B, A bytes */
     int             backdropW, backdropH, backdropKey;
     uint32_t        backdropSerial;     /* changes when the image does */
+    int             backdropRule;       /* 0 covering the window; 1 SWOS United's own (Platform_SetMenuBackdropRule) */
+    int             backdropTint;       /* 0..255: its brightness (the intro's fade) */
     /* ---- launcher options (agent B) ---- */
     int             argbScale;  /* `argb` is (w * argbScale) x (h * argbScale): a pixel filter's (0, 1: w x h).
                                  * Over a backdrop its alpha is kept (the picture shows where it is 0) */

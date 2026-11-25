@@ -419,6 +419,9 @@ int32_t ModApi_MenuCurrentEntry(void);
 /* An entry's image ("image" in the JSON, docs/MENUS.md §13) changed while the menu is up -- a
  * path, NULL none; its place ("image_x" / "image_y") kept. */
 void    ModApi_SetMenuImage(int32_t entry, const char *path);
+/* ... and a .png image's HD copy (any size, as a rule a few times its pixels each way): drawn in
+ * its place, filtered, at the window's own resolution -- a path, NULL none (the image itself). */
+void    ModApi_SetMenuImageHD(int32_t entry, const char *path);
 void    ModApi_MenuEntryRect(int32_t entry, int32_t *x, int32_t *y, int32_t *w, int32_t *h);
 void    ModApi_SetMenuEntryRect(int32_t entry, int32_t x, int32_t y, int32_t w, int32_t h);
 void    ModApi_MenuNav4(int32_t entry, int32_t left, int32_t right, int32_t up, int32_t down);

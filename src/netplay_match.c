@@ -675,7 +675,9 @@ static GameFrameResult step(const uint8_t *inputs, int32_t logFrame, int32_t com
                             "(SWOS_LIVE_DESYNC_FRAME)\n", dsFrame);
         }
     }
+    { extern void Perf_Begin(int); Perf_Begin(1 /* PERF_NETPLAY */); }
     r = GameLoop_Frame();
+    { extern void Perf_End(int); Perf_End(1 /* PERF_NETPLAY */); }
     if (r != GAME_FRAME_DONE && r != GAME_FRAME_HELD)
         return r;
     if (compare)

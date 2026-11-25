@@ -913,7 +913,13 @@ static GameFrameResult runFrame(void)
      * rig is running. */
     { extern void ReplayTest_FrameStart(void); ReplayTest_FrameStart(); }
 #endif
+#ifdef SWOS_SDL_BUILD
+    { extern void Perf_Begin(int); Perf_Begin(0 /* PERF_GAME */); }
+#endif
     r = GameLoop_Frame();
+#ifdef SWOS_SDL_BUILD
+    { extern void Perf_End(int); Perf_End(0 /* PERF_GAME */); }
+#endif
     if (r == GAME_FRAME_MATCH_OVER || r == GAME_FRAME_QUIT)
         return r;
 #ifdef SWOS_SDL_BUILD

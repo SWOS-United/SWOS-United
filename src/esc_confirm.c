@@ -1,6 +1,9 @@
 /*
  * esc_confirm.c -- ESC in a match asks first: QUIT THE MATCH? RESUME / QUIT (SDL only).
  *
+ * The question stands in white on a dark panel, the picture under it
+ * shaded as under the scoreboard; the two buttons sit on it.
+ *
  * The original ends the match on ESC at once. On a handheld ESC is a shoulder trigger (the
  * PortMaster port's L2), easily pressed by accident, and a friendly then drops to its
  * REPLAY / EXIT screen with the match gone. So the match holds, as for P, and two boxes are
@@ -23,6 +26,7 @@
 #include "replay_test.h"    /* ReplayTest_Running */
 #include "srp_resim.h"      /* SrpResim_Armed */
 #include "rollback_rig.h"   /* Rollback_Enabled */
+#include "mod_hudbox.h"     /* the panel: shaded as the scoreboard */
 
 extern volatile uintptr_t _frontbufferBasePtr;
 extern int _menu_draw_x_offset;
@@ -42,6 +46,10 @@ extern int32_t  CareerAutopilot_Active(void);
 extern void     ModHooks_MenuDrawBegin(void);
 
 static int s_showing;
+static HudBox s_panel;      /* the dark panel and the question, over the picture (mod_hudbox.h) */
+
+/* The layout: a panel, the question in white on it, RESUME and QUIT under it. */
+enum { kPanelY = 70, kPanelH = 90, kPanelPad = 10, kTitleY = 80, kResumeY = 100, kQuitY = 130 };
 
 /* The boxes are up (the PC menu shading mod shades them on the HUD layer: mod_dosmenus.c). */
 int EscConfirm_Showing(void) { return s_showing; }
@@ -52,27 +60,43 @@ int EscConfirm_Wanted(void)
            !CareerAutopilot_Active() && !SrpResim_Armed() && !Rollback_Enabled() && !_gArcadeMode;
 }
 
+/* The question, at the panel's own (0, 0): the font's white with its drop shadow (drawn black). */
+static void panel_contents(void *ctx)
+{
+    const int32_t w = *(const int32_t *)ctx;
+    DrawMenuTextCentered((uint16_t)(w / 2), (uint16_t)(kTitleY - kPanelY), 2,
+                         (uint8_t *)"QUIT THE MATCH?", _bigCharsTable);
+}
+
 static void draw(int quit, int blink)
 {
     uint8_t *hud = Platform_HudLayerBuffer();
     const uintptr_t saved = _frontbufferBasePtr;
     const int savedX = _menu_draw_x_offset;
     const int16_t cx = (int16_t)(_screen_width / 2), bx = (int16_t)(cx - 75);
+    static int32_t panelW;
+    /* The panel: the picture under it shaded as the scoreboard's (SWOS 2020's index + 128),
+     * square; the buttons on the HUD layer show through it (they keep the menu look). */
+    panelW = 150 + 2 * kPanelPad;
+    HudBox_Draw(&s_panel, bx - kPanelPad, kPanelY, panelW, kPanelH, HUDBOX_SHADE, 0, 0, 0,
+                panel_contents, &panelW);
+    s_panel.black = 8;                  /* (the font's shadow colour: black, not the match's 8) */
+    s_panel.cut = hud;
+    s_panel.cutStride = _screen_width;
+    s_panel.radius = 0;                 /* (square, as the scoreboard) */
     _frontbufferBasePtr = (uintptr_t)hud;
     _menu_draw_x_offset = 0;
-    Platform_HudLayerMark(bx - 4, 72, 158, 100);
-    FillRectangle((uint16_t)(bx - 4), 72, 158, 100, 0);        /* (clear the last one) */
-    /* The match's palette (gamePalette), not the menus': 13 light blue, 14 green, 10 red, 2 white
-     * -- each box keeps its colour, the frame shows the choice (Playa, 2026-11-11). */
-    DrawMenuBack150x20(13, (uint16_t)bx, 78);
-    DrawMenuTextCentered((uint16_t)cx, 84, 2, (uint8_t *)"QUIT THE MATCH?", _bigCharsTable);
-    DrawMenuBack150x20(14, (uint16_t)bx, 112);
-    DrawMenuTextCentered((uint16_t)cx, 118, 2, (uint8_t *)"RESUME", _bigCharsTable);
-    DrawMenuBack150x20(10, (uint16_t)bx, 142);
-    DrawMenuTextCentered((uint16_t)cx, 148, 2, (uint8_t *)"QUIT", _bigCharsTable);
+    Platform_HudLayerMark(bx - 4, kResumeY - 2, 158, kQuitY + 22 - (kResumeY - 2));
+    FillRectangle((uint16_t)(bx - 4), kResumeY - 2, 158, kQuitY + 22 - (kResumeY - 2), 0);
+    /* The match's palette (gamePalette), not the menus': 14 green, 10 red, 2 white -- each box
+     * keeps its colour, the frame shows the choice (Playa, 2026-11-11). */
+    DrawMenuBack150x20(14, (uint16_t)bx, kResumeY);
+    DrawMenuTextCentered((uint16_t)cx, kResumeY + 6, 2, (uint8_t *)"RESUME", _bigCharsTable);
+    DrawMenuBack150x20(10, (uint16_t)bx, kQuitY);
+    DrawMenuTextCentered((uint16_t)cx, kQuitY + 6, 2, (uint8_t *)"QUIT", _bigCharsTable);
     if (blink) {                                               /* the chosen one framed, white as
                                                                 * the menus' cursor */
-        const uint16_t y = quit ? 142 : 112, c = 2;
+        const uint16_t y = quit ? kQuitY : kResumeY, c = 2;
         FillRectangle((uint16_t)bx, y, 150, 1, c);
         FillRectangle((uint16_t)bx, (uint16_t)(y + 19), 150, 1, c);
         FillRectangle((uint16_t)bx, y, 1, 20, c);
@@ -80,6 +104,13 @@ static void draw(int quit, int blink)
     }
     _frontbufferBasePtr = saved;
     _menu_draw_x_offset = savedX;
+}
+
+/* At the present (mod_hooks.c, before the mods' drawing): the panel while it is up. */
+void EscConfirm_Present(void)
+{
+    if (s_showing)
+        HudBox_Present(&s_panel);
 }
 
 /* One frame of the hold: the frame on screen shown again, the pad and keys read. */
@@ -116,11 +147,12 @@ int EscConfirm_Ask(void)
         const int savedX = _menu_draw_x_offset;
         _frontbufferBasePtr = (uintptr_t)hud;
         _menu_draw_x_offset = 0;
-        FillRectangle((uint16_t)(_screen_width / 2 - 79), 72, 158, 100, 0);
+        FillRectangle((uint16_t)(_screen_width / 2 - 79), kResumeY - 2, 158, kQuitY + 22 - (kResumeY - 2), 0);
         _frontbufferBasePtr = saved;
         _menu_draw_x_offset = savedX;
     }
     s_showing = 0;
+    HudBox_Off(&s_panel);
     ModHooks_MenuDrawBegin();   /* (and none of them after) */
     return quit;
 }

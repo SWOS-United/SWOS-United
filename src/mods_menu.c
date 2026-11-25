@@ -197,6 +197,15 @@ static int32_t apply_change(const ModInfo *m)
         return 0;
     }
     Mods_Reload();
+    {   /* The menus' backdrop is chosen when it is loaded (ModDef menuBackdrop: the backgrounds
+         * mod's picture, or the game's own): loaded again and the screen drawn on it, so a mod
+         * turned off or on, or its picture changed, shows at once -- not at the next start. */
+        extern uint8_t _aGrafsMenubgRaw[];
+        extern void LoadOverlayToFrontbuffer(const uint8_t *path);
+        extern void DrawMenu(void);
+        LoadOverlayToFrontbuffer(_aGrafsMenubgRaw);
+        DrawMenu();
+    }
     return 1;
 }
 

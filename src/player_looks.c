@@ -276,6 +276,16 @@ static uint8_t        (*s_pix)[LOOKS_VARIANTS][SET][HMAX * W];    /* [2] (180 KB
 static SpriteGraphics s_hdr[2][LOOKS_VARIANTS][SET];
 static uint8_t        s_ready[2];
 
+/* The looks are the hair mod's (2026-11-25): the original game has no white hair, no bald or
+ * shaved heads, so with the mod off every player is drawn as there -- live, in a replay that
+ * recorded a look (its pictures made without it) and on the team screens -- whatever his record
+ * says; his look stays in the record for when the mod is on. */
+static int32_t looks_shown(void)
+{
+    extern int32_t Mods_IsOn(const char *slug);
+    return Mods_IsOn("hair");
+}
+
 void PlayerLooks_CopySets(void)
 {
     for (int32_t t = 0; t < 2; t++) {
@@ -305,13 +315,16 @@ void PlayerLooks_ConvertSets(int32_t t, uint16_t *colorTable)
         const int32_t look = v / 2 + 1, dark = v & 1;
         uint16_t tab[16];
         memcpy(tab, colorTable, sizeof tab);
-        ConvertColorTableToSkinColor(dark ? 2 : 0, tab);
+        /* (off: one of the original's heads, as the swos.eu replayer draws a look -- dark skin face
+         *  2, light face 1 (srpOriginalHead, decided 2026-11-21) -- a replay that recorded one) */
+        ConvertColorTableToSkinColor(dark ? 2 : looks_shown() ? 0 : 1, tab);
         for (int32_t f = 0; f < SET; f++) {
             SpriteGraphics *h = &s_hdr[t][v][f];
             uint8_t *px = s_pix[t][v][f];
             const int32_t nl = s_rawHdr[t][f].nlines;
             memcpy(px, s_raw[t][f], (size_t)nl * W);
-            apply_look(px, nl, f, look, dark);
+            if (looks_shown())          /* (off: the frame as it is, no hairstyle) */
+                apply_look(px, nl, f, look, dark);
             for (int32_t i = 0; i < nl * W; i++)
                 if (px[i] && px[i] < 16)
                     px[i] = (uint8_t)tab[px[i]];
@@ -334,7 +347,8 @@ extern uint16_t  _useIndividualPlayerSkinColor;
 
 int16_t PlayerLooks_Image(const Sprite *s, int16_t image)
 {
-    if (!s || image < 0 || !_useIndividualPlayerSkinColor || !_team1SpritesTable || !_team2SpritesTable)
+    if (!s || image < 0 || !_useIndividualPlayerSkinColor || !_team1SpritesTable || !_team2SpritesTable ||
+        !looks_shown())
         return image;
     int32_t t = -1, slot = -1;
     for (int32_t i = 1; i < 11 && t < 0; i++) {         /* (0, the goalkeeper, keeps his hair) */
@@ -744,5 +758,9 @@ uint16_t PlayerLooks_LittlePlayer(int32_t look, uint16_t srcSprite, uint16_t *co
 int16_t PlayerLooks_PlayerMenuIcon(const PlayerFile *pf)
 {
     const uint16_t face = (uint16_t)((pf->positionAndFace & PF_FACE_MASK) >> 3);
+#ifdef SWOS_SDL_BUILD
+    if (!looks_shown())                 /* (the hair mod's: off, the face as the original has it) */
+        return Face_MenuIcon(face);
+#endif
     return PlayerLooks_MenuIcon(face, PlayerLooks_Of(pf));
 }

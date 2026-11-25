@@ -117,6 +117,7 @@ typedef struct {
     int                    hair_shading;     /* 1 = shade hair the game leaves flat (black), 0 = as the game has it */
     int                    shade_step;       /* sixteenths between kit shades: 16, 16-N, 16-2N, 16-3N; hair too */
     int                    clash_kits;       /* [graphics] clash_kits: SWOS 2020's GK/REF CLASH KITS (clash_kits.c), 0 = off */
+    int                    menu_background;  /* [graphics] menu_background: 0 amiga (default), 1 pc (menu_backgrounds.c) */
     int                    kit_colours;      /* [graphics] kit_colours: KIT_RULE_EXTENDED (default) or KIT_RULE_ORIGINAL (kit_variants.h) */
     int                    kit_art;          /* the UNIFORM screen's kit drawings: 0 = the Amiga's, 1 = the Jaguar's (kit_art.h) */
     int                    sound_style;      /* a match's sounds: 0 = the Amiga's, 1 = the PC game's samples (dos_sound.h) */
@@ -136,6 +137,9 @@ typedef struct {
     int                    replay_frame_overlay; /* 1 = the viewer's frame box shows at first (I toggles it) */
     int                    vol_music, vol_chants, vol_commentary, vol_effects;  /* 0..100 ([audio] *_volume) */
     int                    replay_half_speed;    /* 1 = recordings start at half speed in the viewer */
+    int                    replay_box_x, replay_box_y; /* the viewer's frame box, moved with the mouse:
+                                                        * its top left in picture pixels; -1 the
+                                                        * bottom left (the default) */
     char                   matchmaker[80];   /* [netplay] matchmaker: the server MULTIPLAYER logs in to,
                                               * "host" or "host:port". Typed on the login menu and saved
                                               * there; empty = a server on this machine. */
@@ -247,6 +251,10 @@ int  Platform_OpenUrl(const char *url);
  * the game's). 62: a colour of the game's own backdrop (33-62), which no menu element uses. */
 #define MENU_BACKDROP_KEY 62
 void Platform_SetMenuBackdrop(const uint8_t *rgba, int w, int h);
+/* How the next backdrop set is drawn: 0 covering the window, cropped to its aspect (a mod's
+ * picture); 1 SWOS United's own (menu_backgrounds.c): pixel for pixel from its centre at the
+ * picture's 3X and above, scaled up only where it no longer fills, below 3X scaled with it. */
+void Platform_SetMenuBackdropRule(int rule);
 /* 1 while a true-colour backdrop is set: the menus' backdrop panel is MENU_BACKDROP_KEY. */
 int  Platform_MenuBackdropOn(void);
 /* The menus' picture behind the intro's pictures, faded with them (their key-colour pixels show
@@ -340,6 +348,14 @@ const uint8_t *Platform_FrameShown(void);
  * within 100 ms. */
 void           Platform_TrueColourBegin(void);
 void           Platform_TrueColourPixel(int x, int y, uint8_t index, uint32_t rgb);
+/* The menus' fade as their opacity over the backdrop picture, 0..255; 255: none (platform_sdl.c). */
+int            Platform_MenuFadeAlpha(void);
+/* A palette entry in 8 bits a channel where the copper has 4 (a glow that should pulse, not
+ * step): shown while the copper still holds `copperWord` there, given again each frame. */
+void           Platform_PaletteFine(int idx, uint16_t copperWord, uint8_t r, uint8_t g, uint8_t b);
+/* A menu overlay's colour under the menus' fade (gfx.h Gfx_DrawTextureTint): darkened as the
+ * palette is, or over the backdrop picture faded out as the menu is; white when no fade. */
+SDL_Color      Platform_MenuFadeTint(void);
 uint8_t       *Platform_HudLayerBuffer(void);
 
 /* A cutscene over the whole picture (src/mod_api.c ModApi_Cutscene*, the PC cutscenes mod):
