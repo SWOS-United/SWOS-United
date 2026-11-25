@@ -14,6 +14,11 @@
  * were SWOS 2020's own bg-images, which OpenSWOS does not ship: a player who has them puts them in
  * backgrounds/ and picks them by name.
  *
+ * WHEN: the picture is decoded on a thread of its own from the mod's init, before the window opens
+ * (a 1920 x 1080 PNG took up to 0.7 s, the window frozen); the first backdrop asked for (POWERED BY,
+ * the intro's first picture) takes it, waiting -- the window's events handled -- if it is not
+ * done yet.
+ *
  * HOW IT SHOWS: the engine asks at each menu backdrop it loads (ModDef menuBackdrop); with a
  * picture, the backdrop becomes one key colour and the presenter draws the picture under the menus,
  * covering the window: cropped to the window's aspect, centred. Best made 1920 x 1080 (16:9),
@@ -39,6 +44,26 @@ static struct {
     uint8_t *rgba;
     int      w, h;
 } s_bg;
+
+/* The decode on its own thread (start_decode): only stbi_load, on its own path and buffers. */
+static struct {
+    SDL_Thread   *thread;
+    SDL_atomic_t  done;
+    char          path[1200];
+    uint8_t      *rgba;
+    int           w, h;
+    Uint32        startMs, ms;
+} s_dec;
+
+static int SDLCALL decode_thread(void *unused)
+{
+    int n = 0;
+    (void)unused;
+    s_dec.rgba = stbi_load(s_dec.path, &s_dec.w, &s_dec.h, &n, 4);
+    s_dec.ms = SDL_GetTicks() - s_dec.startMs;
+    SDL_AtomicSet(&s_dec.done, 1);
+    return 0;
+}
 
 static int32_t first_image(const char *name, void *ctx)
 {
@@ -136,12 +161,64 @@ static void picture_path(char *out, size_t cap)
     }
 }
 
+/* The decode started (the mod's init, before the window): finished, the window's events handled
+ * meanwhile, and taken as the picture loaded if it is the one asked for. */
+static void finish_decode(const char *path)
+{
+    extern void Startup_Mark(const char *what);
+    if (!s_dec.thread)
+        return;
+    if (!SDL_AtomicGet(&s_dec.done)) {
+        const Uint32 from = SDL_GetTicks();
+        while (!SDL_AtomicGet(&s_dec.done)) {
+            SDL_PumpEvents();           /* (the window answers meanwhile: not frozen) */
+            SDL_Delay(2);
+        }
+        fprintf(stderr, "[backgrounds] waited %u ms for the picture\n", (unsigned)(SDL_GetTicks() - from));
+    }
+    SDL_WaitThread(s_dec.thread, NULL);
+    s_dec.thread = NULL;
+    if (strcmp(path, s_dec.path) == 0) {
+        stbi_image_free(s_bg.rgba);
+        s_bg.rgba = s_dec.rgba;
+        s_bg.w = s_dec.w;
+        s_bg.h = s_dec.h;
+        snprintf(s_bg.path, sizeof s_bg.path, "%s", s_dec.path);
+        if (!s_bg.rgba)
+            fprintf(stderr, "[backgrounds] %s: could not be read\n", path);
+        else
+            fprintf(stderr, "[backgrounds] the menus' backdrop: %s (%d x %d, decoded in %u ms on a thread)\n",
+                    path, s_bg.w, s_bg.h, (unsigned)s_dec.ms);
+        Startup_Mark("backdrop");
+    } else {
+        stbi_image_free(s_dec.rgba);    /* (another picture chosen meanwhile) */
+    }
+    s_dec.rgba = NULL;
+}
+
+static void start_decode(void)
+{
+    char path[1200];
+    if (s_dec.thread)
+        return;
+    picture_path(path, sizeof path);
+    if (!path[0] || strcmp(path, s_bg.path) == 0)
+        return;
+    snprintf(s_dec.path, sizeof s_dec.path, "%s", path);
+    SDL_AtomicSet(&s_dec.done, 0);
+    s_dec.startMs = SDL_GetTicks();
+    s_dec.thread = SDL_CreateThread(decode_thread, "backdrop", NULL);
+    if (!s_dec.thread)
+        s_dec.path[0] = '\0';          /* (no thread: menu_backdrop loads it as before) */
+}
+
 static int32_t menu_backdrop(const uint8_t **rgba, int32_t *w, int32_t *h)
 {
     char path[1200];
     picture_path(path, sizeof path);
     if (!path[0])
         return 0;
+    finish_decode(path);
     if (strcmp(path, s_bg.path) != 0) {
         int n = 0;
         stbi_image_free(s_bg.rgba);
@@ -162,6 +239,7 @@ static int32_t menu_backdrop(const uint8_t **rgba, int32_t *w, int32_t *h)
 
 const ModDef ModDef_backgrounds = {
     .slug         = SLUG,
+    .init         = start_decode,
     .menuBackdrop = menu_backdrop,
 };
 

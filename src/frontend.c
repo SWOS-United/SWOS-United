@@ -139,6 +139,9 @@ void FrontEndPreLoopSetup(void)
 #endif
     World_SnapshotBase();               /* (96/97's tables, for online play: world_online.c) */
     World_InstallBaked();
+#ifdef SWOS_SDL_BUILD
+    { extern void Startup_Mark(const char *what); Startup_Mark("world"); }
+#endif
 #ifndef SWOS_SDL_BUILD
     WorldCups_Install();        /* its cups into the country tables (the SDL: after the JSON's) */
 #endif
@@ -150,6 +153,9 @@ void FrontEndPreLoopSetup(void)
     extern void DataJson_InstallCompetitionGraph(void);
     DataJson_InstallCompetitionGraph();
     WorldCups_Install();
+#ifdef SWOS_SDL_BUILD
+    { extern void Startup_Mark(const char *what); Startup_Mark("competitions"); }
+#endif
     /* career_params.json: override the compiled career-mode balance knobs (starting
        balance, gate receipts, wages, board expectations) so testers can tune them
        without a rebuild. Absent file -> compiled defaults. */
@@ -163,6 +169,9 @@ void FrontEndPreLoopSetup(void)
     TeamDb_Apply();                     /* (a team database mod's leagues, cups, codes, season: src/teamdb.c) */
     extern void TeamDb_ApplyLeagueTweaks(void);
     TeamDb_ApplyLeagueTweaks();         /* ([tweaks] SWOS 2020's league rules, on by default: 96/97 only) */
+#ifdef SWOS_SDL_BUILD
+    { extern void Startup_Mark(const char *what); Startup_Mark("teams, leagues"); }
+#endif
     /* SWOS_MENU_JSON: load every menu from bin/data_json/menus/*.json and overwrite
        the compiled static menu bytes IN PLACE (docs/MENUS.md §2d), so editing the
        JSON changes the running game. Bounded by each menu's compiled size; a menu
@@ -177,6 +186,9 @@ void FrontEndPreLoopSetup(void)
        first use; register their handlers with the loader before anything opens one. */
     extern void OnlineMenus_Init(void);
     OnlineMenus_Init();
+#ifdef SWOS_SDL_BUILD
+    { extern void Startup_Mark(const char *what); Startup_Mark("menus"); }
+#endif
     /* SWOS_TACTICS_JSON: load the 12 built-in formations from
        bin/data_json/tactics/*.json and overwrite the compiled TeamTactics
        structs IN PLACE (src/tactics_load_json.c), so editing a formation's JSON
@@ -186,6 +198,9 @@ void FrontEndPreLoopSetup(void)
         extern int TacticsJson_InstallAll(void);
         TacticsJson_InstallAll();
       } }
+#ifdef SWOS_SDL_BUILD
+    { extern void Startup_Mark(const char *what); Startup_Mark("tactics"); }
+#endif
     World_SnapshotWorld();              /* (the world's, as every install of the start left them) */
 #ifdef SWOS_SDL_BUILD
     if (getenv("SWOS_TEST_CUP_ENTRY")) {    /* (each world cup's divisions: world_cups.c) */
@@ -231,6 +246,9 @@ void FrontEndPreLoopSetup(void)
         TryPlayMusic();
     }
 
+#ifdef SWOS_SDL_BUILD
+    { extern void Startup_Mark(const char *what); Startup_Mark("main menu"); }
+#endif
     _menuFade = 1;
 }
 

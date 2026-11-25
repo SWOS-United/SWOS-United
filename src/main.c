@@ -691,6 +691,16 @@ const char *Main_LogPath(void)
     return path;
 }
 
+/* [startup] lines: each step of the start, the time since the game began and since the step
+ * before, in SWOS.log -- what makes a start slow on a player's machine (2026-11-25). */
+void Startup_Mark(const char *what)
+{
+    static Uint32 last;
+    const Uint32 now = SDL_GetTicks();
+    fprintf(stderr, "[startup] %-16s %5u ms (+%u)\n", what, (unsigned)now, (unsigned)(now - last));
+    last = now;
+}
+
 int main(int argc, char **argv)
 {
     note_self(argv);                    /* (Main_Relaunch: the mods screen's restart) */
@@ -1766,6 +1776,7 @@ int main(int argc, char **argv)
     /* The built-in mods that are on, set up (include/mod_api.h ModDef.init): their entries and
      * their menus' handlers -- before the menus are built from JSON, which name them. */
     { extern void ModHooks_Init(void); ModHooks_Init(); }
+    Startup_Mark("mods");
     if (getenv("SWOS_MOD_RELOAD_TEST")) {   /* (mods on and off without a restart: Mods_Reload) */
         extern int32_t Main_Relaunch(void);
         if (strcmp(getenv("SWOS_MOD_RELOAD_TEST"), "relaunch") == 0) {  /* (the game started again: */
@@ -2095,11 +2106,13 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    Startup_Mark("settings, input");
     if (Platform_Init(&opts) != 0) {
         fprintf(stderr, "Platform_Init failed\n");
         SDL_Quit();
         return 1;
     }
+    Startup_Mark("window");
     {   /* (launcher options, agent A) the window's: the pointer and the centring */
         extern void MouseCursors_Apply(int32_t style);
         extern void Platform_SetAutoCentering(int on);

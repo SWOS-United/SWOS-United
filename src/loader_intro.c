@@ -102,6 +102,31 @@ extern int16_t LoadRNCToBufferNoBlit(uint8_t *name, uint8_t *dest);     /* asset
  * with the sprites the game loads meanwhile (intro_chip_ram.h). */
 static int32_t s_titleStream;
 
+/* The title music's fade-in run by the next wait's frames (loaderIntroWaitForFireOrTimeout), not
+ * by its own: SDL's POWERED BY, so the picture is up at once -- the 32-frame ramp before it was
+ * 0.64 s of black at every start (2026-11-25). -1: none running. */
+static int32_t s_rampDeferred, s_rampVol = -1;
+
+static void ramp_step(void)
+{
+    if (s_rampVol < 0)
+        return;
+    s_rampVol += 2;
+    if (s_rampVol >= 0x40) {
+        AudioSetChannelVolume(0xFFFF, 0x40);
+        s_rampVol = -1;
+    } else {
+        AudioSetChannelVolume(0xFFFF, (uint16_t)s_rampVol);
+    }
+}
+
+static void ramp_finish(void)
+{
+    if (s_rampVol >= 0)
+        AudioSetChannelVolume(0xFFFF, 0x40);
+    s_rampVol = -1;
+}
+
 static void loaderIntroEnsureMenuMusicPlaying(void)
 {
 #ifdef SWOS_SDL_BUILD
@@ -145,6 +170,11 @@ static void loaderIntroEnsureMenuMusicPlaying(void)
 
     AudioSetChannelVolume(0xFFFF, 0);
     _audioActive = 1;
+    if (s_rampDeferred) {               /* (the wait after it ramps it: ramp_step) */
+        s_rampDeferred = 0;
+        s_rampVol = 0;
+        return;
+    }
     /* Ramp the master volume from 0 to 0x40 (full) over a few vblanks so the
      * song fades in instead of starting mid-note. SDL plays music at full
      * volume: at 0x40 there is no digital attenuation, so the 8-bit output keeps
@@ -454,10 +484,11 @@ static int16_t loaderIntroWaitForFireOrTimeout(int16_t timeout)
 
         Player1StatusProc();
 
-        if (_pl1Fire != 0 || intro_clicked())
+        if (_pl1Fire != 0 || intro_clicked() || _quitToDos != 0) {
+            ramp_finish();
             return 1;
-        if (_quitToDos != 0)
-            return 1;
+        }
+        ramp_step();
 
 #ifdef AGA
         if (s_titleGlow)
@@ -577,14 +608,16 @@ void ShowLoaderIntroSequence(void)
      * after its fire (LoaderIntro_EndPowered). The Amiga keeps the logo first: its tune's samples
      * share memory with the sprites the load brings in (intro_chip_ram.h). */
     loaderIntroLoadHeroAudioBank();
+    s_rampDeferred = 1;                 /* (faded in while POWERED BY is up, not before it) */
     loaderIntroEnsureMenuMusicPlaying();
     if (_quitToDos == 0) {              /* (always, as before the swap: INTRO PICTURES is SWOS 2020's reels) */
-        enum { kPoweredFrames = 100 };              /* 2 s at the game's 50 Hz, at least */
+        enum { kPoweredFrames = 75 };               /* 1.5 s at the game's 50 Hz, at least */
         s_poweredShown = 1;
         loaderIntroLoadFrameToFrontbufferAlt((const uint8_t *)GRAFS "powered.raw");
         FadeIn();
         (void)loaderIntroWaitForFireOrTimeout(kPoweredFrames);   /* (fire: on to the loading) */
     }
+    ramp_finish();
     if (!s_titleStream)                 /* (no MP3: the Amiga tune, whose samples the load reuses) */
         loaderIntroStopMusicAndResetAudio();
     _fireResetFlag = 1;
@@ -702,7 +735,7 @@ void LoaderIntro_EndPowered(void)
 
 void LoaderIntro_ShowPowered(void)
 {
-    enum { kPoweredFrames = 100 };      /* 2 s at the game's 50 Hz */
+    enum { kPoweredFrames = 75 };       /* 1.5 s at the game's 50 Hz */
 #ifdef SWOS_SDL_BUILD
     return;                             /* (SDL: up since the start, ShowLoaderIntroSequence) */
 #endif
