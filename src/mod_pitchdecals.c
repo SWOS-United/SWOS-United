@@ -13,6 +13,8 @@
  *
  *   setting   the mod's own on / off setting (its "settings"), its "default" when SWOS.ini has none
  *   pitches   the pitches it is for, 1-6 (6 the training ground); none: all of them
+ *   modes     "match" (a match: each team its own bench) and / or "training" (a training game:
+ *             both halves at one bench); none: both
  *   image     a PNG in the mod's folder. A pitch's: the whole pitch, 672 x 880 (the world's
  *             pixels), its alpha 0 left as it was. A sprite's: the sprite as it is drawn
  *   replace   the image is the whole pitch: every cell from it (then the others over it)
@@ -56,6 +58,7 @@
 
 extern void DosGfx_BuildPalette(int pitchType, uint8_t *rgb888Out);
 extern uint16_t _pitchNumberAndType;
+extern uint16_t _trainingGame;
 extern int _menu_draw_x_offset;
 extern uint8_t *_s_pitchFullPtrs[];     /* (src/pitch.c: each cell's engine tile) */
 extern int stbi_write_png(char const *filename, int w, int h, int comp, const void *data, int stride_in_bytes);
@@ -68,6 +71,7 @@ typedef struct {
     char     slug[32], setting[40];
     int32_t  def;               /* the setting's default: 1 on */
     uint8_t  pitches;           /* bit n: pitch n (1-6) */
+    uint8_t  modes;             /* bit 0: a match, bit 1: a training game */
     uint8_t  replace;
     uint16_t sprite;            /* 0, or IMG_GOAL_TOP / IMG_GOAL_BOTTOM */
     int32_t  w, h;
@@ -217,6 +221,18 @@ static void read_mod(const char *slug, const char *dir, const uint8_t *pal)
                 } else
                     d->pitches = 0x7E;
             }
+            {   /* the modes, none: both */
+                const char *ma;
+                int mal;
+                if (mjson_find(it, itl, "$.modes", &ma, &mal) == MJSON_TOK_ARRAY) {
+                    int mo = 0, mko, mkl, mvo, mvl, mvt;
+                    while ((mo = mjson_next(ma, mal, mo, &mko, &mkl, &mvo, &mvl, &mvt)) != 0)
+                        if (mvt == MJSON_TOK_STRING)
+                            d->modes |= (uint8_t)(strncmp(ma + mvo, "\"training\"", 10) == 0 ? 2
+                                                  : strncmp(ma + mvo, "\"match\"", 7) == 0 ? 1 : 0);
+                } else
+                    d->modes = 3;
+            }
             {   /* the setting's default, from the mod's own "settings" */
                 const char *sa;
                 int sal;
@@ -246,10 +262,10 @@ static void read_mod(const char *slug, const char *dir, const uint8_t *pal)
                 continue;
             }
             if (test_on())
-                fprintf(stderr, "[pitchdecals] %s: %s (%s%s, pitches 0x%02x, setting %s, default %s)\n", slug, image,
+                fprintf(stderr, "[pitchdecals] %s: %s (%s%s, pitches 0x%02x, modes %d, setting %s, default %s)\n", slug, image,
                         d->sprite ? "sprite" : d->replace ? "the whole pitch" : "on the pitch",
                         d->sprite == IMG_GOAL_TOP ? " goal_top" : d->sprite == IMG_GOAL_BOTTOM ? " goal_bottom" : "",
-                        d->pitches, d->setting[0] ? d->setting : "-", d->def ? "on" : "off");
+                        d->pitches, (int)d->modes, d->setting[0] ? d->setting : "-", d->def ? "on" : "off");
             s_decals++;
         }
     }
@@ -303,8 +319,11 @@ static const char *why_not(int32_t pitch)
     return "";
 }
 
+/* The decal is for this pitch, this kind of game, and its setting is on. */
 static int32_t decal_on(const Decal *d)
 {
+    if (!(d->pitches & (1u << s_pitch)) || !(d->modes & (_trainingGame ? 2 : 1)))
+        return 0;
     return !d->setting[0] || ModApi_SettingInt(d->slug, d->setting, d->def) != 0;
 }
 
@@ -331,7 +350,7 @@ static void work_out(void)
     }
     for (int32_t i = 0; i < s_decals; i++) {
         const Decal *d = &s_decal[i];
-        if (!(d->pitches & (1u << pitch)) || !decal_on(d))
+        if (!decal_on(d))
             continue;
         if (d->sprite) {
             s_useSprite[d->sprite - IMG_GOAL_TOP] = 1;
@@ -354,8 +373,8 @@ static void work_out(void)
     for (int32_t c = 0; c < CELLS; c++)
         s_cells += s_cover[c];
     if (test_on()) {
-        fprintf(stderr, "[pitchdecals] pitch %d (%s): %d cells, goal fronts %s/%s\n", (int)pitch,
-                _gDosGraphics ? "PC graphics" : "Amiga graphics", (int)s_cells,
+        fprintf(stderr, "[pitchdecals] pitch %d (%s, %s): %d cells, goal fronts %s/%s\n", (int)pitch,
+                _gDosGraphics ? "PC graphics" : "Amiga graphics", _trainingGame ? "training" : "match", (int)s_cells,
                 s_useSprite[0] ? "top" : "-", s_useSprite[1] ? "bottom" : "-");
     }
 }
@@ -373,7 +392,7 @@ static const uint8_t *cell_tile(int32_t cell, const uint8_t *engineTile)
         memcpy(t, engineTile, TILE_BYTES);
         for (int32_t i = 0; i < s_decals; i++) {
             const Decal *d = &s_decal[i];
-            if (d->sprite || !(d->pitches & (1u << s_pitch)) || !decal_on(d))
+            if (d->sprite || !decal_on(d))
                 continue;
             for (int32_t y = 0; y < TILE; y++)
                 for (int32_t x = 0; x < TILE; x++) {
