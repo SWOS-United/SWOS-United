@@ -320,6 +320,37 @@ SWOS 2020's dead Taiwan / San Marino / Spain cases, and its five substitutes for
 
 ---
 
+### 10.5 Pitch decals: a data mod's pictures on the game's own pitches (SWOS United, 2026-11-26)
+
+A DLC can carry no code, so what it adds to a pitch it says in its mod.json, and the static mod
+**pitchdecals** (`src/mod_pitchdecals.c`; SWOS United's, written so OpenSWOS can take it) draws it:
+
+```json
+"pitch_decals": [
+  { "setting": "training_pitch", "pitches": [6],           "image": "training_pitch.png", "replace": true },
+  { "setting": "orange_nets",    "pitches": [1,2,3,4,5,6], "image": "goal_nets.png" },
+  { "setting": "orange_nets",    "sprite": "goal_top",     "image": "net_top.png" },
+  { "setting": "coaching_zones", "pitches": [1,2,3,4,5],   "image": "coaching_zones.png" } ]
+```
+
+- `setting`: one of the mod's own `settings` (on / off; its `default` when SWOS.ini has none);
+  `pitches`: 1-6 (6 the training ground), none all; `image`: a PNG in the mod's folder -- a pitch
+  image is the whole pitch, 672 x 880, alpha 0 left as it was; `replace`: every cell from the image;
+  `sprite`: `goal_top` / `goal_bottom`, the goals' fronts (images 1091 / 1092) in the match and its
+  replays, drawn at the engine's sprite's top-left.
+- Colours: each the nearest of the PC game's palette at the condition "normal" -- the grass onto the
+  condition's own entries, so a frozen or wet pitch turns it as it turns the game's; never the fans'
+  kit entries (10, 11) or maroon's (12).
+- Through the engine's `pitchTiles` (a cell a decal touches is built once over the engine's tile),
+  `spriteDraw` and `replaySpriteDraw`: drawing only, never the match.
+- Only on the game's own pitches: the PC graphics (`grafs_dos`) or the Amiga's made from them
+  (`grafs_aga/SWCPICHn.MAP`); not SWOS 2020's graphics, not PC data made from SWOS 2020, not a pitch
+  file from a mod, not while the pitchmaps mod shows a map.
+- `SWOS_PITCHDECALS_TEST=1` says in the log what was read and why a pitch gets nothing;
+  `SWOS_PITCHDECALS_DUMP=<file.png>` writes the whole pitch as drawn.
+- The first user: Redhair's DLC **Component System** 2.0 (his training ground, orange goal nets and
+  coaching zones, each a setting).
+
 ## 11. Order of work
 
 1. This document; reply to petarku (PR #11's split); take his speedup PR.

@@ -122,6 +122,10 @@ rebase), `git cherry-pick <commit>` one fix, or nothing at all. `upstream` is fe
   service; the boards through online-records (`speedrun.board / mine / news`: SWOS 2020's
   swosapi_v3, read-only). TACKLE is SWOS 2020's rule since OpenSWOS 35e741dd (a goal with your
   tackle the last thing before it), and a preset run sends its difficulty.
+- **Pitch decals** (`src/mod_pitchdecals.c`, static, in `src/fork_mods.inc`; docs/MODS.md §10.5): a
+  data mod's `"pitch_decals"` -- a pitch replaced, pictures on the grass, the goals' fronts -- drawn
+  on the game's own PC / Amiga pitches, each behind one of that mod's settings. Written to be
+  OpenSWOS's too (nothing in it is SWOS United's). The first user is Redhair's DLC Component System.
 - **SWOS 2020's live matches in LIVE CAST** (`src/live_cast_fork.inc`, OpenSWOS's `src/live_cast.c`
   includes it at its end through its `LiveCastFork` hooks): the matches live on SWOS 2020's livestream
   server (swos.eu, `PROJECT_LIVE2020_*`) after the recorder's own in LIVE CAST's list, watched in the

@@ -146,7 +146,7 @@
  * its main menu, its challenge and speedrun screens, SWOS Galore, the news ticker, and the
  * records read from SWOS 2020's servers. And the PC menu shading (dosmenus, 2026-11-25): APPEARANCE
  * OPTIONS' MENU BUTTON LOOK = PC is its, so it is the game's, not a mod to turn off. */
-#define PROJECT_STATIC_MODS     "menus2020, challenges2020, swos2020-challenges, speedrun2020, galore2020, ticker, online-records, discord2020, teamimport2020, dosmenus"
+#define PROJECT_STATIC_MODS     "menus2020, challenges2020, swos2020-challenges, speedrun2020, galore2020, ticker, online-records, discord2020, teamimport2020, dosmenus, pitchdecals"
 
 /* DEFAULT MODS: canonical mods this game turns ON by default whatever their manifest's "default"
  * says -- still listed, and a player may turn them off ([mods] disabled), unlike a static one.
