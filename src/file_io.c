@@ -4,6 +4,9 @@
  * SWOS DOS Reversed by Zlatko Karakaš (https://github.com/zlatkok)
  */
 #include "swos_types.h"
+#ifdef SWOS_SDL_BUILD
+#include <stdio.h>          /* (LoadFileEx: a file that cannot be loaded, named in the log) */
+#endif
 #include "save_filename.h"
 #include "text_render.h"     /* GetTextWidth: a long name shortened */   /* the save folder's listing: SAVE_LIST_* */
 #include "game_types.h"   /* CompetitionSlotBuffer (Phase B raw-save size) */
@@ -241,6 +244,17 @@ int16_t LoadFileEx(uint8_t *filename, uint8_t *dest, uint32_t *outFileSize)
                 return result;
             }
 
+#ifdef SWOS_SDL_BUILD
+            {   /* (the original retries forever -- a disk to put in. Here a file the game data
+                 *  lacks looks like a hang, the log silent: name it, once a file; Playa 2026-11-25) */
+                static const uint8_t *s_failed;
+                if (s_failed != filename) {
+                    s_failed = filename;
+                    fprintf(stderr, "[file] %s cannot be loaded -- retrying (missing from the game data?)\n",
+                            (const char *)filename);
+                }
+            }
+#endif
             /* Wait 50 ticks before retry */
             for (i = FPS_50HZ; i >= 0; i--) {
                 WaitForVSync();
