@@ -132,13 +132,24 @@ static void free_decals(void)
     s_decals = 0;
 }
 
-/* The nearest palette entry to r, g, b: never the fans' kit entries (10, 11) nor maroon's (12,
- * which a purple kit takes in a match). An exact colour first, the lowest entry that has it. */
+/* The nearest palette entry to r, g, b among those that stay put in a match: not the fans' kit
+ * entries (10, 11), maroon's (12, a purple kit's), the replay R's bank (0x70-0x7F, it flashes) or
+ * the top block (240-255, kit_palette.c); the pitch condition's nine only for a colour that is
+ * one of them exactly (the grass and its shades: they turn with a wet or frozen pitch). An exact
+ * colour first, the lowest entry that has it; a duplicate the kit variants or the Jaguar tier
+ * take is moved to its twin when the tile is built (cell_tile). */
+static int32_t condition_entry(int32_t i)
+{
+    return i == 0 || i == 7 || i == 9 || (i >= 78 && i <= 81) || i == 106 || i == 107;
+}
+
 static uint8_t nearest(const uint8_t *pal, int32_t r, int32_t g, int32_t b)
 {
     int32_t best = 0, bestD = 0x7FFFFFFF;
     for (int32_t i = 0; i < 256; i++) {
-        if (i == 10 || i == 11 || i == 12)
+        if (i == 10 || i == 11 || i == 12 || (i >= 0x70 && i <= 0x7F) || i >= 240)
+            continue;
+        if (condition_entry(i) && (abs(pal[i * 3] - r) > 4 || abs(pal[i * 3 + 1] - g) > 4 || abs(pal[i * 3 + 2] - b) > 4))
             continue;
         const int32_t dr = pal[i * 3] - r, dg = pal[i * 3 + 1] - g, db = pal[i * 3 + 2] - b;
         const int32_t d = 2 * dr * dr + 4 * dg * dg + 3 * db * db;
