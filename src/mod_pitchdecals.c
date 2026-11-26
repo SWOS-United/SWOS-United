@@ -33,7 +33,8 @@
  *   sound     a WAV or an MP3 in the mod's folder, mono or stereo, played round and round through a
  *             match there as it is (an MP3's encoder silence dr_mp3 takes off itself),
  *             on the crowd's voice -- the training ground has no crowd (dos_sound.c, audio.c);
- *             volume 1-127, 100 by default
+ *             volume 1-127, 100 by default; or the setting's own choice when it is a number
+ *             ("choices": ["off", "10", ..., "100"]: the volume to choose)
  *   event     "goal": not looped but played once at each goal (an own goal too), on the crowd's
  *             cheering voice -- in a match and its replays (the game's sound event for it)
  *
@@ -405,7 +406,8 @@ static void read_mod(const char *slug, const char *dir, const uint8_t *pal)
                         mjson_get_string(sa + svo, svl, "$.key", key, (int)sizeof key);
                         if (strcmp(key, so->setting) == 0 &&
                             mjson_get_string(sa + svo, svl, "$.default", dv, (int)sizeof dv) > 0)
-                            so->def = !(strcmp(dv, "off") == 0 || strcmp(dv, "false") == 0 || strcmp(dv, "0") == 0);
+                            so->def = atoi(dv) > 1 ? atoi(dv) :     /* (a volume) */
+                                      !(strcmp(dv, "off") == 0 || strcmp(dv, "false") == 0 || strcmp(dv, "0") == 0);
                     }
                 }
             }
@@ -591,12 +593,21 @@ static void dump_pitch(void)
 extern void AudioSDL_PcmPlay16(int voice, const int16_t *data, uint32_t len, int rate, int volume, int loops);
 extern void AudioSDL_PcmPlay16Stereo(int voice, const int16_t *data, uint32_t frames, int rate, int volume, int loops);
 
+/* A sound's volume, 0 when its setting is off: the setting's own number when it is one (a volume
+ * to choose: "choices": ["off", "10", ... "100"]), else "volume" -- on and off. */
+static int32_t sound_volume(const Sound *so)
+{
+    const int32_t v = so->setting[0] ? ModApi_SettingInt(so->slug, so->setting, so->def) : 1;
+    return v <= 0 ? 0 : v == 1 ? so->volume : v > 127 ? 127 : v;
+}
+
 static void sound_play(int voice, const Sound *so, int loops)
 {
+    const int32_t vol = sound_volume(so);
     if (so->channels == 2)
-        AudioSDL_PcmPlay16Stereo(voice, so->pcm, so->frames, so->rate, so->volume, loops);
+        AudioSDL_PcmPlay16Stereo(voice, so->pcm, so->frames, so->rate, vol, loops);
     else
-        AudioSDL_PcmPlay16(voice, so->pcm, so->frames, so->rate, so->volume, loops);
+        AudioSDL_PcmPlay16(voice, so->pcm, so->frames, so->rate, vol, loops);
 }
 extern void AudioSDL_PcmStop(int voice);
 extern int  AudioSDL_PcmPlaying(int voice);
@@ -690,8 +701,7 @@ static void match_frame(void)
         read_all();
     for (int32_t i = 0; i < s_sounds && want < 0; i++) {
         const Sound *so = &s_sound[i];
-        if (!so->event && (so->pitches & (1u << pitch)) && !so->failed &&
-            (!so->setting[0] || ModApi_SettingInt(so->slug, so->setting, so->def) != 0))
+        if (!so->event && (so->pitches & (1u << pitch)) && !so->failed && sound_volume(so) > 0)
             want = i;
     }
     if (pitch != 6)
@@ -733,7 +743,7 @@ static void sound_event(uint8_t event, uint16_t arg)
     for (int32_t i = 0; i < s_sounds; i++) {
         Sound *so = &s_sound[i];
         if (so->event != EVENT_GOAL || so->failed ||
-            (so->setting[0] && ModApi_SettingInt(so->slug, so->setting, so->def) == 0))
+            sound_volume(so) == 0)
             continue;
         if (!so->pcm)
             decode_sound(so);
