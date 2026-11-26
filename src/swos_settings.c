@@ -688,7 +688,9 @@ static int settings_build(const PlatformInitOptions *opts, IniEntry *items, char
     SETTING(n) = (IniEntry){ "video",  "renderer",   "; renderer: accel (the GPU presenter, else SDL's) | sdl (SDL's renderer) | software", renderer_str(opts->renderer) };
     SETTING(n) = (IniEntry){ "video",  "vsync",      "; vsync: true | false  (accel renderer only)", opts->vsync ? "true" : "false" };
     SETTING(n) = (IniEntry){ "video",  "subpixel_scroll", "; subpixel_scroll: true | false. Smooths scrolling by shifting the frame by the camera's sub-pixel remainder. Never blurs. Off = compare", opts->subpixel_scroll ? "true" : "false" };
-    SETTING(n) = (IniEntry){ "video",  "scaling",    "; scaling: sharp | smooth. sharp: the picture only ever a whole number of times its size, every pixel square and as big as the next -- a window or screen it does not fill leaves a border. smooth: it fills the window (1080/272 = 3.97), resampled evenly, a little soft", opts->scaling_smooth ? "smooth" : "sharp" };
+    SETTING(n) = (IniEntry){ "video",  "scaling",    "; scaling: sharp | smooth. sharp: the picture only ever a whole number of times its size, every pixel\n"
+        "; square and as big as the next -- a window or screen it does not fill leaves a border.\n"
+        "; smooth: it fills the window (1080/272 = 3.97), resampled evenly, a little soft", opts->scaling_smooth ? "smooth" : "sharp" };
     SETTING(n) = (IniEntry){ "video",  "crt_mask",   "; crt_mask: off | aperture | slot | scanlines. Synthetic CRT shadow-mask drawn over the finished frame. Costs one full-screen draw however many effects are on", crt_mask_str(opts->crt_mask) };
     SETTING(n) = (IniEntry){ "video",  "crt_mask_strength", "; crt_mask_strength: 0-100. How dark the grille's off-phase gets. 0 = invisible, 100 = black between phosphors", vbuf[4] };
     SETTING(n) = (IniEntry){ "video",  "crt_vignette", "; crt_vignette: 0-100. Darkens towards the corners like a tube's edges. 0 = off", vbuf[5] };
@@ -1784,6 +1786,22 @@ int Settings_LauncherSelfTest(void)
                 bad++;
             }
         }
+    {   /* (and no line of the whole file longer than the reader takes, INI_MAX_LINE: a comment
+         * that was -- [video] scaling's, 266 -- was a parse error at every start) */
+        FILE *f = fopen(out, "r");
+        int32_t no = 0;
+        while (f && fgets(line, sizeof line, f)) {
+            const size_t len = strlen(line);
+            no++;
+            if (len >= INI_MAX_LINE - 1 || (len == sizeof line - 1 && line[len - 1] != '\n')) {
+                printf("[launcher-settings-test] line %d is longer than %d: %.40s...\n", (int)no,
+                       INI_MAX_LINE - 2, line);
+                bad++;
+            }
+        }
+        if (f)
+            fclose(f);
+    }
     remove(in);
     if (strcmp(getenv("SWOS_LAUNCHER_SETTINGS_TEST") ? getenv("SWOS_LAUNCHER_SETTINGS_TEST") : "", "keep") != 0)
         remove(out);                    /* (=keep: the last file written, to read) */
