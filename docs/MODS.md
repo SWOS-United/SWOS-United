@@ -335,7 +335,8 @@ A DLC can carry no code, so what it adds to a pitch it says in its mod.json, and
 
 - `setting`: one of the mod's own `settings` (on / off; its `default` when SWOS.ini has none);
   `pitches`: 1-6 (6 the training ground), none all; `modes`: `match` (each team its own bench) and / or
-  `training` (the career's training game, both halves at one bench), none both; `image`: a PNG in the mod's folder -- a pitch
+  `training` (the career's training game, both halves at one bench), none both; `at`: `[[x, y], ...]`, a
+  picture smaller than the pitch put with its top-left at each place (a bench, once or twice); `image`: a PNG in the mod's folder -- a pitch
   image is the whole pitch, 672 x 880, alpha 0 left as it was; `replace`: every cell from the image;
   `sprite`: `goal_top` / `goal_bottom`, the goals' fronts (images 1091 / 1092) in the match and its
   replays, drawn at the engine's sprite's top-left.

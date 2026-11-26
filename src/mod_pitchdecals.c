@@ -17,6 +17,8 @@
  *             both halves at one bench); none: both
  *   image     a PNG in the mod's folder. A pitch's: the whole pitch, 672 x 880 (the world's
  *             pixels), its alpha 0 left as it was. A sprite's: the sprite as it is drawn
+ *   at        [[x, y], ...]: the image is smaller than the pitch, put with its top-left at each place
+ *             (a bench, once in a training game, twice in a match)
  *   replace   the image is the whole pitch: every cell from it (then the others over it)
  *   sprite    goal_top / goal_bottom: the goals' fronts (images 1091 / 1092, the net over a ball
  *             that crossed the line), drawn in their place in the match and its replays
@@ -78,6 +80,7 @@ typedef struct {
     uint8_t *idx;               /* the image as palette indices */
     uint8_t *mask;              /* 1 where it shows */
 } Decal;
+enum { MAX_AT = 8 };
 
 static Decal   s_decal[MAX_DECALS];
 static int32_t s_decals;
@@ -254,6 +257,41 @@ static void read_mod(const char *slug, const char *dir, const uint8_t *pal)
             load_image(d, dir, image, pal);
             if (!d->idx)
                 continue;
+            {   /* "at": the image put at each place, into a pitch-sized one */
+                const char *aa;
+                int aal;
+                if (!d->sprite && mjson_find(it, itl, "$.at", &aa, &aal) == MJSON_TOK_ARRAY) {
+                    uint8_t *bi = (uint8_t *)calloc((size_t)PITCH_W * PITCH_H, 1);
+                    uint8_t *bm = (uint8_t *)calloc((size_t)PITCH_W * PITCH_H, 1);
+                    int ao = 0, ako, akl, avo, avl, avt, n = 0;
+                    while (bi && bm && (ao = mjson_next(aa, aal, ao, &ako, &akl, &avo, &avl, &avt)) != 0 && n < MAX_AT) {
+                        double px = 0, py = 0;
+                        if (avt != MJSON_TOK_ARRAY || mjson_get_number(aa + avo, avl, "$[0]", &px) == 0 ||
+                            mjson_get_number(aa + avo, avl, "$[1]", &py) == 0)
+                            continue;
+                        n++;
+                        for (int32_t y = 0; y < d->h; y++)
+                            for (int32_t x = 0; x < d->w; x++) {
+                                const int32_t tx = (int32_t)px + x, ty = (int32_t)py + y;
+                                if (tx < 0 || ty < 0 || tx >= PITCH_W || ty >= PITCH_H || !d->mask[(size_t)y * d->w + x])
+                                    continue;
+                                bi[(size_t)ty * PITCH_W + tx] = d->idx[(size_t)y * d->w + x];
+                                bm[(size_t)ty * PITCH_W + tx] = 1;
+                            }
+                    }
+                    if (bi && bm) {
+                        free(d->idx);
+                        free(d->mask);
+                        d->idx = bi;
+                        d->mask = bm;
+                        d->w = PITCH_W;
+                        d->h = PITCH_H;
+                    } else {
+                        free(bi);
+                        free(bm);
+                    }
+                }
+            }
             if (!d->sprite && (d->w != PITCH_W || d->h != PITCH_H)) {
                 fprintf(stderr, "[pitchdecals] %s: %s is %dx%d, a pitch's is %dx%d -- left out\n",
                         slug, image, (int)d->w, (int)d->h, PITCH_W, PITCH_H);
