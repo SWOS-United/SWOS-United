@@ -348,6 +348,11 @@ A DLC can carry no code, so what it adds to a pitch it says in its mod.json, and
 - Only on the game's own pitches: the PC graphics (`grafs_dos`) or the Amiga's made from them
   (`grafs_aga/SWCPICHn.MAP`); not SWOS 2020's graphics, not PC data made from SWOS 2020, not a pitch
   file from a mod, not while the pitchmaps mod shows a map.
+- `"pitch_sounds": [{ "setting", "sound", "volume" }]`: a WAV (played sample for sample) or an MP3 (less
+  its encoder's silence, by its LAME tag) looped through a match on the **training ground only**, on
+  the crowd's voice: the one pitch where the game's crowd is not heard (on the training ground the
+  crowd is left out whatever the game: `src/dos_sound.c` match_start, `src/audio.c`
+  training_ground_crowd -- hearing only, the match unchanged). Whatever the pitch's graphics.
 - `SWOS_PITCHDECALS_TEST=1` says in the log what was read and why a pitch gets nothing;
   `SWOS_PITCHDECALS_DUMP=<file.png>` writes the whole pitch as drawn.
 - The first user: Redhair's DLC **Component System** 2.0 (his training ground, orange goal nets and

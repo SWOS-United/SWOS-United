@@ -23,6 +23,17 @@
  *   sprite    goal_top / goal_bottom: the goals' fronts (images 1091 / 1092, the net over a ball
  *             that crossed the line), drawn in their place in the match and its replays
  *
+ * And a sound for the training ground, in "pitch_sounds" -- the game's own or a custom one (a
+ * sound is no picture), and only there: the one pitch with no crowd to hear (dos_sound.c,
+ * audio.c leave it out there), so nothing plays over or instead of a crowd:
+ *
+ *   "pitch_sounds": [ { "setting": "birdsong", "pitches": [6], "sound": "birdsong.mp3", "volume": 90 } ]
+ *
+ *   sound     a WAV or an MP3 in the mod's folder, played round and round through a match there as
+ *             it is (a WAV sample for sample; an MP3 less its encoder's silence, by its LAME tag),
+ *             on the crowd's voice -- the training ground has no crowd (dos_sound.c, audio.c);
+ *             volume 1-127, 100 by default
+ *
  * In the mods' order, each entry over the ones before it. Colours: each the nearest of the PC
  * game's palette with its pitch condition "normal" -- the grass and its shades onto the
  * condition's own entries, so a frozen or a wet pitch turns it as it turns the game's -- never the
@@ -55,6 +66,8 @@
 #include "swos_io.h"            /* swos_data_path, swos_data_path_base */
 
 #include "../third_party/stb_image/stb_image.h"
+#include "../third_party/dr_mp3/dr_mp3.h"      /* (its implementation: music_stream.c) */
+#include <SDL.h>                                /* SDL_LoadWAV */
 
 #define SLUG "pitchdecals"
 
@@ -82,6 +95,19 @@ typedef struct {
 } Decal;
 enum { MAX_AT = 8 };
 
+typedef struct {
+    char     slug[32], setting[40], path[1400];
+    int32_t  def, volume;
+    uint8_t  pitches;
+    int16_t *pcm;               /* decoded at its first match: mono, the loop's ends blended */
+    uint32_t frames;
+    int32_t  rate, failed;
+} Sound;
+enum { MAX_SOUNDS = 4, VOICE_AMBIENCE = 0 /* (dos_sound.c VOICE_CROWD: the training ground's is free) */ };
+static Sound   s_sound[MAX_SOUNDS];
+static int32_t s_sounds;
+static int32_t s_soundPlaying = -1;
+
 static Decal   s_decal[MAX_DECALS];
 static int32_t s_decals;
 static int32_t s_read;          /* the mods' entries read for this pitch */
@@ -108,7 +134,7 @@ static char *slurp(const char *path, int *len)
     long n;
     if (!f)
         return NULL;
-    if (fseek(f, 0, SEEK_END) == 0 && (n = ftell(f)) > 0 && n < (1 << 20) && fseek(f, 0, SEEK_SET) == 0 &&
+    if (fseek(f, 0, SEEK_END) == 0 && (n = ftell(f)) > 0 && n < (16 << 20) && fseek(f, 0, SEEK_SET) == 0 &&
         (buf = (char *)malloc((size_t)n + 1)) != NULL) {
         if (fread(buf, 1, (size_t)n, f) == (size_t)n) {
             buf[n] = '\0';
@@ -120,6 +146,14 @@ static char *slurp(const char *path, int *len)
     }
     fclose(f);
     return buf;
+}
+
+static void free_sounds(void)
+{
+    for (int32_t i = 0; i < s_sounds; i++)
+        free(s_sound[i].pcm);
+    memset(s_sound, 0, sizeof s_sound);
+    s_sounds = 0;
 }
 
 static void free_decals(void)
@@ -318,6 +352,59 @@ static void read_mod(const char *slug, const char *dir, const uint8_t *pal)
             s_decals++;
         }
     }
+    if (mjson_find(json, len, "$.pitch_sounds", &arr, &arrl) == MJSON_TOK_ARRAY) {
+        int off = 0, ko, kl, vo, vl, vt;
+        while ((off = mjson_next(arr, arrl, off, &ko, &kl, &vo, &vl, &vt)) != 0 && s_sounds < MAX_SOUNDS) {
+            if (vt != MJSON_TOK_OBJECT)
+                continue;
+            const char *it = arr + vo;
+            const int itl = vl;
+            Sound *so = &s_sound[s_sounds];
+            char file[256] = "";
+            double v = 100;
+            memset(so, 0, sizeof *so);
+            snprintf(so->slug, sizeof so->slug, "%s", slug);
+            mjson_get_string(it, itl, "$.setting", so->setting, (int)sizeof so->setting);
+            mjson_get_string(it, itl, "$.sound", file, (int)sizeof file);
+            mjson_get_number(it, itl, "$.volume", &v);
+            so->volume = v < 1 ? 1 : v > 127 ? 127 : (int32_t)v;
+            {
+                const char *pa;
+                int pal2;
+                if (mjson_find(it, itl, "$.pitches", &pa, &pal2) == MJSON_TOK_ARRAY) {
+                    int po = 0, pko, pkl, pvo, pvl, pvt;
+                    while ((po = mjson_next(pa, pal2, po, &pko, &pkl, &pvo, &pvl, &pvt)) != 0) {
+                        const int n = atoi(pa + pvo);
+                        if (pvt == MJSON_TOK_NUMBER && n >= 1 && n <= 6)
+                            so->pitches |= (uint8_t)(1u << n);
+                    }
+                } else
+                    so->pitches = 0x7E;
+            }
+            so->def = 1;
+            {
+                const char *sa;
+                int sal;
+                if (so->setting[0] && mjson_find(json, len, "$.settings", &sa, &sal) == MJSON_TOK_ARRAY) {
+                    int so2 = 0, sko, skl, svo, svl, svt;
+                    while ((so2 = mjson_next(sa, sal, so2, &sko, &skl, &svo, &svl, &svt)) != 0) {
+                        char key[40] = "", dv[16] = "";
+                        mjson_get_string(sa + svo, svl, "$.key", key, (int)sizeof key);
+                        if (strcmp(key, so->setting) == 0 &&
+                            mjson_get_string(sa + svo, svl, "$.default", dv, (int)sizeof dv) > 0)
+                            so->def = !(strcmp(dv, "off") == 0 || strcmp(dv, "false") == 0 || strcmp(dv, "0") == 0);
+                    }
+                }
+            }
+            if (!file[0])
+                continue;
+            snprintf(so->path, sizeof so->path, "%s/%s", dir, file);
+            if (test_on())
+                fprintf(stderr, "[pitchdecals] %s: %s (a sound, pitches 0x%02x, setting %s, volume %d)\n", slug, file,
+                        so->pitches, so->setting[0] ? so->setting : "-", (int)so->volume);
+            s_sounds++;
+        }
+    }
     free(json);
 }
 
@@ -325,6 +412,8 @@ static void read_all(void)
 {
     uint8_t pal[768];
     free_decals();
+    if (s_soundPlaying < 0)
+        free_sounds();
     DosGfx_BuildPalette(4, pal);        /* (the condition "normal": the pictures' grass) */
     for (int32_t i = 0; i < Mods_Count(); i++)
         if (strcmp(Mods_Id(i), SLUG) != 0)
@@ -484,6 +573,158 @@ static void dump_pitch(void)
     free(rgb);
 }
 
+/* ---- the pitch's sounds ---- */
+
+extern void AudioSDL_PcmPlay16(int voice, const int16_t *data, uint32_t len, int rate, int volume, int loops);
+extern void AudioSDL_PcmStop(int voice);
+extern int  AudioSDL_PcmPlaying(int voice);
+
+/* An MP3's gapless numbers (its LAME tag: the encoder's delay and padding), 0 when it has none. */
+static void mp3_gapless(const uint8_t *d, size_t n, uint32_t *delay, uint32_t *padding)
+{
+    size_t at = 0;
+    *delay = *padding = 0;
+    if (n > 10 && memcmp(d, "ID3", 3) == 0)     /* (an ID3v2 tag first) */
+        at = 10 + ((size_t)(d[6] & 0x7F) << 21 | (size_t)(d[7] & 0x7F) << 14 | (size_t)(d[8] & 0x7F) << 7 | (d[9] & 0x7F));
+    for (size_t i = at; i + 200 < n && i < at + 4096; i++) {
+        if (memcmp(d + i, "Xing", 4) != 0 && memcmp(d + i, "Info", 4) != 0)
+            continue;
+        for (size_t j = i + 8; j + 24 < n && j < i + 200; j++)
+            if (memcmp(d + j, "LAME", 4) == 0 || memcmp(d + j, "Lavc", 4) == 0 || memcmp(d + j, "Lavf", 4) == 0) {
+                *delay = (uint32_t)d[j + 21] << 4 | d[j + 22] >> 4;
+                *padding = ((uint32_t)d[j + 22] & 0x0F) << 8 | d[j + 23];
+                return;
+            }
+        return;
+    }
+}
+
+/* The sound, mono 16-bit, played round and round as it is: a WAV sample for sample; an MP3 less
+ * what its encoder put before and after the music (its LAME tag; and the decoder's 529), so a
+ * loop made to loop still does. */
+static void decode_sound(Sound *so)
+{
+    const size_t len = strlen(so->path);
+    if (len > 4 && (strcmp(so->path + len - 4, ".wav") == 0 || strcmp(so->path + len - 4, ".WAV") == 0)) {
+        SDL_AudioSpec spec;
+        Uint8 *buf = NULL;
+        Uint32 bytes = 0;
+        SDL_AudioCVT cvt;
+        if (!SDL_LoadWAV(so->path, &spec, &buf, &bytes)) {
+            fprintf(stderr, "[pitchdecals] %s: %s\n", so->path, SDL_GetError());
+            so->failed = 1;
+            return;
+        }
+        if (SDL_BuildAudioCVT(&cvt, spec.format, spec.channels, spec.freq, AUDIO_S16SYS, 1, spec.freq) < 0 ||
+            !(cvt.buf = (Uint8 *)malloc((size_t)bytes * (cvt.len_mult > 0 ? cvt.len_mult : 1) + 16))) {
+            SDL_FreeWAV(buf);
+            so->failed = 1;
+            return;
+        }
+        cvt.len = (int)bytes;
+        memcpy(cvt.buf, buf, bytes);
+        SDL_FreeWAV(buf);
+        if (cvt.needed)
+            SDL_ConvertAudio(&cvt);
+        so->pcm = (int16_t *)cvt.buf;
+        so->frames = (uint32_t)(cvt.needed ? cvt.len_cvt : cvt.len) / 2u;
+        so->rate = spec.freq;
+        return;
+    }
+    {
+        int flen = 0;
+        char *file = slurp(so->path, &flen);
+        drmp3_config cfg;
+        drmp3_uint64 n = 0;
+        uint32_t delay = 0, padding = 0, skip, keep;
+        int16_t *pcm = file ? drmp3_open_memory_and_read_pcm_frames_s16(file, (size_t)flen, &cfg, &n, NULL) : NULL;
+        if (file)
+            mp3_gapless((const uint8_t *)file, (size_t)flen, &delay, &padding);
+        free(file);
+        if (!pcm || !n || !cfg.channels) {
+            fprintf(stderr, "[pitchdecals] %s: not an MP3 that can be read\n", so->path);
+            so->failed = 1;
+            drmp3_free(pcm, NULL);
+            return;
+        }
+        skip = delay ? delay + 529 : 0;
+        keep = (uint32_t)n > skip + padding ? (uint32_t)n - skip - padding : (uint32_t)n;
+        if (keep == (uint32_t)n)
+            skip = 0;
+        so->pcm = (int16_t *)malloc((size_t)keep * sizeof *so->pcm);
+        if (!so->pcm) {
+            drmp3_free(pcm, NULL);
+            so->failed = 1;
+            return;
+        }
+        for (uint32_t i = 0; i < keep; i++) {
+            int32_t sum = 0;
+            for (drmp3_uint32 c = 0; c < cfg.channels; c++)
+                sum += pcm[((size_t)skip + i) * cfg.channels + c];
+            so->pcm[i] = (int16_t)(sum / (int32_t)cfg.channels);
+        }
+        drmp3_free(pcm, NULL);
+        so->frames = keep;
+        so->rate = (int32_t)cfg.sampleRate;
+        if (test_on())
+            fprintf(stderr, "[pitchdecals] %s: %u frames decoded, %u cut before, %u after\n", so->path,
+                    (unsigned)n, (unsigned)skip, (unsigned)padding);
+    }
+}
+
+static void sound_stop(void)
+{
+    if (s_soundPlaying >= 0)
+        AudioSDL_PcmStop(VOICE_AMBIENCE);
+    s_soundPlaying = -1;
+}
+
+/* Each frame of a match: the pitch's sound going, or stopped when its setting is off. */
+static void match_frame(void)
+{
+    const int32_t pitch = (int32_t)(_pitchNumberAndType >> 8) + 1;
+    int32_t want = -1;
+    if (!s_read)
+        read_all();
+    for (int32_t i = 0; i < s_sounds && want < 0; i++) {
+        const Sound *so = &s_sound[i];
+        if ((so->pitches & (1u << pitch)) && !so->failed &&
+            (!so->setting[0] || ModApi_SettingInt(so->slug, so->setting, so->def) != 0))
+            want = i;
+    }
+    if (pitch != 6)
+        want = -1;          /* only the training ground: the one place with no crowd to hear */
+    if (want < 0) {
+        sound_stop();
+        return;
+    }
+    if (s_soundPlaying == want && AudioSDL_PcmPlaying(VOICE_AMBIENCE))
+        return;
+    if (!s_sound[want].pcm && !s_sound[want].failed)
+        decode_sound(&s_sound[want]);
+    if (!s_sound[want].pcm)
+        return;
+    AudioSDL_PcmPlay16(VOICE_AMBIENCE, s_sound[want].pcm, s_sound[want].frames, s_sound[want].rate,
+                       s_sound[want].volume, -1);
+    s_soundPlaying = want;
+    if (test_on())
+        fprintf(stderr, "[pitchdecals] pitch %d: %s, round and round (%u frames at %d Hz)\n", (int)pitch,
+                s_sound[want].path, (unsigned)s_sound[want].frames, (int)s_sound[want].rate);
+}
+
+static void match_ended(const ModMatchResult *result)
+{
+    (void)result;
+    sound_stop();
+}
+
+/* Out of the match (its end, an abandoned one): the sound with it. */
+static void frame_drawn(void)
+{
+    if (s_soundPlaying >= 0 && !ModApi_InMatch())
+        sound_stop();
+}
+
 /* ---- the hooks ---- */
 
 static void pitch_dropped(void)
@@ -561,6 +802,9 @@ const ModDef ModDef_pitchdecals = {
     .pitchTiles       = pitch_tiles,
     .spriteDraw       = sprite_draw,
     .replaySpriteDraw = replay_sprite_draw,
+    .matchFrame       = match_frame,
+    .matchEnded       = match_ended,
+    .frameDrawn       = frame_drawn,
 };
 
 #endif /* SWOS_SDL_BUILD */

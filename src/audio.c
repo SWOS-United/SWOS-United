@@ -81,6 +81,24 @@ void Audio_SetSfxObserver(AudioSfxObserver observer)
     s_sfxObserver = observer;
 }
 
+/* The Amiga's crowd on the training ground: not heard (its presets the game leaves out of a
+ * training game itself -- PlaySample*IfNotTraining -- and the crowd's waves: the background, the
+ * cheers, the sighs, the chants). Practice's team training and a match on pitch 6 are matches to
+ * the game (Redhair, 2026-11-26). Hearing only: a recording keeps them (the observer is told
+ * first), and nothing of the match depends on what is heard. */
+static int32_t training_ground_crowd(uint8_t kind, uint16_t id)
+{
+    extern uint16_t _pitchNumberAndType;
+    if ((_pitchNumberAndType >> 8) != 5)
+        return 0;
+    if (kind == AUDIO_SFX_PRESET)
+        return id == 1 || id == 3 || id == 4 || id == 6 || id == 7;
+    if (kind == AUDIO_SFX_WAVE)
+        return id == 0x01 || id == 0x02 || id == 0x05 || id == 0x06 || id == 0x08 || id == 0x09 ||
+               id == 0x0F || id == 0x12 || id == 0x14 || id == 0x37 || id == 0x38 || id == 0x3A || id == 0x3E;
+    return 0;
+}
+
 /* dos_sound.h: something the PC game has a sound for. Kept by a recording and held
  * back on a frame played again, like the Amiga's effects, whatever the sound style. */
 void Audio_DosEvent(uint8_t event, uint16_t arg)
@@ -511,6 +529,8 @@ void AudioApplyPresetToChannels(uint16_t presetId)
         s_sfxObserver(AUDIO_SFX_PRESET, 0xFF, (uint16_t)(presetId & 0x3F));
     if (s_sfxFilter && !s_sfxFilter(AUDIO_SFX_PRESET, 0xFF, (uint16_t)(presetId & 0x3F)))
         return;
+    if (training_ground_crowd(AUDIO_SFX_PRESET, (uint16_t)(presetId & 0x3F)))
+        return;
     if (DosSound_Live())
         return;                 /* the PC sounds have this match */
     AudioSDL_TriggerSfxPreset((int)(presetId & 0x3F));   /* 6-bit preset id, see Amiga &= 0x3F */
@@ -567,6 +587,8 @@ void AudioChannelQueueNextWaveIfEnabled(uint16_t channel, uint16_t waveId)
     if (s_sfxObserver)
         s_sfxObserver(AUDIO_SFX_WAVE, (uint8_t)(channel & 3), waveId);
     if (s_sfxFilter && !s_sfxFilter(AUDIO_SFX_WAVE, (uint8_t)(channel & 3), waveId))
+        return;
+    if (training_ground_crowd(AUDIO_SFX_WAVE, waveId))
         return;
     if (DosSound_Live()) {
         /* The PC sounds have this match. The one thing taken from the Amiga's is
