@@ -17,8 +17,9 @@ ours); the size it prints is make_menus2020.py's LOGO_SIZE: keep the two the sam
 old banner: a black setting, a chrome rim (a wire's shading by OpenCV's distance field), the faces
 raised. Needs Pillow, numpy and OpenCV (opencv-python); the SVG has the flat rim, not the shading.
 
---svg writes the same drawing as an SVG (to look at, or for a bigger copy); --preview a 3x view
-of it over a dark and a green ground.
+--svg writes the same drawing as an SVG (to look at, or for a bigger copy; the repository keeps
+one, docs/images/swos_united_logo.svg: made again with the PNGs); --preview a 3x view of it over a
+dark and a green ground.
 """
 import argparse
 import math
