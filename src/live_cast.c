@@ -41,6 +41,7 @@
 
 #define LIVE_FILE   "LIVE.SRP"
 enum { kFrameHead = 20, kSpriteBytes = 6, kLag = 3 };   /* (FRMS; seconds behind the players) */
+static int s_forkLag;                   /* a fork's match: its own seconds behind (0: kLag) */
 
 static char     s_host[256];
 static uint16_t s_port;
@@ -67,9 +68,25 @@ static uint32_t       s_chapCount, s_chapCap;
 static uint16_t       s_score[2];
 static int32_t        s_haveScore, s_outcome = -1;
 
+/* ---- A FORK'S OWN LIVE MATCHES ----
+ * A fork with live matches of its own (SWOS United: SWOS 2020's, on its livestream server) keeps
+ * them in src/live_cast_fork.inc, which OpenSWOS does not have; it is included at the END of this
+ * file, so it fills this file's buffers (s_meta, s_frms ...) as the reader does, and its
+ * live_cast_fork() returns these hooks. With none, or no file, LIVE CAST is the recorder's alone. */
+typedef struct {
+    int32_t (*list)(ModLiveMatch *out, int32_t cap);    /* its matches (out NULL: how many); -1 none reached */
+    int32_t (*owns)(uint64_t id);                       /* an id of its list */
+    int32_t (*start)(uint64_t id);                      /* connected, its reader filling the buffers: 0 */
+    void    (*stop)(void);                              /* its connection ended, its reader joined */
+    int32_t lag;                                        /* seconds behind its live edge (0: kLag) */
+} LiveCastFork;
+static const LiveCastFork *live_cast_fork(void);
+
 /* What the viewer has been given. */
 static uint32_t s_given, s_givenAudio;
 static int32_t  s_seeked, s_ended, s_viewing;
+static uint32_t s_lastPump;             /* when LiveCast_Pump last ran (SDL_GetTicks) */
+static int32_t  s_wasPaused;            /* the viewer was paused at the last pump */
 
 int32_t LiveCast_Request(const char *spec, int32_t list)
 {
@@ -356,6 +373,7 @@ static int32_t list_data(ModLiveMatch *out, int32_t cap)
         ModLiveMatch m;
         char *str[4];
         memset(&m, 0, sizeof m);
+        m.minute = -1;
         m.id = Record_Get64(buf + at);
         m.frames = Record_Get32(buf + at + 8);
         at += 12;
@@ -395,24 +413,35 @@ static int32_t start(void)
 {
     s_done = 0;
     s_outcome = -1;
-    s_sock = open_socket();
-    if (s_sock < 0)
-        return 1;
     if (!s_lock)
         s_lock = SDL_CreateMutex();
-    if (!s_lock || ask(s_sock, RECORD_WATCH, s_id) != 0)
+    if (!s_lock)
         return 1;
-    s_thread = SDL_CreateThread(reader, "live-cast", NULL);
-    if (!s_thread)
-        return 1;
-    for (uint32_t waited = 0; waited < 15000; waited += 50) {
+    s_forkLag = 0;
+    if (live_cast_fork() && live_cast_fork()->owns(s_id)) {    /* (one of the fork's matches) */
+        s_forkLag = live_cast_fork()->lag;
+        if (live_cast_fork()->start(s_id) != 0)
+            return 1;
+    } else {
+        s_sock = open_socket();
+        if (s_sock < 0 || ask(s_sock, RECORD_WATCH, s_id) != 0)
+            return 1;
+        s_thread = SDL_CreateThread(reader, "live-cast", NULL);
+        if (!s_thread)
+            return 1;
+    }
+    /* A recorder's match comes with all of it so far (its 50 frames at once); a fork's stream from
+     * its live edge, a frame at a time: a few will do, and the viewer is never kept waiting long. */
+    const uint32_t need = s_forkLag ? 5 : 50, patience = s_forkLag ? 5000 : 15000, began = SDL_GetTicks();
+    for (uint32_t waited = 0; waited < patience; waited += 10) {
         SDL_LockMutex(s_lock);
-        const int ready = s_meta && s_frames >= 50;
+        const int ready = s_meta && s_frames >= need;
         SDL_UnlockMutex(s_lock);
         if (ready || s_done)
             break;
-        SDL_Delay(50);
+        SDL_Delay(10);
     }
+    fprintf(stderr, "[live] %u frames after %u ms\n", (unsigned)s_frames, (unsigned)(SDL_GetTicks() - began));
     SDL_LockMutex(s_lock);
     const int ok = s_meta && s_frames > 0 && write_snapshot() == 0;
     SDL_UnlockMutex(s_lock);
@@ -422,6 +451,8 @@ static int32_t start(void)
         return 1;
     }
     s_seeked = 0;
+    s_lastPump = 0;
+    s_wasPaused = 0;
     s_ended = 0;
     s_viewing = 1;
     fprintf(stderr, "[live] watching %s:%u from frame %u\n", s_host, (unsigned)s_port, (unsigned)s_given);
@@ -440,6 +471,8 @@ static void stop(void)
         SDL_WaitThread(s_thread, NULL);
         s_thread = NULL;
     }
+    if (live_cast_fork())
+        live_cast_fork()->stop();       /* (its own, if it was one of its matches) */
     free(s_meta); free(s_frms); free(s_offsets); free(s_audio); free(s_chap);
     s_meta = s_frms = NULL;
     s_offsets = NULL;
@@ -489,10 +522,37 @@ void LiveCast_Pump(void)
     const int over = s_done && s_given == s_frames;
     SDL_UnlockMutex(s_lock);
     if (!s_seeked) {                        /* (a match joined late: to near its live edge) */
-        const int32_t back = (int32_t)(s_tick ? s_tick : 50) * kLag;
+        /* (a fork's stream that starts at the live edge: as soon as it is past its own lag) */
+        const int32_t back = (int32_t)(s_tick ? s_tick : 50) * (s_forkLag ? s_forkLag : kLag);
         s_seeked = 1;
-        if ((int32_t)s_given > back * 2)
+        if ((int32_t)s_given > (s_forkLag ? back : back * 2))
             ReplayV2_PlayerSeek((int32_t)s_given - back);
+    }
+    {   /* The game held while the match went on -- a window dragged on Windows (its move loop
+         * stops the main loop), a slow load -- and the viewer would carry on from where it was
+         * held, ever further behind: the time it lost skipped, up to the lag it keeps. A pause
+         * of the viewer's own is not this (it does not pump-stall), nor is it undone. */
+        const uint32_t now = SDL_GetTicks();
+        const uint32_t lost = s_lastPump ? now - s_lastPump : 0;
+        s_lastPump = now;
+        extern uint16_t _paused;
+        const int32_t paused = _paused != 0 || ReplayV2_PlayerPaused();
+        const int32_t resumed = s_wasPaused && !paused;
+        s_wasPaused = paused;
+        if (resumed) {                  /* (out of a pause: live again, not where it was paused) */
+            const int32_t edge = (int32_t)s_given - (int32_t)(s_tick ? s_tick : 50) * (s_forkLag ? s_forkLag : kLag);
+            if (edge > ReplayV2_PlayerFrame())
+                ReplayV2_PlayerSeek(edge);
+        } else if (lost > 250 && !paused) {
+            const int32_t tick = (int32_t)(s_tick ? s_tick : 50);
+            const int32_t edge = (int32_t)s_given - tick * (s_forkLag ? s_forkLag : kLag);
+            const int32_t at = ReplayV2_PlayerFrame();
+            int32_t to = at + (int32_t)((uint64_t)lost * (uint32_t)tick / 1000u);
+            if (to > edge)
+                to = edge;
+            if (to > at)
+                ReplayV2_PlayerSeek(to);
+        }
     }
     if (over && !s_ended && ReplayV2_PlayerFrame() >= (int32_t)s_given - 1) {
         extern volatile uint16_t _playHighlightFlag;
@@ -512,10 +572,18 @@ static void use_default_server(void)
 
 int32_t ModApi_LiveList(ModLiveMatch *out, int32_t cap)
 {
+    int32_t n;
     if (s_viewing)
         return -1;
     use_default_server();
-    return list_data(out, cap);
+    n = list_data(out, cap);
+    if (live_cast_fork()) {             /* (the fork's matches after the recorder's) */
+        const int32_t have = n > 0 ? n : 0;
+        const int32_t more = live_cast_fork()->list(out ? out + have : NULL, out ? cap - have : 0);
+        if (more >= 0)
+            n = have + more;
+    }
+    return n;
 }
 
 /* ModApi_LiveAny: the last answer, asked again in the background at most every 20 s. */
@@ -573,6 +641,16 @@ int32_t ModApi_LiveWatch(uint64_t id)
     stop();
     return rc;
 }
+
+#if defined(__has_include)
+#if __has_include("live_cast_fork.inc")
+#define LIVE_CAST_FORK 1
+#include "live_cast_fork.inc"           /* defines live_cast_fork() */
+#endif
+#endif
+#ifndef LIVE_CAST_FORK
+static const LiveCastFork *live_cast_fork(void) { return NULL; }
+#endif
 
 #else
 

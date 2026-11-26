@@ -73,6 +73,14 @@
  * Ranked and league results still go to sensiblesoccer.de (the account ids are the same). */
 #define PROJECT_ACCOUNT_API     "https://swos.swosunited.com/api/"
 
+/* SWOS 2020's live matches (src/live_cast_fork.inc, LIVE CAST): its livestream server on swos.eu --
+ * the list of the matches live now over HTTPS, and a match's stream (/watch/<id>, a WebSocket) on
+ * its plain port, the one SWOS 2020's own client talks to (the SWOS-API repo's client,
+ * united_live2020.c). */
+#define PROJECT_LIVE2020_LIST_URL   "https://swos.eu:2020/api/live"
+#define PROJECT_LIVE2020_HOST       "swos.eu"
+#define PROJECT_LIVE2020_WATCH_PORT 2019
+
 /* The challenges' and speedruns' records online (src/mod_online_records.c): where SWOS 2020's
  * galoreapi_v15.php and swosapi_v3.php are -- SWOS-API (third_party/swos-api) once it is
  * deployed; today SWOS 2020's own folder on sensiblesoccer.de. No trailing slash. */

@@ -596,6 +596,8 @@ typedef struct {
     uint64_t id;                            /* for ModApi_LiveWatch */
     char     players[2][24], teams[2][24];
     uint32_t frames;                        /* recorded so far */
+    int32_t  minute;                        /* on its clock now; -1 not known (the recorder's) */
+    int32_t  goals[2];                      /* its score now (when minute is known) */
 } ModLiveMatch;
 /* The live matches (up to `cap`): how many, -1 when the server cannot be reached. Blocks up to
  * ~2 s: show a "LOOKING..." line first. */

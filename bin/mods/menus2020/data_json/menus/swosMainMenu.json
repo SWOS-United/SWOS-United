@@ -10,7 +10,7 @@
   },
   "onInit": "menus2020.mainInit",
   "onReturn": "menus2020.mainDrawn",
-  "onDraw": null,
+  "onDraw": "menus2020.mainDraw",
   "defaultEntry": 0,
   "exports": {},
   "items": [

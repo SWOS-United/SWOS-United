@@ -695,7 +695,21 @@ static void mainInit(void)
     run_begin();
 }
 
-/* Each frame of the main menu: the TV shows a match when one is live (SWOS 2020's drawTvIcon). */
+/* Each frame of the main menu (onDraw): the TV shows a match when one is live (SWOS 2020's
+ * drawTvIcon) -- ModApi_LiveAny asks in the background at most every 20 s. */
+static void mainDraw(void)
+{
+#ifdef SWOS_NETPLAY
+    const int32_t live = ModApi_LiveAny() == 1;
+    if (live != s_liveShown) {
+        s_liveShown = live;
+        ModApi_SetMenuImage(Main_liveCast, live ? "grafs_2020/menus2020/tv_live.bmp"
+                                                : "grafs_2020/menus2020/tv_idle.bmp");
+    }
+#endif
+}
+
+/* Back on the main menu (onReturn): the logo as chosen, the layout, the TV. */
 static void mainDrawn(void)
 {
     logo_as_chosen();
@@ -706,14 +720,7 @@ static void mainDrawn(void)
         if (cont->isInvisible && load->x != (uint16_t)(cont->x + (cont->dwWidth - load->dwWidth) / 2))
             main_refresh();
     }
-#ifdef SWOS_NETPLAY
-    const int32_t live = ModApi_LiveAny() == 1;
-    if (live != s_liveShown) {
-        s_liveShown = live;
-        ModApi_SetMenuImage(Main_liveCast, live ? "grafs_2020/menus2020/tv_live.bmp"
-                                                : "grafs_2020/menus2020/tv_idle.bmp");
-    }
-#endif
+    mainDraw();
 }
 
 /* What a sub-screen chose, run by the main-menu button that opened it. */
@@ -1275,15 +1282,20 @@ static ModLiveMatch s_live[kLiveRows];
 static int32_t      s_liveCount;
 static int32_t      s_liveAction;       /* what the list chose: 0 leave, 1 watch, 2 refresh */
 static uint64_t     s_watchId;
-static char         s_liveRow[kLiveRows][52];
+static char         s_liveRow[kLiveRows][80];
 
 static void liveInit(void)
 {
     for (int32_t i = 0; i < kLiveRows; i++) {
         if (i < s_liveCount) {
             const ModLiveMatch *m = &s_live[i];
-            snprintf(s_liveRow[i], sizeof s_liveRow[i], "%s V %s (%s V %s)",
-                     m->players[0], m->players[1], m->teams[0], m->teams[1]);
+            if (m->minute >= 0)         /* (the score and the minute, when the server says them) */
+                snprintf(s_liveRow[i], sizeof s_liveRow[i], "%s V %s (%s %d-%d %s) %d'",
+                         m->players[0], m->players[1], m->teams[0], (int)m->goals[0], (int)m->goals[1],
+                         m->teams[1], (int)m->minute);
+            else
+                snprintf(s_liveRow[i], sizeof s_liveRow[i], "%s V %s (%s V %s)",
+                         m->players[0], m->players[1], m->teams[0], m->teams[1]);
             ModApi_MenuText(Live_first + i, s_liveRow[i]);
         }
         ModApi_MenuVisible(Live_first + i, i < s_liveCount);
@@ -1338,7 +1350,7 @@ static void liveCast(void) {}
 static void init(void)
 {
     static const ModHandler handlers[] = {
-        { "mainInit", mainInit }, { "mainDrawn", mainDrawn },
+        { "mainInit", mainInit }, { "mainDrawn", mainDrawn }, { "mainDraw", mainDraw },
         { "liveCast", liveCast }, { "liveInit", liveInit }, { "liveWatch", liveWatch },
         { "liveRefresh", liveRefresh },
         { "compete", compete }, { "practice", practice }, { "replays", replays },

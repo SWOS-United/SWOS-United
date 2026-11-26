@@ -122,6 +122,18 @@ rebase), `git cherry-pick <commit>` one fix, or nothing at all. `upstream` is fe
   service; the boards through online-records (`speedrun.board / mine / news`: SWOS 2020's
   swosapi_v3, read-only). TACKLE is SWOS 2020's rule since OpenSWOS 35e741dd (a goal with your
   tackle the last thing before it), and a preset run sends its difficulty.
+- **SWOS 2020's live matches in LIVE CAST** (`src/live_cast_fork.inc`, OpenSWOS's `src/live_cast.c`
+  includes it at its end through its `LiveCastFork` hooks): the matches live on SWOS 2020's livestream
+  server (swos.eu, `PROJECT_LIVE2020_*`) after the recorder's own in LIVE CAST's list, watched in the
+  replay viewer as the recorder's are. SWOS-API's `united_live2020.c` lists them (`/api/live`) and
+  carries a match's stream (`/watch/<id>`, a WebSocket on the plain port); the .inc turns it into
+  the .SRP's META (teams, worn kits, line-ups, pitch, game style, the picture's size) and frames
+  (world positions from SWOS 2020's camera and screen positions, the simulation camera scaled back
+  from its 480-wide picture, the PC's sprite numbers less 114, 78 a frame at most). Only matches
+  being played are listed (not those still in their lobby), with score and minute; the stream
+  starts at its live edge, so LIVE CAST waits for 5 frames, not 50, and keeps 1 s behind, not 3.
+  No sound comes with it; a match is watched from where it is when joined. Live matches only: the
+  archive is swos.eu's in the browser.
 - **MATCH INFO** (`src/united_matchinfo.c`): a click on a player's name -- the online list
   (with SWOS 2020's hint), the lobby's PLAYERS column (their GO goes down while they look, and
   comes back) and RANKINGS -- opens SWOS 2020's matchInfoMenu: PLAYER (playerInfoMenu), RANKED
