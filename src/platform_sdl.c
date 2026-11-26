@@ -2343,6 +2343,36 @@ static void chunky_to_rgba(uint32_t *dst, int dst_pitch_pixels)
     }
 }
 
+/* For a mod painting the menus' boxes over the picture (dosmenus' PC look): what MENU OPACITY
+ * shows through the frame's pixel at x, y. 1, with the colour under it (the game's backdrop's
+ * entry, or the backdrop picture's pixel) and the opacity 0-255, where chunky_to_rgba (or the
+ * GPU's palette alpha) blends that pixel: under 100 %, in the menus, a coloured part over
+ * something else. 0 where it is solid. The mod mixes its own colour so: painted solid over the
+ * picture, its boxes were solid at any opacity (Playa, 2026-11-26). */
+int Platform_MenuUnder(int x, int y, uint32_t *rgb, int *alpha)
+{
+    const int a = menu_alpha_now();
+    const uint8_t *fb = frame_source();
+    if (a >= 255 || !fb || fb == _frontbufferMaskBuffer || x < 0 || y < 0 ||
+        x >= _screen_width || y >= _screen_height)
+        return 0;
+    const size_t at = (size_t)y * FRONTBUFFER_ROW_STRIDE_BYTES + (size_t)x;
+    const uint8_t c = fb[at], u = _frontbufferMaskBuffer[at];
+    if (u == c || menu_solid(c))
+        return 0;
+    if (backdrop_shown() && u == MENU_BACKDROP_KEY) {
+        const uint32_t *bd = backdrop_small(_screen_width, _screen_height);
+        if (!bd)
+            return 0;
+        *rgb = bd[(size_t)y * _screen_width + x] & 0xFFFFFFu;
+    } else {
+        const SDL_Color uc = s_palette[u];
+        *rgb = ((uint32_t)uc.r << 16) | ((uint32_t)uc.g << 8) | uc.b;
+    }
+    *alpha = a;
+    return 1;
+}
+
 /* Optional debug dump: every N frames write the converted chunky
  * frame to /tmp/swos_frame_NNNN.ppm. Enabled when the env var
  * SWOS_DUMP_FRAMES is set. Useful for headless smoke-testing. */

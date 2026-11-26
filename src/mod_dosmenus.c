@@ -39,6 +39,7 @@
 #define SLUG "dosmenus"
 
 extern const uint8_t *Platform_FrameShown(void);
+extern int Platform_MenuUnder(int x, int y, uint32_t *rgb, int *alpha);
 extern uint8_t *Platform_HudLayerBuffer(void);
 extern int EscConfirm_Showing(void);
 extern int _menu_draw_x_offset;
@@ -201,7 +202,14 @@ static void frame_drawn(void)
                 mx = mx < 0 ? 0 : mx >= kMapW ? kMapW - 1 : mx;
                 const uint8_t *rgb = line ? s_pc.rgb[c]
                                           : s_pc.rgb[(k_ramp[c] + s_pc.shade[my * kMapW + mx]) & 255];
-                s_layer[(size_t)y * s_lw + x] = 0xFF000000u | ((uint32_t)rgb[0] << 16) | ((uint32_t)rgb[1] << 8) | rgb[2];
+                uint32_t r = rgb[0], g = rgb[1], bl = rgb[2], under;
+                int a;
+                if (!hud && Platform_MenuUnder(x, y, &under, &a)) {    /* (MENU OPACITY: what shows through) */
+                    r  = (r  * (uint32_t)a + ((under >> 16) & 255) * (uint32_t)(255 - a) + 127) / 255;
+                    g  = (g  * (uint32_t)a + ((under >> 8) & 255)  * (uint32_t)(255 - a) + 127) / 255;
+                    bl = (bl * (uint32_t)a + (under & 255)         * (uint32_t)(255 - a) + 127) / 255;
+                }
+                s_layer[(size_t)y * s_lw + x] = 0xFF000000u | (r << 16) | (g << 8) | bl;
                 any = 1;
             }
         }

@@ -349,6 +349,9 @@ const uint8_t *Platform_FrameShown(void);
  * within 100 ms. */
 void           Platform_TrueColourBegin(void);
 void           Platform_TrueColourPixel(int x, int y, uint8_t index, uint32_t rgb);
+/* What MENU OPACITY shows through the menu frame's pixel at x, y (dosmenus' PC look mixes its
+ * shading so): 1, the colour under it and the opacity 0-255; 0 where the pixel is solid. */
+int            Platform_MenuUnder(int x, int y, uint32_t *rgb, int *alpha);
 /* The menus' fade as their opacity over the backdrop picture, 0..255; 255: none (platform_sdl.c). */
 int            Platform_MenuFadeAlpha(void);
 /* A palette entry in 8 bits a channel where the copper has 4 (a glow that should pulse, not
