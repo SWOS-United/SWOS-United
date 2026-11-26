@@ -911,7 +911,7 @@ All in the loader and `UnpackMenu`. None occurs in the 47 compiled menus, and
     (from the next start, said in the note), AUTO CENTERING, SHOW FPS.
   - AUDIO OPTIONS: the four volumes (`AudioSDL_SetKindVolumes`, 10% a step), MENU MUSIC (OPTIONS'
     row), MATCH SOUNDS and MUSIC Amiga/PC, PC MENU MUSIC midi/mp3, COMMENTARY off/on/auto (all now),
-    OUTPUT mono/stereo (next start).
+    AMIGA SOUND OUTPUT mono/mixed/stereo (at once).
   - GAMEPLAY OPTIONS (how a match plays): GAME STYLE (`GameplayStyle_Set`), BALL CONTEST, STRONGER
     KEEPERS, CPU TACTICS -- the rest of SWOS 2020's gameplayOptions screen is
     OPTIONS' own rows, or other features (pitch selection, clash kits).

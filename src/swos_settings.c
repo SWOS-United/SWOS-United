@@ -281,6 +281,7 @@ static int handler(void *user, const char *section,
         if (eqi(name, "mode")) {
             if      (eqi(value, "mono"))   opts->audio_mono = 1;
             else if (eqi(value, "stereo")) opts->audio_mono = 0;
+            else if (eqi(value, "mixed"))  opts->audio_mono = 2;
         }
         else if (eqi(name, "style")) {
             if      (eqi(value, "amiga")) opts->sound_style = 0;
@@ -710,7 +711,8 @@ static int settings_build(const PlatformInitOptions *opts, IniEntry *items, char
     SETTING(n) = (IniEntry){ "video",  "screen",     "; screen: the monitor the game opens on, 0 the first (VIDEO OPTIONS' MONITOR shows it + 1). Set by MONITOR, and when the window is moved to another; one no longer there: the first", vbuf[3] };
     SETTING(n) = (IniEntry){ "video",  "menu_cursor", "; menu_cursor: flashing | steady. The menus' cursor frame (SWOS 2020's flashing menu cursor)",
         opts->menu_cursor ? "steady" : "flashing" };   /* (SWOS 2020 port, agent A) */
-    SETTING(n) = (IniEntry){ "audio",  "mode",       "; mode: mono | stereo", opts->audio_mono ? "mono" : "stereo" };
+    SETTING(n) = (IniEntry){ "audio",  "mode",       "; mode: mono | mixed | stereo (the Amiga sound)",
+                                   opts->audio_mono == 1 ? "mono" : opts->audio_mono == 2 ? "mixed" : "stereo" };
     SETTING(n) = (IniEntry){ "audio",  "style",
         "; style: amiga | pc. A match's sounds: the Amiga's, or the PC game's sampled\n"
         "; effects, crowd and chants (sound_dos/). The menus' music is the Amiga's either\n"

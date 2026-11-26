@@ -186,7 +186,7 @@ static void print_usage(const char *argv0)
         "                            Turn on if you see screen tearing; the manual\n"
         "                            50 Hz game-tick pace runs as a backstop\n"
         "                            regardless.\n"
-        "  --audio=<mono|stereo>     Audio output mode. Default: mono.\n"
+        "  --audio=<mono|mixed|stereo> The Amiga sound: one, half wide, hard left/right. Default: mono.\n"
         "                            The Amiga's 4 audio channels are hard-panned\n"
         "                            (1,2 → left, 0,3 → right) which sounds\n"
         "                            lopsided on most modern playback setups.\n"
@@ -1011,8 +1011,9 @@ int main(int argc, char **argv)
         } else if ((v = match_kv(a, "audio")) != NULL) {
             if (strcmp(v, "mono") == 0)        opts.audio_mono = 1;
             else if (strcmp(v, "stereo") == 0) opts.audio_mono = 0;
+            else if (strcmp(v, "mixed") == 0)  opts.audio_mono = 2;
             else {
-                fprintf(stderr, "Invalid --audio value '%s' (expected mono|stereo)\n", v);
+                fprintf(stderr, "Invalid --audio value '%s' (expected mono|mixed|stereo)\n", v);
                 return 1;
             }
         } else if ((v = match_kv(a, "dos-graphics")) != NULL) {

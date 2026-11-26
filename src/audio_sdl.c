@@ -63,7 +63,7 @@ static void stop_song_locked(void);
  * unbalanced — set this to 1 (the default) to average L+R back into
  * each lane after the mix. --audio=stereo restores the original Amiga
  * panning. */
-static int               s_audio_mono = 1;
+static int               s_audio_mono = 1;      /* the Amiga mix: 0 stereo, 1 mono, 2 mixed */
 
 /* Song looping. Most SWOS songs (the menus) loop internally, but some — notably
  * the HERO title song used in arcade attract — have no loop-back and just end.
@@ -152,12 +152,12 @@ static int audio_pump_thread(void *unused);
 /* AUDIO OPTIONS' OUTPUT at once: the mixer reads it at every tick. */
 void AudioSDL_SetMono(int mono)
 {
-    s_audio_mono = mono ? 1 : 0;
+    s_audio_mono = mono == 1 || mono == 2 ? mono : 0;
 }
 
 int AudioSDL_Init(int mono)
 {
-    s_audio_mono = mono ? 1 : 0;
+    s_audio_mono = mono == 1 || mono == 2 ? mono : 0;
 #if SWOS_AUDIO_DISABLED
     /* Audio disabled at compile time — return success so platform init
      * continues; s_audio_dev stays 0 and AudioSDL_Tick early-returns. */
@@ -332,18 +332,25 @@ void AudioSDL_Tick(void)
         }
         RJP1_MixSamples(&s_player, freq, s_mix_buf, samples_per_tick);
 
-        /* Down-mix to mono (default). Amiga channels 1,2 are hard-left
+        /* Down-mix to mono (default), or MIXED: each side a quarter of the other, as an Amiga
+         * emulator's "mixed" stereo -- still wide, not hard left and right. Amiga channels 1,2 are hard-left
          * and 0,3 are hard-right in the cyxx mapping inside rjp1.c —
          * pleasant on stereo headphones, lopsided on a single speaker.
          * Energy-preserving fold-down: (L+R)/sqrt(2) (≈ *181/256) keeps the
          * overall loudness equal to the stereo mix; the old plain (L+R)/2 lost
          * ~3 dB and halved hard-panned content like the HERO vocal. */
-        if (s_audio_mono) {
+        if (s_audio_mono == 1) {
             for (int i = 0; i + 1 < samples_per_tick; i += 2) {
                 int m = ((int)s_mix_buf[i] + (int)s_mix_buf[i + 1]) * 181 / 256;
                 if (m < -128) m = -128; else if (m > 127) m = 127;
                 s_mix_buf[i]     = (int8_t)m;
                 s_mix_buf[i + 1] = (int8_t)m;
+            }
+        } else if (s_audio_mono == 2) {     /* mixed: a quarter of each side on the other */
+            for (int i = 0; i + 1 < samples_per_tick; i += 2) {
+                const int l = s_mix_buf[i], r = s_mix_buf[i + 1];
+                s_mix_buf[i]     = (int8_t)((l * 3 + r) / 4);
+                s_mix_buf[i + 1] = (int8_t)((r * 3 + l) / 4);
             }
         }
     } else {
@@ -357,12 +364,18 @@ void AudioSDL_Tick(void)
         SDL_memset(s_sfx_mix_buf, 0, (size_t)samples_per_tick);
         RJP1_HandleTick(&s_sfx_player);
         RJP1_MixSamples(&s_sfx_player, freq, s_sfx_mix_buf, samples_per_tick);
-        if (s_audio_mono) {
+        if (s_audio_mono == 1) {
             for (int i = 0; i + 1 < samples_per_tick; i += 2) {
                 int m = ((int)s_sfx_mix_buf[i] + (int)s_sfx_mix_buf[i + 1]) * 181 / 256;
                 if (m < -128) m = -128; else if (m > 127) m = 127;
                 s_sfx_mix_buf[i]     = (int8_t)m;
                 s_sfx_mix_buf[i + 1] = (int8_t)m;
+            }
+        } else if (s_audio_mono == 2) {     /* mixed: a quarter of each side on the other */
+            for (int i = 0; i + 1 < samples_per_tick; i += 2) {
+                const int l = s_sfx_mix_buf[i], r = s_sfx_mix_buf[i + 1];
+                s_sfx_mix_buf[i]     = (int8_t)((l * 3 + r) / 4);
+                s_sfx_mix_buf[i + 1] = (int8_t)((r * 3 + l) / 4);
             }
         }
     } else {

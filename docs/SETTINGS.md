@@ -195,7 +195,7 @@ keeps MULTIPLAYER off. Every tweak is off online and in the test rigs.
                           --renderer=accel. Turn on if you see screen
                           tearing; the manual 50 Hz game-tick pace
                           runs as a backstop regardless.
---audio=<mono|stereo>     Audio output mode. Default: mono.
+--audio=<mono|mixed|stereo> The Amiga sound: one, half wide, hard left/right. Default: mono.
                           The Amiga's 4 audio channels are hard-panned
                           (1,2 → left, 0,3 → right) by Paula, which
                           sounds lopsided on most modern speakers /

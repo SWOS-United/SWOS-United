@@ -994,12 +994,15 @@ static void commentary_change(int32_t dir)
     save();
 }
 
-static void mono_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", O()->audio_mono ? "MONO" : "STEREO"); }
+static void mono_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", O()->audio_mono == 1 ? "MONO" : O()->audio_mono == 2 ? "MIXED" : "STEREO"); }
 static void mono_change(int32_t dir)
 {
     extern void AudioSDL_SetMono(int mono);
-    (void)dir;
-    O()->audio_mono = !O()->audio_mono;
+    /* MONO, MIXED, STEREO (audio_mono 1, 2, 0) */
+    static const int8_t order[] = { 1, 2, 0 };
+    int32_t at = O()->audio_mono == 1 ? 0 : O()->audio_mono == 2 ? 1 : 2;
+    at = (at + (dir < 0 ? 2 : 1)) % 3;
+    O()->audio_mono = order[at];
     AudioSDL_SetMono(O()->audio_mono);
     save();
 }
@@ -1015,7 +1018,7 @@ static const Row k_audioRows[] = {
     { "PC MENU MUSIC",          pcmusic_show,    pcmusic_change },
     { "PC TITLE MUSIC",         pctitle_show,    pctitle_change },
     { "COMMENTARY",             commentary_show, commentary_change },
-    { "OUTPUT",                 mono_show,       mono_change },
+    { "AMIGA SOUND OUTPUT",     mono_show,       mono_change },
 };
 static const Page k_audioPage = { "AUDIO OPTIONS", k_audioRows, (int32_t)(sizeof k_audioRows / sizeof k_audioRows[0]) };
 _Static_assert(sizeof k_audioRows / sizeof k_audioRows[0] <= kRows, "a settings page holds kRows rows at most");
