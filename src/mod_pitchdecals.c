@@ -27,12 +27,15 @@
  * sound is no picture), and only there: the one pitch with no crowd to hear (dos_sound.c,
  * audio.c leave it out there), so nothing plays over or instead of a crowd:
  *
- *   "pitch_sounds": [ { "setting": "birdsong", "pitches": [6], "sound": "birdsong.mp3", "volume": 90 } ]
+ *   "pitch_sounds": [ { "setting": "birdsong", "sound": "birdsong.wav", "volume": 15 },
+ *                     { "setting": "goal_cheer", "event": "goal", "sound": "cheer.wav", "volume": 60 } ]
  *
  *   sound     a WAV or an MP3 in the mod's folder, played round and round through a match there as
  *             it is (a WAV sample for sample; an MP3 less its encoder's silence, by its LAME tag),
  *             on the crowd's voice -- the training ground has no crowd (dos_sound.c, audio.c);
  *             volume 1-127, 100 by default
+ *   event     "goal": not looped but played once at each goal (an own goal too), on the crowd's
+ *             cheering voice -- in a match and its replays (the game's sound event for it)
  *
  * In the mods' order, each entry over the ones before it. Colours: each the nearest of the PC
  * game's palette with its pitch condition "normal" -- the grass and its shades onto the
@@ -46,6 +49,8 @@
  * the match, a replay and a netplay peer are the same with it or without.
  *
  * SWOS_PITCHDECALS_TEST=1: the entries read, the conditions and the cells built, said in the log.
+ * SWOS_PITCHDECALS_ANY_PITCH=1: a goal's sound on any pitch (to test it on a recording with goals);
+ * SWOS_PITCHDECALS_TEST_GOAL=<n>: a goal's sound event at a match's n-th frame.
  * SWOS_PITCHDECALS_DUMP=<file.png>: the whole pitch as the game draws it (every cell, the decals in),
  * in the pitch condition's colours, written once the pitch is worked out. */
 #ifdef SWOS_SDL_BUILD
@@ -99,11 +104,13 @@ typedef struct {
     char     slug[32], setting[40], path[1400];
     int32_t  def, volume;
     uint8_t  pitches;
+    uint8_t  event;             /* 0 looped through the match, 1 once at a goal */
     int16_t *pcm;               /* decoded at its first match: mono, the loop's ends blended */
     uint32_t frames;
     int32_t  rate, failed;
 } Sound;
-enum { MAX_SOUNDS = 4, VOICE_AMBIENCE = 0 /* (dos_sound.c VOICE_CROWD: the training ground's is free) */ };
+enum { MAX_SOUNDS = 4, VOICE_AMBIENCE = 0 /* (dos_sound.c VOICE_CROWD: the training ground's is free) */,
+       VOICE_EVENT = 3 /* (VOICE_REACTION, the crowd's cheers: free there too) */, EVENT_GOAL = 1 };
 static Sound   s_sound[MAX_SOUNDS];
 static int32_t s_sounds;
 static int32_t s_soundPlaying = -1;
@@ -366,6 +373,11 @@ static void read_mod(const char *slug, const char *dir, const uint8_t *pal)
             snprintf(so->slug, sizeof so->slug, "%s", slug);
             mjson_get_string(it, itl, "$.setting", so->setting, (int)sizeof so->setting);
             mjson_get_string(it, itl, "$.sound", file, (int)sizeof file);
+            {
+                char ev[16] = "";
+                mjson_get_string(it, itl, "$.event", ev, (int)sizeof ev);
+                so->event = strcmp(ev, "goal") == 0 ? EVENT_GOAL : 0;
+            }
             mjson_get_number(it, itl, "$.volume", &v);
             so->volume = v < 1 ? 1 : v > 127 ? 127 : (int32_t)v;
             {
@@ -680,15 +692,23 @@ static void sound_stop(void)
 }
 
 /* Each frame of a match: the pitch's sound going, or stopped when its setting is off. */
+static void sound_event(uint8_t event, uint16_t arg);
+
 static void match_frame(void)
 {
     const int32_t pitch = (int32_t)(_pitchNumberAndType >> 8) + 1;
     int32_t want = -1;
+    {   /* SWOS_PITCHDECALS_TEST_GOAL=<n>: a goal's sound event at the match's n-th frame (the test) */
+        static int32_t n;
+        const char *at = getenv("SWOS_PITCHDECALS_TEST_GOAL");
+        if (at && ++n == atoi(at))
+            sound_event(20, 0);
+    }
     if (!s_read)
         read_all();
     for (int32_t i = 0; i < s_sounds && want < 0; i++) {
         const Sound *so = &s_sound[i];
-        if ((so->pitches & (1u << pitch)) && !so->failed &&
+        if (!so->event && (so->pitches & (1u << pitch)) && !so->failed &&
             (!so->setting[0] || ModApi_SettingInt(so->slug, so->setting, so->def) != 0))
             want = i;
     }
@@ -710,6 +730,39 @@ static void match_frame(void)
     if (test_on())
         fprintf(stderr, "[pitchdecals] pitch %d: %s, round and round (%u frames at %d Hz)\n", (int)pitch,
                 s_sound[want].path, (unsigned)s_sound[want].frames, (int)s_sound[want].rate);
+}
+
+/* The game's sound events (dos_sound.h), every run and a replay's: at a goal on the training
+ * ground, a mod's "event": "goal" sound once. (A rollback plays a frame again: the same goal within
+ * two seconds is not cheered twice.) */
+static void sound_event(uint8_t event, uint16_t arg)
+{
+    static uint32_t s_last;
+    const uint32_t now = SDL_GetTicks();
+    (void)arg;
+    if (event != 20 /* DOS_EV_GOAL */ && event != 21 /* DOS_EV_OWN_GOAL */)
+        return;
+    if ((_pitchNumberAndType >> 8) != 5 && !getenv("SWOS_PITCHDECALS_ANY_PITCH"))   /* (the test: any) */
+        return;
+    if (s_last && now - s_last < 2000)
+        return;
+    if (!s_read)
+        read_all();
+    for (int32_t i = 0; i < s_sounds; i++) {
+        Sound *so = &s_sound[i];
+        if (so->event != EVENT_GOAL || so->failed ||
+            (so->setting[0] && ModApi_SettingInt(so->slug, so->setting, so->def) == 0))
+            continue;
+        if (!so->pcm)
+            decode_sound(so);
+        if (!so->pcm)
+            continue;
+        AudioSDL_PcmPlay16(VOICE_EVENT, so->pcm, so->frames, so->rate, so->volume, 0);
+        s_last = now;
+        if (test_on())
+            fprintf(stderr, "[pitchdecals] a goal on the training ground: %s\n", so->path);
+        return;
+    }
 }
 
 static void match_ended(const ModMatchResult *result)
@@ -804,6 +857,7 @@ const ModDef ModDef_pitchdecals = {
     .replaySpriteDraw = replay_sprite_draw,
     .matchFrame       = match_frame,
     .matchEnded       = match_ended,
+    .soundEvent       = sound_event,
     .frameDrawn       = frame_drawn,
 };
 

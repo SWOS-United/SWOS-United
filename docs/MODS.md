@@ -352,7 +352,9 @@ A DLC can carry no code, so what it adds to a pitch it says in its mod.json, and
   its encoder's silence, by its LAME tag) looped through a match on the **training ground only**, on
   the crowd's voice: the one pitch where the game's crowd is not heard (on the training ground the
   crowd is left out whatever the game: `src/dos_sound.c` match_start, `src/audio.c`
-  training_ground_crowd -- hearing only, the match unchanged). Whatever the pitch's graphics.
+  training_ground_crowd -- hearing only, the match unchanged). Whatever the pitch's graphics. With
+  `"event": "goal"` it is played once at each goal there instead (the game's sound event, so in its
+  replays too), on the crowd's cheering voice.
 - `SWOS_PITCHDECALS_TEST=1` says in the log what was read and why a pitch gets nothing;
   `SWOS_PITCHDECALS_DUMP=<file.png>` writes the whole pitch as drawn.
 - The first user: Redhair's DLC **Component System** 2.0 (his training ground, orange goal nets and
