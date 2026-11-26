@@ -191,7 +191,7 @@ ROW_Y, ROW_H, ROW_STEP = 41, 24, 28
 # .pngs, their own colours, drawn over the buttons' shading (mod_hooks.c ModHooks_FrameDrawn).
 CAREER_BUTTONS = [("classicCareer", "multiplayer", 1, "     CLASSIC CAREER", 4, "classicCareer",
                    "classic_career.png", 11),
-                  ("worldCareer", "modes", 155, "WORLD 26/27 CAR.      ", 15, "worldCareer",
+                  ("worldCareer", "modes", 155, "WORLD 26/27 CAR.     ", 15, "worldCareer",
                    "world_career.png", 126)]
 CONTINUE_Y = 154        # (on screen 154..173: 3 under the last row's 150, 4 over SAVE / LOAD's 178)
 # The SWOS United logo's place in the CREDITS entry: SWOS 2020's 293,185 less the entry's 281,182
