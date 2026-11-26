@@ -107,6 +107,72 @@ static int32_t  s_tickerKnown;
 
 static int32_t s_runState;              /* the run-in (below): 0 off, 1 waiting, 2 running, 3 settling, 4 done */
 
+/* WORLD CAREER's text (Playa, 2026-11-26): the season of the World 2026-27 package installed -- its
+ * WORLD.ini's name ("World 2026-27": WORLD 26/27) -- or WORLD CAREER when there is none, or no
+ * season in its name. Read once: OpenSWOS Setup installs it with the game shut. */
+static char s_worldName[16];
+
+/* "2026-27", "2026/27", "26/27", "2026-2027" in `s`: 1 and the two years' last two digits. */
+static int32_t season_in(const char *s, int32_t *y1, int32_t *y2)
+{
+    for (const char *p = s; *p; p++) {
+        int32_t n1 = 0, n2 = 0, l1 = 0, l2 = 0;
+        const char *q = p;
+        if (p > s && p[-1] >= '0' && p[-1] <= '9')
+            continue;
+        while (*q >= '0' && *q <= '9' && l1 < 5) { n1 = n1 * 10 + (*q++ - '0'); l1++; }
+        if ((l1 != 2 && l1 != 4) || (*q != '-' && *q != '/'))
+            continue;
+        q++;
+        while (*q >= '0' && *q <= '9' && l2 < 5) { n2 = n2 * 10 + (*q++ - '0'); l2++; }
+        if ((l2 != 2 && l2 != 4) || n2 % 100 != (n1 + 1) % 100)
+            continue;
+        *y1 = n1 % 100;
+        *y2 = n2 % 100;
+        return 1;
+    }
+    return 0;
+}
+
+static void world_name(void)
+{
+    char path[1024], line[256];
+    int32_t y1 = 0, y2 = 0, found = 0;
+    FILE *f = fopen(swos_data_path("data_json/worlds/2627/WORLD.ini", path, (uint32_t)sizeof path), "rb");
+    while (f && !found && fgets(line, (int)sizeof line, f)) {
+        const char *p = line + strspn(line, " \t");
+        if (strncasecmp(p, "name", 4) == 0 && strchr(p, '='))
+            found = season_in(strchr(p, '=') + 1, &y1, &y2);
+    }
+    if (f)
+        fclose(f);
+    if (found)
+        snprintf(s_worldName, sizeof s_worldName, "WORLD %02d/%02d", (int)y1, (int)y2);
+    else
+        snprintf(s_worldName, sizeof s_worldName, "WORLD CAREER");
+}
+
+/* ... the globe right of it, as the right column's icons, the two centred together in the box:
+ * spaces after the text as wide as the gap and the icon (the game centres the text with them), the
+ * icon at their end. */
+enum { kCareerIconW = 16, kCareerIconGap = 4, kCareerIconY = 4 };
+static void world_button(void)
+{
+    static char text[40];       /* (the menu keeps the pointer) */
+    if (!s_worldName[0])
+        world_name();
+    const int32_t w = ModApi_TextWidth(s_worldName, 0), sp = ModApi_TextWidth(" ", 0);
+    const int32_t n = sp > 0 ? (kCareerIconGap + kCareerIconW + sp / 2) / sp : 5;
+    const int32_t box = entry(Main_worldCareer)->dwWidth;
+    const int32_t start = (box - w - n * sp) / 2;
+    snprintf(text, sizeof text, "%s%*s", s_worldName, (int)n, "");
+    ModApi_MenuText(Main_worldCareer, text);
+    ModApi_SetMenuImageAt(Main_worldCareer, start + w + n * sp - kCareerIconW, kCareerIconY);
+    if (getenv("SWOS_WORLD_BUTTON_DEBUG"))
+        fprintf(stderr, "[menus2020] world button \"%s\": text %d + %d spaces of %d, icon at %d\n",
+                s_worldName, (int)w, (int)n, (int)sp, (int)(start + w + n * sp - kCareerIconW));
+}
+
 static void main_refresh(void)
 {
     MenuEntry *cont = entry(Main_continue), *load = entry(Main_load);
@@ -114,6 +180,7 @@ static void main_refresh(void)
 
     show(Main_classicCareer, 1);       /* (CommonMenuExit hides 14 and shows 16 for MODES) */
     show(Main_worldCareer, 1);
+    world_button();
     nav(Main_classicCareer, -1, Main_worldCareer, Main_practice, contest ? Main_continue : Main_load);
     nav(Main_worldCareer, Main_classicCareer, -1, Main_replays, contest ? Main_continue : Main_load);
     if (s_runState >= 1 && s_runState <= 3)     /* (unpacked again mid-run: no picture until they settle) */

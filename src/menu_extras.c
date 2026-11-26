@@ -211,6 +211,16 @@ void ModApi_SetMenuImage(int32_t entry, const char *path)
     e->failed = 0;
 }
 
+/* An entry's image's place in its box, changed while its menu is up: at its next draw. */
+void ModApi_SetMenuImageAt(int32_t entry, int32_t x, int32_t y)
+{
+    MenuExtras *m = current();
+    if (!m || entry < 0 || entry >= kMaxEntries)
+        return;
+    m->entry[entry].imageX = x;
+    m->entry[entry].imageY = y;
+}
+
 /* A .png image's HD copy, changed while its menu is up: loaded at its next draw. */
 void ModApi_SetMenuImageHD(int32_t entry, const char *path)
 {

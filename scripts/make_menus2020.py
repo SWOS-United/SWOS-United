@@ -189,6 +189,8 @@ ROW_Y, ROW_H, ROW_STEP = 41, 24, 28
 # in the box -- left of the text on the left buttons, right of it on the right ones, as the rows
 # above: spaces before or after the text move it (2 px each).
 # .pngs, their own colours, drawn over the buttons' shading (mod_hooks.c ModHooks_FrameDrawn).
+# WORLD's text and its icon's column are set again as the menu opens (mod_menus2020.c world_button:
+# the installed World package's season, WORLD 26/27, or WORLD CAREER); these are what it starts as.
 CAREER_BUTTONS = [("classicCareer", "multiplayer", 1, "     CLASSIC CAREER", 4, "classicCareer",
                    "classic_career.png", 11),
                   ("worldCareer", "modes", 155, "WORLD CAREER     ", 15, "worldCareer",
