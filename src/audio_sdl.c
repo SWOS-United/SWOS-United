@@ -91,7 +91,7 @@ static int               s_ovl_pos = -1;
 #define PC_MUSIC_GAIN (24 * 256)
 typedef struct {
     const uint8_t *data;        /* NULL: idle. Signed 16-bit samples when is16 */
-    int            is16;
+    int            is16;        /* 0 unsigned 8-bit, 1 signed 16-bit, 2 signed 16-bit stereo (L R pairs) */
     uint32_t       len;         /* samples */
     uint64_t       pos;         /* 48.16, in source samples */
     uint32_t       step;        /* 16.16 source samples per device frame */
@@ -408,6 +408,19 @@ void AudioSDL_Tick(void)
                     const uint32_t at1 = at + 1 < pv->len ? at + 1 : at;
                     const int frac = (int)(pv->pos & 0xFFFF);
                     int smp;                                                /* 16-bit */
+                    if (pv->is16 == 2) {        /* (stereo: each side its own) */
+                        const int16_t *d16 = (const int16_t *)(const void *)pv->data;
+                        const int sl = d16[at * 2] + (int)(((int64_t)(d16[at1 * 2] - d16[at * 2]) * frac) >> 16);
+                        const int sr = d16[at * 2 + 1] + (int)(((int64_t)(d16[at1 * 2 + 1] - d16[at * 2 + 1]) * frac) >> 16);
+                        int l = (int)s_out_buf[i * 2] + (int)((int64_t)sl * gain / (127 * 64 * 64));
+                        int r = (int)s_out_buf[i * 2 + 1] + (int)((int64_t)sr * gain / (127 * 64 * 64));
+                        if (l < -32768) l = -32768; else if (l > 32767) l = 32767;
+                        if (r < -32768) r = -32768; else if (r > 32767) r = 32767;
+                        s_out_buf[i * 2] = (int16_t)l;
+                        s_out_buf[i * 2 + 1] = (int16_t)r;
+                        pv->pos += pv->step;
+                        continue;
+                    }
                     if (pv->is16) {
                         const int16_t *d16 = (const int16_t *)(const void *)pv->data;
                         smp = d16[at] + (int)(((int64_t)(d16[at1] - d16[at]) * frac) >> 16);
@@ -782,6 +795,13 @@ void AudioSDL_PcmPlay(int voice, const uint8_t *data, uint32_t len, int rate, in
 void AudioSDL_PcmPlay16(int voice, const int16_t *data, uint32_t len, int rate, int volume, int loops)
 {
     pcm_play(voice, (const uint8_t *)(const void *)data, 1, len, rate, volume, loops);
+}
+
+/* And `frames` signed 16-bit stereo frames, left and right by turns (a mod's ambience on the
+ * training ground: src/mod_pitchdecals.c). */
+void AudioSDL_PcmPlay16Stereo(int voice, const int16_t *data, uint32_t frames, int rate, int volume, int loops)
+{
+    pcm_play(voice, (const uint8_t *)(const void *)data, 2, frames, rate, volume, loops);
 }
 
 static void pcm_play(int voice, const uint8_t *data, int is16, uint32_t len, int rate, int volume, int loops)

@@ -30,8 +30,8 @@
  *   "pitch_sounds": [ { "setting": "birdsong", "sound": "birdsong.wav", "volume": 15 },
  *                     { "setting": "goal_cheer", "event": "goal", "sound": "cheer.wav", "volume": 60 } ]
  *
- *   sound     a WAV or an MP3 in the mod's folder, played round and round through a match there as
- *             it is (a WAV sample for sample; an MP3 less its encoder's silence, by its LAME tag),
+ *   sound     a WAV or an MP3 in the mod's folder, mono or stereo, played round and round through a
+ *             match there as it is (an MP3's encoder silence dr_mp3 takes off itself),
  *             on the crowd's voice -- the training ground has no crowd (dos_sound.c, audio.c);
  *             volume 1-127, 100 by default
  *   event     "goal": not looped but played once at each goal (an own goal too), on the crowd's
@@ -105,9 +105,10 @@ typedef struct {
     int32_t  def, volume;
     uint8_t  pitches;
     uint8_t  event;             /* 0 looped through the match, 1 once at a goal */
-    int16_t *pcm;               /* decoded at its first match: mono, the loop's ends blended */
+    int16_t *pcm;               /* decoded at its first match, 16-bit, its frames as the file has them */
     uint32_t frames;
     int32_t  rate, failed;
+    int32_t  channels;          /* 1, or 2: left and right by turns */
 } Sound;
 enum { MAX_SOUNDS = 4, VOICE_AMBIENCE = 0 /* (dos_sound.c VOICE_CROWD: the training ground's is free) */,
        VOICE_EVENT = 3 /* (VOICE_REACTION, the crowd's cheers: free there too) */, EVENT_GOAL = 1 };
@@ -588,32 +589,22 @@ static void dump_pitch(void)
 /* ---- the pitch's sounds ---- */
 
 extern void AudioSDL_PcmPlay16(int voice, const int16_t *data, uint32_t len, int rate, int volume, int loops);
+extern void AudioSDL_PcmPlay16Stereo(int voice, const int16_t *data, uint32_t frames, int rate, int volume, int loops);
+
+static void sound_play(int voice, const Sound *so, int loops)
+{
+    if (so->channels == 2)
+        AudioSDL_PcmPlay16Stereo(voice, so->pcm, so->frames, so->rate, so->volume, loops);
+    else
+        AudioSDL_PcmPlay16(voice, so->pcm, so->frames, so->rate, so->volume, loops);
+}
 extern void AudioSDL_PcmStop(int voice);
 extern int  AudioSDL_PcmPlaying(int voice);
 
-/* An MP3's gapless numbers (its LAME tag: the encoder's delay and padding), 0 when it has none. */
-static void mp3_gapless(const uint8_t *d, size_t n, uint32_t *delay, uint32_t *padding)
-{
-    size_t at = 0;
-    *delay = *padding = 0;
-    if (n > 10 && memcmp(d, "ID3", 3) == 0)     /* (an ID3v2 tag first) */
-        at = 10 + ((size_t)(d[6] & 0x7F) << 21 | (size_t)(d[7] & 0x7F) << 14 | (size_t)(d[8] & 0x7F) << 7 | (d[9] & 0x7F));
-    for (size_t i = at; i + 200 < n && i < at + 4096; i++) {
-        if (memcmp(d + i, "Xing", 4) != 0 && memcmp(d + i, "Info", 4) != 0)
-            continue;
-        for (size_t j = i + 8; j + 24 < n && j < i + 200; j++)
-            if (memcmp(d + j, "LAME", 4) == 0 || memcmp(d + j, "Lavc", 4) == 0 || memcmp(d + j, "Lavf", 4) == 0) {
-                *delay = (uint32_t)d[j + 21] << 4 | d[j + 22] >> 4;
-                *padding = ((uint32_t)d[j + 22] & 0x0F) << 8 | d[j + 23];
-                return;
-            }
-        return;
-    }
-}
-
-/* The sound, mono 16-bit, played round and round as it is: a WAV sample for sample; an MP3 less
- * what its encoder put before and after the music (its LAME tag; and the decoder's 529), so a
- * loop made to loop still does. */
+/* The sound, 16-bit, mono or stereo as the file is, played round and round as it is: a WAV sample
+ * for sample, an MP3 as dr_mp3 decodes it -- which takes its encoder's delay and padding off
+ * itself (its LAME tag; measured on a loop, 2026-11-26: every sample in its place), so a loop made
+ * to loop still does. */
 static void decode_sound(Sound *so)
 {
     const size_t len = strlen(so->path);
@@ -622,12 +613,14 @@ static void decode_sound(Sound *so)
         Uint8 *buf = NULL;
         Uint32 bytes = 0;
         SDL_AudioCVT cvt;
+        int ch;
         if (!SDL_LoadWAV(so->path, &spec, &buf, &bytes)) {
             fprintf(stderr, "[pitchdecals] %s: %s\n", so->path, SDL_GetError());
             so->failed = 1;
             return;
         }
-        if (SDL_BuildAudioCVT(&cvt, spec.format, spec.channels, spec.freq, AUDIO_S16SYS, 1, spec.freq) < 0 ||
+        ch = spec.channels >= 2 ? 2 : 1;
+        if (SDL_BuildAudioCVT(&cvt, spec.format, spec.channels, spec.freq, AUDIO_S16SYS, (Uint8)ch, spec.freq) < 0 ||
             !(cvt.buf = (Uint8 *)malloc((size_t)bytes * (cvt.len_mult > 0 ? cvt.len_mult : 1) + 16))) {
             SDL_FreeWAV(buf);
             so->failed = 1;
@@ -639,7 +632,8 @@ static void decode_sound(Sound *so)
         if (cvt.needed)
             SDL_ConvertAudio(&cvt);
         so->pcm = (int16_t *)cvt.buf;
-        so->frames = (uint32_t)(cvt.needed ? cvt.len_cvt : cvt.len) / 2u;
+        so->channels = ch;
+        so->frames = (uint32_t)(cvt.needed ? cvt.len_cvt : cvt.len) / (2u * (uint32_t)ch);
         so->rate = spec.freq;
         return;
     }
@@ -648,10 +642,7 @@ static void decode_sound(Sound *so)
         char *file = slurp(so->path, &flen);
         drmp3_config cfg;
         drmp3_uint64 n = 0;
-        uint32_t delay = 0, padding = 0, skip, keep;
         int16_t *pcm = file ? drmp3_open_memory_and_read_pcm_frames_s16(file, (size_t)flen, &cfg, &n, NULL) : NULL;
-        if (file)
-            mp3_gapless((const uint8_t *)file, (size_t)flen, &delay, &padding);
         free(file);
         if (!pcm || !n || !cfg.channels) {
             fprintf(stderr, "[pitchdecals] %s: not an MP3 that can be read\n", so->path);
@@ -659,28 +650,19 @@ static void decode_sound(Sound *so)
             drmp3_free(pcm, NULL);
             return;
         }
-        skip = delay ? delay + 529 : 0;
-        keep = (uint32_t)n > skip + padding ? (uint32_t)n - skip - padding : (uint32_t)n;
-        if (keep == (uint32_t)n)
-            skip = 0;
-        so->pcm = (int16_t *)malloc((size_t)keep * sizeof *so->pcm);
+        so->channels = cfg.channels >= 2 ? 2 : 1;
+        so->pcm = (int16_t *)malloc((size_t)n * (size_t)so->channels * sizeof *so->pcm);
         if (!so->pcm) {
             drmp3_free(pcm, NULL);
             so->failed = 1;
             return;
         }
-        for (uint32_t i = 0; i < keep; i++) {
-            int32_t sum = 0;
-            for (drmp3_uint32 c = 0; c < cfg.channels; c++)
-                sum += pcm[((size_t)skip + i) * cfg.channels + c];
-            so->pcm[i] = (int16_t)(sum / (int32_t)cfg.channels);
-        }
+        for (drmp3_uint64 i = 0; i < n; i++)
+            for (int32_t c = 0; c < so->channels; c++)
+                so->pcm[i * (drmp3_uint64)so->channels + (drmp3_uint64)c] = pcm[i * cfg.channels + (drmp3_uint32)c];
         drmp3_free(pcm, NULL);
-        so->frames = keep;
+        so->frames = (uint32_t)n;
         so->rate = (int32_t)cfg.sampleRate;
-        if (test_on())
-            fprintf(stderr, "[pitchdecals] %s: %u frames decoded, %u cut before, %u after\n", so->path,
-                    (unsigned)n, (unsigned)skip, (unsigned)padding);
     }
 }
 
@@ -724,12 +706,12 @@ static void match_frame(void)
         decode_sound(&s_sound[want]);
     if (!s_sound[want].pcm)
         return;
-    AudioSDL_PcmPlay16(VOICE_AMBIENCE, s_sound[want].pcm, s_sound[want].frames, s_sound[want].rate,
-                       s_sound[want].volume, -1);
+    sound_play(VOICE_AMBIENCE, &s_sound[want], -1);
     s_soundPlaying = want;
     if (test_on())
-        fprintf(stderr, "[pitchdecals] pitch %d: %s, round and round (%u frames at %d Hz)\n", (int)pitch,
-                s_sound[want].path, (unsigned)s_sound[want].frames, (int)s_sound[want].rate);
+        fprintf(stderr, "[pitchdecals] pitch %d: %s, round and round (%u frames at %d Hz, %s)\n", (int)pitch,
+                s_sound[want].path, (unsigned)s_sound[want].frames, (int)s_sound[want].rate,
+                s_sound[want].channels == 2 ? "stereo" : "mono");
 }
 
 /* The game's sound events (dos_sound.h), every run and a replay's: at a goal on the training
@@ -757,7 +739,7 @@ static void sound_event(uint8_t event, uint16_t arg)
             decode_sound(so);
         if (!so->pcm)
             continue;
-        AudioSDL_PcmPlay16(VOICE_EVENT, so->pcm, so->frames, so->rate, so->volume, 0);
+        sound_play(VOICE_EVENT, so, 0);
         s_last = now;
         if (test_on())
             fprintf(stderr, "[pitchdecals] a goal on the training ground: %s\n", so->path);
