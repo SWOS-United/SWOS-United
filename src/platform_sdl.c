@@ -634,8 +634,8 @@ static PlatformFullscreenMode s_fullscreen_mode   = PLATFORM_FULLSCREEN_NONE;
  * is replaced by a per-axis scale from the picture to the window, worked out every frame:
  * SDL re-applies a logical size across window changes by itself, but not a scale. */
 static int s_stretch;
-/* ... and in a window, the window takes the shape it is stretched to -- VIDEO OPTIONS' ASPECT
- * RATIO ([video] resolution), AUTO the monitor's -- its height the picture's times the scale as
+/* ... and in a window, the window takes the shape it is stretched to -- VIDEO OPTIONS' PICTURE
+ * SHAPE ([video] resolution), AUTO the monitor's -- its height the picture's times the scale as
  * ever, its width that shape's. It was the picture's own (336x272, nearly 4:3) whatever the
  * shape: stretched over a window of its own shape, nothing was stretched (Playa, 2026-11-26). */
 static int s_stretch_w, s_stretch_h;    /* the shape, 0 x 0: the monitor's */
@@ -816,7 +816,7 @@ int Platform_Init(const PlatformInitOptions *opts)
     static char s_title[96];
     snprintf(s_title, sizeof s_title, PROJECT_NAME " %s (%s)", Build_Id(), Build_Platform());
 
-    /* [video] resolution is the picture's SHAPE (VIDEO OPTIONS' ASPECT RATIO: 21:9 is written
+    /* [video] resolution is the picture's SHAPE (VIDEO OPTIONS' PICTURE SHAPE: 21:9 is written
      * 2560x1080), never the window's size: the window is the picture times a whole number, so
      * every pixel is as big as the next. From 2026-09-22 a WxH there was the client area -- 21:9
      * on a 1920 wide monitor became a 1920x810 window, 2.98 times the picture, its rows of
@@ -1571,7 +1571,7 @@ void Platform_ViewChanged(void)
                       _screen_height * s_win_scale_current);
 }
 
-/* VIDEO OPTIONS' ASPECT RATIO changed (w x h, 0 x 0 AUTO): with STRETCH the window takes it now. */
+/* VIDEO OPTIONS' PICTURE SHAPE changed (w x h, 0 x 0 AUTO): with STRETCH the window takes it now. */
 void Platform_SetStretchShape(int w, int h)
 {
     s_stretch_w = w > 0 && h > 0 ? w : 0;

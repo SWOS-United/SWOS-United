@@ -276,13 +276,13 @@ static Uint32 s_holdNext;
 
 static void p1_select(int32_t dir), p2_select(int32_t dir), p1_setup(int32_t dir), p2_setup(int32_t dir),
             keys_change(int32_t dir), winmode_change(int32_t dir), scale_change(int32_t dir),
-            monitor_change(int32_t dir), res_change(int32_t dir), renderer_change(int32_t dir);
+            monitor_change(int32_t dir), shape_change(int32_t dir), renderer_change(int32_t dir);
 
 static int32_t no_repeat(void (*change)(int32_t))
 {
     static void (*const k[])(int32_t) = {
         p1_select, p2_select, p1_setup, p2_setup, keys_change,
-        winmode_change, scale_change, monitor_change, res_change, renderer_change,
+        winmode_change, scale_change, monitor_change, shape_change, renderer_change,
     };
     for (uint32_t i = 0; i < sizeof k / sizeof k[0]; i++)
         if (k[i] == change)
@@ -657,12 +657,6 @@ static void scale_change(int32_t dir)
 static void vsync_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", on_off(O()->vsync)); }
 static void vsync_change(int32_t dir) { (void)dir; O()->vsync = !O()->vsync; later(); save(); }
 
-static void wide_show(char *o, int32_t c)
-{
-    static const char *const k[3] = { "OFF", "ON", "STRETCH" };
-    snprintf(o, (size_t)c, "%s", k[O()->widescreen >= 0 && O()->widescreen <= 2 ? O()->widescreen : 0]);
-}
-static void wide_change(int32_t dir) { O()->widescreen = step(O()->widescreen, dir, 3); later(); save(); }
 
 static void scroll_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", on_off(O()->subpixel_scroll)); }
 static void scroll_change(int32_t dir) { (void)dir; O()->subpixel_scroll = !O()->subpixel_scroll; Platform_SetSubpixelScroll(O()->subpixel_scroll); save(); }
@@ -762,24 +756,57 @@ static void auto_shape(char *o, int32_t c)
     snprintf(o, (size_t)c, "AUTO (%d:%d)", dw / a, dh / a);
 }
 
-static void res_show(char *o, int32_t c)
+/* PICTURE SHAPE, then FILL (Playa, 2026-11-26): what WIDESCREEN and ASPECT RATIO were, the shape
+ * chosen first. ASPECT RATIO said AUTO (16:9) with WIDESCREEN OFF, the picture its own shape all
+ * the same. SWOS.ini keeps its keys: ORIGINAL is [video] widescreen=false; another shape is
+ * [video] resolution (AUTO: the display's), filled with more pitch (widescreen=true) or the
+ * original picture stretched over it (widescreen=stretch). Between ORIGINAL and a shape: from the
+ * next start, as WIDESCREEN was; from one shape to another at once. */
+static int32_t s_runWide = -1;  /* the widescreen this run started with (the page's first show) */
+static int32_t s_fill;          /* FILL while the shape is ORIGINAL: 1 MORE PITCH, 2 STRETCH */
+
+static void shape_start(void)
 {
+    if (s_runWide < 0)
+        s_runWide = O()->widescreen;
+    if (!s_fill)
+        s_fill = O()->widescreen == 2 ? 2 : 1;
+}
+
+static void shape_show(char *o, int32_t c)
+{
+    shape_start();
     const int32_t i = shape_index();
-    if (i == 0)
+    if (O()->widescreen == 0)
+        snprintf(o, (size_t)c, "ORIGINAL");
+    else if (i == 0)
         auto_shape(o, c);
     else if (i > 0)
         snprintf(o, (size_t)c, "%s", k_shapes[i].name);
     else
         snprintf(o, (size_t)c, "%dX%d", O()->res_w, O()->res_h);
 }
-static void res_change(int32_t dir)
+static void shape_change(int32_t dir)
 {
     extern int Video_ResolutionChanged(const PlatformInitOptions *o, int dw, int dh);
-    int32_t i = shape_index();
+    shape_start();
+    const int32_t now = O()->widescreen == 0 ? 0 : 1 + (shape_index() < 0 ? 0 : shape_index());
+    const int32_t pos = step(now, dir, kShapes + 1);   /* (0 ORIGINAL, then k_shapes) */
     int dw = 16, dh = 9;
-    i = i < 0 ? 0 : step(i, dir, kShapes);
-    O()->res_w = k_shapes[i].w;
-    O()->res_h = k_shapes[i].h;
+    if (pos == 0) {
+        s_fill = O()->widescreen;
+        O()->widescreen = 0;
+    } else {
+        if (O()->widescreen == 0)
+            O()->widescreen = s_fill;
+        O()->res_w = k_shapes[pos - 1].w;
+        O()->res_h = k_shapes[pos - 1].h;
+    }
+    if (O()->widescreen != s_runWide) {     /* (ORIGINAL or not: the start sets the picture up) */
+        later();
+        save();
+        return;
+    }
     if (O()->res_w > 0) {
         dw = O()->res_w;
         dh = O()->res_h;
@@ -788,11 +815,28 @@ static void res_change(int32_t dir)
     }
     Platform_SetStretchShape(O()->res_w, O()->res_h);  /* (STRETCH: the window takes it) */
     if (Video_ResolutionChanged(O(), dw, dh))
-        note(i ? "THE PICTURE'S SHAPE: MORE PITCH WHEN WIDER" : "THE DISPLAY'S OWN SHAPE");
-    else if (O()->widescreen == 2)
-        note(i ? "THE WINDOW'S SHAPE, THE PICTURE STRETCHED OVER IT" : "THE DISPLAY'S OWN SHAPE");
+        note(pos > 1 ? "MORE PITCH WHEN WIDER" : "THE DISPLAY'S OWN SHAPE");
     else
-        note("THE PICTURE'S SHAPE, WITH WIDESCREEN ON");
+        note(pos > 1 ? "THE WINDOW'S SHAPE, THE PICTURE STRETCHED OVER IT" : "THE DISPLAY'S OWN SHAPE");
+    save();
+}
+
+static void fill_show(char *o, int32_t c)
+{
+    shape_start();
+    snprintf(o, (size_t)c, "%s", O()->widescreen == 0 ? "-" : O()->widescreen == 2 ? "STRETCH" : "MORE PITCH");
+}
+static void fill_change(int32_t dir)
+{
+    (void)dir;
+    shape_start();
+    if (O()->widescreen == 0) {
+        note("A SHAPE FIRST: ORIGINAL FILLS NOTHING");
+        return;
+    }
+    O()->widescreen = O()->widescreen == 2 ? 1 : 2;
+    s_fill = O()->widescreen;
+    later();
     save();
 }
 
@@ -826,14 +870,13 @@ static const Row k_videoRows[] = {
     { "WINDOW MODE",        winmode_show,  winmode_change },
     { "WINDOW SCALE",       scale_show,    scale_change },
     { "VSYNC",              vsync_show,    vsync_change },
-    { "WIDESCREEN",         wide_show,     wide_change },
+    { "PICTURE SHAPE",      shape_show,    shape_change },   /* ([video] widescreen=false, or resolution) */
+    { "FILL",               fill_show,     fill_change },    /* ([video] widescreen=true / stretch) */
     { "SMOOTH SCROLLING",   scroll_show,   scroll_change },
     { "SCALING",            scaling_show,  scaling_change },
     { "PIXEL FILTER",       filter_show,   filter_change },     /* (beside SCALING: APPEARANCE's until 2026-11-24) */
     { "MONITOR",            monitor_show,  monitor_change },
     { "RENDERER",           renderer_show, renderer_change },
-    /* (launcher options, agent A) */
-    { "ASPECT RATIO",       res_show,      res_change },     /* ([video] resolution: the shape, not a size) */
     { "AUTO CENTERING",     centre_show,   centre_change },
     { "SHOW FPS",           fps_show,      fps_change },
 };

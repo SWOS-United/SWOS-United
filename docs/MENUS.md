@@ -905,8 +905,10 @@ All in the loader and `UnpackMenu`. None occurs in the 47 compiled menus, and
   - CONTROLS: docs/CONTROLS.md §4 (with SWOS 2020's CONTROLLER SETUP, `openswos/joypadConfigMenu`,
     imported as it is from joypadConfig.mnu).
   - VIDEO OPTIONS: WINDOW MODE (windowed / fullscreen / exclusive, now: `Platform_SetFullscreenMode`),
-    WINDOW SCALE (now), VSYNC, WIDESCREEN, SMOOTH SCROLLING, SCALING, PIXEL FILTER, MONITOR, RENDERER
-    (from the next start, said in the note), ASPECT RATIO, AUTO CENTERING, SHOW FPS.
+    WINDOW SCALE (now), VSYNC, PICTURE SHAPE (ORIGINAL or AUTO / 4:3 / ... : [video] widescreen=false
+    or resolution) and FILL (MORE PITCH / STRETCH: widescreen=true / stretch; from the next start, as
+    is ORIGINAL to a shape and back), SMOOTH SCROLLING, SCALING, PIXEL FILTER, MONITOR, RENDERER
+    (from the next start, said in the note), AUTO CENTERING, SHOW FPS.
   - AUDIO OPTIONS: the four volumes (`AudioSDL_SetKindVolumes`, 10% a step), MENU MUSIC (OPTIONS'
     row), MATCH SOUNDS and MUSIC Amiga/PC, PC MENU MUSIC midi/mp3, COMMENTARY off/on/auto (all now),
     OUTPUT mono/stereo (next start).
