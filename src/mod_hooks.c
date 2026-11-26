@@ -148,16 +148,21 @@ void ModHooks_FrameDrawn(void)
         extern void EscConfirm_Present(void);
         EscConfirm_Present();
     }
-    {   /* a menu's .png pictures (menu_extras.c): their soft edges over what is under them */
-        extern void MenuExtras_Present(void);
-        MenuExtras_Present();
-    }
     {   /* the CREDITS photos in their own colours (credits_menu.c) */
         extern void CreditsMenu_PhotosPresent(void);
         CreditsMenu_PhotosPresent();
     }
 #endif
     EACH(frameUnder) (*m_)->frameUnder();
+#ifdef SWOS_SDL_BUILD
+    {   /* a menu's .png pictures (menu_extras.c): their soft edges over what is under them --
+         * over the mods' shading too (frameUnder: dosmenus' PC look, WORLD 26/27 CAREER's dark
+         * yellow), which is the buttons' own colour: drawn before them, an icon was painted
+         * over, gone or muddied (Playa, 2026-11-26) */
+        extern void MenuExtras_Present(void);
+        MenuExtras_Present();
+    }
+#endif
     EACH(frameDrawn) (*m_)->frameDrawn();
 }
 

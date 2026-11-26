@@ -1386,7 +1386,8 @@ static int32_t keeps_ready(void) { return 1; }
 /* WORLD 26/27 CAREER in dark yellow (Playa, 2026-11-19): the menus' 16 colours have none (15 is
  * bright yellow, 5 burnt orange), so its box is drawn in 15 and, each frame shown, every pixel of
  * the box that still has 15 (not the text) is painted over in dark yellow -- as the dosmenus mod
- * paints its shading, and after it (the fork's mods come later in the built-in list). Drawing only. */
+ * paints its shading, and after it (the fork's mods come later in the built-in list; both frameUnder,
+ * so a .png icon goes over them, mod_hooks.c). Drawing only. */
 enum { kWorldCareerR = 0xB0, kWorldCareerG = 0x90, kWorldCareerB = 0x00 };
 static GfxTexture *s_wcTex;
 static uint8_t    *s_wcRgba;
@@ -1442,7 +1443,7 @@ const ModDef ModDef_menus2020 = {
     .slug            = SLUG,
     .init            = init,
     .menuDrawn       = run_menu_frame,
-    .frameDrawn      = world_career_paint,
+    .frameUnder      = world_career_paint,  /* (the box's colour: under the .png icons, menu_extras.c) */
     .lobbyKeepsReady = keeps_ready,
 };
 
