@@ -156,9 +156,8 @@ void ModHooks_FrameDrawn(void)
     EACH(frameUnder) (*m_)->frameUnder();
 #ifdef SWOS_SDL_BUILD
     {   /* a menu's .png pictures (menu_extras.c): their soft edges over what is under them --
-         * over the mods' shading too (frameUnder: dosmenus' PC look, WORLD 26/27 CAREER's dark
-         * yellow), which is the buttons' own colour: drawn before them, an icon was painted
-         * over, gone or muddied (Playa, 2026-11-26) */
+         * over the mods' shading too (frameUnder: dosmenus' PC look), which is the buttons' own
+         * colour: drawn before it, an icon was painted over, gone or muddied (Playa, 2026-11-26) */
         extern void MenuExtras_Present(void);
         MenuExtras_Present();
     }

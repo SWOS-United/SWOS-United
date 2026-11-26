@@ -91,7 +91,7 @@ length a **setting** (default 20; allow e.g. 35).
 
 > **The two careers and SEASON START (SWOS United, Playa 2026-11-19):** the main menu has a fourth row
 > of buttons under PRACTICE and REPLAYS, above CONTINUE / LOAD -- **CLASSIC CAREER** (brown:
-> 96/97's world, in the season SEASON START chose) and **WORLD 26/27 CAREER** (dark yellow); the four
+> 96/97's world, in the season SEASON START chose) and **WORLD CAREER** (brown / red since 2026-11-26, dark yellow before; WORLD 26/27 when World 2026-27 is installed); the four
 > rows are 24 high, 4 apart (scripts/make_menus2020.py `CAREER_BUTTONS`; they take the main menu's
 > entries 14 and 16, the game's own MULTIPLAYER and MODES places, which this menu never shows).
 > COMPETE's CLASSIC CAREER MODE is gone. Proved: a career started after switches equals a fresh

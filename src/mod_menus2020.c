@@ -46,7 +46,6 @@
 #include "swos_io.h"            /* swos_data_path: is the run-in's file there */
 #include "math68k.h"            /* CalculateDeltaXAndY */
 #include "gfx.h"
-#include "display.h"            /* _screen_width, _menu_draw_x_offset: the dark-yellow box */
 #include "easing.h"            /* the run-in's ease */
 #include "menu_load_json.h"     /* MenuJson_VerifyDynamic (SWOS_MENUS2020_TEST) */
 #include "menu_system.h"
@@ -1450,67 +1449,10 @@ static void init(void)
  * down with any change to their side, so a match starts only on a side both games have. */
 static int32_t keeps_ready(void) { return 1; }
 
-/* WORLD 26/27 CAREER in dark yellow (Playa, 2026-11-19): the menus' 16 colours have none (15 is
- * bright yellow, 5 burnt orange), so its box is drawn in 15 and, each frame shown, every pixel of
- * the box that still has 15 (not the text) is painted over in dark yellow -- as the dosmenus mod
- * paints its shading, and after it (the fork's mods come later in the built-in list; both frameUnder,
- * so a .png icon goes over them, mod_hooks.c). Drawing only. */
-enum { kWorldCareerR = 0xB0, kWorldCareerG = 0x90, kWorldCareerB = 0x00 };
-static GfxTexture *s_wcTex;
-static uint8_t    *s_wcRgba;
-static int32_t     s_wcW, s_wcH;
-
-static void world_career_paint(void)
-{
-    extern const uint8_t *Platform_FrameShown(void);
-    int32_t x, y, w, h;
-    const uint8_t *fb;
-    if (!ModApi_IsMainMenu() || ModApi_InMatch() || ModApi_InReplay() ||
-        entry(Main_worldCareer)->isInvisible || !(fb = Platform_FrameShown()))
-        return;
-    ModApi_MenuEntryRect(Main_worldCareer, &x, &y, &w, &h);
-    x += _menu_draw_x_offset;
-    if (w <= 0 || h <= 0 || x < 0 || y < 0 || x + w > _screen_width || y + h > _screen_height)
-        return;
-    if (!s_wcTex || s_wcW != w || s_wcH != h) {
-        if (s_wcTex)
-            Gfx_DestroyTexture(s_wcTex);
-        free(s_wcRgba);
-        s_wcRgba = (uint8_t *)malloc((size_t)w * h * 4);
-        s_wcTex = s_wcRgba ? Gfx_CreateTexture(w, h, 0) : NULL;
-        s_wcW = w;
-        s_wcH = h;
-        if (!s_wcTex)
-            return;
-    }
-    int32_t any = 0;
-    for (int32_t j = 0; j < h; j++)
-        for (int32_t i = 0; i < w; i++) {
-            uint8_t *o = s_wcRgba + ((size_t)j * w + i) * 4;
-            const int32_t box = fb[(size_t)(y + j) * FRONTBUFFER_ROW_STRIDE_BYTES + x + i] == 15;
-            o[0] = kWorldCareerR;
-            o[1] = kWorldCareerG;
-            o[2] = kWorldCareerB;
-            o[3] = box ? 255 : 0;
-            any |= box;
-        }
-    if (!any)
-        return;
-    const SDL_FRect dst = { (float)x, (float)y, (float)w, (float)h };
-    Gfx_UpdateTexture(s_wcTex, s_wcRgba, w * 4);
-    Gfx_SetSpace(GFX_SPACE_PICTURE);
-    Gfx_SetBlend(GFX_BLEND_ALPHA);
-    {   /* (with the menus' fade, as the button under it) */
-        extern SDL_Color Platform_MenuFadeTint(void);
-        Gfx_DrawTextureTint(s_wcTex, NULL, &dst, Platform_MenuFadeTint());
-    }
-}
-
 const ModDef ModDef_menus2020 = {
     .slug            = SLUG,
     .init            = init,
     .menuDrawn       = run_menu_frame,
-    .frameUnder      = world_career_paint,  /* (the box's colour: under the .png icons, menu_extras.c) */
     .lobbyKeepsReady = keeps_ready,
 };
 

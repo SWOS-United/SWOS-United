@@ -193,7 +193,7 @@ ROW_Y, ROW_H, ROW_STEP = 41, 24, 28
 # the installed World package's season, WORLD 26/27, or WORLD CAREER); these are what it starts as.
 CAREER_BUTTONS = [("classicCareer", "multiplayer", 1, "     CLASSIC CAREER", 4, "classicCareer",
                    "classic_career.png", 11),
-                  ("worldCareer", "modes", 155, "WORLD CAREER     ", 15, "worldCareer",
+                  ("worldCareer", "modes", 155, "WORLD CAREER     ", 12, "worldCareer",
                    "world_career.png", 114)]
 CONTINUE_Y = 154        # (on screen 154..173: 3 under the last row's 150, 4 over SAVE / LOAD's 178)
 # The SWOS United logo's place in the CREDITS entry: SWOS 2020's 293,185 less the entry's 281,182
@@ -388,7 +388,7 @@ def build_main(doc):
                           {"op": "invisible"}]}
     extra = {"multiplayer": (multiplayer, credits_origin), "modes": (modes, credits_origin)}
     # ... and in their places, SWOS United's careers (CAREER_BUTTONS): PRACTICE's row's look, a
-    # colour each (CLASSIC brown, WORLD dark yellow), the text centred.
+    # colour each (CLASSIC 4 brown / orange, WORLD 12 brown / red), the text centred.
     row_origin = by_name["replays"][1]
     for name, slot, x, text, colour, handler, icon, icon_x in CAREER_BUTTONS:
         extra[slot] = ({"kind": "entry", "name": name,

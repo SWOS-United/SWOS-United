@@ -554,7 +554,7 @@
         {
           "op": "colors",
           "frame_color": 0,
-          "background_color": 15
+          "background_color": 12
         },
         {
           "op": "onselect_fire",
