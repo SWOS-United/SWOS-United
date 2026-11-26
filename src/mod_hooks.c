@@ -190,10 +190,24 @@ void ModHooks_SpritesEnd(void)
     EACH(spritesEnd) (*m_)->spritesEnd();
 }
 
+/* The pitch-side adverts' strips (adverts.c: 113..136) on the training ground, which has no
+ * hoardings: left out of the picture. The game itself plays them only where a training game
+ * cannot see them (ManageAdvertisements returns in one), but a match or Practice's training on
+ * pitch 6 ran them over the grass (Redhair, 2026-11-26). Drawing only: the adverts' dice, their
+ * sprites and timers -- match state -- go on as ever, so a match is the same frame for frame. A
+ * mod that draws the adverts itself (the pitchmaps mod's map) still does. */
+static int32_t advert_on_training_ground(uint16_t image)
+{
+    extern uint16_t _pitchNumberAndType;
+    return image >= 113 && image <= 136 && (_pitchNumberAndType >> 8) == 5;
+}
+
 int32_t ModHooks_SpriteDraw(const Sprite *sprite, const SpriteGraphics *gfx, int16_t *x, int16_t *y)
 {
     int32_t out = 0;
     EACH(spriteDraw) out |= (*m_)->spriteDraw(sprite, gfx, x, y);
+    if (!out && sprite && advert_on_training_ground((uint16_t)sprite->imageIndex))
+        out = 1;
     return out;
 }
 
@@ -224,6 +238,8 @@ int32_t ModHooks_ReplaySpriteDraw(uint16_t image, int16_t left, int16_t top, int
 {
     int32_t out = 0;
     EACH(replaySpriteDraw) out |= (*m_)->replaySpriteDraw(image, left, top, screenX, screenY);
+    if (!out && advert_on_training_ground(image))
+        out = 1;
     return out;
 }
 
