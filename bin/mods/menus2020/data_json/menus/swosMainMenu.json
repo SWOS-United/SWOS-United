@@ -549,7 +549,7 @@
         {
           "op": "text",
           "flags": "0x10",
-          "literal": "WORLD 26/27 CAR.     "
+          "literal": "WORLD CAREER     "
         },
         {
           "op": "colors",
@@ -562,7 +562,7 @@
         }
       ],
       "image": "grafs_2020/menus2020/world_career.png",
-      "image_x": 126,
+      "image_x": 114,
       "image_y": 4
     }
   ],

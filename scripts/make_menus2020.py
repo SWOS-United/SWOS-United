@@ -187,12 +187,12 @@ MAIN_SLOTS = {
 ROW_Y, ROW_H, ROW_STEP = 41, 24, 28
 # Each with an icon (Playa's drawings, 2026-11-26) at a column, the icon and the text centred together
 # in the box -- left of the text on the left buttons, right of it on the right ones, as the rows
-# above: spaces before or after the text move it (2 px each). CAREER shortened on WORLD's to fit.
+# above: spaces before or after the text move it (2 px each).
 # .pngs, their own colours, drawn over the buttons' shading (mod_hooks.c ModHooks_FrameDrawn).
 CAREER_BUTTONS = [("classicCareer", "multiplayer", 1, "     CLASSIC CAREER", 4, "classicCareer",
                    "classic_career.png", 11),
-                  ("worldCareer", "modes", 155, "WORLD 26/27 CAR.     ", 15, "worldCareer",
-                   "world_career.png", 126)]
+                  ("worldCareer", "modes", 155, "WORLD CAREER     ", 15, "worldCareer",
+                   "world_career.png", 114)]
 CONTINUE_Y = 154        # (on screen 154..173: 3 under the last row's 150, 4 over SAVE / LOAD's 178)
 # The SWOS United logo's place in the CREDITS entry: SWOS 2020's 293,185 less the entry's 281,182
 # and ConvertMenu's +8 (mod_menus2020.c kCreditsPicX / kCreditsPicY: keep the two the same).
