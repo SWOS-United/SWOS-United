@@ -13,8 +13,9 @@ Beside it logo_hd.png, 4 times as big each way, for the mod's logo = hd (drawn s
 place, menu_extras.c ModApi_SetMenuImageHD).
 The edges' alpha is kept: a PNG the menu shows over whatever is under it (menu_extras.c,
 MenuExtras_Present). Writes bin/mods/menus2020/grafs_united/logo.png (committed: the logo is
-ours); the size it prints is make_menus2020.py's LOGO_SIZE: keep the two the same. Needs Pillow
-and numpy only.
+ours); the size it prints is make_menus2020.py's LOGO_SIZE: keep the two the same. SWOS as the
+old banner: a black setting, a chrome rim (a wire's shading by OpenCV's distance field), the faces
+raised. Needs Pillow, numpy and OpenCV (opencv-python); the SVG has the flat rim, not the shading.
 
 --svg writes the same drawing as an SVG (to look at, or for a bigger copy); --preview a 3x view
 of it over a dark and a green ground.
@@ -24,6 +25,7 @@ import math
 import os
 import re
 
+import cv2
 import numpy as np
 from PIL import Image, ImageDraw
 
@@ -41,20 +43,24 @@ LINE_GAP = 6            # (pixels) stacked: between SWOS's capitals and UNITED's
 H = 3 + CAP + LINE_GAP + CAP + 3 if STACKED else CAP + 6     # the picture's height
 
 # ---------------------------------------------------------------- SWOS: the letters' outlines
-# (units; capitals 0..200, the round letters 4 over; the S's ends cut upright)
-S_PATH = ("M174,3 C158,7 118,-4 72,-4 C32.256,-4 0,21.984 0,54 C0,90 12.692,108.562 46,115.387 "
-          "A335.436,335.436 0 0 0 101.628,122.011 A18,18 0 0 1 118.989,140.628 "
-          "A18,18 0 0 1 100.372,157.989 A371.436,371.436 0 0 1 40,150.904 "
-          "C27.256,148.337 16.235,145.543 10,139.052 L10,197 C26,193 66,204 112,204 "
-          "C151.744,204 184,178.016 184,146 C184,110 171.308,91.438 138,84.613 "
-          "A335.436,335.436 0 0 0 82.372,77.989 A18,18 0 0 1 65.011,59.372 "
-          "A18,18 0 0 1 83.628,42.011 A371.436,371.436 0 0 1 144,49.096 "
-          "C156.744,51.663 167.765,54.457 174,60.948 Z")
+# (units; capitals 0..200, the round parts 4 over) The S after the old banner's (2026-11-26): its upper
+# end upright, a tail below, round slit ends; the upper bowl a little slimmer than the lower, as there.
+S_PATH = ("M171.660,55.839 L171.660,9.967 C92.758,-21.388 2.480,-1.065 2.480,63.866 "
+          "C2.480,100.744 35.391,104.911 69.847,113.994 "
+          "C92.560,119.981 111.611,124.975 109.396,137.090 "
+          "C103.873,167.302 26.060,145.326 3.039,120.194 L3.039,197.942 "
+          "C36.056,187.744 59.784,204.000 88.763,204.000 "
+          "C146.302,204.000 184.061,180.203 184.061,135.694 "
+          "C184.061,103.471 162.865,88.733 116.510,78.572 "
+          "C97.636,74.435 81.853,70.955 80.513,60.933 C76.196,28.642 146.483,47.101 171.660,55.839 "
+          "Z")
 W_PATH = ("M0,0 H62.9 L96.36,105.3 L125.1,0 H188 L216.76,105.3 L250.2,0 H313.1 L249.6,200 "
           "H186.7 L156.55,89.7 L126.45,200 H63.5 Z")
 O_PATH = ("M0,100 A111,104 0 1 1 222,100 A111,104 0 1 1 0,100 Z "
           "M61,100 A50,49 0 1 0 161,100 A50,49 0 1 0 61,100 Z")
 SWOS_X = 3 * PX
+MIRROR = 0.35           # how much the chrome mirrors: 0 matt .. 1 bright (more contrast, a sharp edge line)
+BEVEL = 0.9             # (pixels) the faces' sloping edge: raised, lit from the top left
 CHROME_W = 1.5          # (pixels) SWOS's chrome rim
 EDGE_W = 1.0            # (pixels) the black edge round it
 SPREAD = PX             # (units) more room between SWOS's letters than the drawing had: one pixel
@@ -321,18 +327,71 @@ def hexrgb(c):
     return np.array([int(c[i:i + 2], 16) / 255 for i in (1, 3, 5)])
 
 
+LIGHT = np.array([-0.55, -0.65, 0.52]); LIGHT = LIGHT / np.linalg.norm(LIGHT)   # from the top left, a little in front
+HALF = (LIGHT + np.array([0, 0, 1.0])); HALF = HALF / np.linalg.norm(HALF)
+def _normals(face):
+    """The face's signed distance (samples; + outside) and its outward direction, smoothed."""
+    f8 = face.astype(np.uint8)
+    dout = cv2.distanceTransform(1 - f8, cv2.DIST_L2, 5)
+    din = cv2.distanceTransform(f8, cv2.DIST_L2, 5)
+    sdf = dout - din
+    s = cv2.GaussianBlur(sdf.astype(np.float32), (0, 0), SS * 0.35)
+    gy, gx = np.gradient(s)
+    n = np.hypot(gx, gy) + 1e-6
+    return dout, din, gx / n, gy / n
+def chrome_rim(cv, face, region, env, width, mirror=0.0):
+    """The rim, a round wire of chrome round the face: across it a tube's normal (inward at the face, up
+    in its middle, outward at its edge), lit from the top left; the environment (env, a column of
+    colours: the sky above, the dark horizon, the ground) reflected, and a hard highlight."""
+    dout, din, nx, ny = _normals(face)
+    u = np.clip(dout / (width * SS / PX), 0, 1)
+    th = (u - 0.5) * np.pi * 0.9
+    Nx, Ny, Nz = nx * np.sin(th), ny * np.sin(th), np.cos(th)
+    diff = np.clip(Nx * LIGHT[0] + Ny * LIGHT[1] + Nz * LIGHT[2], 0, 1)
+    spec = np.clip(Nx * HALF[0] + Ny * HALF[1] + Nz * HALF[2], 0, 1) ** 40
+    # the reflection: the environment looked up by where the normal points (up-tilted sees the sky)
+    rows = np.clip(np.arange(cv.h)[:, None] - Ny * cv.h * 0.12, 0, cv.h - 1).astype(int)
+    col = env[rows]
+    if mirror:
+        col = np.clip(0.5 + (col - 0.5) * (1 + 0.9 * mirror), 0, 1)          # (more contrast)
+        spec = np.maximum(spec, np.clip(Nx * HALF[0] + Ny * HALF[1] + Nz * HALF[2], 0, 1) ** 12 * 0.5 * mirror)
+        fres = np.clip(1 - Nz, 0, 1) ** 3 * (u > 0.55)                       # (the outer edge's bright line)
+        spec = spec + fres * 0.55 * mirror
+    col = col * (0.45 + 0.75 * diff[..., None]) + spec[..., None] * 0.95
+    col = np.clip(col, 0, 1)
+    cv.rgb[region] = col[region]
+    cv.a[region] = 1.0
+def embossed_face(cv, face, grad, bevel):
+    """The face raised: within `bevel` of its edge it slopes down outwards, lit from the top left
+    (bright edges up and left, shaded down and right); flat inside, as it is."""
+    dout, din, nx, ny = _normals(face)
+    b = bevel * SS / PX
+    t = np.clip(1 - din / b, 0, 1) ** 1.5
+    th = t * np.pi * 0.32
+    Nx, Ny, Nz = nx * np.sin(th), ny * np.sin(th), np.cos(th)
+    lit = (Nx * LIGHT[0] + Ny * LIGHT[1] + Nz * LIGHT[2]) / LIGHT[2]
+    spec = np.clip(Nx * HALF[0] + Ny * HALF[1] + Nz * HALF[2], 0, 1) ** 30 - HALF[2] ** 30
+    col = np.broadcast_to(grad[:, None, :], cv.rgb.shape)
+    lit = lit[..., None]
+    col = np.where(lit > 1, col + (1 - col) * (lit - 1) * 1.2, col * lit) + np.clip(spec, 0, 1)[..., None] * 0.6
+    col = np.clip(col, 0, 1)
+    cv.rgb[face] = col[face]
+    cv.a[face] = 1.0
+
+
 def build():
     uni, uend = united()
     W = math.ceil((2 * SWOS_X + SWOS_W) / PX) if STACKED else uend + 3
     cv = Canvas(W, H)
-    # SWOS: each letter whole -- a black edge a pixel wide, the chrome rim, its face -- back to
-    # front, so each one's black edge parts it from the one before
+    # SWOS: each letter whole -- a black setting a pixel wide, the chrome rim (a round wire, lit from
+    # the top left), its face raised -- back to front, so each one's black edge parts it from the one before
     chrome = cv.gradient(CHROME)
     for k, d, x in SWOS:
         c = path_contours(d, SWOS_X + x, TOP)
         cv.paint(cv.mask(c, (CHROME_W + EDGE_W) * PX), hexrgb("#000000"))
-        cv.paint(cv.mask(c, CHROME_W * PX), chrome)
-        cv.paint(cv.mask(c), cv.gradient(swos_face(*COLOURS[k])))
+        face = cv.mask(c)
+        chrome_rim(cv, face, cv.mask(c, CHROME_W * PX) & ~face, chrome, CHROME_W, MIRROR)
+        embossed_face(cv, face, cv.gradient(swos_face(*COLOURS[k])), BEVEL)
     # UNITED: a black edge, dark red, bright red (a pixel each), the face
     for grow, colour in ((2.5, "#000000"), (2.0, "#8a0000"), (1.0, "#ff1c1c")):
         m = np.zeros((cv.h, cv.w), bool)
