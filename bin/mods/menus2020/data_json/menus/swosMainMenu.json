@@ -479,7 +479,7 @@
         {
           "op": "text",
           "flags": "0x10",
-          "literal": "CLASSIC CAREER"
+          "literal": "     CLASSIC CAREER"
         },
         {
           "op": "colors",
@@ -490,7 +490,10 @@
           "op": "onselect_fire",
           "func": "menus2020.classicCareer"
         }
-      ]
+      ],
+      "image": "grafs_2020/menus2020/classic_career.png",
+      "image_x": 11,
+      "image_y": 4
     },
     {
       "kind": "set_origin",
@@ -546,7 +549,7 @@
         {
           "op": "text",
           "flags": "0x10",
-          "literal": "WORLD 26/27 CAREER"
+          "literal": "      WORLD 26/27 CAR."
         },
         {
           "op": "colors",
@@ -557,7 +560,10 @@
           "op": "onselect_fire",
           "func": "menus2020.worldCareer"
         }
-      ]
+      ],
+      "image": "grafs_2020/menus2020/world_career.bmp",
+      "image_x": 6,
+      "image_y": 4
     }
   ],
   "ticker_entry": 7

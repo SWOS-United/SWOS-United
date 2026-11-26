@@ -185,8 +185,14 @@ MAIN_SLOTS = {
 # and MODES (16), which this menu never shows (COMPETE and PRACTICE have them): the menu replaces
 # the compiled one in place, so it has no more entries. COMPETE's CLASSIC CAREER MODE goes.
 ROW_Y, ROW_H, ROW_STEP = 41, 24, 28
-CAREER_BUTTONS = [("classicCareer", "multiplayer", 1, "CLASSIC CAREER", 4, "classicCareer"),
-                  ("worldCareer", "modes", 155, "WORLD 26/27 CAREER", 15, "worldCareer")]
+# Each with an icon (Playa's drawings, 2026-11-26) at a column, the icon and the text centred together
+# in the box: the text's leading spaces move it right (2 px each), CAREER shortened on WORLD's to fit.
+# WORLD's a .bmp, not a .png: its dark yellow is painted over the finished picture where the box
+# still has colour 15 (mod_menus2020.c world_career_paint), over a .png too, not over a .bmp's pixels.
+CAREER_BUTTONS = [("classicCareer", "multiplayer", 1, "     CLASSIC CAREER", 4, "classicCareer",
+                   "classic_career.png", 11),
+                  ("worldCareer", "modes", 155, "      WORLD 26/27 CAR.", 15, "worldCareer",
+                   "world_career.bmp", 6)]
 CONTINUE_Y = 154        # (on screen 154..173: 3 under the last row's 150, 4 over SAVE / LOAD's 178)
 # The SWOS United logo's place in the CREDITS entry: SWOS 2020's 293,185 less the entry's 281,182
 # and ConvertMenu's +8 (mod_menus2020.c kCreditsPicX / kCreditsPicY: keep the two the same).
@@ -382,12 +388,14 @@ def build_main(doc):
     # ... and in their places, SWOS United's careers (CAREER_BUTTONS): PRACTICE's row's look, a
     # colour each (CLASSIC brown, WORLD dark yellow), the text centred.
     row_origin = by_name["replays"][1]
-    for name, slot, x, text, colour, handler in CAREER_BUTTONS:
+    for name, slot, x, text, colour, handler, icon, icon_x in CAREER_BUTTONS:
         extra[slot] = ({"kind": "entry", "name": name,
                         "coords": {"x": x, "y": ROW_Y + 3 * ROW_STEP, "w": 148, "h": ROW_H},
                         "commands": [{"op": "text", "flags": "0x10", "literal": text},
                                      {"op": "colors", "frame_color": 0, "background_color": colour},
-                                     {"op": "onselect_fire", "func": mod(handler)}]}, row_origin)
+                                     {"op": "onselect_fire", "func": mod(handler)}],
+                        "image": "grafs_2020/menus2020/%s" % icon,
+                        "image_x": icon_x, "image_y": (ROW_H - 16) // 2}, row_origin)
 
     remap = {}
     for new, name in enumerate(MAIN_ORDER):
@@ -469,8 +477,8 @@ def build_main(doc):
     doc["items"] = emit(ordered)
     doc["name"] = "swosMainMenu"
     doc["onInit"] = mod("mainInit")
-    doc["onDraw"] = None
-    doc["onReturn"] = mod("mainDrawn")         # (each frame: the TV's live / idle picture)
+    doc["onDraw"] = mod("mainDraw")            # (each frame: the TV's live / idle picture)
+    doc["onReturn"] = mod("mainDrawn")         # (... and as the menu is come back to)
     doc["defaultEntry"] = 0
     return doc
 
