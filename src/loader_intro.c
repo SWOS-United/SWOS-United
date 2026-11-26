@@ -148,15 +148,17 @@ static void loaderIntroEnsureMenuMusicPlaying(void)
         extern int32_t DosMusic_TitleMidi(void);
         /* SWOS United's title track (Playa, 2026-11-20): daXX's remix of Goalscoring Superstar
          * Hero, sound_dos/united_title.mp3 (from SWOS 2020's music DLC, laid in by the installer,
-         * scripts/build_installer.sh), whatever the music style, repeated until fire. Without it:
-         * [audio] music = pc: [audio] title_music = midi plays sound_dos/title.xmi (SWOS 2020's
-         * floppy title song, from a mod) on the emulated card, else the PC CD release's title
-         * song, sound_dos/title.mp3. */
+         * scripts/build_installer.sh), whatever the music style, repeated until fire -- unless the
+         * player chose the MIDI one: [audio] music = pc with [audio] title_music = midi plays
+         * sound_dos/title.xmi (SWOS 2020's floppy title song, from a mod) on the emulated card
+         * first (PC TITLE MUSIC: MIDI did nothing while united_title.mp3 was there, Redhair). Without
+         * either, with music = pc, the PC CD release's title song, sound_dos/title.mp3. */
+        if (DosMusic_Style() && DosMusic_TitleMidi() && AudioSDL_PcSongStart("title", 0) == 0) {
+            fprintf(stderr, "[music] title track: sound_dos/title.xmi (PC TITLE MUSIC: MIDI)\n");
+        } else
         if (AudioSDL_StreamStart("united_title", 1) == 0) {
             fprintf(stderr, "[music] title track: sound_dos/united_title.mp3\n");
             s_titleStream = 1;
-        } else
-        if (DosMusic_Style() && DosMusic_TitleMidi() && AudioSDL_PcSongStart("title", 0) == 0) {
         } else
         if (DosMusic_Style() && AudioSDL_StreamStart("title", 0) == 0) {
         } else
