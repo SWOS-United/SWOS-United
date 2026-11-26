@@ -278,6 +278,7 @@ void Platform_VolumeKey(int key);        /* Shift+1..6 in a match: a volume down
 /* Set the windowed-mode integer scale factor (1..4) at runtime. Called
  * from the +/- key handlers. No-op while fullscreen. */
 void Platform_SetWindowScale(int scale);    /* 0: AUTO; a number: that, or the most that fits */
+void Platform_SetStretchShape(int w, int h);  /* ASPECT RATIO (0 x 0: AUTO): STRETCH's window shape */
 /* WINDOW SCALE is AUTO: the most whole times the picture fits the monitor's usable area,
  * framed, again whenever the monitor or the picture's size changes. */
 int  Platform_WindowScaleAuto(void);

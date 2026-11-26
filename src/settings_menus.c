@@ -786,8 +786,11 @@ static void res_change(int32_t dir)
     } else {
         display_size(&dw, &dh);
     }
+    Platform_SetStretchShape(O()->res_w, O()->res_h);  /* (STRETCH: the window takes it) */
     if (Video_ResolutionChanged(O(), dw, dh))
         note(i ? "THE PICTURE'S SHAPE: MORE PITCH WHEN WIDER" : "THE DISPLAY'S OWN SHAPE");
+    else if (O()->widescreen == 2)
+        note(i ? "THE WINDOW'S SHAPE, THE PICTURE STRETCHED OVER IT" : "THE DISPLAY'S OWN SHAPE");
     else
         note("THE PICTURE'S SHAPE, WITH WIDESCREEN ON");
     save();
