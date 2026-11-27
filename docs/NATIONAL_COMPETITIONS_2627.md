@@ -51,6 +51,10 @@ Cup Qatar (2023), Gold Cup Mexico (2025), OFC Nations Cup New Zealand (2024).
   writes `competitions/national_ranking.json` in the world folder (gitignored world data: copy it
   to another machine's world folder, or rerun the script there). The owner's two inputs:
   `mens_soccer_national_teams.csv` and FIFA's men's ranking page saved from the browser.
+  A copy of the generated file is in git: `scripts/worldgen/data/national_ranking_2627.json`.
+  On another machine, copy it to the world folder's `competitions/national_ranking.json`
+  (Windows: `Documents\SWOSUnited\mods\world2627\data_json\worlds\2627\competitions\`, or
+  `bin/data_json/worlds/2627/competitions/` for the golden test).
 - `src/nat_rank.c` / `include/nat_rank.h`: the base from that file (`DataJson_LoadNationalRanking`,
   `src/save_format_json.c`, called beside `DataJson_LoadNationalTeams` in `frontend.c` and
   `world_switch.c`); without it, the records' skill. A career copies it at first use, moves it after

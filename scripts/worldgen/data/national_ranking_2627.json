@@ -1,0 +1,2124 @@
+{
+ "about": "World 2026-27's national ranking (FIFA, 2026-11-25) and confederations: scripts/worldgen/nat_ranking.py",
+ "date": "2026-11-25",
+ "confederations": [
+  "UEFA",
+  "CAF",
+  "CONMEBOL",
+  "CONCACAF",
+  "AFC",
+  "OFC"
+ ],
+ "teams": [
+  {
+   "country": 80,
+   "ordinal": 42,
+   "name": "SPAIN",
+   "code": "ESP",
+   "rank": 1,
+   "points": 200448,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 82,
+   "ordinal": 0,
+   "name": "ARGENTINA",
+   "code": "ARG",
+   "rank": 2,
+   "points": 196613,
+   "confederation": 2,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 15,
+   "name": "FRANCE",
+   "code": "FRA",
+   "rank": 3,
+   "points": 195082,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 11,
+   "name": "ENGLAND",
+   "code": "ENG",
+   "rank": 4,
+   "points": 193890,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 34,
+   "name": "PORTUGAL",
+   "code": "POR",
+   "rank": 5,
+   "points": 180128,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 82,
+   "ordinal": 2,
+   "name": "BRAZIL",
+   "code": "BRA",
+   "rank": 6,
+   "points": 180091,
+   "confederation": 2,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 19,
+   "name": "MOROCCO",
+   "code": "MAR",
+   "rank": 7,
+   "points": 179135,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 5,
+   "name": "BELGIUM",
+   "code": "BEL",
+   "rank": 8,
+   "points": 179037,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 19,
+   "name": "HOLLAND",
+   "code": "NED",
+   "rank": 9,
+   "points": 177406,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 82,
+   "ordinal": 4,
+   "name": "COLOMBIA",
+   "code": "COL",
+   "rank": 10,
+   "points": 173590,
+   "confederation": 2,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 17,
+   "name": "GERMANY",
+   "code": "GER",
+   "rank": 11,
+   "points": 173022,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 44,
+   "name": "SWITZERLAND",
+   "code": "SUI",
+   "rank": 12,
+   "points": 172615,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 83,
+   "ordinal": 8,
+   "name": "MEXICO",
+   "code": "MEX",
+   "rank": 13,
+   "points": 172364,
+   "confederation": 3,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 23,
+   "name": "ITALY",
+   "code": "ITA",
+   "rank": 14,
+   "points": 171720,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 7,
+   "name": "CROATIA",
+   "code": "CRO",
+   "rank": 15,
+   "points": 171422,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 83,
+   "ordinal": 14,
+   "name": "UNITED STATES",
+   "code": "USA",
+   "rank": 16,
+   "points": 171356,
+   "confederation": 3,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 9,
+   "name": "JAPAN",
+   "code": "JPN",
+   "rank": 17,
+   "points": 168461,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 23,
+   "name": "SENEGAL",
+   "code": "SEN",
+   "rank": 18,
+   "points": 168044,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 32,
+   "name": "NORWAY",
+   "code": "NOR",
+   "rank": 19,
+   "points": 165089,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 82,
+   "ordinal": 8,
+   "name": "URUGUAY",
+   "code": "URU",
+   "rank": 20,
+   "points": 164448,
+   "confederation": 2,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 10,
+   "name": "DENMARK",
+   "code": "DEN",
+   "rank": 21,
+   "points": 162241,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 2,
+   "name": "AUSTRIA",
+   "code": "AUT",
+   "rank": 22,
+   "points": 160221,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 7,
+   "name": "IRAN",
+   "code": "IRN",
+   "rank": 23,
+   "points": 159759,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 82,
+   "ordinal": 5,
+   "name": "ECUADOR",
+   "code": "ECU",
+   "rank": 24,
+   "points": 159334,
+   "confederation": 2,
+   "banned": false
+  },
+  {
+   "country": 83,
+   "ordinal": 1,
+   "name": "CANADA",
+   "code": "CAN",
+   "rank": 25,
+   "points": 158612,
+   "confederation": 3,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 8,
+   "name": "EGYPT",
+   "code": "EGY",
+   "rank": 26,
+   "points": 158049,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 85,
+   "ordinal": 0,
+   "name": "AUSTRALIA",
+   "code": "AUS",
+   "rank": 27,
+   "points": 157690,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 13,
+   "name": "IVORY COAST",
+   "code": "CIV",
+   "rank": 28,
+   "points": 156593,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 22,
+   "name": "NIGERIA",
+   "code": "NGA",
+   "rank": 29,
+   "points": 156418,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 24,
+   "name": "SOUTH KOREA",
+   "code": "KOR",
+   "rank": 30,
+   "points": 156002,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 82,
+   "ordinal": 6,
+   "name": "PARAGUAY",
+   "code": "PAR",
+   "rank": 31,
+   "points": 155989,
+   "confederation": 2,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 0,
+   "name": "ALGERIA",
+   "code": "ALG",
+   "rank": 32,
+   "points": 155794,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 45,
+   "name": "TURKEY",
+   "code": "TUR",
+   "rank": 33,
+   "points": 155622,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 43,
+   "name": "SWEDEN",
+   "code": "SWE",
+   "rank": 34,
+   "points": 154905,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 37,
+   "name": "RUSSIA",
+   "code": "RUS",
+   "rank": 35,
+   "points": 154559,
+   "confederation": 0,
+   "banned": true
+  },
+  {
+   "country": 80,
+   "ordinal": 46,
+   "name": "UKRAINE",
+   "code": "UKR",
+   "rank": 36,
+   "points": 153059,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 20,
+   "name": "HUNGARY",
+   "code": "HUN",
+   "rank": 37,
+   "points": 151470,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 33,
+   "name": "POLAND",
+   "code": "POL",
+   "rank": 38,
+   "points": 150649,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 38,
+   "name": "DR CONGO",
+   "code": "COD",
+   "rank": 39,
+   "points": 150308,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 18,
+   "name": "GREECE",
+   "code": "GRE",
+   "rank": 40,
+   "points": 150214,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 47,
+   "name": "WALES",
+   "code": "WAL",
+   "rank": 41,
+   "points": 150099,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 6,
+   "name": "CAMEROON",
+   "code": "CMR",
+   "rank": 42,
+   "points": 149584,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 18,
+   "name": "MALI",
+   "code": "MLI",
+   "rank": 43,
+   "points": 148535,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 39,
+   "name": "SCOTLAND",
+   "code": "SCO",
+   "rank": 44,
+   "points": 148484,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 83,
+   "ordinal": 10,
+   "name": "PANAMA",
+   "code": "PAN",
+   "rank": 45,
+   "points": 148168,
+   "confederation": 3,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 48,
+   "name": "SERBIA",
+   "code": "SRB",
+   "rank": 46,
+   "points": 147066,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 40,
+   "name": "SLOVAKIA",
+   "code": "SVK",
+   "rank": 47,
+   "points": 146900,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 25,
+   "name": "SOUTH AFRICA",
+   "code": "RSA",
+   "rank": 48,
+   "points": 146862,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 41,
+   "name": "SLOVENIA",
+   "code": "SVN",
+   "rank": 49,
+   "points": 146201,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 82,
+   "ordinal": 9,
+   "name": "VENEZUELA",
+   "code": "VEN",
+   "rank": 50,
+   "points": 146158,
+   "confederation": 2,
+   "banned": false
+  },
+  {
+   "country": 82,
+   "ordinal": 3,
+   "name": "CHILE",
+   "code": "CHI",
+   "rank": 51,
+   "points": 145887,
+   "confederation": 2,
+   "banned": false
+  },
+  {
+   "country": 82,
+   "ordinal": 7,
+   "name": "PERU",
+   "code": "PER",
+   "rank": 52,
+   "points": 145473,
+   "confederation": 2,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 9,
+   "name": "CZECHIA",
+   "code": "CZE",
+   "rank": 53,
+   "points": 145142,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 22,
+   "name": "SAUDI ARABIA",
+   "code": "KSA",
+   "rank": 54,
+   "points": 144394,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 83,
+   "ordinal": 2,
+   "name": "COSTA RICA",
+   "code": "CRC",
+   "rank": 55,
+   "points": 144000,
+   "confederation": 3,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 35,
+   "name": "REPUBLIC IRELAND",
+   "code": "IRL",
+   "rank": 56,
+   "points": 143939,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 50,
+   "name": "BOSNIA-HERZ.",
+   "code": "BIH",
+   "rank": 57,
+   "points": 143115,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 36,
+   "name": "ROMANIA",
+   "code": "ROU",
+   "rank": 58,
+   "points": 142990,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 4,
+   "name": "BURKINA FASO",
+   "code": "BFA",
+   "rank": 59,
+   "points": 142207,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 46,
+   "name": "UZBEKISTAN",
+   "code": "UZB",
+   "rank": 60,
+   "points": 141810,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 21,
+   "name": "QATAR",
+   "code": "QAT",
+   "rank": 61,
+   "points": 140934,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 8,
+   "name": "IRAQ",
+   "code": "IRQ",
+   "rank": 62,
+   "points": 140066,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 31,
+   "name": "NORTHERN IRELAND",
+   "code": "NIR",
+   "rank": 63,
+   "points": 139522,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 30,
+   "name": "TUNISIA",
+   "code": "TUN",
+   "rank": 64,
+   "points": 139258,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 0,
+   "name": "ALBANIA",
+   "code": "ALB",
+   "rank": 65,
+   "points": 138842,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 28,
+   "name": "UNITED ARAB EMIS",
+   "code": "UAE",
+   "rank": 66,
+   "points": 138591,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 83,
+   "ordinal": 7,
+   "name": "JAMAICA",
+   "code": "JAM",
+   "rank": 67,
+   "points": 137681,
+   "confederation": 3,
+   "banned": false
+  },
+  {
+   "country": 83,
+   "ordinal": 6,
+   "name": "HONDURAS",
+   "code": "HON",
+   "rank": 68,
+   "points": 137307,
+   "confederation": 3,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 11,
+   "name": "GHANA",
+   "code": "GHA",
+   "rank": 69,
+   "points": 136702,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 21,
+   "name": "ICELAND",
+   "code": "ISL",
+   "rank": 70,
+   "points": 136115,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 34,
+   "name": "CAPE VERDE",
+   "code": "CPV",
+   "rank": 71,
+   "points": 136008,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 10,
+   "name": "JORDAN",
+   "code": "JOR",
+   "rank": 72,
+   "points": 135797,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 28,
+   "name": "NORTH MACEDONIA",
+   "code": "MKD",
+   "rank": 73,
+   "points": 133935,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 16,
+   "name": "GEORGIA",
+   "code": "GEO",
+   "rank": 74,
+   "points": 133573,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 14,
+   "name": "FINLAND",
+   "code": "FIN",
+   "rank": 75,
+   "points": 133500,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 22,
+   "name": "ISRAEL",
+   "code": "ISR",
+   "rank": 76,
+   "points": 132925,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 54,
+   "name": "MONTENEGRO",
+   "code": "MNE",
+   "rank": 77,
+   "points": 132474,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 53,
+   "name": "KOSOVO",
+   "code": "KOS",
+   "rank": 78,
+   "points": 132210,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 82,
+   "ordinal": 1,
+   "name": "BOLIVIA",
+   "code": "BOL",
+   "rank": 79,
+   "points": 131580,
+   "confederation": 2,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 12,
+   "name": "GUINEA",
+   "code": "GUI",
+   "rank": 80,
+   "points": 130525,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 83,
+   "ordinal": 24,
+   "name": "CURACAO",
+   "code": "CUW",
+   "rank": 81,
+   "points": 130027,
+   "confederation": 3,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 17,
+   "name": "OMAN",
+   "code": "OMA",
+   "rank": 82,
+   "points": 129849,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 1,
+   "name": "ANGOLA",
+   "code": "ANG",
+   "rank": 83,
+   "points": 129286,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 85,
+   "ordinal": 2,
+   "name": "NEW ZEALAND",
+   "code": "NZL",
+   "rank": 84,
+   "points": 128346,
+   "confederation": 5,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 2,
+   "name": "BENIN",
+   "code": "BEN",
+   "rank": 85,
+   "points": 128150,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 83,
+   "ordinal": 28,
+   "name": "HAITI",
+   "code": "HAI",
+   "rank": 86,
+   "points": 127282,
+   "confederation": 3,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 10,
+   "name": "GABON",
+   "code": "GAB",
+   "rank": 87,
+   "points": 126958,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 26,
+   "name": "SYRIA",
+   "code": "SYR",
+   "rank": 88,
+   "points": 126930,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 31,
+   "name": "UGANDA",
+   "code": "UGA",
+   "rank": 89,
+   "points": 126912,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 43,
+   "name": "THAILAND",
+   "code": "THA",
+   "rank": 90,
+   "points": 125791,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 32,
+   "name": "ZAMBIA",
+   "code": "ZAM",
+   "rank": 91,
+   "points": 125232,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 41,
+   "name": "PALESTINE",
+   "code": "PLE",
+   "rank": 92,
+   "points": 125089,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 6,
+   "name": "BULGARIA",
+   "code": "BUL",
+   "rank": 93,
+   "points": 124737,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 4,
+   "name": "BELARUS",
+   "code": "BLR",
+   "rank": 94,
+   "points": 124567,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 3,
+   "name": "CHINA",
+   "code": "CHN",
+   "rank": 95,
+   "points": 124557,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 0,
+   "name": "BAHRAIN",
+   "code": "BHR",
+   "rank": 96,
+   "points": 124372,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 83,
+   "ordinal": 4,
+   "name": "GUATEMALA",
+   "code": "GUA",
+   "rank": 97,
+   "points": 123429,
+   "confederation": 3,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 20,
+   "name": "MOZAMBIQUE",
+   "code": "MOZ",
+   "rank": 98,
+   "points": 123092,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 29,
+   "name": "VIETNAM",
+   "code": "VIE",
+   "rank": 99,
+   "points": 122834,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 42,
+   "name": "TAJIKISTAN",
+   "code": "TJK",
+   "rank": 100,
+   "points": 121995,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 83,
+   "ordinal": 3,
+   "name": "EL SALVADOR",
+   "code": "SLV",
+   "rank": 101,
+   "points": 121240,
+   "confederation": 3,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 35,
+   "name": "KYRGYZSTAN",
+   "code": "KGZ",
+   "rank": 102,
+   "points": 120759,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 27,
+   "name": "LUXEMBOURG",
+   "code": "LUX",
+   "rank": 103,
+   "points": 120481,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 83,
+   "ordinal": 13,
+   "name": "TRINIDAD-TOBAGO",
+   "code": "TRI",
+   "rank": 104,
+   "points": 120163,
+   "confederation": 3,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 37,
+   "name": "COMOROS",
+   "code": "COM",
+   "rank": 105,
+   "points": 120061,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 44,
+   "name": "LIBYA",
+   "code": "LBY",
+   "rank": 106,
+   "points": 119169,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 42,
+   "name": "GAMBIA",
+   "code": "GAM",
+   "rank": 107,
+   "points": 118603,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 40,
+   "name": "EQUAT. GUINEA",
+   "code": "EQG",
+   "rank": 108,
+   "points": 118452,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 45,
+   "name": "MADAGASCAR",
+   "code": "MAD",
+   "rank": 109,
+   "points": 118226,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 1,
+   "name": "ARMENIA",
+   "code": "ARM",
+   "rank": 110,
+   "points": 118101,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 36,
+   "name": "LEBANON",
+   "code": "LBN",
+   "rank": 111,
+   "points": 117314,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 28,
+   "name": "TANZANIA",
+   "code": "TAN",
+   "rank": 112,
+   "points": 117061,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 29,
+   "name": "TOGO",
+   "code": "TOG",
+   "rank": 113,
+   "points": 116987,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 21,
+   "name": "NIGER",
+   "code": "NIG",
+   "rank": 114,
+   "points": 116891,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 14,
+   "name": "KENYA",
+   "code": "KEN",
+   "rank": 115,
+   "points": 116882,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 6,
+   "name": "INDONESIA",
+   "code": "IDN",
+   "rank": 116,
+   "points": 116650,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 12,
+   "name": "ESTONIA",
+   "code": "EST",
+   "rank": 117,
+   "points": 116458,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 46,
+   "name": "MAURITANIA",
+   "code": "MTN",
+   "rank": 118,
+   "points": 116177,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 52,
+   "name": "KAZAKHSTAN",
+   "code": "KAZ",
+   "rank": 119,
+   "points": 116072,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 43,
+   "name": "GUINEA-BISSAU",
+   "code": "GNB",
+   "rank": 120,
+   "points": 115901,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 16,
+   "name": "NORTH KOREA",
+   "code": "PRK",
+   "rank": 121,
+   "points": 115105,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 26,
+   "name": "SUDAN",
+   "code": "SDN",
+   "rank": 122,
+   "points": 115024,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 13,
+   "name": "FAROE ISLES",
+   "code": "FRO",
+   "rank": 123,
+   "points": 115018,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 3,
+   "name": "AZERBAIJAN",
+   "code": "AZE",
+   "rank": 124,
+   "points": 114518,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 48,
+   "name": "RWANDA",
+   "code": "RWA",
+   "rank": 125,
+   "points": 114508,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 33,
+   "name": "ZIMBABWE",
+   "code": "ZIM",
+   "rank": 126,
+   "points": 114392,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 8,
+   "name": "CYPRUS",
+   "code": "CYP",
+   "rank": 127,
+   "points": 113797,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 83,
+   "ordinal": 12,
+   "name": "SURINAM",
+   "code": "SUR",
+   "rank": 128,
+   "points": 113770,
+   "confederation": 3,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 47,
+   "name": "NAMIBIA",
+   "code": "NAM",
+   "rank": 129,
+   "points": 113595,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 17,
+   "name": "MALAWI",
+   "code": "MWI",
+   "rank": 130,
+   "points": 112722,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 24,
+   "name": "SIERRA LEONE",
+   "code": "SLE",
+   "rank": 131,
+   "points": 112650,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 83,
+   "ordinal": 9,
+   "name": "NICARAGUA",
+   "code": "NCA",
+   "rank": 132,
+   "points": 110833,
+   "confederation": 3,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 13,
+   "name": "MALAYSIA",
+   "code": "MAS",
+   "rank": 133,
+   "points": 110307,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 11,
+   "name": "KUWAIT",
+   "code": "KUW",
+   "rank": 134,
+   "points": 110266,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 20,
+   "name": "PHILIPPINES",
+   "code": "PHI",
+   "rank": 135,
+   "points": 109585,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 83,
+   "ordinal": 26,
+   "name": "DOMINICAN REP.",
+   "code": "DOM",
+   "rank": 136,
+   "points": 109549,
+   "confederation": 3,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 7,
+   "name": "CONGO",
+   "code": "CGO",
+   "rank": 137,
+   "points": 109413,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 5,
+   "name": "BURUNDI",
+   "code": "BDI",
+   "rank": 138,
+   "points": 108504,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 3,
+   "name": "BOTSWANA",
+   "code": "BOT",
+   "rank": 139,
+   "points": 108299,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 83,
+   "ordinal": 5,
+   "name": "GUYANA",
+   "code": "GUY",
+   "rank": 140,
+   "points": 108267,
+   "confederation": 3,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 5,
+   "name": "INDIA",
+   "code": "IND",
+   "rank": 141,
+   "points": 107999,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 45,
+   "name": "TURKMENISTAN",
+   "code": "TKM",
+   "rank": 142,
+   "points": 107865,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 16,
+   "name": "LIBERIA",
+   "code": "LBR",
+   "rank": 143,
+   "points": 107808,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 9,
+   "name": "ETHIOPIA",
+   "code": "ETH",
+   "rank": 144,
+   "points": 107178,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 24,
+   "name": "LATVIA",
+   "code": "LVA",
+   "rank": 145,
+   "points": 106680,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 26,
+   "name": "LITHUANIA",
+   "code": "LTU",
+   "rank": 146,
+   "points": 106393,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 15,
+   "name": "LESOTHO",
+   "code": "LES",
+   "rank": 147,
+   "points": 106363,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 30,
+   "name": "YEMEN",
+   "code": "YEM",
+   "rank": 148,
+   "points": 105945,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 23,
+   "name": "SINGAPORE",
+   "code": "SGP",
+   "rank": 149,
+   "points": 105709,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 35,
+   "name": "CENTRAL AFRICA",
+   "code": "CTA",
+   "rank": 150,
+   "points": 104966,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 85,
+   "ordinal": 3,
+   "name": "SOLOMON ISLANDS",
+   "code": "SOL",
+   "rank": 151,
+   "points": 103595,
+   "confederation": 5,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 4,
+   "name": "HONG KONG",
+   "code": "HKG",
+   "rank": 152,
+   "points": 103523,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 85,
+   "ordinal": 1,
+   "name": "FIJI",
+   "code": "FIJ",
+   "rank": 153,
+   "points": 103344,
+   "confederation": 5,
+   "banned": false
+  },
+  {
+   "country": 83,
+   "ordinal": 31,
+   "name": "ST. KITTS-NEVIS",
+   "code": "SKN",
+   "rank": 154,
+   "points": 103287,
+   "confederation": 3,
+   "banned": false
+  },
+  {
+   "country": 83,
+   "ordinal": 30,
+   "name": "PUERTO RICO",
+   "code": "PUR",
+   "rank": 155,
+   "points": 103143,
+   "confederation": 3,
+   "banned": false
+  },
+  {
+   "country": 85,
+   "ordinal": 6,
+   "name": "NEW CALEDONIA",
+   "code": "NCL",
+   "rank": 156,
+   "points": 102601,
+   "confederation": 5,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 30,
+   "name": "MOLDOVA",
+   "code": "MDA",
+   "rank": 157,
+   "points": 101936,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 85,
+   "ordinal": 8,
+   "name": "TAHITI",
+   "code": "TAH",
+   "rank": 158,
+   "points": 101870,
+   "confederation": 5,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 15,
+   "name": "MYANMAR",
+   "code": "MYA",
+   "rank": 159,
+   "points": 100808,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 85,
+   "ordinal": 10,
+   "name": "VANUATU",
+   "code": "VAN",
+   "rank": 160,
+   "points": 100590,
+   "confederation": 5,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 29,
+   "name": "MALTA",
+   "code": "MLT",
+   "rank": 161,
+   "points": 100400,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 83,
+   "ordinal": 23,
+   "name": "CUBA",
+   "code": "CUB",
+   "rank": 162,
+   "points": 99775,
+   "confederation": 3,
+   "banned": false
+  },
+  {
+   "country": 83,
+   "ordinal": 32,
+   "name": "ST. LUCIA",
+   "code": "LCA",
+   "rank": 163,
+   "points": 98980,
+   "confederation": 3,
+   "banned": false
+  },
+  {
+   "country": 83,
+   "ordinal": 16,
+   "name": "ANTIGUA-BARBUDA",
+   "code": "ATG",
+   "rank": 164,
+   "points": 98977,
+   "confederation": 3,
+   "banned": false
+  },
+  {
+   "country": 83,
+   "ordinal": 11,
+   "name": "ST. VINCENT",
+   "code": "VIN",
+   "rank": 165,
+   "points": 98133,
+   "confederation": 3,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 27,
+   "name": "ESWATINI",
+   "code": "SWZ",
+   "rank": 166,
+   "points": 97928,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 19,
+   "name": "PAPUA NEW GUINEA",
+   "code": "PNG",
+   "rank": 167,
+   "points": 96914,
+   "confederation": 5,
+   "banned": false
+  },
+  {
+   "country": 83,
+   "ordinal": 27,
+   "name": "GRENADA",
+   "code": "GRN",
+   "rank": 168,
+   "points": 96896,
+   "confederation": 3,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 31,
+   "name": "AFGHANISTAN",
+   "code": "AFG",
+   "rank": 169,
+   "points": 96807,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 52,
+   "name": "SOUTH SUDAN",
+   "code": "SSD",
+   "rank": 170,
+   "points": 94883,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 83,
+   "ordinal": 0,
+   "name": "BERMUDA",
+   "code": "BER",
+   "rank": 171,
+   "points": 94413,
+   "confederation": 3,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 38,
+   "name": "MALDIVES",
+   "code": "MDV",
+   "rank": 172,
+   "points": 93593,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 49,
+   "name": "ANDORRA",
+   "code": "AND",
+   "rank": 173,
+   "points": 93053,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 83,
+   "ordinal": 19,
+   "name": "BARBADOS",
+   "code": "BRB",
+   "rank": 174,
+   "points": 92772,
+   "confederation": 3,
+   "banned": false
+  },
+  {
+   "country": 83,
+   "ordinal": 29,
+   "name": "MONTSERRAT",
+   "code": "MSR",
+   "rank": 175,
+   "points": 92159,
+   "confederation": 3,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 33,
+   "name": "CAMBODIA",
+   "code": "CAM",
+   "rank": 176,
+   "points": 92083,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 27,
+   "name": "TAIWAN",
+   "code": "TPE",
+   "rank": 177,
+   "points": 91887,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 40,
+   "name": "NEPAL",
+   "code": "NEP",
+   "rank": 178,
+   "points": 91454,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 14,
+   "name": "MAURITIUS",
+   "code": "MRI",
+   "rank": 179,
+   "points": 90624,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 36,
+   "name": "CHAD",
+   "code": "CHA",
+   "rank": 180,
+   "points": 89685,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 83,
+   "ordinal": 20,
+   "name": "BELIZE",
+   "code": "BLZ",
+   "rank": 181,
+   "points": 89394,
+   "confederation": 3,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 1,
+   "name": "BANGLADESH",
+   "code": "BAN",
+   "rank": 182,
+   "points": 89286,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 83,
+   "ordinal": 17,
+   "name": "ARUBA",
+   "code": "ARU",
+   "rank": 183,
+   "points": 88953,
+   "confederation": 3,
+   "banned": false
+  },
+  {
+   "country": 83,
+   "ordinal": 25,
+   "name": "DOMINICA",
+   "code": "DMA",
+   "rank": 184,
+   "points": 88598,
+   "confederation": 3,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 25,
+   "name": "SRI LANKA",
+   "code": "SRI",
+   "rank": 185,
+   "points": 88567,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 41,
+   "name": "ERITREA",
+   "code": "ERI",
+   "rank": 186,
+   "points": 88238,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 12,
+   "name": "LAOS",
+   "code": "LAO",
+   "rank": 187,
+   "points": 88017,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 85,
+   "ordinal": 5,
+   "name": "COOK ISLANDS",
+   "code": "COK",
+   "rank": 188,
+   "points": 87787,
+   "confederation": 5,
+   "banned": false
+  },
+  {
+   "country": 85,
+   "ordinal": 7,
+   "name": "SAMOA",
+   "code": "SAM",
+   "rank": 189,
+   "points": 87641,
+   "confederation": 5,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 39,
+   "name": "MONGOLIA",
+   "code": "MNG",
+   "rank": 190,
+   "points": 87447,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 85,
+   "ordinal": 4,
+   "name": "AMERICAN SAMOA",
+   "code": "ASA",
+   "rank": 191,
+   "points": 87161,
+   "confederation": 5,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 32,
+   "name": "BHUTAN",
+   "code": "BHU",
+   "rank": 192,
+   "points": 87081,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 37,
+   "name": "MACAU",
+   "code": "MAC",
+   "rank": 193,
+   "points": 85803,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 49,
+   "name": "SAO TOME",
+   "code": "STP",
+   "rank": 194,
+   "points": 85510,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 39,
+   "name": "DJIBOUTI",
+   "code": "DJI",
+   "rank": 195,
+   "points": 85358,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 2,
+   "name": "BRUNEI",
+   "code": "BRU",
+   "rank": 196,
+   "points": 84628,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 18,
+   "name": "PAKISTAN",
+   "code": "PAK",
+   "rank": 197,
+   "points": 84459,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 85,
+   "ordinal": 9,
+   "name": "TONGA",
+   "code": "TGA",
+   "rank": 198,
+   "points": 83564,
+   "confederation": 5,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 51,
+   "name": "SOMALIA",
+   "code": "SOM",
+   "rank": 199,
+   "points": 82639,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 51,
+   "name": "GIBRALTAR",
+   "code": "GIB",
+   "rank": 200,
+   "points": 82592,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 83,
+   "ordinal": 22,
+   "name": "CAYMAN ISLANDS",
+   "code": "CAY",
+   "rank": 201,
+   "points": 82500,
+   "confederation": 3,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 44,
+   "name": "TIMOR-LESTE",
+   "code": "TLS",
+   "rank": 202,
+   "points": 82316,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 84,
+   "ordinal": 34,
+   "name": "GUAM",
+   "code": "GUM",
+   "rank": 203,
+   "points": 81954,
+   "confederation": 4,
+   "banned": false
+  },
+  {
+   "country": 83,
+   "ordinal": 33,
+   "name": "TURKS-CAICOS",
+   "code": "TCA",
+   "rank": 204,
+   "points": 80626,
+   "confederation": 3,
+   "banned": false
+  },
+  {
+   "country": 81,
+   "ordinal": 50,
+   "name": "SEYCHELLES",
+   "code": "SEY",
+   "rank": 205,
+   "points": 79563,
+   "confederation": 1,
+   "banned": false
+  },
+  {
+   "country": 83,
+   "ordinal": 34,
+   "name": "US VIRGIN IS.",
+   "code": "VIR",
+   "rank": 206,
+   "points": 79475,
+   "confederation": 3,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 25,
+   "name": "LIECHTENSTEIN",
+   "code": "LIE",
+   "rank": 207,
+   "points": 78316,
+   "confederation": 0,
+   "banned": false
+  },
+  {
+   "country": 83,
+   "ordinal": 18,
+   "name": "BAHAMAS",
+   "code": "BAH",
+   "rank": 208,
+   "points": 77183,
+   "confederation": 3,
+   "banned": false
+  },
+  {
+   "country": 83,
+   "ordinal": 21,
+   "name": "BRIT. VIRGIN IS.",
+   "code": "VGB",
+   "rank": 209,
+   "points": 75275,
+   "confederation": 3,
+   "banned": false
+  },
+  {
+   "country": 83,
+   "ordinal": 15,
+   "name": "ANGUILLA",
+   "code": "AIA",
+   "rank": 210,
+   "points": 73667,
+   "confederation": 3,
+   "banned": false
+  },
+  {
+   "country": 80,
+   "ordinal": 38,
+   "name": "SAN MARINO",
+   "code": "SMR",
+   "rank": 211,
+   "points": 71294,
+   "confederation": 0,
+   "banned": false
+  }
+ ]
+}
