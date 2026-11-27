@@ -658,10 +658,16 @@ void ModMatch_KickOff(void)
     s_endTold = 0;
     if (s_mm.active) {
         s_mm.shootoutDone = 0;
+        _team1PenaltyGoals = _team2PenaltyGoals = 0;   /* (the last shoot-out's, else, in this result) */
         const int16_t g1 = s_mm.setup.score[0] > 0 ? s_mm.setup.score[0] : 0;
         const int16_t g2 = s_mm.setup.score[1] > 0 ? s_mm.setup.score[1] : 0;
-        _team1TotalGoals = _statsTeam1Goals = (uint16_t)g1;
-        _team2TotalGoals = _statsTeam2Goals = (uint16_t)g2;
+        /* the stats' goals are this match's; the total, a second leg's, is the tie's aggregate (what
+         * UpdateTime decides extra time and penalties by, as SWOS 2020's scenarios count it) */
+        const int32_t second = s_mm.setup.secondLeg;
+        _statsTeam1Goals = (uint16_t)g1;
+        _statsTeam2Goals = (uint16_t)g2;
+        _team1TotalGoals = (uint16_t)(g1 + (second && s_mm.setup.firstLeg[0] > 0 ? s_mm.setup.firstLeg[0] : 0));
+        _team2TotalGoals = (uint16_t)(g2 + (second && s_mm.setup.firstLeg[1] > 0 ? s_mm.setup.firstLeg[1] : 0));
         _team1GoalsDigit1 = (uint16_t)(g1 / 10);
         _team1GoalsDigit2 = (uint16_t)(g1 % 10);
         _team2GoalsDigit1 = (uint16_t)(g2 / 10);
@@ -1109,6 +1115,9 @@ static void preload_scorers(void)
     const uintptr_t current = _currentScorer;
     TeamGeneralInfo *const lastTeam = _lastTeamScored;
     const int16_t penalty = _penalty;
+    /* (GoalScored counts the goal too: the score is setup.score's already) */
+    const uint16_t counts[8] = { _team1TotalGoals, _team2TotalGoals, _statsTeam1Goals, _statsTeam2Goals,
+                                 _team1GoalsDigit1, _team1GoalsDigit2, _team2GoalsDigit1, _team2GoalsDigit2 };
     uint8_t keepTime[4];
     memcpy(keepTime, &_gameTime, 4);
 
@@ -1150,6 +1159,14 @@ static void preload_scorers(void)
             }
     }
     memcpy(&_gameTime, keepTime, 4);
+    _team1TotalGoals = counts[0];
+    _team2TotalGoals = counts[1];
+    _statsTeam1Goals = counts[2];
+    _statsTeam2Goals = counts[3];
+    _team1GoalsDigit1 = counts[4];
+    _team1GoalsDigit2 = counts[5];
+    _team2GoalsDigit1 = counts[6];
+    _team2GoalsDigit2 = counts[7];
     _goalScored = goalScored;
     _runSlower = runSlower;
     _lastTeamScoredNumber = lastNum;

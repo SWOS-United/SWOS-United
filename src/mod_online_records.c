@@ -111,7 +111,8 @@ typedef struct {
     char           replayName[96];
     int32_t        difficulty, done, total; /* won: its stars, and its category's progress */
     char           info[kInfoFields][96];   /* share: the scenario's texts (name: its file; replay: */
-} Job;                                      /* the .SCN's bytes) */
+    char           key[128];                /* the .SCN's bytes). key: what its slot was asked for -- */
+} Job;                                      /* an answer for something else since is not stored */
 
 /* The boards' answers (under s_lock): each the last one asked for, by what was asked. */
 enum { F_BOARD, F_MINE, F_NEWS, F_SCNLIST, F_SCNINFO, F_SCNFILE, F_GALORE, F_HIL, F_RPL, F_SHARE, kFetches };
@@ -355,6 +356,12 @@ static int32_t unshare_scenario(const Job *j)
     return 1;
 }
 
+/* (under s_lock) whether the slot still waits for this job's answer */
+static int32_t still_wanted(int32_t slot, const Job *j)
+{
+    return strcmp(s_fetch[slot].key, j->key) == 0;
+}
+
 static void run_job(Job *j)
 {
     if (j->kind == J_TALLY) {
@@ -396,7 +403,8 @@ static void run_job(Job *j)
         free(j->replay);
         j->replay = NULL;
         SDL_LockMutex(s_lock);
-        s_fetch[F_SHARE].state = ok ? 2 : 3;
+        if (still_wanted(F_SHARE, j))
+            s_fetch[F_SHARE].state = ok ? 2 : 3;
         s_fetch[F_SCNLIST].state = s_fetch[F_SCNINFO].state = 0;     /* (asked again) */
         SDL_UnlockMutex(s_lock);
         fprintf(stderr, "[online-records] scenario %s%s: %s\n", j->kind == J_SHARE ? "shared" : "unshared",
@@ -409,11 +417,14 @@ static void run_job(Job *j)
                                     : j->kind == J_MINE ? UnitedRecords_SpeedrunMine(j->user, j->style, text, cap)
                                     : UnitedRecords_SpeedrunNews(text, cap));
         SDL_LockMutex(s_lock);
-        free(s_fetch[slot].text);
-        s_fetch[slot].text = ok ? text : NULL;
-        s_fetch[slot].state = ok ? 2 : 3;
+        const int32_t wanted = still_wanted(slot, j);
+        if (wanted) {
+            free(s_fetch[slot].text);
+            s_fetch[slot].text = ok ? text : NULL;
+            s_fetch[slot].state = ok ? 2 : 3;
+        }
         SDL_UnlockMutex(s_lock);
-        if (!ok)
+        if (!ok || !wanted)
             free(text);
     } else if (j->kind == J_SCNLIST || j->kind == J_SCNINFO) {
         const int32_t slot = j->kind == J_SCNLIST ? F_SCNLIST : F_SCNINFO;
@@ -479,12 +490,15 @@ static void run_job(Job *j)
         uint32_t size = 0;
         const int32_t ok = UnitedRecords_ScnDownload(j->name, &data, &size);
         SDL_LockMutex(s_lock);
-        free(s_fetch[F_SCNFILE].text);
-        s_fetch[F_SCNFILE].text = ok ? (char *)data : NULL;
-        s_fetch[F_SCNFILE].size = ok ? size : 0;
-        s_fetch[F_SCNFILE].state = ok ? 2 : 3;
+        const int32_t wanted = still_wanted(F_SCNFILE, j);
+        if (wanted) {
+            free(s_fetch[F_SCNFILE].text);
+            s_fetch[F_SCNFILE].text = ok ? (char *)data : NULL;
+            s_fetch[F_SCNFILE].size = ok ? size : 0;
+            s_fetch[F_SCNFILE].state = ok ? 2 : 3;
+        }
         SDL_UnlockMutex(s_lock);
-        if (!ok)
+        if (!ok || !wanted)
             free(data);
         fprintf(stderr, "[online-records] %s: %s (%u bytes)\n", j->name, ok ? "downloaded" : "NOT downloaded",
                 (unsigned)size);
@@ -602,6 +616,7 @@ static int32_t fetch(int32_t slot, int32_t kind, const char *key, const Job *job
         Job j = *job;
         j.kind = kind;
         snprintf(f->key, sizeof f->key, "%s", key);
+        snprintf(j.key, sizeof j.key, "%s", f->key);
         f->state = 1;
         SDL_UnlockMutex(s_lock);
         push(&j);
@@ -638,11 +653,13 @@ static int32_t service(const char *method, const char *args, char *out, uint32_t
         snprintf(by, sizeof by, " BY %s.SCN", me);
         if (n < strlen(by) || SDL_strcasecmp(j.name + n - strlen(by), by) != 0)
             return -1;
-        snprintf(key, sizeof key, "%d/%s", (int)share, j.name);
+        /* ("seq": each time the player asks is its own -- an old answer never stands for it) */
+        snprintf(key, sizeof key, "%d/%d/%s", (int)share, (int)json_num(args, "$.seq"), j.name);
         SDL_LockMutex(s_lock);
         Fetch *f = &s_fetch[F_SHARE];
         if (strcmp(f->key, key) != 0 || f->state == 0) {
             snprintf(f->key, sizeof f->key, "%s", key);
+            snprintf(j.key, sizeof j.key, "%s", f->key);
             f->state = 1;
             SDL_UnlockMutex(s_lock);
             if (share) {
@@ -757,6 +774,7 @@ static int32_t service(const char *method, const char *args, char *out, uint32_t
         Fetch *f = &s_fetch[F_SCNFILE];
         if (strcmp(f->key, key) != 0 || f->state == 0) {
             snprintf(f->key, sizeof f->key, "%s", key);
+            snprintf(j.key, sizeof j.key, "%s", f->key);
             f->state = 1;
             SDL_UnlockMutex(s_lock);
             j.kind = J_SCNFILE;

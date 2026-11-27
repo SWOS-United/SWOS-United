@@ -29,6 +29,7 @@
 #include <string.h>
 
 enum { kTeamRecord = 684 };
+enum { kFetchedKept = 500 };    /* downloaded challenges kept (shared.json), the newest */
 
 /* ---- the 7z archive, from memory ---- */
 
@@ -434,6 +435,8 @@ static int32_t challenge_json(const Scn *scn, const char *edt, const char teamNa
             kind = "free_kick";
         } else if (!strcmp(ev, "PENALTY KICK")) {
             kind = "penalty";
+        } else if (!strcmp(ev, "RANDOM")) {
+            kind = "random";                       /* (drawn at PLAY) */
         } else if (strstr(ev, "CORNER KICK") || strstr(ev, "GOAL KICK") || strstr(ev, "THROW IN")) {
             kind = strstr(ev, "CORNER") ? "corner" : strstr(ev, "GOAL") ? "goal_kick" : "throw_in";
             if (!strncmp(ev, "RANDOM", 6) || kickOff < 0 || playingUp < 0) {
@@ -803,6 +806,15 @@ int32_t UnitedScn_Import(const unsigned char *data, uint32_t size, char *id, uin
         int arrLen;
         if (old && mjson_find(old, (int)oldSize, "$.challenges", &arr, &arrLen) == MJSON_TOK_ARRAY) {
             int koff, klen, voff, vlen, vtype, off = 0;
+            int32_t drop = -(kFetchedKept - 1);     /* (the oldest go, past kFetchedKept) */
+            while ((off = mjson_next(arr, arrLen, off, &koff, &klen, &voff, &vlen, &vtype)) != 0) {
+                char oid[48] = "";
+                if (vtype == MJSON_TOK_OBJECT) {
+                    mjson_get_string(arr + voff, vlen, "$.id", oid, (int)sizeof oid);
+                    drop += strcmp(oid, id) != 0;
+                }
+            }
+            off = 0;
             while ((off = mjson_next(arr, arrLen, off, &koff, &klen, &voff, &vlen, &vtype)) != 0) {
                 char oid[48] = "";
                 if (vtype != MJSON_TOK_OBJECT)
@@ -810,6 +822,10 @@ int32_t UnitedScn_Import(const unsigned char *data, uint32_t size, char *id, uin
                 mjson_get_string(arr + voff, vlen, "$.id", oid, (int)sizeof oid);
                 if (!strcmp(oid, id))
                     continue;
+                if (drop > 0) {
+                    drop--;
+                    continue;
+                }
                 put(&w, "%s%.*s", count++ ? ",\n" : "", vlen, arr + voff);
             }
         }

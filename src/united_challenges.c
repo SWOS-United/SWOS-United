@@ -195,7 +195,8 @@ typedef struct { char id[40], label[40]; int32_t difficulty, state; } Item;    /
 static Cat     s_cats[24];
 static int32_t s_numCats, s_catPage;
 static char    s_cat[32];               /* the category being shown */
-static Item    s_items[200];
+enum { kItems = 1024 };
+static Item    s_items[kItems];
 static int32_t s_numItems, s_page;
 static char    s_sel[40];               /* the challenge on its page */
 static char    s_info[4096];
@@ -247,13 +248,13 @@ static void fetch_categories(void)
 
 static void fetch_list(void)
 {
-    static char buf[16384];
+    static char buf[1 << 17];
     char args[96], esc[64];
     s_numItems = 0;
     snprintf(args, sizeof args, "{\"category\":\"%s\"}", ModApi_JsonEscape(s_cat, esc, sizeof esc));
     if (call("list", args, buf, sizeof buf) != 0)
         return;
-    for (char *line = buf; line && *line && s_numItems < 200;) {
+    for (char *line = buf; line && *line && s_numItems < kItems;) {
         char *next = strchr(line, '\n');
         if (next)
             *next++ = 0;
@@ -1314,6 +1315,8 @@ static void post_shared(const ChallengeDef *d)
     ModApi_CallService("discord", "post", args, NULL, 0);
 }
 
+static int32_t s_shareSeq;              /* each share or unshare asked, numbered */
+
 /* SWOS 2020's uploadSCNFile and uploadScenarioInfoToServer for one of the player's own; a new one
  * (`isNew`) posted on Discord. 1 shared. */
 static int32_t share_challenge(const char *id, int32_t isNew)
@@ -1364,11 +1367,11 @@ static int32_t share_challenge(const char *id, int32_t isNew)
     }
     snprintf(args, sizeof args,
              "{\"file\":\"%s\",\"name\":\"%s\",\"nickname\":\"%s\",\"time\":\"%s\",\"start\":\"%s\","
-             "\"etpen\":\"%s\",\"win\":\"%s\",\"level\":\"%d\"}",
+             "\"etpen\":\"%s\",\"win\":\"%s\",\"level\":\"%d\",\"seq\":%d}",
              ModApi_JsonEscape(file, e[0], sizeof e[0]), ModApi_JsonEscape(name, e[1], sizeof e[1]),
              ModApi_JsonEscape(def.title, e[2], sizeof e[2]), when, ModApi_JsonEscape(start, e[3], sizeof e[3]),
              ModApi_JsonEscape(rules, e[4], sizeof e[4]), ModApi_JsonEscape(def.winMessage, e[5], sizeof e[5]),
-             (int)(def.difficulty < 1 ? 1 : def.difficulty));
+             (int)(def.difficulty < 1 ? 1 : def.difficulty), (int)++s_shareSeq);
     if (wait_service("custom.share", args, args, NULL, 0) != 0)
         return 0;
     if (isNew)
@@ -1387,8 +1390,8 @@ static int32_t unshare_file(const char *file)
     for (char *c = name; *c; c++)
         if (*c == '_')
             *c = '/';
-    snprintf(args, sizeof args, "{\"file\":\"%s\",\"name\":\"%s\"}", ModApi_JsonEscape(file, e0, sizeof e0),
-             ModApi_JsonEscape(name, e1, sizeof e1));
+    snprintf(args, sizeof args, "{\"file\":\"%s\",\"name\":\"%s\",\"seq\":%d}",
+             ModApi_JsonEscape(file, e0, sizeof e0), ModApi_JsonEscape(name, e1, sizeof e1), (int)++s_shareSeq);
     return wait_service("custom.unshare", args, args, NULL, 0) == 0;
 }
 
@@ -1751,7 +1754,7 @@ static void customChallengesSortByMenu_exit_onSelect(void) { SetExitMenuFlag(); 
  * play). Not on it: the uniforms, cards and injuries, the pitch set (SWOS 2020's own screens). */
 
 enum { kScoreLimit = 9 };
-enum { EV_KICK_OFF, EV_FREE_KICK, EV_FREE_KICK_HOME, EV_CORNER, EV_THROW_IN, EV_GOAL_KICK, EV_COUNT };
+enum { EV_KICK_OFF, EV_FREE_KICK, EV_FREE_KICK_HOME, EV_CORNER, EV_THROW_IN, EV_GOAL_KICK, EV_RANDOM, EV_COUNT };
 enum { WN_WIN, WN_DRAW, WN_GOLDEN, WN_SILVER };
 
 typedef struct {
@@ -1766,6 +1769,7 @@ typedef struct {
 } Edit;
 
 static Edit s_ed;
+static ChallengeDef s_loaded;           /* the one LOAD brought, whole ("" id: none) */
 static char s_edText[24][48];
 
 static void customChallengesNewOrLoadMenu_OnInit(void) { SetCurrentEntry(CustomChallengesNewOrLoadMenu_new_); }
@@ -1790,6 +1794,8 @@ static int32_t edit_teams(void)        /* the friendly's team screen: both teams
         }
         s_ed.number[t] = ModApi_ChosenTeamNumber(t);
         snprintf(s_ed.name[t], sizeof s_ed.name[t], "%s", ModApi_ChosenName(t));
+        for (size_t n = strlen(s_ed.name[t]); n && s_ed.name[t][n - 1] == ' ';)
+            s_ed.name[t][--n] = 0;
     }
     s_ed.yours = ModApi_ChosenIsPlayer(1) && !ModApi_ChosenIsPlayer(0) ? 1 : 0;
     return 1;
@@ -1800,6 +1806,7 @@ static void customChallengesNewOrLoadMenu_new_onSelect(void)
     memset(&s_ed, 0, sizeof s_ed);
     if (!edit_teams())
         return;
+    s_loaded.id[0] = 0;
     s_ed.subsMin = 3;                       /* (SWOS 2020's new scenario) */
     s_ed.subsMax = 5;
     s_ed.pitch = -1;
@@ -1818,8 +1825,14 @@ static void edit_load(const char *id)
 {
     char v[64];
     memset(&s_ed, 0, sizeof s_ed);
+    s_loaded.id[0] = 0;
     if (!fetch_info(id, s_info, sizeof s_info))
         return;
+    {
+        static TeamFileEx teams[2];
+        if (!load_export(id, NULL, &s_loaded, teams))
+            s_loaded.id[0] = 0;
+    }
     const char *in = s_info;
     snprintf(s_ed.id, sizeof s_ed.id, "%s", id);
     snprintf(s_ed.nickname, sizeof s_ed.nickname, "%s", info_get(in, "title", v, sizeof v));
@@ -1857,7 +1870,7 @@ static void edit_load(const char *id)
     {
         const int32_t kind = info_num(in, "restart");
         s_ed.event = kind == 1 ? EV_CORNER : kind == 2 ? (info_num(in, "restart_deep") ? EV_FREE_KICK_HOME : EV_FREE_KICK)
-                   : kind == 4 ? EV_THROW_IN : kind == 5 ? EV_GOAL_KICK : EV_KICK_OFF;
+                   : kind == 4 ? EV_THROW_IN : kind == 5 ? EV_GOAL_KICK : kind == 6 ? EV_RANDOM : EV_KICK_OFF;
         if (kind)
             s_ed.starter = info_num(in, "restart_team");
     }
@@ -1881,8 +1894,9 @@ static void edit_rules(int32_t changedTeam)
         s_ed.event = EV_KICK_OFF;
     if (s_ed.minute >= 90 && s_ed.minute != 120)
         s_ed.et = 1;
-    /* a golden or silver goal, a shoot-out alone: the tie must be level at the start */
-    if (s_ed.win == WN_GOLDEN || s_ed.win == WN_SILVER || s_ed.shootout) {
+    /* a golden or silver goal, a shoot-out alone, and any start at minute 90 (extra time): the tie
+     * must be level at the start (SWOS 2020's setTotalScoresToSame) */
+    if (s_ed.win == WN_GOLDEN || s_ed.win == WN_SILVER || s_ed.shootout || s_ed.minute == 90) {
         if (s_ed.secondLeg) {
             const int32_t a = s_ed.score[0] + s_ed.leg[0], b = s_ed.score[1] + s_ed.leg[1];
             if (a > b)
@@ -1959,7 +1973,7 @@ static void edit_stars_AfterDraw(MenuEntry *e)
 static void customChallengesEditMenu_onDraw(void)
 {
     static const char *const events[EV_COUNT] = { "KICK OFF", "FREE KICK (OPPO. SIDE)", "FREE KICK (HOME SIDE)", "CORNER KICK",
-                                                  "THROW IN", "GOAL KICK" };
+                                                  "THROW IN", "GOAL KICK", "RANDOM" };
     static const char *const wins[4] = { "WIN BY ANY SCORE", "AT LEAST DRAW", "GOLDEN GOAL", "SILVER GOAL" };
     static const char *const pitches[8] = { "RANDOM", "FROZEN", "MUDDY", "WET", "SOFT", "NORMAL", "DRY", "HARD" };
     char v[48];
@@ -2186,7 +2200,8 @@ static void edit_json(char *out, uint32_t cap)
     if (s_ed.pitch >= 0)
         n += snprintf(out + n, cap - (size_t)n, ",\"pitch_type\":%d", (int)s_ed.pitch);
     if (!s_ed.shootout && s_ed.event != EV_KICK_OFF) {
-        static const char *const kinds[EV_COUNT] = { "kick_off", "free_kick", "free_kick", "corner", "throw_in", "goal_kick" };
+        static const char *const kinds[EV_COUNT] = { "kick_off", "free_kick", "free_kick", "corner", "throw_in", "goal_kick",
+                                                     "random" };
         n += snprintf(out + n, cap - (size_t)n, ",\"restart\":{\"kind\":\"%s\",\"team\":%d,\"wing\":-1%s%s}", kinds[s_ed.event],
                       (int)s_ed.starter, s_ed.event == EV_FREE_KICK || s_ed.event == EV_FREE_KICK_HOME ? ",\"spot\":-1" : "",
                       s_ed.event == EV_FREE_KICK_HOME ? ",\"deep\":true" : "");
@@ -2194,10 +2209,60 @@ static void edit_json(char *out, uint32_t cap)
     snprintf(out + n, cap - (size_t)n, "}");
 }
 
+/* The challenge to save: the screen's, and -- one LOADed -- what the screen has no row for, as it
+ * was: the sent off and injured, scorers, length, description, pitch number; where the starting
+ * event is unchanged its spot and side (and a penalty, which the screen shows as a kick-off); an
+ * exact-score win while the screen's condition is unchanged. */
+static void edit_object(char *out, uint32_t cap)
+{
+    static ChallengeDef d;
+    static char doc[8192];
+    edit_json(out, cap);
+    if (!s_loaded.id[0] || strcmp(s_loaded.id, s_ed.id) != 0)
+        return;
+    snprintf(doc, sizeof doc, "{\"format\":\"openswos-challenges\",\"version\":2,\"challenges\":[%s]}", out);
+    if (ChallengePack_FromJson(doc, (int)strlen(doc), &d, 1) != 1)
+        return;
+    const ChallengeDef *o = &s_loaded;
+    for (int32_t t = 0; t < 2; t++)         /* (a team from a file, still that team) */
+        if (!d.teamUuid[t][0] && o->teamFile[t][0] && !strcmp(d.teamName[t], o->teamName[t]))
+            memcpy(d.teamFile[t], o->teamFile[t], sizeof d.teamFile[t]);
+    for (int32_t k = 0; k < 8; k++)
+        d.scorers[k].team = -1;
+    for (int32_t t = 0; t < 2; t++) {       /* (shirts are a team's: another team chosen, none) */
+        if (strcmp(d.teamName[t], o->teamName[t]) != 0)
+            continue;
+        d.sentOff[t] = o->sentOff[t];
+        memcpy(d.injured[t], o->injured[t], sizeof d.injured[t]);
+        for (int32_t k = 0; k < 8; k++)
+            if (o->scorers[k].team == t)
+                d.scorers[k] = o->scorers[k];
+    }
+    memcpy(d.lines, o->lines, sizeof d.lines);
+    d.length = o->length;
+    d.pitchNumber = o->pitchNumber;
+    if (d.restartKind == o->restartKind && d.restartDeep == o->restartDeep) {
+        d.restartSpot = o->restartSpot;
+        d.restartWing = o->restartWing;
+        d.restartX = o->restartX;
+        d.restartY = o->restartY;
+    } else if (o->restartKind == CHALLENGE_RESTART_PENALTY && d.restartKind == CHALLENGE_RESTART_KICK_OFF) {
+        d.restartKind = o->restartKind;
+        d.restartTeam = o->restartTeam;
+        d.restartWing = o->restartWing;
+    }
+    if (o->win == CHALLENGE_EXACT && d.win == CHALLENGE_WIN) {
+        d.win = o->win;
+        memcpy(d.winScore, o->winScore, sizeof d.winScore);
+    }
+    if (ChallengePack_ToJson(&d, doc, sizeof doc) > 0 && strlen(doc) < cap)
+        snprintf(out, cap, "%s", doc);
+}
+
 static void customChallengesEditMenu_test_onSelect(void)
 {
-    static char args[4096], obj[3800], out[32];
-    edit_json(obj, sizeof obj);
+    static char args[8300], obj[8192], out[32];
+    edit_object(obj, sizeof obj);
     snprintf(args, sizeof args, "{\"challenge\":%s}", obj);
     if (call("try", args, out, sizeof out) != 0)
         ModApi_ShowError("THIS SCENARIO CANNOT BE PLAYED");
@@ -2239,8 +2304,8 @@ static void share_after_save(void)
 
 static void customChallengesEditMenu_save_onSelect(void)
 {
-    static char args[4096], obj[3800], out[64];
-    edit_json(obj, sizeof obj);
+    static char args[8300], obj[8192], out[64];
+    edit_object(obj, sizeof obj);
     snprintf(args, sizeof args, "{\"challenge\":%s}", obj);
     if (call("save", args, out, sizeof out) != 0) {
         ModApi_ShowError("THE SCENARIO COULD NOT BE SAVED");
@@ -2256,7 +2321,7 @@ static void customChallengesEditMenu_save_onSelect(void)
 static void customChallengesEditMenu_delete_onSelect(void)
 {
     char args[96], e[64], out[16];
-    if (!s_ed.id[0])
+    if (!s_ed.id[0] || !ask("DELETE", "DELETE THIS SCENARIO?"))
         return;
     snprintf(args, sizeof args, "{\"id\":\"%s\"}", ModApi_JsonEscape(s_ed.id, e, sizeof e));
     if (call("delete", args, out, sizeof out) == 0) {
