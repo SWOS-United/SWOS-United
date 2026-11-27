@@ -4,8 +4,10 @@
     scripts/make_united_logo.py [--svg out.svg] [--preview out.png]
     scripts/make_united_logo.py --banner
 
---banner: side by side instead (SWOS, then UNITED, one line), at the HD size only, as the DLC
-Manager's banner: tools/dlc-manager/assets/about/swos-united-banner.png (its header, 44 px high).
+--banner: side by side instead (SWOS, then UNITED, one line), as the DLC Manager's banner:
+tools/dlc-manager/assets/about/swos-united-banner.png, at the size its header shows it (44 px high):
+the HD picture averaged 3 x 3 (BANNER_DOWN). Slint's software renderer scales a picture without
+averaging, so the HD one drawn a third its size lost pixels -- ragged edges.
 
 "SWOS" in the colours of the Sensible title (each letter's colour from the top, lightening into
 white, then down into the dark, a chrome rim) over "UNITED" white to grey in a red rim -- as the
@@ -39,6 +41,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(REPO, "bin", "mods", "menus2020", "grafs_united", "logo.png")
 OUT_HD = OUT.replace("logo.png", "logo_hd.png")     # (HD times as many pixels each way)
 BANNER = os.path.join(REPO, "tools", "dlc-manager", "assets", "about", "swos-united-banner.png")
+BANNER_DOWN = 3         # (the HD picture's 132 rows to the header's 44: dlc_manager.slint)
 HD = 4
 
 CAP = 27                # (pixels) the capitals' height: SWOS as wide as the Amiga title's "Sensible"
@@ -450,8 +453,10 @@ def main():
     px, hd, uni = build()
     h, w = px.shape[:2]
     if args.banner:
-        Image.fromarray(hd, "RGBA").save(BANNER)
-        print("  -> %s (%dx%d)" % (os.path.relpath(BANNER, REPO), hd.shape[1], hd.shape[0]))
+        big = Image.fromarray(hd, "RGBA").convert("RGBa")       # (premultiplied: the edges' alpha averaged right)
+        bw, bh = big.width // BANNER_DOWN, big.height // BANNER_DOWN
+        big.resize((bw, bh), Image.BOX).convert("RGBA").save(BANNER)
+        print("  -> %s (%dx%d)" % (os.path.relpath(BANNER, REPO), bw, bh))
         return
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     Image.fromarray(px, "RGBA").save(OUT)
