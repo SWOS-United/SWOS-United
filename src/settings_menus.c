@@ -1309,7 +1309,7 @@ static void menubg_show(char *o, int32_t c)
 }
 /* MENU LOGO: the main menu's logo as its pixels (PIXEL) or drawn smooth at the window's resolution
  * (HD) -- [mod.menus2020] logo, mod_menus2020.c (the mod is part of the game, never listed under
- * MODS, so its settings are here: this and MENU ICONS). Seen as the main menu is come back to. */
+ * MODS, so its settings are here: this and MENU BUTTON ICONS). Seen as the main menu is come back to. */
 static void logo_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", logo_hd() ? "HD" : "PIXEL"); }
 static void logo_change(int32_t dir)
 {
@@ -1317,7 +1317,7 @@ static void logo_change(int32_t dir)
     (void)dir;
     ModApi_SetSetting("menus2020", "logo", logo_hd() ? "pixel" : "hd");
 }
-/* MENU ICONS: the buttons' icons, each in its well at the button's left (menu_extras.c), or none
+/* MENU BUTTON ICONS: the buttons' icons, each in its well at the button's left (menu_extras.c), or none
  * -- [mod.menus2020] icons: the main menu's (mod_menus2020.c) and the online gameplay style
  * buttons' (united_ui.c United_ButtonIcons). Seen as a menu with them is shown again. */
 static int icons_on(void)
@@ -1511,10 +1511,10 @@ static const Row k_displayRows[] = {
     { "RESULT BAND",        resband_show,  resband_change },
     { "KITS ON THE RESULT", reskits_show,  reskits_change },
     { "MENU BUTTON LOOK",   look_show,     look_change },     /* (the buttons' shading; MENU BACKGROUND below) */
+    { "MENU BUTTON ICONS",  icons_show,    icons_change },    /* (2026-11-27; MENU CURSOR went to GENERAL for its row) */
     { "MENU BACKGROUND",    menubg_show,   menubg_change, 0, menubg_off },
     { "MENU OPACITY",       opacity_show,  opacity_change },
     { "MENU LOGO",          logo_show,     logo_change },
-    { "MENU ICONS",         icons_show,    icons_change },    /* (MENU CURSOR's till 2026-11-27: now GENERAL's) */
 };
 static const Page k_displayPage = { "APPEARANCE OPTIONS", k_displayRows, (int32_t)(sizeof k_displayRows / sizeof k_displayRows[0]),
                                     1u << 7 };   /* the match's, then the menus' (from MENU BUTTON LOOK) */
@@ -1543,7 +1543,7 @@ static const Row k_generalRows[] = {
     { "HIGHLIGHT DEFAULT SPEED", hlspeed_show,  hlspeed_change },
     { "FRAME INFO OVERLAY",      overlay_show,  overlay_change },
     { "MOUSE POINTER",           pointer_show,  pointer_change },   /* (APPEARANCE's till 2026-11-25: MENU LOGO took its row) */
-    { "MENU CURSOR",             cursor_show,   cursor_change },    /* (APPEARANCE's till 2026-11-27: MENU ICONS took its row) */
+    { "MENU CURSOR",             cursor_show,   cursor_change },    /* (APPEARANCE's till 2026-11-27: MENU BUTTON ICONS took its row) */
 };
 static const Page k_generalPage = { "GENERAL OPTIONS", k_generalRows, (int32_t)(sizeof k_generalRows / sizeof k_generalRows[0]) };
 _Static_assert(sizeof k_generalRows / sizeof k_generalRows[0] <= kRows, "a settings page holds kRows rows at most");

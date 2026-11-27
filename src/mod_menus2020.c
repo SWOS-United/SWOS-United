@@ -160,7 +160,7 @@ static void world_button(void)
     ModApi_MenuText(Main_worldCareer, s_worldName);
 }
 
-/* The buttons' icons as the player chose (OPTIONS -> APPEARANCE: MENU ICONS, [mod.menus2020] icons): each in its well at the button's
+/* The buttons' icons as the player chose (OPTIONS -> APPEARANCE: MENU BUTTON ICONS, [mod.menus2020] icons): each in its well at the button's
  * left (the JSON's "image" / "icon_well", menu_extras.c), or none -- the text alone, centred in the
  * whole box. Set as the menu opens and after every action (main_refresh). */
 static const struct { int32_t entry; const char *image; } k_icons[] = {

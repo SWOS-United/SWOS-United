@@ -917,8 +917,8 @@ All in the loader and `UnpackMenu`. None occurs in the 47 compiled menus, and
     KEEPERS, CPU TACTICS -- the rest of SWOS 2020's gameplayOptions screen is
     OPTIONS' own rows, or other features (pitch selection, clash kits).
   - APPEARANCE OPTIONS (how the game and its menus look; DISPLAY until 2026-11-25): MATCH GRAPHICS (GAME GRAPHICS until 2026-11-28) (`[graphics] style`), MENU
-    LOOK, MENU BACKGROUND, MENU OPACITY, MENU LOGO, MENU ICONS (2026-11-27: the buttons' icons in
-    their wells, or none -- `[mod.menus2020] icons`), KIT COLOURS (RULES' too), GK/REF CLASH KITS,
+    BUTTON LOOK, MENU BUTTON ICONS (2026-11-27: the buttons' icons in their wells, or none --
+    `[mod.menus2020] icons`), MENU BACKGROUND, MENU OPACITY, MENU LOGO, KIT COLOURS (RULES' too), GK/REF CLASH KITS,
     PITCH PALETTE, KITS ON THE RESULT, RESULT BAND, SCOREBOARD.
   - RULES OPTIONS: KIT COLOURS (which kits clash; APPEARANCE's too, the same setting), LEAGUE RULES, POINTS FOR A WIN, SUBSTITUTES,
     LEAGUE CRASH FIXES, CAREER EXACT LOADS.
@@ -935,7 +935,7 @@ All in the loader and `UnpackMenu`. None occurs in the 47 compiled menus, and
 - **MENU CURSOR** (`[video] menu_cursor`, SWOS 2020's `--flashing-menu-cursor`): flashing, the
   game's own, or steady -- `_kColorTableShine` held at its first colour.
 - **The rest of SWOS 2020's menu look** is its renderer's or its 2020 look, not ported: its MENU
-  ICONS option (ours, MENU ICONS above, is SWOS United's button icons) and the SWOS TV ICON (its main menu's pictures -- SWOS United's look), MENU SPRITE ANIMATION (its
+  ICONS option (ours, MENU BUTTON ICONS above, is SWOS United's button icons) and the SWOS TV ICON (its main menu's pictures -- SWOS United's look), MENU SPRITE ANIMATION (its
   main menu's animated balls and players), alpha-blended menus (its 32-bit renderer draws the menu
   over a picture; ours is 8bpp end to end), mouse cursor images; SCREEN FADE SPEED: SWOS 2020's
   DEFAULT is the DOS palette fade with half-frame delays, ours the Amiga's five-frame fade (0.1 s),
