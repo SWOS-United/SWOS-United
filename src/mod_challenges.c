@@ -74,6 +74,9 @@
 #include "game_types.h"
 #include "mjson.h"
 #include "mods.h"
+#ifdef SWOS_SDL_BUILD
+#include "team_db.h"        /* (a database team's record: "export") */
+#endif
 #include "swos_io.h"        /* (the Amiga's file read) */
 
 #include <stdarg.h>
@@ -599,6 +602,8 @@ static const int16_t kSpotX[8] = { 336, 148, 256, 304, 357, 405, 513, 548 };
 
 static int32_t draw2(void) { return (int32_t)(ModApi_Ticks() >> 3) & 1; }   /* (a coin: SWOS 2020's RANDOM) */
 
+static void category_counts(int32_t k, int32_t *done, int32_t *all);
+
 /* ---- playing one ---- */
 
 static int32_t s_cur = -1, s_won, s_retry, s_test;
@@ -726,9 +731,15 @@ static void play(int32_t i)
                 c->completed = 1;
             save_progress();
         }
-        if (s_won && !s_trying) {           /* (online: queued, sent in the background) */
-            char args[256];
+        if (s_won && !s_trying && !s_test) { /* (online: queued, sent in the background) */
+            char args[384];
+            int32_t done, all;
             online_args(c, args, sizeof args);
+            category_counts(c->catIndex, &done, &all);
+            const size_t n = strlen(args);          /* (its stars and category: the win's post) */
+            if (n && n < sizeof args)
+                snprintf(args + n - 1, sizeof args - n + 1, ",\"difficulty\":%d,\"done\":%d,\"total\":%d}",
+                         (int)c->difficulty, (int)done, (int)all);
             ModApi_CallService("online-records", "challenges.won", args, NULL, 0);
         }
         fprintf(stderr, "[challenges] %s: %d-%d, %s\n", c->id, (int)r.goals[0], (int)r.goals[1], s_won ? "won" : "not won");
@@ -797,22 +808,26 @@ static void online_args(const Challenge *c, char *out, uint32_t cap)
 }
 
 /* Each frame the list is up, until the answer has come: the challenges the player has beaten on
- * another machine (or before this one had them) marked done here too. */
-static void online_merge(void)
+ * another machine (or before this one had them) marked done here too. 1 while the answer is
+ * awaited, else 0. `fresh`: asked again (a log-in; passed once, then 0 until it has come). */
+static int32_t online_merge(int32_t fresh)
 {
 #ifdef SWOS_SDL_BUILD
-    static char lines[16384];
+    static char lines[65536];
 #else
     static char lines[64];                  /* (the Amiga: no service, nothing to merge) */
 #endif
+    if (fresh)
+        s_onlineMerged = 0;
     if (s_onlineMerged)
-        return;
-    const int32_t r = ModApi_CallService("online-records", "challenges.completed", "{}", lines, sizeof lines);
+        return 0;
+    const int32_t r = ModApi_CallService("online-records", "challenges.completed",
+                                         fresh ? "{\"fresh\":true}" : "{}", lines, sizeof lines);
     if (r == 1)
-        return;
+        return 1;
     s_onlineMerged = 1;
     if (r != 0)
-        return;
+        return 0;
     int32_t marked = 0;
     for (char *line = lines; line && *line;) {
         char *next = strchr(line, '\n');
@@ -834,6 +849,7 @@ static void online_merge(void)
         save_progress();
         fprintf(stderr, "[challenges] %d done online, marked here\n", (int)marked);
     }
+    return 0;
 }
 
 /* The list: with more than one category, the categories first (SWOS 2020's SELECT CATEGORY), a
@@ -943,7 +959,7 @@ static void list_draw(void)
     } else {
         hide_from(n + withNew + withSort);
     }
-    online_merge();
+    online_merge(0);
     ModApi_MenuText(M_note, !s_count ? "NONE: A CHALLENGE PACK IS A MOD"
                             : show_categories() ? "" : "THE EASIER ONES OPEN THE HARDER");
 }
@@ -2061,6 +2077,10 @@ static void ch_open(void)
  *   info       {"id"}             "<field>\t<value>" lines: the challenge's fields (below)
  *   new        {}                 this mod's NEW CHALLENGE editor (then plays it)
  *   reload     {}                 reads every challenge again (another mod wrote shared.json)
+ *   export     {"id","record_name"}  the challenge to export.json, its teams to export.EDT
+ *   test       {"id"}             plays it with no progress and nothing online
+ *   sync       {"fresh"}          the player's online completions marked done here (online-records);
+ *                                 1 while awaited, 0 merged or none. "fresh": asked again, once
  *   play       {"id"}             plays it (this mod's result screen, QUICK RETRY), then
  *                                 "won\t<0/1>"; -1 when it is locked or unknown
  * A challenge's category is "" for none; the player's own are "CUSTOM". */
@@ -2113,6 +2133,11 @@ static int32_t service(const char *method, const char *args, char *out, uint32_t
     out[0] = 0;
     load();
 #ifdef SWOS_SDL_BUILD
+    if (!strcmp(method, "sync")) {
+        int fresh = 0;
+        mjson_get_bool(args, (int)strlen(args), "$.fresh", &fresh);
+        return online_merge(fresh);
+    }
     if (!strcmp(method, "save") || !strcmp(method, "try")) {
         /* {"challenge": {...}}: one of the pack format's challenges -- saved as one of the
          * player's own (replacing one of its id; a new id when it has none), or played once and
@@ -2153,7 +2178,9 @@ static int32_t service(const char *method, const char *args, char *out, uint32_t
         if (!strcmp(method, "try")) {
             const int32_t at = s_count++;       /* (in the list while it is played) */
             s_test = 0;
+            s_trying = 1;                   /* (no progress, nothing online) */
             play(at);
+            s_trying = 0;
             s_count--;
             put(&o, "won\t%d\n", (int)s_won);
             return 0;
@@ -2218,6 +2245,64 @@ static int32_t service(const char *method, const char *args, char *out, uint32_t
     if (i < 0)
         return -1;
     const Challenge *c = &s_ch[i];
+#ifdef SWOS_SDL_BUILD
+    if (!strcmp(method, "export")) {
+        /* the challenge whole (export.json, the pack format) and its two teams as an .EDT
+         * (export.EDT), for another mod to share it. "record_name": one of the player's own takes
+         * it as its name online first */
+        char rn[64];
+        arg_str(args, "record_name", rn, sizeof rn);
+        if (rn[0] && s_ch[i].custom == 1 && strcmp(s_ch[i].recordName, rn) != 0) {
+            snprintf(s_ch[i].recordName, sizeof s_ch[i].recordName, "%s", rn);
+            if (!write_custom(NULL, NULL))
+                return -1;
+        }
+        const uint32_t jcap = 16384;
+        char *json = (char *)malloc(jcap);
+        uint8_t *edt = (uint8_t *)malloc(2 + 2 * sizeof(TeamFileEx));
+        int32_t ok = json && edt;
+        if (ok) {
+            edt[0] = 0;
+            edt[1] = 2;
+            for (int32_t t = 0; t < 2 && ok; t++) {
+                TeamFileEx team;
+                if (c->teamFile[t][0]) {
+                    ok = file_team(c, t, &team);
+                } else {
+                    const uint16_t id = ModApi_TeamByUuidNumber(c->teamUuid[t], c->teamNumber[t]);
+                    const TeamDbEntry *e = id ? TeamDb_Team(id >> 8, id & 0xFF) : NULL;
+                    ok = e != NULL;
+                    if (ok)
+                        team = e->team;
+                }
+                if (ok) {   /* (an .EDT: the one 16-bit field big-endian) */
+                    team.team.globalTeamNumber = (int16_t)HOST_TO_BE16((uint16_t)team.team.globalTeamNumber);
+                    memcpy(edt + 2 + t * sizeof team, &team, sizeof team);
+                }
+            }
+        }
+        if (ok) {
+            const int n = snprintf(json, jcap, "{\"format\":\"openswos-challenges\",\"version\":2,\"challenges\":[\n");
+            const int32_t w = ChallengePack_ToJson(&c->def, json + n, jcap - (uint32_t)n - 8);
+            ok = w > 0;
+            if (ok) {
+                snprintf(json + n + w, jcap - (size_t)(n + w), "\n]}\n");
+                ok = ModApi_SaveFile("challenges", "export.json", json, (uint32_t)strlen(json)) == 0 &&
+                     ModApi_SaveFile("challenges", "export.EDT", edt, 2 + 2 * sizeof(TeamFileEx)) == 0;
+            }
+        }
+        free(json);
+        free(edt);
+        return ok ? 0 : -1;
+    }
+    if (!strcmp(method, "test")) {          /* played, locked or not: no progress, nothing online */
+        s_trying = 1;
+        play(i);
+        s_trying = 0;
+        put(&o, "won\t%d\n", (int)s_won);
+        return 0;
+    }
+#endif
     if (!strcmp(method, "info")) {
         int32_t injured[2] = { 0, 0 };
         for (int32_t t = 0; t < 2; t++)

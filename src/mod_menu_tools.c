@@ -48,6 +48,13 @@ static MapFile *file_of(const char *slug)
     f->text = (char *)ModApi_ReadFile(path, &size);
     if (!f->text)
         return f;
+    {   /* (a checkout may give it CR LF lines; the rows are counted with '\n' alone) */
+        uint32_t n = 0;
+        for (uint32_t i = 0; i < size; i++)
+            if (f->text[i] != '\r')
+                f->text[n++] = f->text[i];
+        size = n;
+    }
     char *p = f->text, *end = f->text + size;
     while (p < end && f->count < kMaxMaps) {
         char *eol = memchr(p, '\n', (size_t)(end - p));

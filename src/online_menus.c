@@ -356,8 +356,9 @@ static int32_t s_showPassword;
 static int32_t s_checking;                  /* LOGIN: the account is being checked */
 static char    s_loginLine[64];             /* under the title: the prompt, or how the check went */
 
-/* The log-in shown for SPEEDRUN or SWOS GALORE (OnlineMenus_ServerLogIn), not MULTIPLAYER: LOGIN
- * checks the account and closes the menu; who is logged in already; how it was left. */
+/* The log-in shown for SPEEDRUN, SWOS GALORE or CHALLENGES (OnlineMenus_ServerLogIn), not
+ * MULTIPLAYER: LOGIN checks the account and closes the menu; who is logged in already; how it was
+ * left. */
 static int32_t s_speedrunLogin;             /* LOGIN_FOR_*, 0 MULTIPLAYER's */
 static char    s_loggedInAs[33];
 static int32_t s_speedrunResult;            /* 0 logged in, 1 PLAY OFFLINE, -1 EXIT / LOG OUT */
@@ -419,15 +420,21 @@ static const char *password_text(void)
     return s_passwordShown;
 }
 
+/* SWOS GALORE's and CHALLENGES' log-in: no way past it offline, NOTICE / LOG OUT in its place */
+static int32_t login_only(void)
+{
+    return s_speedrunLogin == LOGIN_FOR_GALORE || s_speedrunLogin == LOGIN_FOR_CHALLENGES;
+}
+
 static void logInMenu_layout(void)
 {
     const int32_t accounts = Account_Enabled();
     int32_t i;
 
     set_text(LogInMenu_header, s_speedrunLogin ? "SERVER LOGIN" : accounts ? "MULTIPLAYER LOGIN" : "PLAY ONLINE");
-    if (s_speedrunLogin == LOGIN_FOR_GALORE) {      /* (SWOS 2020's: NOTICE, LOG OUT, MONTHLY CHART) */
+    if (login_only()) {         /* (SWOS 2020's: NOTICE, LOG OUT, MONTHLY CHART / ABOUT CHALLENGES) */
         set_text(LogInMenu_OfflinelogOut, s_loggedInAs[0] ? "LOG OUT" : "NOTICE");
-        set_text(LogInMenu_news, "MONTHLY CHART");
+        set_text(LogInMenu_news, s_speedrunLogin == LOGIN_FOR_GALORE ? "MONTHLY CHART" : "ABOUT CHALLENGES");
     }
     set_text(LogInMenu_subTitle, s_loginLine[0] ? s_loginLine : Account_Prompt());
     set_text(LogInMenu_username, accounts ? "USERNAME" : "NAME");
@@ -436,13 +443,13 @@ static void logInMenu_layout(void)
     set_text(LogInMenu_passwordInput, accounts ? password_text() : server_text());
     set_text(LogInMenu_logInContinue, "LOGIN");
     /* SPEEDRUN's (SWOS 2020's): PLAY OFFLINE and LATEST RUNS */
-    if (s_speedrunLogin != LOGIN_FOR_GALORE)
+    if (!login_only())
         set_text(LogInMenu_OfflinelogOut, s_speedrunLogin ? "PLAY OFFLINE" : "ABOUT");
     /* The button is RANKINGS for a service with them, else SWOS 2020's NEWS (its "latest
      * runs" and a Discord link) -- hidden where the project has no news
      * (PROJECT_HIDE_SWOS2020_EXTRAS). */
-    if (s_speedrunLogin != LOGIN_FOR_GALORE)
-        set_text(LogInMenu_news, s_speedrunLogin ? "LATEST RUNS" : Account_Has(ACCOUNT_HAS_RANKINGS) ? "RANKINGS" : "NEWS");
+    if (!login_only())
+        set_text(LogInMenu_news,s_speedrunLogin ? "LATEST RUNS" : Account_Has(ACCOUNT_HAS_RANKINGS) ? "RANKINGS" : "NEWS");
     set_visible(LogInMenu_news, s_speedrunLogin || Account_Has(ACCOUNT_HAS_RANKINGS) || !PROJECT_HIDE_SWOS2020_EXTRAS);
     /* Under ABOUT: SWOS 2020 has it 8 to the left (34, the buttons above 42). */
     entry_at(LogInMenu_news)->x = entry_at(LogInMenu_OfflinelogOut)->x;
@@ -618,13 +625,24 @@ static void logInMenuLogInContinue_OnSelect(void)
     login_connect();
 }
 
+static void login_notice(const char *title, const char *text)
+{
+    static const char *const ok[] = { "OK" };
+    MenuDialog_Show(title, text, ok, 1, 0);
+}
+
 /* ABOUT: the game's credits -- SPEEDRUN's PLAY OFFLINE; SWOS GALORE's NOTICE (nothing, as in SWOS
- * 2020) or, logged in, LOG OUT. */
+ * 2020) and CHALLENGES' (why a log-in), or, logged in, LOG OUT. */
 static void logInMenuAbout_OnSelect(void)
 {
-    if (s_speedrunLogin == LOGIN_FOR_GALORE) {
-        if (s_checking || !s_loggedInAs[0])
+    if (login_only()) {
+        if (s_checking)
             return;
+        if (!s_loggedInAs[0]) {
+            if (s_speedrunLogin == LOGIN_FOR_CHALLENGES)    /* (showScenarioModeMenuLogInSkip) */
+                login_notice("CHALLENGES", "LOGIN IS REQUIRED FOR THE LATEST SCENARIOS AND ONLINE FEATURES");
+            return;
+        }
         Account_LogOut();
         s_loggedInAs[0] = 0;
         s_speedrunResult = -1;
@@ -649,7 +667,7 @@ int32_t OnlineMenus_ServerLogIn(int32_t purpose, const char *as, void (*news)(vo
         return 1;
     menu = MenuJson_Load(SWOS2020_MENU(logInMenu));
     if (!menu) {
-        fprintf(stderr, "[online-menus] cannot show the log-in: speedrun offline\n");
+        fprintf(stderr, "[online-menus] cannot show the log-in: offline\n");
         return 1;
     }
     snprintf(s_loggedInAs, sizeof s_loggedInAs, "%s", as ? as : "");
@@ -657,7 +675,7 @@ int32_t OnlineMenus_ServerLogIn(int32_t purpose, const char *as, void (*news)(vo
     if (s_loggedInAs[0])                /* (SWOS 2020 showed the logged-in player's name) */
         snprintf(s_username, sizeof s_username, "%s", s_loggedInAs);
     s_loginLine[0] = 0;
-    s_speedrunLogin = purpose == LOGIN_FOR_GALORE ? LOGIN_FOR_GALORE : LOGIN_FOR_SPEEDRUN;
+    s_speedrunLogin = purpose;
     s_serverNews = news;
     s_speedrunResult = -1;
     ShowMenu(menu);                     /* (offline play: no world switch, no online rules) */
@@ -665,7 +683,8 @@ int32_t OnlineMenus_ServerLogIn(int32_t purpose, const char *as, void (*news)(vo
     s_serverNews = NULL;
     s_checking = 0;
     s_loginLine[0] = 0;
-    fprintf(stderr, "[online-menus] %s log-in: %s\n", purpose == LOGIN_FOR_GALORE ? "swos galore" : "speedrun",
+    fprintf(stderr, "[online-menus] %s log-in: %s\n", purpose == LOGIN_FOR_GALORE ? "swos galore"
+            : purpose == LOGIN_FOR_CHALLENGES ? "challenges" : "speedrun",
             s_speedrunResult == 0 ? "logged in" : s_speedrunResult == 1 ? "play offline" : "left");
     return s_speedrunResult;
 }
@@ -683,6 +702,11 @@ static void registerUserMenuNews3_OnSelect(void) { open_account_page(ACCOUNT_LIN
 
 static void logInMenuNews_OnSelect(void)
 {
+    if (s_speedrunLogin == LOGIN_FOR_CHALLENGES) {          /* (showAboutScenarioMode) */
+        login_notice("ABOUT CHALLENGES",
+                     "CHALLENGES IS A GAME MODE WHERE YOU ACHIEVE THE OBJECTIVE OF PREDEFINED SCENARIOS.");
+        return;
+    }
     if (s_speedrunLogin && s_serverNews) {      /* (SWOS GALORE's MONTHLY CHART) */
         s_serverNews();
         return;

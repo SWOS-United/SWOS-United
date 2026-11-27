@@ -618,6 +618,13 @@ static void pixmaps_load(void)
     char *text = (char *)ModApi_ReadFile(path, &size);
     if (!text)
         return;
+    {   /* (a checkout may give it CR LF lines; the rows are counted with '\n' alone) */
+        uint32_t n = 0;
+        for (uint32_t i = 0; i < size; i++)
+            if (text[i] != '\r')
+                text[n++] = text[i];
+        size = n;
+    }
     char *p = text, *end = text + size;
     while (p < end && s_pixCount < (int32_t)(sizeof s_pix / sizeof s_pix[0])) {
         char *eol = memchr(p, '\n', (size_t)(end - p));

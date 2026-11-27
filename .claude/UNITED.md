@@ -74,13 +74,20 @@ rebase), `git cherry-pick <commit>` one fix, or nothing at all. `upstream` is fe
   SWOS 2020's own `challenges/` (github.com/starwindz/swos-2020: `challenges.ini` and its
   `.EDT` / `.DIY` teams, which become `teams/*.EDT`) -- regenerate it with the script, never edit
   it by hand. OpenSWOS's challenges mod plays it (format v2, docs/MODS.md §18); its LOCKED
-  categories stay closed, as in SWOS 2020. Online, the online-records mod READS SWOS 2020's records
-  (by its scenario name and category); nothing is ever sent to sensiblesoccer.de -- "Nothing from
-  OpenSWOS should go to sensiblesoccer.de" (the owner, 2026-11-07): the wins and speedrun runs it
-  used to send are off (`UNITED_WRITE_RECORDS` 0 in src/mod_online_records.c) until SWOS United's
-  own server takes them, and SHARE / SWOS Galore's uploads are never pointed there.
+  categories stay closed, as in SWOS 2020. Online, the online-records mod reads and writes SWOS
+  2020's records (by its scenario name and category): after the CHALLENGES log-in the player's wins
+  there are marked done here too (a union -- nothing done here is cleared), and a challenge beaten
+  by a logged-in player is sent (`UNITED_WRITE_RECORDS` 1 since 2026-11-27, as SPEEDRUN's runs;
+  never an editor's TEST or a test run). This replaces "Nothing from OpenSWOS should go to
+  sensiblesoccer.de" (the owner, 2026-11-07) for challenge wins.
+- **Challenge posts on Discord** (since 2026-11-27): a win sent to the records is posted as SWOS
+  2020 posts it (who beat what, its stars, the category's progress, the players with most wins), and
+  so is a newly shared scenario -- the discord2020 mod's `discord` service, channel
+  `live_stats_scenario`, with `[mod.discord2020] post` and `webhook` as for a match.
 - **SWOS 2020's challenge screens** (`src/united_challenges.c`, mod `challenges2020`, on by
-  default): MODES / COMPETE -> CHALLENGES opens SWOS 2020's SELECT CATEGORY (six a page, MORE,
+  default): MODES / COMPETE -> CHALLENGES asks for SWOS 2020's SERVER LOGIN first
+  (`LOGIN_FOR_CHALLENGES`; a log-in is required, as in SWOS 2020: NOTICE / LOG OUT and ABOUT
+  CHALLENGES, no PLAY OFFLINE), then opens SWOS 2020's SELECT CATEGORY (six a page, MORE,
   CUSTOM CHALLENGES), a category's challenges twelve a page with stars, tick / lock and the
   five description lines, a challenge's page (PLAY SCENARIO, VIEW ONLINE STATS) and SCENARIO
   COMPLETION -- its menus imported (`import_swos2020_menus.py`, the "challenge mode" group),
@@ -94,8 +101,13 @@ rebase), `git cherry-pick <commit>` one fix, or nothing at all. `upstream` is fe
   minute, second leg, ET / pens / a shoot-out alone, subs, attack direction, pitch, the starting
   team and event, win condition, difficulty; TEST plays it once, SAVE keeps it as one of the
   player's own through the challenges service's save, DELETE; no uniforms, cards / injuries or
-  pitch set yet; `SWOS_EDIT_TEST=show|save` checks it), SHARE (not yet: SWOS
-  2020 uploads to its server with no log-in -- the owner's call), PLAY -- the 274-odd challenges
+  pitch set yet; `SWOS_EDIT_TEST=show|save` checks it), SHARE (SWOS 2020's, since 2026-11-27: the player's own scenarios, each ON or OFF the site -- a
+  click on SHARED uploads it as a `.SCN` (`UnitedScn_Export`: challenge.ini and the two teams'
+  records, a stored 7z) to `challenges/custom/upload_scn.php` with its texts
+  (`upload_scenario_info`), or deletes both (`delete_scn_file`, `delete_scenario_info`); a click on
+  the row test-plays it. SAVE offers to share (or update), DELETE to take the shared one off. Only
+  the logged-in player's own ("... BY <USER>.SCN"; the server checks nothing). A newly shared one is
+  posted on Discord), PLAY -- the 274-odd challenges
   SWOS 2020's players shared on sensiblesoccer.de, its SelectSCN list (home, score, away, creator,
   level stars; COMPLETION; five sortings). One picked is downloaded (online-records
   `custom.download`), unpacked (`src/united_scn.c`: a .SCN is a 7z of challenge.ini and two .TEAM;

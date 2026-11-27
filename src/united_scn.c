@@ -463,6 +463,268 @@ static int32_t challenge_json(const Scn *scn, const char *edt, const char teamNa
     return 1;
 }
 
+/* ---- the export: challenge.ini as SWOS 2020's customWriteData, a 7z of it and the teams ---- */
+
+/* the shirts of a bit mask / a list, "9,10" */
+static void shirts_of(uint32_t mask, char *out, uint32_t cap)
+{
+    uint32_t n = 0;
+    out[0] = 0;
+    for (int32_t s = 0; s < 32 && n < cap; s++)
+        if (mask & (1u << s))
+            n += (uint32_t)snprintf(out + n, cap - n, "%s%d", n ? "," : "", (int)s);
+}
+
+static int32_t scn_ini(const ChallengeDef *c, char teamNames[2][24], const char *name, char *out, uint32_t cap)
+{
+    static const char *const pitches[7] = { "FROZEN", "MUDDY", "WET", "SOFT", "NORMAL", "DRY", "HARD" };
+    static const char *const lengths[4] = { "3 MINS", "5 MINS", "7 MINS", "10 MINS" };
+    const int32_t y = c->yours == 1;
+    char ev[48] = "KICK OFF";
+    int32_t starter = c->restartKind != CHALLENGE_RESTART_KICK_OFF && c->restartTeam >= 0 ? c->restartTeam : c->kickOff;
+    Out o = { out, cap };
+    if (c->shootoutOnly) {
+        snprintf(ev, sizeof ev, "PENALTY SHOOTOUT");
+    } else if (c->restartKind == CHALLENGE_RESTART_FREE_KICK) {
+        const char *home = c->restartDeep ? " HOME" : "";
+        if (c->restartSpot < 0)
+            snprintf(ev, sizeof ev, "RANDOM FREE KICK%s", home);
+        else if (c->restartSpot == 4)
+            snprintf(ev, sizeof ev, "CENTER FREE KICK%s", home);
+        else if (c->restartSpot > 0 && c->restartSpot < 8)
+            snprintf(ev, sizeof ev, "%s FREE KICK %d%s", c->restartSpot < 4 ? "LEFT" : "RIGHT",
+                     c->restartSpot < 4 ? c->restartSpot : c->restartSpot - 4, home);
+        else
+            snprintf(ev, sizeof ev, "CUSTOM FREE KICK");
+    } else if (c->restartKind == CHALLENGE_RESTART_PENALTY) {
+        snprintf(ev, sizeof ev, "PENALTY KICK");
+    } else if (c->restartKind == CHALLENGE_RESTART_CORNER || c->restartKind == CHALLENGE_RESTART_THROW_IN ||
+               c->restartKind == CHALLENGE_RESTART_GOAL_KICK) {
+        const char *kind = c->restartKind == CHALLENGE_RESTART_CORNER ? "CORNER KICK"
+                         : c->restartKind == CHALLENGE_RESTART_THROW_IN ? "THROW IN" : "GOAL KICK";
+        const char *side = "RANDOM";
+        if (c->restartWing >= 0 && c->kickOff >= 0 && c->playingUp >= 0)   /* (the import's rule) */
+            side = (c->restartWing == 0) == ((c->kickOff == 0) == (c->playingUp == 0)) ? "LEFT" : "RIGHT";
+        snprintf(ev, sizeof ev, "%s %s", side, kind);
+    } else if (c->restartKind == CHALLENGE_RESTART_RANDOM) {
+        snprintf(ev, sizeof ev, "RANDOM");
+    }
+#define KEY(k, ...) do { put(&o, "%s = ", k); put(&o, __VA_ARGS__); put(&o, "\r\n"); } while (0)
+#define YES(v) ((v) ? "YES" : "NO")
+    put(&o, "[%s]\r\n", name);
+    KEY("CATEGORY", "%s", "CUSTOM");
+    KEY("SCENARIO NAME", "%s", name);
+    KEY("SCENARIO NICKNAME", "%s", c->title);
+    KEY("TEAM FILE NAME", "%s", "");
+    KEY("TEAM1 NAME", "%s", teamNames[0]);
+    KEY("TEAM2 NAME", "%s", teamNames[1]);
+    KEY("CPU TEAM", "%s", y ? "TEAM1" : "TEAM2");
+    KEY("TEAM1 SCORE", "%d", c->score[0]);
+    KEY("TEAM2 SCORE", "%d", c->score[1]);
+    KEY("INITIAL TIME", "%d", c->minute);
+    KEY("SECOND LEG", "%s", YES(c->secondLeg));
+    KEY("TEAM1 FIRST LEG SCORE", "%d", c->firstLeg[0]);
+    KEY("TEAM2 FIRST LEG SCORE", "%d", c->firstLeg[1]);
+    KEY("EXTRA TIME", "%s", YES(c->extraTime));
+    KEY("PENALTY AFTER EXTRA TIME", "%s", YES(c->penalties));
+    KEY("OVERRIDE EXTRA TIME OPTION", "%s",
+        c->shootoutOnly ? "IGNORE RELATED OPTIONS AND START PENALTY SHOOTOUT" : "");
+    KEY("MIN SUBS", "%d", c->subsSet ? c->subsMin : 3);
+    KEY("MAX SUBS", "%d", c->subsSet ? c->subsMax : 5);
+    for (int32_t t = 0; t < 2; t++) {
+        char key[48], list[96], levels[48];
+        uint32_t n = 0, m = 0;
+        shirts_of(c->sentOff[t], list, sizeof list);
+        snprintf(key, sizeof key, "TEAM%d SENT OFF PLAYERS", (int)t + 1);
+        KEY(key, "%s", list);
+        list[0] = levels[0] = 0;
+        for (int32_t k = 0; k < 8; k++)
+            if (c->injured[t][k].shirt && n < sizeof list && m < sizeof levels) {
+                n += (uint32_t)snprintf(list + n, sizeof list - n, "%s%d", n ? "," : "", c->injured[t][k].shirt);
+                m += (uint32_t)snprintf(levels + m, sizeof levels - m, "%s%d", m ? "," : "", c->injured[t][k].level);
+            }
+        snprintf(key, sizeof key, "TEAM%d INJURY PLAYERS", (int)t + 1);
+        KEY(key, "%s", list);
+        snprintf(key, sizeof key, "TEAM%d INJURY PLAYERS LEVELS", (int)t + 1);
+        KEY(key, "%s", levels);
+    }
+    KEY("CPU INJURY SPEED", "%s", "YES");
+    KEY("TEAM PLAYING UP", "%s", c->playingUp == 0 ? "UP" : c->playingUp == 1 ? "DOWN" : "RANDOM");
+    KEY("TEAM STARTING", "%s", starter == 0 ? "TEAM1" : starter == 1 ? "TEAM2" : "RANDOM");
+    KEY("STARTING EVENT", "%s", ev);
+    KEY("WIN CONDITION", "%s",
+        c->win == CHALLENGE_EXACT ? "CUSTOM" : c->win == CHALLENGE_DRAW ? "AT LEAST DRAW"
+        : c->extraTimeRule == CHALLENGE_ET_GOLDEN_GOAL ? "GOLDEN GOAL"
+        : c->extraTimeRule == CHALLENGE_ET_SILVER_GOAL ? "SILVER GOAL" : "WIN BY ANY SCORE");
+    KEY("DIFFICULTY", "%d", c->difficulty < 1 ? 1 : c->difficulty > 5 ? 5 : c->difficulty);
+    KEY("WIN MESSAGE", "%s", c->winMessage);
+    KEY("LOCKED", "%s", "");
+    KEY("GAME LENGTH", "%s", lengths[c->length < 4 ? c->length : 0]);
+    KEY("DIRECT RED CARD", "%s", "NO");
+    KEY("CPU KEEPER LEVEL", "%s", "1");
+    KEY("CUSTOM FREE KICK X", "%d", c->restartX);
+    KEY("CUSTOM FREE KICK Y", "%d", c->restartY);
+    KEY("CAMERA STARTING", "%s", "RANDOM");
+    KEY("WIN SCORE1", "%d", c->win == CHALLENGE_EXACT ? c->winScore[y ? 1 : 0] : 0);
+    KEY("WIN SCORE2", "%d", c->win == CHALLENGE_EXACT ? c->winScore[y ? 0 : 1] : 0);
+    for (int32_t k = 0; k < 5; k++) {
+        char key[16];
+        snprintf(key, sizeof key, "DESCRIPTION%d", (int)k + 1);
+        KEY(key, "%s", c->lines[k]);
+    }
+    KEY("PITCH TYPE", "%s", c->pitchType >= 0 && c->pitchType < 7 ? pitches[c->pitchType] : "RANDOM");
+    KEY("PITCH SET", "%s", "GENERIC1");
+#undef KEY
+#undef YES
+    return o.left > 1;
+}
+
+/* 7z's numbers: the first byte's high bits say how many bytes follow */
+static void num7z(uint8_t **p, uint64_t v)
+{
+    uint8_t first = 0, mask = 0x80;
+    int32_t i;
+    for (i = 0; i < 8; i++) {
+        if (v < ((uint64_t)1 << (7 * (i + 1)))) {
+            first |= (uint8_t)(v >> (8 * i));
+            break;
+        }
+        first |= mask;
+        mask >>= 1;
+    }
+    *(*p)++ = first;
+    for (; i > 0; i--) {
+        *(*p)++ = (uint8_t)v;
+        v >>= 8;
+    }
+}
+
+static void le_bytes(uint8_t *p, uint64_t v, int32_t n)
+{
+    while (n--) {
+        *p++ = (uint8_t)v;
+        v >>= 8;
+    }
+}
+
+typedef struct { const char *name; const uint8_t *data; uint32_t size; } Packed;
+
+/* a 7z archive of the files, each stored as it is (the Copy coder) in a folder of its own */
+static uint8_t *pack_stored(const Packed *files, int32_t count, uint32_t *outSize)
+{
+    static int crcReady;
+    static uint8_t head[2048], names[1024];
+    uint32_t data = 0, nameLen = 0;
+    uint8_t *h = head;
+    if (!crcReady) {
+        CrcGenerateTable();
+        crcReady = 1;
+    }
+    for (int32_t i = 0; i < count; i++) {
+        data += files[i].size;
+        for (const char *c = files[i].name; ; c++) {   /* (UTF-16LE, NUL-ended; the names ASCII) */
+            if (nameLen + 2 > sizeof names)
+                return NULL;
+            names[nameLen++] = (uint8_t)*c;
+            names[nameLen++] = 0;
+            if (!*c)
+                break;
+        }
+    }
+    *h++ = 0x01;                            /* header */
+    *h++ = 0x04;                            /* main streams */
+    *h++ = 0x06;                            /* pack info: at 0, `count` streams, their sizes */
+    num7z(&h, 0);
+    num7z(&h, (uint64_t)count);
+    *h++ = 0x09;
+    for (int32_t i = 0; i < count; i++)
+        num7z(&h, files[i].size);
+    *h++ = 0x00;
+    *h++ = 0x07;                            /* unpack info: a folder a file, one Copy coder */
+    *h++ = 0x0B;
+    num7z(&h, (uint64_t)count);
+    *h++ = 0x00;
+    for (int32_t i = 0; i < count; i++) {
+        *h++ = 0x01;                        /* one coder */
+        *h++ = 0x01;                        /* its id one byte long: */
+        *h++ = 0x00;                        /* Copy */
+    }
+    *h++ = 0x0C;                            /* unpacked sizes */
+    for (int32_t i = 0; i < count; i++)
+        num7z(&h, files[i].size);
+    *h++ = 0x0A;                            /* CRCs, all there */
+    *h++ = 0x01;
+    for (int32_t i = 0; i < count; i++) {
+        le_bytes(h, CrcCalc(files[i].data, files[i].size), 4);
+        h += 4;
+    }
+    *h++ = 0x00;                            /* (unpack info) */
+    *h++ = 0x00;                            /* (main streams) */
+    *h++ = 0x05;                            /* files */
+    num7z(&h, (uint64_t)count);
+    *h++ = 0x11;                            /* their names */
+    num7z(&h, (uint64_t)nameLen + 1);
+    *h++ = 0x00;
+    if (nameLen + 8 > sizeof head - (size_t)(h - head))
+        return NULL;
+    memcpy(h, names, nameLen);
+    h += nameLen;
+    *h++ = 0x00;                            /* (files) */
+    *h++ = 0x00;                            /* (header) */
+
+    const uint32_t headLen = (uint32_t)(h - head), total = 32 + data + headLen;
+    uint8_t *out = (uint8_t *)malloc(total);
+    if (!out)
+        return NULL;
+    static const uint8_t magic[8] = { '7', 'z', 0xBC, 0xAF, 0x27, 0x1C, 0, 4 };
+    memcpy(out, magic, sizeof magic);
+    le_bytes(out + 12, data, 8);            /* where the header is, past these 32 bytes */
+    le_bytes(out + 20, headLen, 8);
+    le_bytes(out + 28, CrcCalc(head, headLen), 4);
+    le_bytes(out + 8, CrcCalc(out + 12, 20), 4);
+    uint32_t at = 32;
+    for (int32_t i = 0; i < count; i++) {
+        memcpy(out + at, files[i].data, files[i].size);
+        at += files[i].size;
+    }
+    memcpy(out + at, head, headLen);
+    *outSize = total;
+    return out;
+}
+
+int32_t UnitedScn_Export(const ChallengeDef *c, const TeamFileEx teams[2], const char *name, unsigned char **out,
+                         uint32_t *outSize)
+{
+    static char ini[8192];
+    static uint8_t recs[2][kTeamRecord];
+    char teamNames[2][24], files[2][40];
+    Packed packed[3];
+    int32_t count = 0;
+    *out = NULL;
+    *outSize = 0;
+    for (int32_t t = 0; t < 2; t++) {
+        memcpy(recs[t], &teams[t], kTeamRecord);
+        const uint16_t global = (uint16_t)teams[t].team.globalTeamNumber;   /* (.TEAM: little-endian) */
+        recs[t][2] = (uint8_t)global;
+        recs[t][3] = (uint8_t)(global >> 8);
+        record_name(recs[t], teamNames[t], sizeof teamNames[t]);
+        if (!teamNames[t][0])
+            return 0;
+        snprintf(files[t], sizeof files[t], "%s.TEAM", teamNames[t]);
+        for (char *p = files[t]; *p; p++)
+            if (*p == '/' || *p == '\\')
+                *p = '_';
+    }
+    if (!scn_ini(c, teamNames, name, ini, sizeof ini))
+        return 0;
+    packed[count++] = (Packed){ "challenge.ini", (const uint8_t *)ini, (uint32_t)strlen(ini) };
+    for (int32_t t = 0; t < 2; t++)
+        if (!t || strcmp(files[0], files[1]) != 0)      /* (a team against itself: one file) */
+            packed[count++] = (Packed){ files[t], recs[t], kTeamRecord };
+    *out = pack_stored(packed, count, outSize);
+    return *out != NULL;
+}
+
 /* ---- the import ---- */
 
 int32_t UnitedScn_Import(const unsigned char *data, uint32_t size, char *id, uint32_t idCap)
@@ -488,7 +750,8 @@ int32_t UnitedScn_Import(const unsigned char *data, uint32_t size, char *id, uin
     }
     for (int32_t t = 0; t < 2; t++)
         if (pick[t] < 0)
-            pick[t] = t < scn.numTeams && t != pick[1 - t] ? t : (1 - t < scn.numTeams ? 1 - t : -1);
+            pick[t] = scn.numTeams == 1 ? 0        /* (a team against itself) */
+                    : t < scn.numTeams && t != pick[1 - t] ? t : (1 - t < scn.numTeams ? 1 - t : -1);
     if (pick[0] < 0 || pick[1] < 0) {
         fprintf(stderr, "[scn] the archive has not two teams\n");
         free(scn.ini);
