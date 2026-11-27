@@ -28,8 +28,13 @@ Target: the release of 2026-12-08.
   Guinea OFC, Mauritius CAF, whatever their team file).
 - FIFA ranking (2026-11-25) moving with every result, saved with the career.
 - Old World 2026-27 national saves switch to the new system at their next season.
-- Amiga: wanted too, but its World 2026-27 still plays 96/97's 143 national teams (only SDL loads
-  the 211) -- open question for the owner.
+- **Amiga: gets the 211 too** (the owner, 2026-11-26). It reads no JSON, so the world's national
+  data must be baked or written as its binaries: (1) TEAM.080-085 written from the world's
+  EUROPE.json ... OCEANIA.json into the world's `data/` (seal.py's club writer, extended to the
+  national files); (2) the six national files' sizes baked into `src/world_data.c` (world_import.py;
+  docs/WORLD_DATAGEN.md §15 names it); (3) the 211 national records baked, NATIONAL_TEAMS_MAX on the
+  Amiga 144 -> 256; (4) the ranking base baked, so the Amiga starts from FIFA's points. Tested on the
+  Windows/WSL machine (m68k toolchain, FS-UAE harness, `bin/SWOS2.map`).
 
 Holders at 2026-11-26: World Cup Spain (2026), Euro Spain (2024), Nations League Portugal
 (2024-25), Copa América Argentina (2024), AFCON Senegal (2025, restored by CAS 2026-11-24), Asian
