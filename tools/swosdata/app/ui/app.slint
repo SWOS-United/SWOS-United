@@ -232,6 +232,7 @@ export component MainWindow inherits Window {
     in-out property <bool> x-world;
     in-out property <bool> x-2020;
     in-out property <bool> x-jaguar;
+    in property <bool> offer-jaguar: true;     // PROJECT_HIDE_JAGUAR: the Jaguar's extra not offered
     in-out property <bool> x-mods;          // mods (docs/MODS.md): the Mods screen
     in property <bool> world-available;     // World 2026-27 can be downloaded (kWorldUrl)
     // A computer or phone alone plays with either copy: 0 the PC game, 1 the Amiga version, 2 both.
@@ -434,7 +435,7 @@ export component MainWindow inherits Window {
                     selected: root.x-2020;
                     clicked => { root.x-2020 = !root.x-2020; root.wizard-changed(); }
                 }
-                if root.t-computer || root.t-phone || root.t-handheld: ExtraRow {
+                if root.offer-jaguar && (root.t-computer || root.t-phone || root.t-handheld): ExtraRow {
                     icon: @image-url("icons/device-gamepad-2.svg");
                     title: @tr("Atari Jaguar players");
                     text: @tr("The Jaguar version's redrawn players, from its cartridge");

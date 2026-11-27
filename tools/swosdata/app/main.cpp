@@ -1118,7 +1118,7 @@ struct App {
     }
     w().set_x_world(kWorldUrl[0] && (has("world") || isMade("world")));
     w().set_x_2020(has("2020") || isMade("swos2020"));
-    w().set_x_jaguar(has("jaguar") || isMade("jaguar"));
+    w().set_x_jaguar(!PROJECT_HIDE_JAGUAR && (has("jaguar") || isMade("jaguar")));   // (hidden: never made)
     FileLog("ticks at start: " + (ticks.empty() ? std::string("(none kept)") : ticks) +
             "; made: " + (isMade("world") ? "world " : "") + (isMade("swos2020") ? "2020 " : "") +
             (isMade("jaguar") ? "jaguar" : ""));
@@ -1530,7 +1530,7 @@ struct App {
 
   bool ValueAvailable(const GameOptionValue& v) const {
     return v.needs == GAME_OPTION_VALUE_PC ? havePcData : v.needs == GAME_OPTION_VALUE_2020 ? have2020Data
-         : v.needs == GAME_OPTION_VALUE_JAGUAR ? haveJagData : true;
+         : v.needs == GAME_OPTION_VALUE_JAGUAR ? haveJagData && !PROJECT_HIDE_JAGUAR : true;
   }
 
   // The choices from the files, once: the phone's file when there is one and no computer is
@@ -3396,7 +3396,7 @@ int main(int argc, char** argv) {
     ui->set_t_handheld(has("handheld"));
     ui->set_x_world(has("world"));
     ui->set_x_2020(has("2020"));
-    ui->set_x_jaguar(has("jaguar"));
+    ui->set_x_jaguar(!PROJECT_HIDE_JAGUAR && has("jaguar"));
     ui->set_x_mods(has("mods"));
     ui->set_have(has("both") ? 2 : has("amigacopy") ? 1 : 0);
   }
@@ -3443,6 +3443,7 @@ int main(int argc, char** argv) {
   else ui->set_watching("");
   if (app.headlessOpened) app.Notice(app.HeadlessNotice(), true);   // why --headless needs the player
 
+  ui->set_offer_jaguar(!PROJECT_HIDE_JAGUAR);   // (include/project_identity.h)
   ui->on_choose_folder([&app] {
     const std::string dir = PickFolder({});
     if (!dir.empty()) app.StartScan(dir);
