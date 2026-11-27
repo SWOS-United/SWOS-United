@@ -12,6 +12,7 @@
 #include "game_types.h"
 #include "league_playoffs.h"
 #include "uefa_coef.h"
+#include "nat_rank.h"
 #include "world_finance.h"
 #include "cpu_repl.h"
 #include "squad_extras.h"
@@ -327,6 +328,7 @@ void ChooseTeamAndStartCareer(void)
     SuperCup_Reset();
     CupRecord_Reset();
     UefaCoef_Reset();
+    NatRank_Reset();            /* (World 2026-27's national ranking: from the world's base) */
     UefaPrize_NewCareer();
     Ffp_NewCareer();
     CpuRepl_NewCareer();
@@ -733,6 +735,7 @@ void InitCareer(uint16_t teamNo)
     SuperCup_Reset();
     CupRecord_Reset();
     UefaCoef_Reset();
+    NatRank_Reset();            /* (World 2026-27's national ranking: from the world's base) */
     UefaPrize_NewCareer();
     Ffp_NewCareer();
     CpuRepl_NewCareer();

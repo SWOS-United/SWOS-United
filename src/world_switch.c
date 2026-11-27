@@ -209,6 +209,7 @@ static void install_all(void)
     WorldCups_Install();
     DataJson_LoadCareerParams();
     DataJson_LoadNationalTeams();
+    { extern void DataJson_LoadNationalRanking(void); DataJson_LoadNationalRanking(); }
     WorldNationals_Install();
     TeamDb_Apply();
     TeamDb_ApplyLeagueTweaks();

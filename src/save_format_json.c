@@ -34,6 +34,7 @@
 #include "world_playoff.h"     /* "world_playoff" in career saves */
 #include "world_winners.h"     /* "season_winners" */
 #include "uefa_coef.h"         /* "uefa_coef", "uefa_qualifying" in career saves */
+#include "nat_rank.h"          /* "national_ranking" in career saves (World 2026-27) */
 #include "league_playoffs.h"   /* "league_stages" in career saves */
 #include "world_conti.h"       /* "conti_holders", "conti_edition" in career saves */
 #include "states.h"            /* "state_pools" in career saves */
@@ -4153,6 +4154,46 @@ void DataJson_LoadNationalTeams(void)
  * for file -- teams/ITALY.json, competitions/leagues.json -- holding only what differs:
  * a competition record by its id, a country's team file whole. `path` is 96/97's
  * ("data_json/..."); the world's is written to `out`. 0 for 96/97, which has none. */
+/* World 2026-27's national ranking (competitions/national_ranking.json, scripts/worldgen/
+ * nat_ranking.py): the base a career's ranking starts from (nat_rank.c). Another world, or none of
+ * the file: no base (nat_rank.c then takes the national records' skill, in World 2026-27 only). */
+void DataJson_LoadNationalRanking(void)
+{
+    NatRank_ClearBase();
+    char wpath[256];
+    int len = 0;
+    char *j = dj_world_path("data_json/competitions/national_ranking.json", wpath, sizeof wpath)
+                  ? dj_slurp(wpath, &len) : NULL;
+    if (!j && dj_world_path("data_json/national_ranking.json", wpath, sizeof wpath))
+        j = dj_slurp(wpath, &len);
+    if (!j)
+        return;
+    const char *arr = NULL;
+    int arrLen = 0, n = 0, banned = 0;
+    if (mjson_find(j, len, "$.teams", &arr, &arrLen) == MJSON_TOK_ARRAY) {
+        int off = 0, ko, kl, vo, vl, vt;
+        while ((off = mjson_next(arr, arrLen, off, &ko, &kl, &vo, &vl, &vt)) != 0) {
+            double c = -1, o = -1, pts = -1, conf = 255;
+            int ban = 0;
+            if (vt != MJSON_TOK_OBJECT)
+                continue;
+            mjson_get_number(arr + vo, vl, "$.country", &c);
+            mjson_get_number(arr + vo, vl, "$.ordinal", &o);
+            mjson_get_number(arr + vo, vl, "$.points", &pts);
+            mjson_get_number(arr + vo, vl, "$.confederation", &conf);
+            mjson_get_bool(arr + vo, vl, "$.banned", &ban);
+            if (c < 80 || c > 85 || o < 0 || o > 255 || pts < 0)
+                continue;
+            NatRank_AddBase((uint16_t)(((int)c << 8) | (int)o), (int32_t)pts,
+                            (uint8_t)(conf >= 0 && conf < 6 ? conf : NATRANK_CONF_NONE), (uint8_t)(ban != 0));
+            n++;
+            banned += ban != 0;
+        }
+    }
+    fprintf(stderr, "[nat-rank] %s: %d national teams ranked, %d banned\n", wpath, n, banned);
+    free(j);
+}
+
 static int dj_world_path(const char *path, char *out, size_t out_size)
 {
     const char *rel = strncmp(path, "data_json/", 10) == 0 ? path + 10 : path;
@@ -7747,6 +7788,21 @@ int16_t SaveJson_WriteCareer(uint8_t *filename)
         json_out_emit("}", 1, &out);
     }
 
+    /* World 2026-27's national ranking (nat_rank.c): per national team its packed word and its
+     * points (hundredths), once the career has started it. */
+    if (g_natRank.init && NatRank_On()) {
+        static uint16_t nt[NATRANK_MAX];
+        static uint32_t np[NATRANK_MAX];
+        for (int i = 0; i < g_natRank.n; i++) {
+            nt[i] = g_natRank.e[i].team;
+            np[i] = (uint32_t)(g_natRank.e[i].points < 0 ? 0 : g_natRank.e[i].points);
+        }
+        mjson_printf(json_out_emit, &out, ",\n  %Q:{%Q:%d", "national_ranking", "count", (int)g_natRank.n);
+        wp_emit_u16(&out, "teams", nt, g_natRank.n);
+        wp_emit_u32(&out, "points", np, g_natRank.n);
+        json_out_emit("}", 1, &out);
+    }
+
     /* A world's UEFA coefficients (uefa_coef.c): per association its clubs and points this
      * season and its 5 ring seasons (thousandths), per club (team number) its points this season
      * and its ring's, each cup's last knockout round and final. */
@@ -8957,6 +9013,22 @@ static void apply_semantic_load(const char *src, int src_size)
                      (s_cupPick[i] = cup_pick_ptr((int32_t)v), 1);
             }
             s_cupPickLoaded = ok;
+        }
+    }
+
+    /* World 2026-27's national ranking (nat_rank.c); a save without it: from the world's base at
+     * first use. */
+    NatRank_Reset();
+    {
+        const char *nr = NULL;
+        int nrlen = 0;
+        if (mjson_find(src, src_size, "$.national_ranking", &nr, &nrlen) == MJSON_TOK_OBJECT) {
+            static uint16_t nt[NATRANK_MAX];
+            static uint32_t np[NATRANK_MAX];
+            int a = wp_load_u16(nr, nrlen, "$.teams", nt, NATRANK_MAX);
+            int b = wp_load_u32(nr, nrlen, "$.points", np, NATRANK_MAX);
+            for (int i = 0; i < a && i < b; i++)
+                NatRank_RestoreEntry(nt[i], (int32_t)np[i]);
         }
     }
 

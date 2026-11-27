@@ -121,3 +121,6 @@ AUS2627-BRISBANE-BTEAM SWOS_TEST_BTEAM=1:1,1:2,2:4 @2627 OCEANIA/AUSTRALIA/A-LEA
 # national competitions); Europe 1984-85's the Mod 3.1's (src/world_nationals.c).
 ENG-NATIONAL SWOS_TEST_NATIONAL_JOB=1 EUROPE/ENGLAND/PREMIER LEAGUE/ARSENAL
 ENG8485-NATIONAL SWOS_TEST_NATIONAL_JOB=1 @8485 EUROPE/ENGLAND/FIRST DIVISION/LIVERPOOL
+# World 2026-27's national competitions (the owner's spec, phase 1 on: the ranking moving with every
+# national match, friendlies by ranking -- src/nat_rank.c).
+ENG2627-NATIONAL SWOS_TEST_NATIONAL_JOB=1 @2627 EUROPE/ENGLAND/PREMIER LEAGUE/ARSENAL

@@ -8,6 +8,7 @@
  * Chunks 67-68: 2 exported functions ported from SWOS2.s.
  */
 
+#include "nat_rank.h"          /* World 2026-27: friendlies by ranking */
 #include "career_season.h"
 #include "uefa_coef.h"
 #include "world_conti.h"
@@ -1408,7 +1409,10 @@ static void setupFriendlyCupTeams(void)
     uint16_t countSoFar = 1;
 
     for (int16_t i = teamCount - 2; i >= 0; i--) {
-        uint16_t teamId = pickRandomNationalTeamId(minPrice, maxPrice, 0, listBase, countSoFar);
+        /* (World 2026-27: an opponent ranked near the team, nat_rank.c; else the game's own pick) */
+        uint16_t teamId = NatRank_PickOpponent(_selTeamNumber, (const uint8_t *)listBase, countSoFar);
+        if (teamId == 0xFFFF)
+            teamId = pickRandomNationalTeamId(minPrice, maxPrice, 0, listBase, countSoFar);
         BE_WRITE_U16(teamList, teamId); teamList++;
         countSoFar++;
     }
@@ -1434,7 +1438,10 @@ static void setupInvitationTournamentTeams(void)
     uint16_t countSoFar = 1;
 
     for (int16_t i = teamCount - 2; i >= 0; i--) {
-        uint16_t teamId = pickRandomNationalTeamId(minPrice, maxPrice, 0, listBase, countSoFar);
+        /* (World 2026-27: an opponent ranked near the team, nat_rank.c; else the game's own pick) */
+        uint16_t teamId = NatRank_PickOpponent(_selTeamNumber, (const uint8_t *)listBase, countSoFar);
+        if (teamId == 0xFFFF)
+            teamId = pickRandomNationalTeamId(minPrice, maxPrice, 0, listBase, countSoFar);
         BE_WRITE_U16(teamList, teamId); teamList++;
         countSoFar++;
     }

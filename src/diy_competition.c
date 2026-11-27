@@ -15,6 +15,7 @@
 #include "cup_record.h"
 #include "world_finance.h"      /* UefaPrize_CupWon */
 #include "comp_identity.h"
+#include "nat_rank.h"          /* World 2026-27's national ranking: every national match */
 #include "league_zones.h"      /* a world career's table zones */
 #include "translations.h"
 #include "auto_skip_debug.h"
@@ -11580,6 +11581,16 @@ uint16_t DIY_PlayCupMatchAndAdvance(int16_t allowSquadChanges, int16_t mode) {
      * buffer (this region is repurposed depending on competition mode). */
     *(uint16_t *)&a3Ex->leagueSectionState.phaseStartMonths[mIdx2] = packedPenalty;
 
+    /* World 2026-27's national ranking (nat_rank.c): this match, a shoot-out's winner by its score. */
+    {
+        const uint16_t pen1 = packedPenalty >> 8, pen2 = packedPenalty & 0xFF;
+        NatRank_Result((uint8_t)baseS->field_2E,
+                       PACK_BE_U16(team1->team.countryNumber, team1->team.teamOrdinal),
+                       PACK_BE_U16(team2->team.countryNumber, team2->team.teamOrdinal),
+                       packedGoals >> 8, packedGoals & 0xFF,
+                       pen1 == pen2 ? 0 : (pen1 > pen2 ? 1 : 2), 1, (int32_t)baseS->numTeams);
+    }
+
     /* Increment match counter */
     a3Ex->bracketScratch.matchCount += 1;
 
@@ -11978,6 +11989,10 @@ uint16_t DIY_PlayOrSimulateLeagueFixture(int16_t allowSquadChanges, int16_t sele
     r2->goalsAgainst += d1;
     LeagueSplit_AfterResult(compPtr1, compPtr2, d1, d2);   /* (a world league's split) */
     LeaguePhase_Result(compPtr1, compPtr2, d1, d2);       /* (a world's league phase) */
+    NatRank_Result((uint8_t)_diyCompetitionStart.base.field_2E,   /* (World 2026-27's ranking) */
+                   PACK_BE_U16(team1->team.countryNumber, team1->team.teamOrdinal),
+                   PACK_BE_U16(team2->team.countryNumber, team2->team.teamOrdinal), d1, d2, 0, 0,
+                   (int32_t)_diyCompetitionStart.base.numTeams);
 
     /* Sort standings and process promotions/relegations if diyCompetitionStart.minSubstitutes == 0 */
     if (_diyCompetitionStart.minSubstitutes == 0)
