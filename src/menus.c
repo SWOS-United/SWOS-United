@@ -2252,8 +2252,8 @@ void OptionsMenuBeforeDraw(void)
     }
     {   /* The rows in three blocks, a gap between them (Redhair, 2026-11-27): the original's six
          * settings as the Amiga has them; SWOS United's own (LANGUAGE, GAMEPLAY, WORLD); and what
-         * opens more -- SETTINGS' pages, MODS' page, the SETUP program --, their buttons green
-         * (colour 14), the settings here blue as ever. Each row's label and value, top down; the
+         * opens more -- SETTINGS' pages, MODS' page, the SETUP program --, in colours of their
+         * own (SETTINGS and MODS 11, SETUP 14), the settings blue as ever. Each row's label and value, top down; the
          * cursor steps through the ones shown, then EXIT. */
         enum { kTop = 25, kStep = 12, kGap = 4 };   /* (below the title: the blocks between it and EXIT) */
         static const int8_t k_rows[][2] = {
@@ -2281,8 +2281,8 @@ void OptionsMenuBeforeDraw(void)
         }
         _menuEntries[prev].downEntry = 19;              /* EXIT */
         _menuEntries[19].upEntry = (int8_t)prev;
-        _menuEntries[16].bgColor = (uint16_t)((_menuEntries[16].bgColor & 0xF0) | 14);
-        _menuEntries[24].bgColor = (uint16_t)((_menuEntries[24].bgColor & 0xF0) | 14);
+        _menuEntries[16].bgColor = (uint16_t)((_menuEntries[16].bgColor & 0xF0) | 11);    /* SETTINGS, MODS: 11; SETUP: 14 */
+        _menuEntries[24].bgColor = (uint16_t)((_menuEntries[24].bgColor & 0xF0) | 11);
         _menuEntries[28].bgColor = (uint16_t)((_menuEntries[28].bgColor & 0xF0) | 14);
     }
 #else

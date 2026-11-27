@@ -171,7 +171,7 @@ typedef struct {
 /* A label's background (settingsPage.json's labels are grey, 7): CONTROLS tells player 1's rows
  * from player 2's by colour as well as by name. */
 enum { kWaitColour = 15 };      /* a row waiting for a press: yellow (the Amiga look; PC: yellow-green) */
-enum { kLabelGrey = 7, kLabelPlayer1 = 11, kLabelPlayer2 = 10 };
+enum { kLabelGrey = 7, kLabelPlayer1 = 7, kLabelPlayer2 = 9 };    /* (Redhair, 2026-11-28: 7 and 9; were 11 purple and 10 red) */
 enum { kValueOn = 13, kValueOff = 9 };  /* a value's background (settingsPage.json's 13), greyed (Row.off) */   /* (purple -- the Amiga look's blue -- and red) */
 
 typedef struct {
