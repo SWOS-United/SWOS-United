@@ -1491,7 +1491,8 @@ static const Row k_displayRows[] = {
     { "MENU LOGO",          logo_show,     logo_change },
     { "MENU CURSOR",        cursor_show,   cursor_change },
 };
-static const Page k_displayPage = { "APPEARANCE OPTIONS", k_displayRows, (int32_t)(sizeof k_displayRows / sizeof k_displayRows[0]) };
+static const Page k_displayPage = { "APPEARANCE OPTIONS", k_displayRows, (int32_t)(sizeof k_displayRows / sizeof k_displayRows[0]),
+                                    1u << 7 };   /* the match's, then the menus' (from MENU BUTTON LOOK) */
 _Static_assert(sizeof k_displayRows / sizeof k_displayRows[0] <= kRows, "a settings page holds kRows rows at most");
 
 static const Row k_rulesRows[] = {
