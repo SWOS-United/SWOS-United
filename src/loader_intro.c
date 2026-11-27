@@ -99,8 +99,9 @@ extern int16_t LoadRNCToBufferNoBlit(uint8_t *name, uint8_t *dest);     /* asset
  * audio as active.
  * ================================================================ */
 /* The title track is TITLE MUSIC's -- SWOS United's MP3 (united_title.mp3), the PC floppy's MIDI one
- * (title.xmi) or title.mp3: it plays on through POWERED BY, to the main menu (LoaderIntro_EndPowered). The Amiga's tune stops at fire -- its samples share memory
- * with the sprites the game loads meanwhile (intro_chip_ram.h). */
+ * (title.xmi), title.mp3 or the Amiga's tune: it plays on through POWERED BY, to the main menu
+ * (LoaderIntro_EndPowered). (On the Amiga the tune's samples share memory with the sprites the game
+ * loads meanwhile, intro_chip_ram.h; SDL keeps them apart.) */
 static int32_t s_titleStream;
 
 /* The title music's fade-in run by the next wait's frames (loaderIntroWaitForFireOrTimeout), not
@@ -153,7 +154,7 @@ static void loaderIntroEnsureMenuMusicPlaying(void)
          * sound_dos/united_title.mp3 from SWOS 2020's music DLC, laid in by the installer); AMIGA,
          * the Amiga's tune; MIDI, sound_dos/title.xmi (the PC floppy's title song) on the emulated
          * card; CD, sound_dos/title.mp3 (the PC CD's, or a mod's); OFF, none. A file not there:
-         * SWOS United's, else the Amiga's. Every one but the Amiga's plays on, repeated, through
+         * SWOS United's, else the Amiga's. Every one plays on, repeated, through
          * POWERED BY and the logo to the main menu (s_titleStream). */
         const int32_t want = DosMusic_TitleMusic();
         int32_t started = 0;
@@ -181,6 +182,14 @@ static void loaderIntroEnsureMenuMusicPlaying(void)
                                g_introChipRam.titleTuneSamples, (int)sizeof g_introChipRam.titleTuneSamples, 0) != 0) {
             /* Load failed — keep audio silent but mark "loaded" so we
              * don't hammer the player every vblank. */
+        } else {
+            /* On through POWERED BY to the main menu as the others (it was stopped after
+             * POWERED BY, three seconds in -- Redhair): SDL keeps its samples apart from the
+             * sprites (intro_chip_ram.h), the Amiga's sharing of them is not here. HERO has
+             * no loop-back: repeated, as the arcade's attract loop does it. */
+            extern void AudioSDL_SetSongLoop(int loop);
+            AudioSDL_SetSongLoop(1);
+            s_titleStream = 1;
         }
         _audioBankLoaded = 1;
     }
