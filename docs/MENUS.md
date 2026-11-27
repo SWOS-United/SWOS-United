@@ -909,8 +909,9 @@ All in the loader and `UnpackMenu`. None occurs in the 47 compiled menus, and
     or resolution) and FILL (MORE PITCH / STRETCH: widescreen=true / stretch; from the next start, as
     is ORIGINAL to a shape and back), SMOOTH SCROLLING, SCALING, PIXEL FILTER, MONITOR, RENDERER
     (from the next start, said in the note), AUTO CENTERING, SHOW FPS.
-  - AUDIO OPTIONS: the four volumes (`AudioSDL_SetKindVolumes`, 10% a step), MENU MUSIC (OPTIONS'
-    row), MATCH SOUNDS and MUSIC Amiga/PC, PC MENU MUSIC midi/mp3, COMMENTARY off/on/auto (all now),
+  - AUDIO OPTIONS: the four volumes (`AudioSDL_SetKindVolumes`, 10% a step), MENU MUSIC amiga/pc/off
+    (OPTIONS' on/off row and the music's style in one), PC MENU MUSIC midi/mp3, PC TITLE MUSIC
+    midi/mp3, MATCH SOUNDS amiga/pc, COMMENTARY off/on/auto (all now),
     AMIGA SOUND OUTPUT mono/mixed/stereo (at once).
   - GAMEPLAY OPTIONS (how a match plays): GAME STYLE (`GameplayStyle_Set`), BALL CONTEST, STRONGER
     KEEPERS, CPU TACTICS -- the rest of SWOS 2020's gameplayOptions screen is

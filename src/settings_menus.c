@@ -912,14 +912,6 @@ static void volc_change(int32_t d) { vol_change(&O()->vol_chants, d); }
 static void volt_change(int32_t d) { vol_change(&O()->vol_commentary, d); }
 static void vole_change(int32_t d) { vol_change(&O()->vol_effects, d); }
 
-static void menumusic_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", on_off(_menuMusic)); }
-static void menumusic_change(int32_t dir)
-{
-    extern void ChangeMenuMusic(MenuEntry *entry);      /* OPTIONS' row: the music, and [options] */
-    (void)dir;
-    ChangeMenuMusic(entry_at(Page_note));
-}
-
 /* The menus' music again, in the style chosen: StopMusic, then the menu's song. */
 static void music_restart(void)
 {
@@ -944,18 +936,35 @@ static void sound_change(int32_t dir)
     save();
 }
 
-static void music_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", DosMusic_Style() ? "PC" : "AMIGA"); }
+/* MENU MUSIC: AMIGA, PC or OFF -- the menus' music and its style in one row (they were two, MENU
+ * MUSIC on/off and MUSIC Amiga/PC: Redhair). OFF keeps the style it had (the intro's title music
+ * without united_title.mp3 goes by it); without the Amiga's sound, PC and OFF only. */
+static void music_show(char *o, int32_t c)
+{
+    snprintf(o, (size_t)c, "%s", !_menuMusic ? "OFF" : DosMusic_Style() ? "PC" : "AMIGA");
+}
 static void music_change(int32_t dir)
 {
-    (void)dir;
-    if (_gNoAmigaSound) {
-        note("NO AMIGA MUSIC: THE SETUP MADE NONE");
+    extern void ChangeMenuMusic(MenuEntry *entry);      /* OPTIONS' row: the music, and [options] */
+    /* the order: AMIGA, PC, OFF (left: back) */
+    const int32_t now = !_menuMusic ? 2 : DosMusic_Style() ? 1 : 0;
+    int32_t next = (now + (dir < 0 ? 2 : 1)) % 3;
+    if (next == 0 && _gNoAmigaSound)
+        next = dir < 0 ? 2 : 1;
+    if (next == 2) {                                    /* off */
+        if (_menuMusic)
+            ChangeMenuMusic(entry_at(Page_note));
         return;
     }
-    DosMusic_SetStyle(!DosMusic_Style());
-    O()->music_style = DosMusic_Style();
-    music_restart();
-    save();
+    if (DosMusic_Style() != (next == 1)) {
+        DosMusic_SetStyle(next == 1);
+        O()->music_style = DosMusic_Style();
+        save();
+    }
+    if (!_menuMusic)
+        ChangeMenuMusic(entry_at(Page_note));          /* on, in the style just set */
+    else
+        music_restart();
 }
 
 static void pcmusic_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", DosMusic_MenuRecording() ? "MP3" : "MIDI"); }
@@ -1014,8 +1023,7 @@ static const Row k_audioRows[] = {
     { "CROWD CHANTS VOLUME",    volc_show,       volc_change },
     { "COMMENTARY VOLUME",      volt_show,       volt_change },
     { "BALL AND WHISTLE",       vole_show,       vole_change },
-    { "MENU MUSIC",             menumusic_show,  menumusic_change },
-    { "MUSIC",                  music_show,      music_change },
+    { "MENU MUSIC",             music_show,      music_change },
     { "PC MENU MUSIC",          pcmusic_show,    pcmusic_change },
     { "PC TITLE MUSIC",         pctitle_show,    pctitle_change },
     { "MATCH SOUNDS",           sound_show,      sound_change },
