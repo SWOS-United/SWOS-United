@@ -381,7 +381,8 @@ static void yearMonth_Inc_onSelect(void)
 
 /* ======================================================================================
  * RATE HIGHLIGHTS and SHARE HIGHLIGHTS (SWOS 2020's replays/replaysMenu.cpp: RateHighlight,
- * ShareHighlight), behind its SERVER LOGIN (OnlineMenus_ServerLogIn), and VIEW HIGHLIGHT, the box
+ * ShareHighlight), behind its SERVER LOGIN (OnlineMenus_ServerLogIn: shown while nobody is logged
+ * in), and VIEW HIGHLIGHT, the box
  * before a highlight is shown (viewHighlightMenu: its game style, its scene(s)).
  *
  *   RATE   every shared highlight, newest first, seven a page: date, player, comment, the player's
@@ -1391,12 +1392,15 @@ static void tell_unsent(void)
 
 static void open_monthly(void) { s_monthly = 1; s_monthIndex = 0; show("swos2020/chartHighlightsMenu"); }
 
-/* SERVER LOGIN first; 1 logged in (s_me set) */
+/* SERVER LOGIN first, unless somebody is logged in this session already (SWOS 2020 showed it again
+ * each time); 1 logged in (s_me set) */
 static int32_t galore_login(void)
 {
 #if defined(SWOS_HTTPS)
-    if (OnlineMenus_ServerLogIn(LOGIN_FOR_GALORE, United_UserName(), open_monthly) != 0 || !United_UserName()[0])
+    if (!United_UserName()[0] &&
+        (OnlineMenus_ServerLogIn(LOGIN_FOR_GALORE, "", open_monthly) != 0 || !United_UserName()[0]))
         return 0;
+    _fireResetFlag = 1;     /* (the fire that chose RATE / SHARE is not the next screen's) */
     snprintf(s_me, sizeof s_me, "%s", United_UserName());
     return 1;
 #else
@@ -1418,6 +1422,7 @@ static void selectLatestUploads(void)
     if (!galore_login())
         return;
     if (United_Banned(s_me, "SWOS GALORE")) {     /* (SWOS 2020's showFeatureNotAvailableMessage) */
+        _fireResetFlag = 1;
         ModApi_ShowDialog("WARNING", "YOU ARE BANNED FROM SWOS GALORE.|PLEASE CONTACT THE SITE MANAGER.", kExit, 1, 0);
         return;
     }

@@ -123,7 +123,8 @@ rebase), `git cherry-pick <commit>` one fix, or nothing at all. `upstream` is fe
   file's name; NEWS ON DISCORD below); a pick downloaded (online-records `galore.download`: the server's
   folders are case-sensitive, the name as it spells it) and shown in the viewer, its scene alone
   (OpenSWOS's `ModApi_ViewHighlights`, copied to the save folder as GALORE.HIL). RATE and SHARE
-  HIGHLIGHTS write there as SWOS 2020 did, after its SERVER LOGIN, sent on EXIT (a new or changed
+  HIGHLIGHTS write there as SWOS 2020 did, after its SERVER LOGIN (only while nobody is logged in
+  this session -- SWOS 2020 showed it each time), sent on EXIT (a new or changed
   share also posts on Discord, ten highlights a post at most -- the relay refuses more; `SWOS_GALORE_NO_DISCORD=1` keeps a test quiet) -- what could not be sent is
   said after the screen closes. Unsharing removes the row; the site has no request that removes the
   uploaded file. A share with no file on this computer is listed after the files (its name in
