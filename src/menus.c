@@ -2255,13 +2255,15 @@ void OptionsMenuBeforeDraw(void)
          * opens more -- SETTINGS' pages, MODS' page, the SETUP program --, their buttons green
          * (colour 14), the settings here blue as ever. Each row's label and value, top down; the
          * cursor steps through the ones shown, then EXIT. */
-        enum { kTop = 25, kStep = 12, kGap = 4 };   /* (25: the blocks between the title and EXIT, not up at the title) */
+        enum { kTop = 25, kStep = 12, kGap = 4 };   /* (below the title: the blocks between it and EXIT) */
         static const int8_t k_rows[][2] = {
             { 1, 2 }, { 3, 4 }, { 5, 6 }, { 7, 8 }, { 9, 10 }, { 11, 12 }, { -1, -1 },
             { 25, 26 }, { 13, 14 }, { 21, 22 }, { -1, -1 },
             { 15, 16 }, { 23, 24 }, { 27, 28 },
         };
-        int32_t y = kTop, prev = -1;
+        /* (the entries' y is the screen's once loaded -- the menu's own origin added --: counted
+         *  from the title's, entry 0, as the menu's file counts them) */
+        int32_t y = _menuEntries[0].y + kTop, prev = -1;
         for (uint32_t i = 0; i < sizeof k_rows / sizeof k_rows[0]; i++) {
             const int32_t label = k_rows[i][0], value = k_rows[i][1];
             if (label < 0) {
