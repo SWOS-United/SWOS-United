@@ -4,7 +4,7 @@
  "name": "Pitch decals",
  "version": "1.0",
  "author": "SWOS United",
- "about": "Draws what a data mod adds to the game's own pitches (its \"pitch_decals\" in mod.json): a pitch replaced, things on the grass, the goals' fronts. Nothing without such a mod.",
+ "about": "Draws what a data mod adds to the game's own pitches (its \"pitch_decals\" in mod.json): a pitch replaced, things on the grass, the goals' fronts. Without one: two benches for a match on the training ground (TEAM TRAINING).",
  "targets": [
   "sdl"
  ],

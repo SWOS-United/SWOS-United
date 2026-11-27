@@ -23,6 +23,9 @@
  *   sprite    goal_top / goal_bottom: the goals' fronts (images 1091 / 1092, the net over a ball
  *             that crossed the line), drawn in their place in the match and its replays
  *
+ * Without such a mod, a match on the training ground (the practice mod's TEAM TRAINING): two
+ * benches for its one (benches_work_out).
+ *
  * And a sound for the training ground, in "pitch_sounds" -- the game's own or a custom one (a
  * sound is no picture), and only there: the one pitch with no crowd to hear (dos_sound.c,
  * audio.c leave it out there), so nothing plays over or instead of a crowd:
@@ -52,6 +55,7 @@
  * SWOS_PITCHDECALS_TEST=1: the entries read, the conditions and the cells built, said in the log.
  * SWOS_PITCHDECALS_ANY_PITCH=1: a goal's sound on any pitch (to test it on a recording with goals);
  * SWOS_PITCHDECALS_TEST_GOAL=<n>: a goal's sound event at a match's n-th frame.
+ * SWOS_PITCHDECALS_BENCHES=1: the training ground's two benches in a training game too (testing).
  * SWOS_PITCHDECALS_DUMP=<file.png>: the whole pitch as the game draws it (every cell, the decals in),
  * in the pitch condition's colours, written once the pitch is worked out. */
 #ifdef SWOS_SDL_BUILD
@@ -482,6 +486,132 @@ static int32_t decal_on(const Decal *d)
     return !d->setting[0] || ModApi_SettingInt(d->slug, d->setting, d->def) != 0;
 }
 
+/* ---- two benches for a match on the training ground ----
+ * The training ground has one bench, for the career's training game (the squad's two halves at
+ * it). A match there -- the practice mod's TEAM TRAINING, two teams -- seats its teams where a
+ * match's pitches have their two dugouts: on the grass, above and below that one bench. Unless a
+ * mod draws the training ground's benches itself (a pitch decal for a match there, the Component
+ * System's), the game's own training ground then gets two benches, where the teams sit: its bench
+ * without the A / B on it, twice, and grass where it was. The training game keeps its one. OCS / ECS, AGA and PC alike (the same bench in the same place); not SWOS
+ * 2020's training ground (a bench of its own).
+ *
+ * The bench is the training ground's own, its colours too: every pixel copied from one of the
+ * old bench's (k black, s shadow, g grey, w white; '.' not the bench), so no palette is needed and
+ * a wet or frozen pitch turns it as it turns the old one. The grass: the same column's cell ten
+ * rows up (the stripes run down the pitch). */
+enum { BENCH_X = 11, BENCH_W = 21, BENCH_H = 67, BENCH_OLD_Y = 417, BENCH_GRASS_UP = 10 };
+static const int16_t k_benchY[2] = { 369, 465 };      /* (a match's dugouts, pitches 1-5: 368 / 464, one row taller -- the bodies and shadows line up) */
+static const char *const k_bench[BENCH_H] = {
+    "..wggggggggggwwg.....", ".wgssssssssssggs.....", "gsgggggggggggwwg.....",
+    "sgwssssssssssggs.....", "gswggggggggggwwg.....", "sggssssssssssggs.....",
+    "gsgggggggggggwwg.....", "sgwssssssssssggs.....", "gswggggggggggwwg.....",
+    "sggssssssssssggs.....", "gsgggggggggggwwgs....", "sgwssssssssssggsss...",
+    "gswggggggggggwwgsss..", "sggssssssssssggsssss.", "gsgggggggggggwwgsssss",
+    "sgwssssssssssggssssss", "gswggggggggggwwgsssss", "sggssssssssssggssssss",
+    "gsgggggggggggwwgsssss", "sgwssssssssssggssssss", "gswggggggggggwwgsssss",
+    "sggssssssssssggssssss", "gsgggggggggggwwgsssss", "sgwssssssssssggssssss",
+    "gswggggggggggwwgsssss", "sggssssssssssggssssss", "gsgggggggggggwwgsssss",
+    "sgwssssssssssggssssss", "gswggggggggggwwgsssss", "sggssssssssssggssssss",
+    "gsgggggggggggwwgsssss", "sgwssssssssssggssssss", "gswggggggggggwwgsssss",
+    "sggssssssssssggssssss", "gsgggggggggggwwgsssss", "sgwssssssssssggssssss",
+    "gswggggggggggwwgsssss", "sggssssssssssggssssss", "gsgggggggggggwwgsssss",
+    "sgwssssssssssggssssss", "gswggggggggggwwgsssss", "sggssssssssssggssssss",
+    "gsgggggggggggwwgsssss", "sgwssssssssssggssssss", "gswggggggggggwwgsssss",
+    "sggssssssssssggssssss", "gsgggggggggggwwgsssss", "sgwssssssssssggssssss",
+    "gswggggggggggwwgsssss", "sggssssssssssggssssss", "gswggggggggggwwgsssss",
+    "sgsssssssssssssssssss", "gskkkkkkkkkkkkkksssss", "skkskskskskskskksssss",
+    "kskskskskskskskksssss", "kskskskskskskskksssss", "kskskskskskskskksssss",
+    "kskskskskskskskksssss", "kskskskskskskskksssss", "kskskskskskskskksssss",
+    "kskskskskskskskksssss", "kkkkkkkkkkkkkkkksssss", ".ssssssssssssssssssss",
+    "..sssssssssssssssssss", "...ssssssssssssssssss", "....sssssssssssssssss",
+    ".....ssssssssssssssss",
+};
+static const char k_benchRoles[4] = { 'k', 's', 'g', 'w' };
+static const uint8_t k_benchRef[4][2] = { { 2, 52 }, { 3, 1 }, { 3, 0 }, { 2, 0 } };  /* x, y in it */
+static int32_t s_benches;       /* drawing them on this pitch */
+static uint8_t s_benchIdx[4];   /* the old bench's entry for each role */
+
+static int32_t engine_px(int32_t x, int32_t y)
+{
+    const uint8_t *t = _s_pitchFullPtrs[(y / TILE) * COLS + x / TILE];
+    return t ? t[(y % TILE) * TILE + x % TILE] : -1;
+}
+
+/* Why the training ground keeps its one bench ("" it gets two). */
+static const char *benches_why_not(int32_t pitch)
+{
+    const char *rel;
+    if (pitch != 6)
+        return "not the training ground";
+    if (_trainingGame && !getenv("SWOS_PITCHDECALS_BENCHES"))
+        return "a training game (its halves at the one bench)";
+    if (Mods_IsOn("pitchmaps") && strcmp(ModApi_Setting("pitchmaps", "map", "off"), "off") != 0)
+        return "a pitch map is shown (pitchmaps)";
+    if (_gDosGraphics) {
+        if (strcmp(_gDosGraphicsDir, "grafs_dos") != 0)
+            return "SWOS 2020's graphics";
+        rel = "grafs_dos/PITCH6.BLK";
+    } else if (_gOcsGraphics || !swos_data_exists("grafs_aga/SWCPICH6.MAP")) {
+        rel = "grafs/SWCPICH6.MAP";
+    } else {
+        rel = "grafs_aga/SWCPICH6.MAP";
+    }
+    if (AssetsCheck_PcFromSwos2020() && !_gOcsGraphics)
+        return "the PC data was made from SWOS 2020";
+    if (!own_file(rel))
+        return "the pitch comes from a mod";
+    for (int32_t r = 0; r < 4; r++) {
+        const int32_t e = engine_px(BENCH_X + k_benchRef[r][0], BENCH_OLD_Y + k_benchRef[r][1]);
+        if (e < 0)
+            return "no pitch tiles";
+        s_benchIdx[r] = (uint8_t)e;
+        for (int32_t q = 0; q < r; q++)
+            if (s_benchIdx[q] == s_benchIdx[r])
+                return "no bench where the game's is";      /* (four colours, four entries) */
+    }
+    return "";
+}
+
+static void benches_work_out(int32_t pitch)
+{
+    const char *why = benches_why_not(pitch);
+    s_benches = 0;
+    if (why[0]) {
+        if (test_on() && pitch == 6)
+            fprintf(stderr, "[pitchdecals] training ground: one bench -- %s\n", why);
+        return;
+    }
+    for (int32_t row = k_benchY[0] / TILE; row <= (k_benchY[1] + BENCH_H - 1) / TILE; row++)
+        for (int32_t col = 0; col <= (BENCH_X + BENCH_W - 1) / TILE; col++)
+            s_cover[row * COLS + col] = 1;
+    s_benches = 1;
+    s_on = 1;
+    if (test_on())
+        fprintf(stderr, "[pitchdecals] training ground: two benches (a match there)\n");
+}
+
+/* A cell of the bench's: grass where the old bench was, then the two. */
+static void bench_cell(uint8_t *t, int32_t cell)
+{
+    const int32_t x0 = (cell % COLS) * TILE, y0 = (cell / COLS) * TILE;
+    const uint8_t *grass = _s_pitchFullPtrs[cell - BENCH_GRASS_UP * COLS];
+    for (int32_t y = 0; y < TILE; y++)
+        for (int32_t x = 0; x < TILE; x++) {
+            const int32_t wx = x0 + x, wy = y0 + y;
+            uint8_t *p = &t[y * TILE + x];
+            if (grass && wx >= BENCH_X && wx < BENCH_X + BENCH_W && wy >= BENCH_OLD_Y && wy < BENCH_OLD_Y + BENCH_H)
+                *p = grass[y * TILE + x];
+            for (int32_t b = 0; b < 2; b++) {
+                const int32_t bx = wx - BENCH_X, by = wy - k_benchY[b];
+                if (bx < 0 || bx >= BENCH_W || by < 0 || by >= BENCH_H)
+                    continue;
+                for (int32_t r = 0; r < 4; r++)
+                    if (k_bench[by][bx] == k_benchRoles[r])
+                        *p = s_benchIdx[r];
+            }
+        }
+}
+
 static void work_out(void)
 {
     int32_t pitch = s_dosPitch ? s_dosPitch : (int32_t)(_pitchNumberAndType >> 8) + 1;
@@ -493,17 +623,13 @@ static void work_out(void)
     memset(s_cover, 0, sizeof s_cover);
     memset(s_key, 0, sizeof s_key);
     s_useSprite[0] = s_useSprite[1] = 0;
+    s_benches = 0;
     if (!s_read)
         read_all();
-    if (!s_decals)
-        return;
-    why = why_not(pitch);
-    if (why[0]) {
-        if (test_on())
-            fprintf(stderr, "[pitchdecals] pitch %d: nothing drawn -- %s\n", (int)pitch, why);
-        return;
-    }
-    for (int32_t i = 0; i < s_decals; i++) {
+    why = s_decals ? why_not(pitch) : "no mod's decals";
+    if (why[0] && test_on())
+        fprintf(stderr, "[pitchdecals] pitch %d: nothing drawn -- %s\n", (int)pitch, why);
+    for (int32_t i = 0; i < s_decals && !why[0]; i++) {
         const Decal *d = &s_decal[i];
         if (!decal_on(d))
             continue;
@@ -527,7 +653,12 @@ static void work_out(void)
     }
     for (int32_t c = 0; c < CELLS; c++)
         s_cells += s_cover[c];
-    if (test_on()) {
+    if (!s_cells) {             /* (no mod's picture on the pitch: the training ground's benches) */
+        benches_work_out(pitch);
+        for (int32_t c = 0; c < CELLS; c++)
+            s_cells += s_cover[c];
+    }
+    if (test_on() && !why[0]) {
         fprintf(stderr, "[pitchdecals] pitch %d (%s, %s): %d cells, goal fronts %s/%s\n", (int)pitch,
                 _gDosGraphics ? "PC graphics" : "Amiga graphics", _trainingGame ? "training" : "match", (int)s_cells,
                 s_useSprite[0] ? "top" : "-", s_useSprite[1] ? "bottom" : "-");
@@ -545,6 +676,11 @@ static const uint8_t *cell_tile(int32_t cell, const uint8_t *engineTile)
         uint8_t *t = s_tile[cell];
         const int32_t x0 = (cell % COLS) * TILE, y0 = (cell / COLS) * TILE;
         memcpy(t, engineTile, TILE_BYTES);
+        if (s_benches) {        /* (the pitch's own entries: nothing to remap) */
+            bench_cell(t, cell);
+            s_key[cell] = engineTile;
+            return t;
+        }
         for (int32_t i = 0; i < s_decals; i++) {
             const Decal *d = &s_decal[i];
             if (d->sprite || !decal_on(d))
