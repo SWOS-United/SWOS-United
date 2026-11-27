@@ -168,16 +168,18 @@ typedef struct {
     int       (*off)(void);                 /* non-zero: greyed out, nothing to choose (NULL: never) */
 } Row;
 
-/* A label's background (settingsPage.json's labels are grey, 7): CONTROLS tells player 1's rows
- * from player 2's by colour as well as by name. */
+/* A label's background (settingsPage.json's labels are grey, 7). CONTROLS' players are told apart
+ * by name and by a gap between their blocks (Page.gaps), not by colour: no two colours that differ
+ * in both button looks suited (Redhair, 2026-11-28). */
 enum { kWaitColour = 15 };      /* a row waiting for a press: yellow (the Amiga look; PC: yellow-green) */
-enum { kLabelGrey = 7, kLabelPlayer1 = 7, kLabelPlayer2 = 9 };    /* (Redhair, 2026-11-28: 7 and 9; were 11 purple and 10 red) */
+enum { kLabelGrey = 7, kLabelPlayer1 = kLabelGrey, kLabelPlayer2 = kLabelGrey };
 enum { kValueOn = 13, kValueOff = 9 };  /* a value's background (settingsPage.json's 13), greyed (Row.off) */   /* (purple -- the Amiga look's blue -- and red) */
 
 typedef struct {
     const char *title;
     const Row  *rows;
     int32_t     count;
+    uint16_t    gaps;       /* bit i: a gap above row i (blocks, as OPTIONS has them); 0 none */
 } Page;
 
 enum { kRows = 12, kValueLen = 32 };
@@ -246,9 +248,40 @@ static void nav(int32_t ordinal, int32_t up, int32_t down)
     e->directionUp = e->directionDown = -1;
 }
 
+/* The rows where settingsPage.json has them, or -- a page with gaps -- each gap kGapLines lower
+ * from it on, the note and EXIT right below the last row (all of it inside the 4:3 picture's
+ * 200 lines). The file's places are kept from the first time, the entries are changed after. */
+static void page_layout(void)
+{
+    enum { kGapLines = 3, kStepLines = 12 };
+    static int32_t s_known, s_row0, s_note, s_exit;
+    int32_t i, shift = 0, n = s_page ? s_page->count : 0;
+    if (!s_known) {
+        s_row0 = entry_at(Page_label0)->y;
+        s_note = entry_at(Page_note)->y;
+        s_exit = entry_at(Page_exit)->y;
+        s_known = 1;
+    }
+    for (i = 0; i < kRows; i++) {
+        if (s_page && (s_page->gaps & (1u << i)))
+            shift += kGapLines;
+        entry_at(Page_label0 + 2 * i)->y = entry_at(Page_label0 + 2 * i + 1)->y =
+            (uint16_t)(s_row0 + i * kStepLines + shift);
+    }
+    if (shift && n > 0) {
+        const int32_t below = s_row0 + (n - 1) * kStepLines + shift + entry_at(Page_label0)->dwHeight;
+        entry_at(Page_note)->y = (uint16_t)(below + 2);
+        entry_at(Page_exit)->y = (uint16_t)(below + 2 + 12);
+    } else {
+        entry_at(Page_note)->y = (uint16_t)s_note;
+        entry_at(Page_exit)->y = (uint16_t)s_exit;
+    }
+}
+
 static void settingsPage_OnInit(void)
 {
     int32_t i, n = s_page ? s_page->count : 0;
+    page_layout();
     for (i = 0; i < n; i++) {
         const int32_t value = Page_label0 + 2 * i + 1;
         nav(value, i ? value - 2 : -1, i + 1 < n ? value + 2 : Page_exit);
@@ -613,7 +646,8 @@ static const Row k_controlRows[] = {
     { "DISABLE SHOULDER BUTTONS", shoulders_show,  shoulders_change },
     { "STICK DEAD ZONE",          deadzone_show,   deadzone_change },
 };
-static const Page k_controlsPage = { "CONTROLS", k_controlRows, (int32_t)(sizeof k_controlRows / sizeof k_controlRows[0]) };
+static const Page k_controlsPage = { "CONTROLS", k_controlRows, (int32_t)(sizeof k_controlRows / sizeof k_controlRows[0]),
+                                     (1u << 4) | (1u << 8) };   /* player 1, player 2, the rest */
 _Static_assert(sizeof k_controlRows / sizeof k_controlRows[0] <= kRows, "a settings page holds kRows rows at most");
 
 /* ===================================================================== VIDEO */
