@@ -164,6 +164,13 @@ static void world_button(void)
     const int32_t n = sp > 0 ? (kCareerIconGap + kCareerIconW + sp / 2) / sp : 5;
     const int32_t box = entry(Main_worldCareer)->dwWidth;
     const int32_t start = (box - w - n * sp) / 2;
+    if (box <= 140 || box >= 150) {
+        /* The Amiga-sized rows (16 high): the icons beside the 130-wide buttons, 4 px to the
+         * right, or none on the 150-wide ones -- the text alone, centred. */
+        ModApi_MenuText(Main_worldCareer, s_worldName);
+        ModApi_SetMenuImageAt(Main_worldCareer, box + kCareerIconGap, 0);
+        return;
+    }
     snprintf(text, sizeof text, "%s%*s", s_worldName, (int)n, "");
     ModApi_MenuText(Main_worldCareer, text);
     ModApi_SetMenuImageAt(Main_worldCareer, start + w + n * sp - kCareerIconW, kCareerIconY);

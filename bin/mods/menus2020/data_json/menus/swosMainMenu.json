@@ -25,14 +25,14 @@
       "coords": {
         "x": 1,
         "y": 51,
-        "w": 148,
-        "h": 24
+        "w": 130,
+        "h": 16
       },
       "commands": [
         {
           "op": "text",
           "flags": "0x10",
-          "literal": "  MULTIPLAYER"
+          "literal": "MULTIPLAYER"
         },
         {
           "op": "colors",
@@ -52,23 +52,23 @@
         }
       ],
       "image": "grafs_2020/menus2020/multiplayer.bmp",
-      "image_x": 15,
-      "image_y": 4
+      "image_x": 134,
+      "image_y": 0
     },
     {
       "kind": "entry",
       "name": "practice",
       "coords": {
         "x": 1,
-        "y": 79,
-        "w": 148,
-        "h": 24
+        "y": 69,
+        "w": 130,
+        "h": 16
       },
       "commands": [
         {
           "op": "text",
           "flags": "0x10",
-          "literal": "  COMPETE"
+          "literal": "COMPETE"
         },
         {
           "op": "colors",
@@ -88,23 +88,23 @@
         }
       ],
       "image": "grafs_2020/menus2020/compete.bmp",
-      "image_x": 30,
-      "image_y": 4
+      "image_x": 134,
+      "image_y": 0
     },
     {
       "kind": "entry",
       "name": "replays",
       "coords": {
         "x": 1,
-        "y": 107,
-        "w": 148,
-        "h": 24
+        "y": 87,
+        "w": 130,
+        "h": 16
       },
       "commands": [
         {
           "op": "text",
           "flags": "0x10",
-          "literal": "  PRACTICE"
+          "literal": "PRACTICE"
         },
         {
           "op": "colors",
@@ -124,8 +124,8 @@
         }
       ],
       "image": "grafs_2020/menus2020/practice.bmp",
-      "image_x": 27,
-      "image_y": 4
+      "image_x": 134,
+      "image_y": 0
     },
     {
       "kind": "entry",
@@ -133,14 +133,14 @@
       "coords": {
         "x": 155,
         "y": 51,
-        "w": 148,
-        "h": 24
+        "w": 130,
+        "h": 16
       },
       "commands": [
         {
           "op": "text",
           "flags": "0x10",
-          "literal": "OPTIONS   "
+          "literal": "OPTIONS"
         },
         {
           "op": "colors",
@@ -160,23 +160,23 @@
         }
       ],
       "image": "grafs_2020/menus2020/options.bmp",
-      "image_x": 98,
-      "image_y": 4
+      "image_x": 134,
+      "image_y": 0
     },
     {
       "kind": "entry",
       "name": "editing",
       "coords": {
         "x": 155,
-        "y": 79,
-        "w": 148,
-        "h": 24
+        "y": 69,
+        "w": 130,
+        "h": 16
       },
       "commands": [
         {
           "op": "text",
           "flags": "0x10",
-          "literal": "EXTRAS   "
+          "literal": "EXTRAS"
         },
         {
           "op": "colors",
@@ -196,23 +196,23 @@
         }
       ],
       "image": "grafs_2020/menus2020/extras.bmp",
-      "image_x": 98,
-      "image_y": 4
+      "image_x": 134,
+      "image_y": 0
     },
     {
       "kind": "entry",
       "name": "extras",
       "coords": {
         "x": 155,
-        "y": 107,
-        "w": 148,
-        "h": 24
+        "y": 87,
+        "w": 130,
+        "h": 16
       },
       "commands": [
         {
           "op": "text",
           "flags": "0x10",
-          "literal": "REPLAYS  "
+          "literal": "REPLAYS"
         },
         {
           "op": "colors",
@@ -232,8 +232,8 @@
         }
       ],
       "image": "grafs_2020/menus2020/replays.bmp",
-      "image_x": 101,
-      "image_y": 4
+      "image_x": 134,
+      "image_y": 0
     },
     {
       "kind": "set_origin",
@@ -289,7 +289,7 @@
     {
       "kind": "entry",
       "coords": {
-        "x": -3,
+        "x": 1,
         "y": 23,
         "w": 40,
         "h": 26
@@ -471,15 +471,15 @@
       "name": "classicCareer",
       "coords": {
         "x": 1,
-        "y": 135,
-        "w": 148,
-        "h": 24
+        "y": 105,
+        "w": 130,
+        "h": 16
       },
       "commands": [
         {
           "op": "text",
           "flags": "0x10",
-          "literal": "     CLASSIC CAREER"
+          "literal": "CLASSIC CAREER"
         },
         {
           "op": "colors",
@@ -492,8 +492,8 @@
         }
       ],
       "image": "grafs_2020/menus2020/classic_career.png",
-      "image_x": 11,
-      "image_y": 4
+      "image_x": 134,
+      "image_y": 0
     },
     {
       "kind": "set_origin",
@@ -541,15 +541,15 @@
       "name": "worldCareer",
       "coords": {
         "x": 155,
-        "y": 135,
-        "w": 148,
-        "h": 24
+        "y": 105,
+        "w": 130,
+        "h": 16
       },
       "commands": [
         {
           "op": "text",
           "flags": "0x10",
-          "literal": "WORLD CAREER     "
+          "literal": "WORLD CAREER"
         },
         {
           "op": "colors",
@@ -562,8 +562,8 @@
         }
       ],
       "image": "grafs_2020/menus2020/world_career.png",
-      "image_x": 114,
-      "image_y": 4
+      "image_x": 134,
+      "image_y": 0
     }
   ],
   "ticker_entry": 7
