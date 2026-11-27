@@ -455,6 +455,16 @@ static void show(const char *name)
         fprintf(stderr, "[challenges2020] cannot show %s\n", name);
 }
 
+/* A locked category's notice (SWOS 2020's showCategoryIsNotAvailableMessage): the game's dialog,
+ * which wraps its lines -- the error box holds one, and these ran off it and the screen. The fire
+ * that picked the category is not its answer. */
+static void category_notice(const char *text)
+{
+    static const char *const ok[] = { "OK" };
+    _fireResetFlag = 1;
+    ModApi_ShowDialog("CHALLENGE MODE", text, ok, 1, 0);
+}
+
 static void open_category(int32_t slot)
 {
     const int32_t k = s_catPage * kPerCatPage + slot;
@@ -462,13 +472,13 @@ static void open_category(int32_t slot)
         return;
     if (s_cats[k].closed == 2) {            /* SWOS 2020's SWOS MASTERS (showCategoryIsNotAvailableMessage 1) */
         char text[256];
-        snprintf(text, sizeof text, "FOLLOWING CATEGORIES SHOULD BE COMPLETED TO UNLOCK %s: %s.", s_cats[k].name,
+        snprintf(text, sizeof text, "FOLLOWING CATEGORIES SHOULD BE COMPLETED TO UNLOCK %s.|- %s -", s_cats[k].name,
                  s_cats[k].needs);
-        ModApi_ShowError(text);
+        category_notice(text);
         return;
     }
     if (s_cats[k].closed) {
-        ModApi_ShowError("THIS CATEGORY WILL BE AVAILABLE, AFTER RELEASING LATER.");
+        category_notice("THIS CATEGORY WILL BE AVAILABLE, AFTER RELEASING LATER.");
         return;
     }
     snprintf(s_cat, sizeof s_cat, "%s", s_cats[k].name);
