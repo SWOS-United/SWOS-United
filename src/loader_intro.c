@@ -97,8 +97,8 @@ extern int16_t LoadRNCToBufferNoBlit(uint8_t *name, uint8_t *dest);     /* asset
  * from the hero audio bank data. Then applies preset 0 and marks
  * audio as active.
  * ================================================================ */
-/* The title track is SWOS United's MP3 (united_title.mp3): it plays on through POWERED BY, to the
- * main menu (LoaderIntro_EndPowered). The Amiga's tune stops at fire -- its samples share memory
+/* The title track is SWOS United's MP3 (united_title.mp3), or the PC floppy's MIDI one (title.xmi,
+ * PC TITLE MUSIC: MIDI): it plays on through POWERED BY, to the main menu (LoaderIntro_EndPowered). The Amiga's tune stops at fire -- its samples share memory
  * with the sprites the game loads meanwhile (intro_chip_ram.h). */
 static int32_t s_titleStream;
 
@@ -153,8 +153,10 @@ static void loaderIntroEnsureMenuMusicPlaying(void)
          * sound_dos/title.xmi (SWOS 2020's floppy title song, from a mod) on the emulated card
          * first (PC TITLE MUSIC: MIDI did nothing while united_title.mp3 was there, Redhair). Without
          * either, with music = pc, the PC CD release's title song, sound_dos/title.mp3. */
-        if (DosMusic_Style() && DosMusic_TitleMidi() && AudioSDL_PcSongStart("title", 0) == 0) {
+        if (DosMusic_Style() && DosMusic_TitleMidi() && AudioSDL_PcSongStart("title", 1) == 0) {
             fprintf(stderr, "[music] title track: sound_dos/title.xmi (PC TITLE MUSIC: MIDI)\n");
+            s_titleStream = 1;          /* (on through POWERED BY and the logo, as the MP3: it was
+                                         *  stopped after POWERED BY, three seconds in -- Redhair) */
         } else
         if (AudioSDL_StreamStart("united_title", 1) == 0) {
             fprintf(stderr, "[music] title track: sound_dos/united_title.mp3\n");
