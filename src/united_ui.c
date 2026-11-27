@@ -60,8 +60,8 @@ void United_DrawPageArrow(int32_t down, int32_t ox, int32_t oy)
         }
 }
 
-/* Whether buttons show their icons: the one switch for all of them, the SWOS 2020 menus' Button
- * icons ([mod.menus2020] icons, mod_menus2020.c), on unless it is off. */
+/* Whether buttons show their icons: the one switch for all of them, OPTIONS -> APPEARANCE: MENU
+ * ICONS ([mod.menus2020] icons: settings_menus.c, mod_menus2020.c), on unless it is off. */
 int32_t United_ButtonIcons(void)
 {
     extern const char *ModApi_Setting(const char *slug, const char *key, const char *fallback);

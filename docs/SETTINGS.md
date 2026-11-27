@@ -325,6 +325,7 @@ nothing is asked.
 | Show FPS | `[video] show_fps` | VIDEO: SHOW FPS | the frames presented a second, top right, drawn over the picture (`src/fps_overlay.c`), never into the game's frame |
 | Mouse cursor | `[input] mouse_cursor = system \| workbench2 \| workbench1` | GENERAL: MOUSE POINTER | SWOS 2020's `cursor1.bmp` / `cursor2.bmp` as the launcher numbered them, as pixel maps in `src/mouse_cursors.c` |
 | Menu logo | `[mod.menus2020] logo = pixel \| hd` | APPEARANCE: MENU LOGO | the main menu's logo as its pixels, or drawn smooth at the window's resolution from `logo_hd.png` (`menu_extras.c`, `ModApi_SetMenuImageHD`) |
+| Menu icons | `[mod.menus2020] icons = on \| off` | APPEARANCE: MENU ICONS | the buttons' icons (the main menu's, the online gameplay style buttons'), each in an icon well at the button's left (`menu_extras.c`), or none: the text centred in the whole button |
 | Graphics | `[graphics] style = amiga \| dos \| 2020` | APPEARANCE: MATCH GRAPHICS | from the next start (the artwork is loaded at start-up) |
 | Menu style | `[mod.dosmenus] look = amiga \| pc` | APPEARANCE: MENU BUTTON LOOK, and the PC menu shading mod's page | the look each start shows; F5 still flips it for the run. Unset: `PROJECT_MENU_LOOK_AMIGA` |
 | Background image | `[mod.backgrounds] image = auto \| random \| off \| <file>` | the Menu backgrounds mod's page | `auto` the mod's own first picture, `random` one of every picture it lists, once a start. The launcher's "PC DOS" and "Amiga" were SWOS 2020's bg-images, not shipped: put them in `backgrounds/` |
