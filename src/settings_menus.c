@@ -902,6 +902,7 @@ static void fps_change(int32_t dir)
 static void filter_show(char *o, int32_t c);       /* (APPEARANCE OPTIONS' section, below) */
 static void filter_change(int32_t dir);
 static const Row k_videoRows[] = {
+    { "MONITOR",            monitor_show,  monitor_change },
     { "WINDOW MODE",        winmode_show,  winmode_change },
     { "WINDOW SCALE",       scale_show,    scale_change },
     { "AUTO CENTERING",     centre_show,   centre_change },
@@ -909,13 +910,13 @@ static const Row k_videoRows[] = {
     { "FILL",               fill_show,     fill_change },    /* ([video] widescreen=true / stretch) */
     { "SCALING",            scaling_show,  scaling_change },
     { "PIXEL FILTER",       filter_show,   filter_change },     /* (beside SCALING: APPEARANCE's until 2026-11-24) */
-    { "MONITOR",            monitor_show,  monitor_change },
     { "RENDERER",           renderer_show, renderer_change },
     { "VSYNC",              vsync_show,    vsync_change },
     { "SMOOTH SCROLLING",   scroll_show,   scroll_change },
     { "SHOW FPS",           fps_show,      fps_change },
 };
-static const Page k_videoPage = { "VIDEO OPTIONS", k_videoRows, (int32_t)(sizeof k_videoRows / sizeof k_videoRows[0]) };
+static const Page k_videoPage = { "VIDEO OPTIONS", k_videoRows, (int32_t)(sizeof k_videoRows / sizeof k_videoRows[0]),
+                                  (1u << 4) | (1u << 8) };   /* the window, the picture, the drawing */
 _Static_assert(sizeof k_videoRows / sizeof k_videoRows[0] <= kRows, "a settings page holds kRows rows at most");
 
 /* ===================================================================== AUDIO */
