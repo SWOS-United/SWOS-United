@@ -34,10 +34,10 @@
  Unpack the zip as it is: the programs find their files (setup/, data/)
  in the folder above them.
 
- Windows   Windows\openswos-setup.exe
+ Windows   Windows\swosunited-setup.exe
  macOS     macOS/SWOS United Setup.app (Apple silicon and Intel Macs). The
            first time, right-click it and choose Open: it is not signed.
- Linux     Linux/openswos-setup (x86-64), or Linux/swosdata
+ Linux     Linux/swosunited-setup (x86-64), or Linux/swosdata
 
  Two tabs: "PC - Mac - Linux" for the game on this computer, "Amiga" for
  an Amiga. Download what a row asks for from its links, and it is found.

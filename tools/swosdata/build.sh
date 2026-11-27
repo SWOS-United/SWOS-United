@@ -1,9 +1,9 @@
 #!/bin/sh
 # Build OpenSWOS Setup (and the swosdata CLI) with CMake.
 #
-#   ./build.sh          configure and build -> build-app/bin/openswos-setup
+#   ./build.sh          configure and build -> build-app/bin/swosunited-setup (PROJECT_SETUP_PROGRAM)
 #   ./build.sh static   link Slint statically: one binary, no libslint_cpp.so
-#                       -> build-app-static/bin/openswos-setup (on a Mac,
+#                       -> build-app-static/bin/swosunited-setup (on a Mac,
 #                       "OpenSWOS Setup.app", universal: arm64 + x86_64)
 #   ./build.sh clean    remove both build directories
 #

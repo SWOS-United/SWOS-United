@@ -18,8 +18,8 @@
 #     amiga/SWOS/             the Amiga program, SWOS-Amiga.zip's drawer: the setup
 #                             makes a ready drawer or WHDLoad package from it, so an
 #                             Amiga player needs this one download
-#     Windows/                openswos-setup.exe, swosdata.exe (static, no DLLs)
-#     Linux/                  openswos-setup + libslint_cpp.so ($ORIGIN), swosdata
+#     Windows/                swosunited-setup.exe (PROJECT_SETUP_PROGRAM), swosdata.exe (static, no DLLs)
+#     Linux/                  swosunited-setup + libslint_cpp.so ($ORIGIN), swosdata
 #     macOS/                  OpenSWOS Setup.app, swosdata (both universal)
 #
 # A PACKAGING step like build_installer.sh, run after build_dist.sh and
@@ -38,6 +38,9 @@ MAC_COMMIT=dist/OpenSWOS-Setup-macOS.commit
 SD=tools/swosdata
 WIN_BIN="$SD/build_win_static/bin/Release"
 LINUX_BUILD="${SETUP_LINUX_BUILD:-$HOME/build/openswos-setup}"
+# The setup's file name, PROJECT_SETUP_PROGRAM (the build uses it: tools/swosdata/CMakeLists.txt)
+PROG="$(sed -n 's/^#define PROJECT_SETUP_PROGRAM *"\([^"]*\)".*/\1/p' "$(dirname "${BASH_SOURCE[0]}")/../include/project_identity.h")"
+PROG="${PROG:-openswos-setup}"
 
 fail() { echo "build_setup_zip: $*" >&2; exit 1; }
 
@@ -60,7 +63,7 @@ echo "== Windows: build.bat static"
 WINSD="$(wslpath -w "$PWD/$SD")" || fail "no Windows side (wslpath)"
 ( cd /mnt/c && cmd.exe /c "cd /d $WINSD && build.bat static" ) >/dev/null 2>&1 ||
     fail "build.bat static failed -- run it in $SD to see why"
-for f in openswos-setup.exe swosdata.exe; do
+for f in "$PROG.exe" swosdata.exe; do
     cp "$WIN_BIN/$f" "$STAGE/Windows/" || fail "no $WIN_BIN/$f"
 done
 
@@ -68,13 +71,13 @@ echo "== Linux: build.sh in $LINUX_BUILD"
 BUILD_DIR="$LINUX_BUILD" "$SD/build.sh" >/dev/null || fail "$SD/build.sh failed"
 cmake --install "$LINUX_BUILD" --prefix "$STAGE/Linux" --component app >/dev/null ||
     fail "cmake --install failed"
-SLINT_SO=$(ldd "$LINUX_BUILD/bin/openswos-setup" | awk '/libslint_cpp/ { print $3 }')
-[ -f "$SLINT_SO" ] || fail "cannot find the libslint_cpp.so openswos-setup links"
+SLINT_SO=$(ldd "$LINUX_BUILD/bin/$PROG" | awk '/libslint_cpp/ { print $3 }')
+[ -f "$SLINT_SO" ] || fail "cannot find the libslint_cpp.so $PROG links"
 cp "$SLINT_SO" "$STAGE/Linux/" &&
-    strip --strip-unneeded "$STAGE/Linux/libslint_cpp.so" "$STAGE/Linux/openswos-setup" \
+    strip --strip-unneeded "$STAGE/Linux/libslint_cpp.so" "$STAGE/Linux/$PROG" \
                            "$STAGE/Linux/swosdata" || fail "strip failed"
-readelf -d "$STAGE/Linux/openswos-setup" | grep -q 'path: \[\$ORIGIN\]' ||
-    fail "the Linux openswos-setup does not look for its Slint beside itself (\$ORIGIN)"
+readelf -d "$STAGE/Linux/$PROG" | grep -q 'path: \[\$ORIGIN\]' ||
+    fail "the Linux $PROG does not look for its Slint beside itself (\$ORIGIN)"
 
 echo "== the setup's own files, and the game's own mods"
 # Tracked files only, keeping their folders (setup/whdload/...). mods/ is the game's own mods
@@ -104,12 +107,12 @@ cp bin/data/credits_icons.bmp "$STAGE/data/" &&
 echo "== packing $OUT"
 mkdir -p dist
 rm -f "$OUT"
-python3 - "$STAGE" "$MAC_PART" "$OUT.tmp" <<'PY' || { rm -f "$OUT.tmp"; fail "packing failed"; }
+python3 - "$STAGE" "$MAC_PART" "$OUT.tmp" "$PROG" <<'PY' || { rm -f "$OUT.tmp"; fail "packing failed"; }
 import os, stat, sys, zipfile
 
-stage, mac_part, out = sys.argv[1:]
+stage, mac_part, out, prog = sys.argv[1:]
 TOP = "OpenSWOS-Setup"
-EXEC = {"openswos-setup", "swosdata", "libslint_cpp.so"}
+EXEC = {prog, "swosdata", "libslint_cpp.so"}
 
 with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
     for root, dirs, files in os.walk(stage):

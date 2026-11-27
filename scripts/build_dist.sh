@@ -193,7 +193,9 @@ ZIP_MEMBERS="SWOS SWOS.x86_64 SWOS.aarch64 SWOS.armhf SWOS.exe SWOS2"
 FULL_DATA_DIRS="data grafs grafs_aga grafs_dos grafs_2020 grafs_arcade grafs_jag sound sound_dos data_json setup mods"
 # The data setup, built by the `setup` target.
 SETUP_CLI="tools/swosdata/build/swosdata"
-SETUP_EXE="tools/swosdata/build_win_static/bin/Release/openswos-setup.exe"
+# (built under PROJECT_SETUP_PROGRAM's name: tools/swosdata/CMakeLists.txt)
+SETUP_PROGRAM="$(sed -n 's/^#define PROJECT_SETUP_PROGRAM *"\([^"]*\)".*/\1/p' include/project_identity.h)"
+SETUP_EXE="tools/swosdata/build_win_static/bin/Release/${SETUP_PROGRAM:-openswos-setup}.exe"
 # Cygwin runtime for SWOS.exe. FIVE files, and only some of them are visible to
 # cygcheck on the exe:
 #
@@ -602,8 +604,8 @@ if wanted setup; then
     case $SETUP_RC in
         0) record setup "OK"; echo "-- OK: setup" ;;
         1) record setup "FAIL"; echo "-- FAIL: setup (the command line)" ;;
-        2) record setup "FAIL"; echo "-- FAIL: setup (openswos-setup.exe; run tools/swosdata/build.bat static)" ;;
-        3) record setup "SKIP (no Windows side for openswos-setup.exe)" ;;
+        2) record setup "FAIL"; echo "-- FAIL: setup ($(basename "$SETUP_EXE"); run tools/swosdata/build.bat static)" ;;
+        3) record setup "SKIP (no Windows side for $(basename "$SETUP_EXE"))" ;;
     esac
 fi
 

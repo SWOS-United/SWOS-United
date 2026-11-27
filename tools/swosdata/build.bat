@@ -1,10 +1,10 @@
 @echo off
 rem Build OpenSWOS Setup (and the swosdata CLI) with MSVC.
 rem
-rem   build.bat          configure and build  -> build_win\bin\Release\openswos-setup.exe
+rem   build.bat          configure and build  -> build_win\bin\Release\swosunited-setup.exe (PROJECT_SETUP_PROGRAM)
 rem   build.bat static   link Slint and the MSVC runtime statically: ONE .exe,
 rem                      no slint_cpp.dll, no VC++ redistributable
-rem                      -> build_win_static\bin\Release\openswos-setup.exe
+rem                      -> build_win_static\bin\Release\swosunited-setup.exe
 rem   build.bat clean    remove the build directories
 rem
 rem Without SLINT_ROOT, CMake builds Slint from source on the first configure

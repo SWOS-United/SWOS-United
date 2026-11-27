@@ -41,8 +41,13 @@ set(OPENSWOS_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." CACHE PATH "The OpenSWOS c
 # looks for (src/assets_check.c: Contents/Helpers/<PROJECT_SETUP_NAME>.app), in a fork too.
 file(STRINGS "${OPENSWOS_ROOT}/include/project_identity.h" _sd_name REGEX "^#define PROJECT_NAME +\"")
 file(STRINGS "${OPENSWOS_ROOT}/include/project_identity.h" _sd_appid REGEX "^#define PROJECT_APP_ID +\"")
+file(STRINGS "${OPENSWOS_ROOT}/include/project_identity.h" _sd_prog REGEX "^#define PROJECT_SETUP_PROGRAM +\"")
 string(REGEX REPLACE "^#define PROJECT_NAME +\"([^\"]*)\".*" "\\1" SD_PROJECT_NAME "${_sd_name}")
 string(REGEX REPLACE "^#define PROJECT_APP_ID +\"([^\"]*)\".*" "\\1" SD_APP_ID "${_sd_appid}")
+string(REGEX REPLACE "^#define PROJECT_SETUP_PROGRAM +\"([^\"]*)\".*" "\\1" SD_SETUP_PROGRAM "${_sd_prog}")
+if(SD_SETUP_PROGRAM STREQUAL "")
+  set(SD_SETUP_PROGRAM "openswos-setup")
+endif()
 if(SD_PROJECT_NAME STREQUAL "" OR SD_APP_ID STREQUAL "")
   message(FATAL_ERROR "cannot read PROJECT_NAME / PROJECT_APP_ID from include/project_identity.h")
 endif()
@@ -193,6 +198,12 @@ if(SD_WITH_APP)
     set_property(TARGET openswos-setup PROPERTY SLINT_NO_DEFAULT_TRANSLATION_CONTEXT ON)
     slint_target_sources(openswos-setup app/ui/app.slint)
     target_compile_definitions(openswos-setup PRIVATE SD_VERSION="${PROJECT_VERSION}")
+    # Built under the name the game looks for beside it (PROJECT_SETUP_PROGRAM, src/assets_check.c):
+    # swosunited-setup(.exe) here, nothing to rename by hand. (A Mac's .app takes its display
+    # name below.) The CMake target keeps its name.
+    if(NOT APPLE)
+      set_target_properties(openswos-setup PROPERTIES OUTPUT_NAME "${SD_SETUP_PROGRAM}")
+    endif()
 
     find_package(Threads REQUIRED)
     target_link_libraries(openswos-setup PRIVATE Threads::Threads)

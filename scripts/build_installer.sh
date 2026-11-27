@@ -70,7 +70,9 @@ STAGE_ONLY=0
 DATA_DIRS="data grafs grafs_aga grafs_dos grafs_2020 grafs_arcade grafs_jag sound sound_dos data_json setup mods"
 # The data setup's window (tools/swosdata/build.bat static): the installer runs
 # it when it finishes, because the game cannot start without the player's data.
-SETUP_EXE="${SETUP_EXE:-tools/swosdata/build_win_static/bin/Release/openswos-setup.exe}"
+# (built under PROJECT_SETUP_PROGRAM's name since 2026-11-28 -- tools/swosdata/CMakeLists.txt --, set
+#  below once the identity is read)
+SETUP_EXE="${SETUP_EXE:-}"
 
 # The project's identity (include/project_identity.h, docs/FORKING.md), read through the C
 # preprocessor so a macro built from another (PROJECT_PUBLISHER PROJECT_NAME) comes out whole: the
@@ -87,6 +89,7 @@ ID_URL="$(ident PROJECT_URL)"
 ID_SETUP="$(ident PROJECT_SETUP_PROGRAM)"
 ID_APPID="$(ident PROJECT_WIN_APPID)"
 case "$ID_URL" in ""|http://*|https://*) ;; *) ID_URL="https://$ID_URL" ;; esac
+[ -n "$SETUP_EXE" ] || SETUP_EXE="tools/swosdata/build_win_static/bin/Release/${ID_SETUP:-openswos-setup}.exe"
 SETUP_NAME="$(basename "$SETUP_EXE")"
 [ -n "$ID_SETUP" ] && SETUP_NAME="$ID_SETUP.exe"
 # Cygwin runtime for SWOS.exe — mirrors FULL_DLLS in build_dist.sh.
