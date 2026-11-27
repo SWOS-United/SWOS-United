@@ -11,7 +11,8 @@
 #include "kit_art.h"            /* KitArt_Return */
 #include "mod_api.h"            /* ModApi_SettingInt: [mod.menus2020] accept_sound */
 
-extern void United_DrawStyleIcon(int32_t icon, int32_t x, int32_t y);   /* (united_ui.h) */
+extern void United_StyleIconPixels(int32_t icon, uint8_t out[16 * 16]);   /* (united_ui.h) */
+extern int32_t United_ButtonIcons(void);
 
 #ifndef PROJECT_SWOS2020_MATCHMAKING
 #define PROJECT_SWOS2020_MATCHMAKING 0
@@ -872,10 +873,24 @@ static void ticker_begin(void)
 }
 
 #if PROJECT_SWOS2020_MATCHMAKING
-static void style_button_AfterDraw(MenuEntry *e)
+/* The three buttons' icons in icon wells at their left, as ONLINE RANKINGS' (united_rankings.c
+ * set_style_icons; menu_extras.c). The prompt asks other questions too (ACCEPT / REFUSE):
+ * hostGameMessageMenu_OnInit takes them away first. */
+static void style_button_icons(void)
 {
-    United_DrawStyleIcon(e == entry_at(HostGameMessageMenu_button1) ? 0
-                         : e == entry_at(HostGameMessageMenu_button2) ? 1 : 2, e->x + 32, e->y + 2);
+    extern void ModApi_SetMenuIconWell(int32_t entry, int32_t on);
+    extern void ModApi_SetMenuIconPixels(int32_t entry, const uint8_t *idx, int32_t w, int32_t h);
+    extern void ModApi_SetMenuImageAt(int32_t entry, int32_t x, int32_t y);
+    static const int32_t buttons[3] = { HostGameMessageMenu_button1, HostGameMessageMenu_button2,
+                                        HostGameMessageMenu_button3 };
+    const int32_t on = United_ButtonIcons();       /* (the one switch: [mod.menus2020] icons) */
+    for (int32_t i = 0; i < 3; i++) {
+        uint8_t px[16 * 16];
+        United_StyleIconPixels(i, px);
+        ModApi_SetMenuIconPixels(buttons[i], on ? px : NULL, 16, 16);
+        ModApi_SetMenuImageAt(buttons[i], 2, 2);
+        ModApi_SetMenuIconWell(buttons[i], on);
+    }
 }
 
 /* CHOOSE GAMEPLAY, SWOS United's: HOST MATCH, the three styles as ONLINE RANKINGS' buttons. */
@@ -886,7 +901,7 @@ static int32_t fork_host_style_layout(void)
     set_text(HostGameMessageMenu_message2, "");
     set_text(HostGameMessageMenu_message3, "");
     /* the three buttons as ONLINE RANKINGS' (rankingsMenu: 125 x 20, green, 36 apart, the
-     * style's icon 32 in -- united_api.h), centred on the menu as those are */
+     * style's icon in a well at the left), centred on the menu as those are */
     {
         MenuEntry *b1 = entry_at(HostGameMessageMenu_button1), *b2 = entry_at(HostGameMessageMenu_button2);
         MenuEntry *b3 = entry_at(HostGameMessageMenu_button3);
@@ -900,9 +915,9 @@ static int32_t fork_host_style_layout(void)
         line->y = (uint16_t)(panel->y + ((int32_t)panel->dwHeight - (int32_t)line->dwHeight) / 2);
         below = panel->y + panel->dwHeight;
         top = below + (exitTop - below - (20 + 16 + 20 + 16 + 20)) / 2;
-        set_entry(HostGameMessageMenu_button1, "     AMIGA", 1, kGreen);     /* (rankingsMenu's, */
-        set_entry(HostGameMessageMenu_button2, "     PC DOS", 1, kGreen);    /*  clear of the icon) */
-        set_entry(HostGameMessageMenu_button3, "     XBOX", 1, kGreen);      /* (SWOS 2020's third style) */
+        set_entry(HostGameMessageMenu_button1, "AMIGA", 1, kGreen);          /* (rankingsMenu's) */
+        set_entry(HostGameMessageMenu_button2, "PC DOS", 1, kGreen);
+        set_entry(HostGameMessageMenu_button3, "XBOX", 1, kGreen);           /* (SWOS 2020's third style) */
         set_visible(HostGameMessageMenu_button3, 1);
         b1->dwWidth = b2->dwWidth = b3->dwWidth = 125;
         b1->dwHeight = b2->dwHeight = b3->dwHeight = 20;
@@ -910,7 +925,7 @@ static int32_t fork_host_style_layout(void)
         b1->y = (uint16_t)top;
         b2->y = (uint16_t)(top + 36);
         b3->y = (uint16_t)(top + 72);
-        b1->afterDrawCb = b2->afterDrawCb = b3->afterDrawCb = style_button_AfterDraw;
+        style_button_icons();
         lobby_nav(HostGameMessageMenu_button2, -1, -1, HostGameMessageMenu_button1, HostGameMessageMenu_button3);
         lobby_nav(HostGameMessageMenu_button3, -1, -1, HostGameMessageMenu_button2, HostGameMessageMenu_exit);
         lobby_nav(HostGameMessageMenu_exit, -1, -1, HostGameMessageMenu_button3, -1);

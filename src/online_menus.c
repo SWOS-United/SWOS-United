@@ -979,6 +979,16 @@ static void lobby_nav(int32_t ordinal, int32_t left, int32_t right, int32_t up, 
 
 static void hostGameMessageMenu_OnInit(void)
 {
+    {   /* (a fork's CHOOSE GAMEPLAY puts icon wells on the buttons -- not for the other questions) */
+        extern void ModApi_SetMenuIconWell(int32_t entry, int32_t on);
+        extern void ModApi_SetMenuIconPixels(int32_t entry, const uint8_t *idx, int32_t w, int32_t h);
+        static const int32_t buttons[3] = { HostGameMessageMenu_button1, HostGameMessageMenu_button2,
+                                            HostGameMessageMenu_button3 };
+        for (int32_t i = 0; i < 3; i++) {
+            ModApi_SetMenuIconWell(buttons[i], 0);
+            ModApi_SetMenuIconPixels(buttons[i], NULL, 0, 0);
+        }
+    }
     if (s_askStyle && FORK_HOOK(hostStyleLayout) && online_menus_fork()->hostStyleLayout()) {
         set_text(HostGameMessageMenu_exit,     "EXIT");
         return;                         /* (a fork's CHOOSE GAMEPLAY) */

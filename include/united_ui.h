@@ -10,7 +10,8 @@
 
 /* SWOS 2020's gameplay-style icons, 16x16 at (x, y) on the menu's screen: 0 the Amiga's tick,
  * 1 PC DOS, 2 XBOX (RANKINGS' buttons, CHOOSE GAMEPLAY's). SDL builds. */
-void        United_DrawStyleIcon(int32_t icon, int32_t x, int32_t y);
+void        United_StyleIconPixels(int32_t icon, uint8_t out[16 * 16]);
+int32_t     United_ButtonIcons(void);
 /* SWOS 2020's red page arrow (drawScrollButtons), 12x12 at (x, y): up, or down. SDL builds. */
 void        United_DrawPageArrow(int32_t down, int32_t x, int32_t y);
 /* SWOS 2020's difficulty stars (its starsMap), n of them at (x, y) (src/united_challenges.c). */

@@ -8,8 +8,8 @@
 
 /* The buttons' icons: SWOS 2020's mp_game_style_icon_set_v2_16x16_3x1_map (PixelmapAndStrings.h),
  * three 16x16 icons side by side -- the Amiga's tick, PC DOS, XBOX -- each a menu palette index
- * ('0'-'9', 'A'-'G' = 0-16), '.' left as it is, 32 in from the button's left and 2 down, as its
- * draw_mp_game_style_icon_sets. */
+ * ('0'-'9', 'A'-'G' = 0-16), '.' clear -- SWOS 2020 drew them 32 in from the button's left
+ * (draw_mp_game_style_icon_sets); here each goes in its button's icon well. */
 static const char *const k_styleIcons[16] = {
     "...........0000...00000.00000...................",
     "...........0AA0...011110011110.......22..22.....",
@@ -60,20 +60,25 @@ void United_DrawPageArrow(int32_t down, int32_t ox, int32_t oy)
         }
 }
 
-void United_DrawStyleIcon(int32_t icon, int32_t ox, int32_t oy)
+/* Whether buttons show their icons: the one switch for all of them, the SWOS 2020 menus' Button
+ * icons ([mod.menus2020] icons, mod_menus2020.c), on unless it is off. */
+int32_t United_ButtonIcons(void)
 {
-    extern volatile uintptr_t _frontbufferBasePtr;
-    extern int _menu_draw_x_offset;
-    uint8_t *fb = (uint8_t *)_frontbufferBasePtr + _menu_draw_x_offset;
+    extern const char *ModApi_Setting(const char *slug, const char *key, const char *fallback);
+    const char *v = ModApi_Setting("menus2020", "icons", "on");
+    return !(v && (v[0] == 'o' || v[0] == 'O') && (v[1] == 'f' || v[1] == 'F'));
+}
+
+/* One of them as palette indices, 0xFF clear: for a menu's icon well (menu_extras.c,
+ * ModApi_SetMenuIconPixels), which shows it over the finished picture. */
+void United_StyleIconPixels(int32_t icon, uint8_t out[16 * 16])
+{
     int32_t x, y;
-    if (icon < 0 || icon > 2)
-        return;
     for (y = 0; y < 16; y++)
         for (x = 0; x < 16; x++) {
-            const char c = k_styleIcons[y][icon * 16 + x];
-            if (c != '.')
-                fb[(uint32_t)(oy + y) * FRONTBUFFER_ROW_STRIDE_BYTES + ox + x] =
-                    (uint8_t)(c <= '9' ? c - '0' : c - 'A' + 10);
+            const char c = icon >= 0 && icon <= 2 ? k_styleIcons[y][icon * 16 + x] : '.';
+            out[y * 16 + x] = c == '.' ? 0xFF : (uint8_t)(c <= '9' ? c - '0' : c - 'A' + 10);
         }
 }
+
 #endif

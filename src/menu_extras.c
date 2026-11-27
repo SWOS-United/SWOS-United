@@ -52,6 +52,7 @@ typedef struct {
     GfxTexture *wellTex;        /* ... its texture (made / updated at the next present) */
     uint32_t wellKey;           /* ... what it was made for (size, colour, icon): made again on a change */
     int32_t  wellN, wellDirty;
+    uint8_t *iconIdx;           /* an icon given as palette indices (ModApi_SetMenuIconPixels), 0xFF clear */
     uint32_t *rgb;              /* the image, 0xRRGGBB, 0xFF000000 transparent; NULL until drawn */
     uint8_t *pixels;            /* ... as palette indices (0xFF transparent), for `paletteHash` */
     uint32_t paletteHash;
@@ -85,6 +86,8 @@ static void free_picture(Extra *e)
     e->hdRgba = NULL;
     e->hdTex = NULL;
     e->hdFailed = 0;
+    free(e->iconIdx);
+    e->iconIdx = NULL;
     free(e->wellRgba);
     if (e->wellTex)
         Gfx_DestroyTexture(e->wellTex);
@@ -209,17 +212,14 @@ static MenuExtras *current(void)
     return NULL;
 }
 
-/* An entry's image, changed while its menu is up (ModApi_SetMenuImage): loaded at its next draw. */
-void ModApi_SetMenuImage(int32_t entry, const char *path)
+/* The current menu's extras, made for it if it has none yet (a compiled menu, or a JSON one
+ * without any): NULL when there is no room. */
+static MenuExtras *current_or_new(void)
 {
-    MenuExtras *m;
-    extern uintptr_t _currentMenuPtr;
-    if (entry < 0 || entry >= kMaxEntries)
-        return;
-    m = current();
+    MenuExtras *m = current();
     if (!m) {
         if (s_count == kMaxMenus)
-            return;
+            return NULL;
         m = &s_menus[s_count++];
         memset(m, 0, sizeof *m);
         m->menu = (const uint8_t *)_currentMenuPtr;
@@ -227,6 +227,18 @@ void ModApi_SetMenuImage(int32_t entry, const char *path)
         for (int32_t i = 0; i < kMaxEntries; i++)
             m->entry[i].imageX = m->entry[i].imageY = kCentred;
     }
+    return m;
+}
+
+/* An entry's image, changed while its menu is up (ModApi_SetMenuImage): loaded at its next draw. */
+void ModApi_SetMenuImage(int32_t entry, const char *path)
+{
+    MenuExtras *m;
+    if (entry < 0 || entry >= kMaxEntries)
+        return;
+    m = current_or_new();
+    if (!m)
+        return;
     Extra *e = &m->entry[entry];
     if (e->imagePath && path && strcmp(e->imagePath, path) == 0)
         return;
@@ -249,10 +261,36 @@ void ModApi_SetMenuImageAt(int32_t entry, int32_t x, int32_t y)
 /* An entry's icon well (MenuExtras_EntryWell), on or off while its menu is up: at its next draw. */
 void ModApi_SetMenuIconWell(int32_t entry, int32_t on)
 {
-    MenuExtras *m = current();
-    if (!m || entry < 0 || entry >= kMaxEntries)
+    MenuExtras *m = entry >= 0 && entry < kMaxEntries ? (on ? current_or_new() : current()) : NULL;
+    if (!m)
         return;
     m->entry[entry].well = on ? 1 : 0;
+}
+
+/* An entry's icon as palette indices (w x h, 0xFF clear) -- one drawn by code, not a file (SWOS
+ * 2020's gameplay style icons: united_ui.c): shown in its icon well, at "image_x" / "image_y"
+ * (ModApi_SetMenuImageAt). NULL: none. Given again unchanged, nothing happens. */
+void ModApi_SetMenuIconPixels(int32_t entry, const uint8_t *idx, int32_t w, int32_t h)
+{
+    MenuExtras *m = entry >= 0 && entry < kMaxEntries ? (idx ? current_or_new() : current()) : NULL;
+    if (!m)
+        return;
+    Extra *e = &m->entry[entry];
+    if (idx && e->iconIdx && e->w == w && e->h == h && memcmp(e->iconIdx, idx, (size_t)w * (size_t)h) == 0)
+        return;
+    free(e->imagePath);
+    free_picture(e);
+    e->imagePath = NULL;
+    e->failed = 0;
+    if (!idx || w <= 0 || h <= 0)
+        return;
+    e->iconIdx = (uint8_t *)malloc((size_t)w * (size_t)h);
+    if (!e->iconIdx)
+        return;
+    memcpy(e->iconIdx, idx, (size_t)w * (size_t)h);
+    e->w = w;
+    e->h = h;
+    e->imagePath = strdup("(pixels)");          /* (an image: shown, never loaded) */
 }
 
 /* How far right an entry's centred text goes: half its icon well, so it is centred in the rest. */
@@ -392,11 +430,12 @@ static int32_t make_well(Extra *e, const MenuEntry *ent)
     if (ent->background != ENTRY_FRAME_AND_BACK_COLOR || !(ent->bgColor & 0xF) || ent->dwHeight < 4)
         return 0;
     const int32_t n = (int32_t)ent->dwHeight - 2;
-    const int32_t icon = e->rgb && e->imagePath ? 1 : 0;
+    const int32_t icon = (e->rgb || e->iconIdx) && e->imagePath ? 1 : 0;
     uint8_t lr, lg, lb;
     Platform_PaletteColour((uint8_t)_outerFrameColorsTable[(ent->bgColor & 0xF) * 2], &lr, &lg, &lb);
     const uint32_t key = ((uint32_t)lr << 16 | (uint32_t)lg << 8 | lb) ^ ((uint32_t)n << 24) ^
-                         (icon ? (uint32_t)(uintptr_t)e->rgb * 2654435761u : 0) ^
+                         (icon ? (uint32_t)(uintptr_t)(e->rgb ? (void *)e->rgb : (void *)e->iconIdx) * 2654435761u : 0) ^
+                         (e->iconIdx ? palette_hash() : 0) ^      /* (its colours: the palette's) */
                          (uint32_t)(e->imageX * 31 + e->imageY) * 40503u;
     if (e->wellRgba && e->wellKey == key && e->wellN == n)
         return 1;
@@ -416,7 +455,14 @@ static int32_t make_well(Extra *e, const MenuEntry *ent)
         const int32_t oy = (e->imageY != kCentred ? e->imageY : ((int32_t)ent->dwHeight - e->h) / 2) - 1;
         for (int32_t y = 0; y < e->h; y++)
             for (int32_t x = 0; x < e->w; x++) {
-                const uint32_t c = e->rgb[y * e->w + x];
+                uint32_t c;
+                if (e->iconIdx) {
+                    const uint8_t i = e->iconIdx[y * e->w + x];
+                    uint8_t r, g, b;
+                    Platform_PaletteColour(i, &r, &g, &b);
+                    c = i == 0xFF ? 0xFF000000u : (uint32_t)r << 16 | (uint32_t)g << 8 | b;
+                } else
+                    c = e->rgb[y * e->w + x];
                 const int32_t wx = ox + x, wy = oy + y;
                 if (c == 0xFF000000u || wx < 0 || wy < 0 || wx >= n || wy >= n)
                     continue;
@@ -454,7 +500,7 @@ void MenuExtras_Drawn(void)
         const MenuEntry *ent = CalcMenuEntryAddress((uint16_t)i);
         if (!ent || ent->isInvisible)
             continue;
-        if (e->imagePath && !e->rgb && !e->rgba && !e->failed)
+        if (e->imagePath && !e->rgb && !e->rgba && !e->iconIdx && !e->failed)
             load_image(e);
         if (e->well && make_well(e, ent) && s_shownCount < kMaxShown) {
             s_shown[s_shownCount].e = e;
@@ -462,7 +508,7 @@ void MenuExtras_Drawn(void)
             s_shown[s_shownCount].y = ent->y + 1;
             s_shown[s_shownCount].well = 1;
             s_shownCount++;
-            if (e->rgb)                 /* (a .bmp icon: in the well's picture) */
+            if (e->rgb || e->iconIdx)   /* (a .bmp icon, or one in palette indices: in the well's picture) */
                 continue;
         }
         if (!e->imagePath)

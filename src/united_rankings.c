@@ -198,24 +198,25 @@ static void selectAmigaRankingsMenu(void) { show_ranking(5); }
 static void selectPCDOSRankingsMenu(void) { show_ranking(13); }
 static void selectXBLARankingsMenu(void)  { show_ranking(8); }
 
-/* The buttons' icons: SWOS 2020's, drawn by United_DrawStyleIcon (src/united_api.c, shared with
- * the CHOOSE GAMEPLAY prompt) 32 in from the button's left and 2 down. Each button draws its own,
- * after itself (afterDrawCb): the cursor leaving a button redraws that button alone, which wiped
- * the icon until the next whole-menu draw -- a blink. */
-extern volatile uintptr_t _frontbufferBasePtr;
-extern int      _menu_draw_x_offset;
-
-static void style_icon_AfterDraw(MenuEntry *e)
-{
-    const int32_t icon = e == entry_at(RankingsMenu_amiga) ? 0 : e == entry_at(RankingsMenu_pcDOS) ? 1 : 2;
-    United_DrawStyleIcon(icon, e->x + 32, e->y + 2);
-}
+/* The buttons' icons: SWOS 2020's (united_ui.c, shared with the CHOOSE GAMEPLAY prompt), each in
+ * an icon well at its button's left as the main menu's (menu_extras.c: the frame's light colour
+ * under it, the text centred in the rest) -- shown over the finished picture, so a button drawn
+ * again alone (the cursor leaving it) cannot wipe it. */
+extern void ModApi_SetMenuIconWell(int32_t entry, int32_t on);
+extern void ModApi_SetMenuIconPixels(int32_t entry, const uint8_t *idx, int32_t w, int32_t h);
+extern void ModApi_SetMenuImageAt(int32_t entry, int32_t x, int32_t y);
 
 static void set_style_icons(void)
 {
-    entry_at(RankingsMenu_amiga)->afterDrawCb = style_icon_AfterDraw;
-    entry_at(RankingsMenu_pcDOS)->afterDrawCb = style_icon_AfterDraw;
-    entry_at(RankingsMenu_xbla)->afterDrawCb = style_icon_AfterDraw;
+    static const int32_t buttons[3] = { RankingsMenu_amiga, RankingsMenu_pcDOS, RankingsMenu_xbla };
+    const int32_t on = United_ButtonIcons();       /* (the one switch: [mod.menus2020] icons) */
+    for (int32_t i = 0; i < 3; i++) {
+        uint8_t px[16 * 16];
+        United_StyleIconPixels(i, px);
+        ModApi_SetMenuIconPixels(buttons[i], on ? px : NULL, 16, 16);
+        ModApi_SetMenuImageAt(buttons[i], 2, 2);
+        ModApi_SetMenuIconWell(buttons[i], on);
+    }
 }
 
 /* ---- rankingMenu ---- */
@@ -238,6 +239,9 @@ static const char *const k_pageArrows[12] = {
     "..A3..........A3........",
     "...3...........3........",
 };
+
+extern volatile uintptr_t _frontbufferBasePtr;
+extern int      _menu_draw_x_offset;
 
 static void page_arrow_AfterDraw(MenuEntry *e)
 {

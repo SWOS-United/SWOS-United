@@ -49,7 +49,7 @@
         {
           "op": "text",
           "flags": "0x0",
-          "literal": "     AMIGA"
+          "literal": "AMIGA"
         },
         {
           "op": "colors",
@@ -82,7 +82,7 @@
         {
           "op": "text",
           "flags": "0x0",
-          "literal": "     PC DOS"
+          "literal": "PC DOS"
         },
         {
           "op": "colors",
@@ -115,7 +115,7 @@
         {
           "op": "text",
           "flags": "0x0",
-          "literal": "     XBOX"
+          "literal": "XBOX"
         },
         {
           "op": "colors",
