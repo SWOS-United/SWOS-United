@@ -1156,29 +1156,34 @@ static void keepers_change(int32_t dir)
 }
 #endif
 
-/* MATCH GRAPHICS (GAME GRAPHICS till 2026-11-28): [graphics] style amiga | dos | 2020 -- the pitch
- * and the match's sprites (players, keepers, goals, flags, the bench: color_sprites.c
- * dos_build_all_sprites) and its palette, from the PC game (dos) or with SWOS 2020's pitches
- * (2020); the HUD, the fonts and the menus stay as they are (main.c reads it before anything is
- * loaded: from the next start). */
+/* MATCH GRAPHICS (GAME GRAPHICS till 2026-11-28): [graphics] style -- the pitch and the match's
+ * sprites (players, keepers, goals, flags, the bench) and its palette; the HUD, the fonts and the
+ * menus stay as they are (main.c reads it before anything is loaded: from the next start). Three
+ * tiers, by where the art comes from (Redhair, 2026-11-27): OCS/ECS, the Amiga 500's (ocs:
+ * grafs/, swos_io.c ocs_remap -- only with the Amiga version's files); PC/AGA, the A1200's, whose
+ * pitches are the PC's (amiga; a SWOS.ini's dos, the PC game's own sprites, shows as this too: the
+ * two look the same); 2020/DLC, SWOS 2020's pitches and a pitch DLC's (2020). */
 static int32_t art_index(void)
 {
     if (!O()->dos_graphics)
-        return 0;
+        return O()->ocs_graphics ? 0 : 1;
     return strcmp(O()->dos_dir, "grafs_2020") == 0 ? 2 : 1;
 }
 static void art_show(char *o, int32_t c)
 {
-    static const char *const k[3] = { "AMIGA", "PC DOS", "SWOS 2020" };
+    static const char *const k[3] = { "OCS/ECS", "PC/AGA", "2020/DLC" };
     snprintf(o, (size_t)c, "%s", k[art_index()]);
 }
 static void art_change(int32_t dir)
 {
     extern int swos_data_exists(const char *rel);
-    const int32_t i = step(art_index(), dir, 3);
-    O()->dos_graphics = i != 0;
-    if (i)
-        snprintf(O()->dos_dir, sizeof O()->dos_dir, "%s", i == 2 ? "grafs_2020" : "grafs_dos");
+    int32_t i = step(art_index(), dir, 3);
+    if (i == 0 && !swos_data_exists("grafs/swcpich1.map"))     /* (no Amiga version's files: not offered) */
+        i = step(i, dir, 3);
+    O()->ocs_graphics = i == 0;
+    O()->dos_graphics = i == 2;
+    if (i == 2)
+        snprintf(O()->dos_dir, sizeof O()->dos_dir, "%s", "grafs_2020");
     if (i == 2 && !swos_data_exists("grafs_2020/pitch1.dat")) {
         s_restartPending = 1;
         note("NO SWOS 2020 PITCHES: THE PC GAME'S; NEXT START");

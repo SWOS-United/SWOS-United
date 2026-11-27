@@ -867,6 +867,7 @@ struct App {
     havePcData = info[SD_STEP_DOS_FILES].ready || Has(SD_STEP_DOS_FILES);
     have2020Data = info[SD_STEP_SWOS2020].ready || Has(SD_STEP_SWOS2020);
     haveJagData = info[SD_STEP_JAGUAR].ready || Has(SD_STEP_JAGUAR);
+    haveAmigaData = info[SD_STEP_AMIGA_FILES].ready || Has(SD_STEP_AMIGA_FILES);
     haveWorldData = info[SD_STEP_WORLD].ready || Has(SD_STEP_WORLD);
     w().set_can_install(any && !outDir.empty());
     RefreshAmiga(info);
@@ -1418,7 +1419,7 @@ struct App {
   // phone/SWOS.ini there, which goes to the phone with the assets folder.
   std::vector<int> optChoice;                       // per kGameOptions: the value's index
   std::vector<std::pair<int, std::vector<int>>> optRows;   // a shown row: its option, its values
-  bool haveWorldData = false, havePcData = false, have2020Data = false, haveJagData = false;
+  bool haveWorldData = false, havePcData = false, have2020Data = false, haveJagData = false, haveAmigaData = false;
 
   std::string UserDir() const { return sd::ParentDir(defaultOutDir); }
   // The SWOS.ini each target's options go in: 0 this computer's (the game's own), 1 the phone's
@@ -1530,7 +1531,8 @@ struct App {
 
   bool ValueAvailable(const GameOptionValue& v) const {
     return v.needs == GAME_OPTION_VALUE_PC ? havePcData : v.needs == GAME_OPTION_VALUE_2020 ? have2020Data
-         : v.needs == GAME_OPTION_VALUE_JAGUAR ? haveJagData && !PROJECT_HIDE_JAGUAR : true;
+         : v.needs == GAME_OPTION_VALUE_JAGUAR ? haveJagData && !PROJECT_HIDE_JAGUAR
+         : v.needs == GAME_OPTION_VALUE_AMIGA ? haveAmigaData : true;
   }
 
   // The choices from the files, once: the phone's file when there is one and no computer is

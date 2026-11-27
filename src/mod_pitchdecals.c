@@ -454,6 +454,8 @@ static const char *why_not(int32_t pitch)
         return "no pitch 1-6";
     if (Mods_IsOn("pitchmaps") && strcmp(ModApi_Setting("pitchmaps", "map", "off"), "off") != 0)
         return "a pitch map is shown (pitchmaps)";
+    if (_gOcsGraphics)          /* (its pictures are for the PC's and the A1200's pitches) */
+        return "the Amiga 500's pitches (MATCH GRAPHICS OCS/ECS)";
     if (_gDosGraphics) {
         if (strcmp(_gDosGraphicsDir, "grafs_dos") != 0)
             return "not the PC game's graphics (SWOS 2020's)";

@@ -22,6 +22,7 @@
  * references them. main.c, which sets them from the CLI/INI, is SDL-only.
  * Default 0 = the normal Amiga graphics/gameplay. */
 int _gDosGraphics = 0;
+int _gOcsGraphics = 0;
 int _gDosGameplay = 0;
 /* 1 = play matches in the DOS release's 320x200 view (display.h, DOS_VIEW_*).
  * Menus keep their own 336x272 -- they are Amiga artwork and do not fit 200

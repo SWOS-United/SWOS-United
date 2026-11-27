@@ -1670,6 +1670,16 @@ int main(int argc, char **argv)
     }
     /* Publish DOS-mode flags for the game code (default = Amiga graphics). */
     _gDosGraphics = opts.dos_graphics;
+    {   /* MATCH GRAPHICS OCS/ECS: the Amiga 500's pitches and players, when the Amiga version's
+         * files are there (grafs/: the setup makes them from the player's Amiga copy); else the
+         * AGA ones, as amiga. */
+        extern int swos_data_exists(const char *rel);
+        _gOcsGraphics = opts.ocs_graphics && !opts.dos_graphics && swos_data_exists("grafs/swcpich1.map");
+        if (opts.ocs_graphics && !_gOcsGraphics && !opts.dos_graphics)
+            fprintf(stderr, "[graphics] style = ocs, but no grafs/ (the Amiga version's files): the AGA graphics\n");
+        else if (_gOcsGraphics)
+            fprintf(stderr, "[graphics] OCS/ECS: the Amiga 500's pitches and players (grafs/)\n");
+    }
     JagGfx_SetEnabled(opts.jag_graphics);
     JagGfx_SetShading(opts.outfit_shading, opts.shadow_shading, opts.hair_shading, opts.shade_step);
     KitArt_SetJaguar(opts.kit_art);

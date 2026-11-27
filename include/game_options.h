@@ -41,6 +41,7 @@ enum {
     GAME_OPTION_VALUE_PC     = 1,   /* the PC game's files (its sound, its graphics) */
     GAME_OPTION_VALUE_2020   = 2,   /* SWOS 2020's pitches */
     GAME_OPTION_VALUE_JAGUAR = 3,   /* the Jaguar's players */
+    GAME_OPTION_VALUE_AMIGA  = 4,   /* the Amiga version's files (grafs/: the Amiga 500's art) */
 };
 
 typedef struct {
@@ -57,8 +58,11 @@ typedef struct {
 static const GameOptionValue kGoWorld[]    = { { "9697", "96/97", 0 }, { "2627", "2026-27", 0 } };
 static const GameOptionValue kGoGameplay[] = { { "amiga", "Amiga", 0 }, { "dos", "PC (DOS)", 0 }, { "xbox", "Xbox", 0 },
                                                { "amiga60", "Amiga 60 fps", 0 }, { "moon", "Moon Soccer", 0 } };
-static const GameOptionValue kGoGraphics[] = { { "amiga", "Amiga", 0 }, { "dos", "PC (DOS)", GAME_OPTION_VALUE_PC },
-                                               { "2020", "SWOS 2020", GAME_OPTION_VALUE_2020 } };
+/* MATCH GRAPHICS' three tiers (src/settings_menus.c art_*): the Amiga 500's, the A1200's (whose
+ * pitches are the PC's; made from either copy), SWOS 2020's and a pitch DLC's. */
+static const GameOptionValue kGoGraphics[] = { { "ocs", "OCS/ECS (Amiga 500)", GAME_OPTION_VALUE_AMIGA },
+                                               { "amiga", "PC/AGA", 0 },
+                                               { "2020", "SWOS 2020 / DLC", GAME_OPTION_VALUE_2020 } };
 static const GameOptionValue kGoSprites[]  = { { "amiga", "Amiga", 0 }, { "jaguar", "Atari Jaguar", GAME_OPTION_VALUE_JAGUAR } };
 static const GameOptionValue kGoSound[]    = { { "amiga", "Amiga", 0 }, { "pc", "PC", GAME_OPTION_VALUE_PC } };
 static const GameOptionValue kGoMusic[]    = { { "amiga", "Amiga", 0 }, { "pc", "PC", GAME_OPTION_VALUE_PC } };
@@ -77,7 +81,7 @@ static const GameOption kGameOptions[] = {
       GAME_OPTION_ALL, GAME_OPTION_NEEDS_WORLD, "9697", kGoWorld, GAME_OPTION_COUNT(kGoWorld) },
     { "gameplay", "style",          "Gameplay",    "How a match plays: the Amiga's 50 fps, the PC's 70, or SWOS 2020's Xbox mode",
       GAME_OPTION_ALL, 0, "amiga", kGoGameplay, GAME_OPTION_COUNT(kGoGameplay) },
-    { "graphics", "style",          "Graphics",    "What the pitch, the scoreboard and the menus look like",
+    { "graphics", "style",          "Match graphics", "The pitch and the players: the Amiga 500's, the PC's and the A1200's, or SWOS 2020's",
       GAME_OPTION_ALL, 0, "amiga", kGoGraphics, GAME_OPTION_COUNT(kGoGraphics) },
     { "graphics", "sprites",        "Players",     "The players' look",
       GAME_OPTION_ALL, 0, "amiga", kGoSprites, GAME_OPTION_COUNT(kGoSprites) },

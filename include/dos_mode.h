@@ -36,6 +36,9 @@ void Gameplay_SetStyle(int style);
 const char *Gameplay_StyleName(int style);    /* "AMIGA", "DOS", "XBOX", "AMIGA60", "MOON" */
 
 extern int _gDosGraphics;
+/* 1 = MATCH GRAPHICS OCS/ECS: the Amiga 500's pitches and player banks (grafs/) in place of the
+ * AGA ones (grafs_aga/, which are the PC's pitches) -- swos_io.c swos_data_path. SDL only. */
+extern int _gOcsGraphics;
 extern int _gDosGameplay;
 extern int _gDosView;      /* 1 = 320x200 DOS-shaped match view; 0 on Amiga */
 extern int _gWidescreen;   /* 1 = wider 16:9 pitch view (SDL); 0 on Amiga */

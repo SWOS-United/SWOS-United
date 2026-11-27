@@ -96,6 +96,7 @@ typedef struct {
     int                    screen;           /* target display index (0 = primary). The window opens on / fullscreens on this monitor and its size is auto-fitted to that screen's usable bounds. Clamped to a valid display. PC-only */
     int                    audio_mono;       /* 1 = down-mix to mono (default), 0 = Amiga panned */
     int                    dos_graphics;     /* 1 = render DOS-version graphics. PC-only */
+    int                    ocs_graphics;     /* 1 = the Amiga 500's (OCS/ECS) pitches and players, grafs/ ([graphics] style = ocs) */
     int                    jag_graphics;     /* 1 = the Atari Jaguar's sprites (bin/grafs_jag) */
     /* Sprite shading (docs/PALETTE_V2.md §5). Both off is the 16-colour Amiga
      * look exactly, which is the point: the shaded sprites become the default

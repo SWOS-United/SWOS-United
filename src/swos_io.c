@@ -662,9 +662,49 @@ static int mod_index_find(int32_t i, const char *rel, char *out, uint32_t cap)
 }
 #endif
 
+#if !defined(SWOS_SWITCH_BUILD) && !defined(SWOS_WASM_BUILD)
+/* MATCH GRAPHICS OCS/ECS (_gOcsGraphics, dos_mode.h): the match's own art -- the pitches and the
+ * player, keeper and bench banks -- from grafs/, the Amiga 500's, in place of grafs_aga/ (the
+ * A1200's, whose pitches are the PC's), where the Amiga version's file is there. The engine finds
+ * a file's bitplane depth itself (pitch.c pitchTilePlanes, DetectBankPlanes), so it draws either.
+ * The menus, fonts and HUD keep grafs_aga/. */
+static int ocs_same(const char *a, const char *b, size_t n)   /* (case-blind, n bytes; n 0: whole) */
+{
+    for (size_t i = 0; !n || i < n; i++) {
+        if (tolower((unsigned char)a[i]) != tolower((unsigned char)b[i]))
+            return 0;
+        if (!a[i])
+            return 1;
+    }
+    return 1;
+}
+
+static const char *ocs_remap(const char *rel, char *tmp, uint32_t cap)
+{
+    extern int _gOcsGraphics;
+    static const char *const k_match[] = { "swcpich1.map", "swcpich2.map", "swcpich3.map", "swcpich4.map",
+                                           "swcpich5.map", "swcpich6.map", "cjcteam1.raw", "cjcteam2.raw",
+                                           "cjcteam3.raw", "cjcteamg.raw", "cjcbench.raw" };
+    char probe[1024];
+    if (!_gOcsGraphics || !rel || !ocs_same(rel, "grafs_aga/", 10))
+        return rel;
+    for (size_t i = 0; i < sizeof k_match / sizeof k_match[0]; i++)
+        if (ocs_same(rel + 10, k_match[i], 0)) {
+            snprintf(tmp, cap, "grafs/%s", rel + 10);
+            assets_dir_init();
+            if (s_assets_dir[0] && find_nocase(s_assets_dir, tmp, probe, (uint32_t)sizeof probe) == 0)
+                return tmp;
+            return rel;
+        }
+    return rel;
+}
+#endif
+
 const char *swos_data_path(const char *rel, char *buf, uint32_t buf_sz)
 {
 #if !defined(SWOS_SWITCH_BUILD) && !defined(SWOS_WASM_BUILD)
+    char ocsRel[256];
+    rel = ocs_remap(rel, ocsRel, (uint32_t)sizeof ocsRel);
     /* The enabled mods first, in their order (include/mods.h): a file a mod has is read
      * from it. Writes go through swos_data_path_base, which never looks there. Each mod's
      * files from its index (mod_index_find), the disk only where it has none. */

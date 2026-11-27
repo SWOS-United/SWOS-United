@@ -422,12 +422,16 @@ static int handler(void *user, const char *section,
             /* amiga | dos | 2020 -- one key for the art pipeline, because that is
              * what the engine has: DOS graphics plus a directory. "2020" is SWOS
              * 2020's art, which is why a path in the file was always a smell. */
-            if (eqi(value, "amiga")) opts->dos_graphics = 0;
+            /* ocs: the Amiga 500's pitches and players (MATCH GRAPHICS OCS/ECS, 2026-11-27) */
+            if (eqi(value, "amiga")) { opts->dos_graphics = 0; opts->ocs_graphics = 0; }
+            else if (eqi(value, "ocs")) { opts->dos_graphics = 0; opts->ocs_graphics = 1; }
             else if (eqi(value, "dos")) {
                 opts->dos_graphics = 1;
+                opts->ocs_graphics = 0;
                 snprintf(opts->dos_dir, sizeof opts->dos_dir, "grafs_dos");
             } else if (eqi(value, "2020")) {
                 opts->dos_graphics = 1;
+                opts->ocs_graphics = 0;
                 snprintf(opts->dos_dir, sizeof opts->dos_dir, "grafs_2020");
             }
         }
@@ -948,9 +952,11 @@ static int settings_build(const PlatformInitOptions *opts, IniEntry *items, char
 
 
     SETTING(n) = (IniEntry){ "graphics", "style",
-        "; style: amiga | dos | 2020. Which artwork the pitch, HUD and menus are drawn\n"
-        "; from. Gameplay is unaffected -- this is only what it looks like.\n",
-        !opts->dos_graphics ? "amiga" :
+        "; style: ocs | amiga | dos | 2020. Which artwork the pitch and the players are\n"
+        "; drawn from: ocs the Amiga 500's (OCS/ECS), amiga the A1200's (AGA, the PC's\n"
+        "; pitches), dos the PC game's, 2020 SWOS 2020's (and pitch DLC). Gameplay is\n"
+        "; unaffected -- this is only what it looks like.\n",
+        !opts->dos_graphics ? (opts->ocs_graphics ? "ocs" : "amiga") :
         (opts->dos_dir[0] && !strcmp(opts->dos_dir, "grafs_2020")) ? "2020" : "dos" };
 
     SETTING(n) = (IniEntry){ "graphics", "sprites",
@@ -1752,7 +1758,7 @@ int Settings_LauncherSelfTest(void)
         { "video",    "resolution",       { "2560x1080", "auto" } },
         { "input",    "mouse_cursor",     { "system", "workbench2", "workbench1" } },
         { "gameplay", "cpu_tactics",      { "normal", "expert" } },
-        { "graphics", "style",            { "amiga", "dos", "2020" } },
+        { "graphics", "style",            { "amiga", "ocs", "2020" } },
 #if SWOS_TWEAK_STRONGER_GK
         { "tweaks",   "stronger_goalkeeper_ai", { "true", "false" } },
 #endif
