@@ -1094,7 +1094,8 @@ static const Row k_audioRows[] = {
     { "COMMENTARY",             commentary_show, commentary_change },
     { "AMIGA SOUND OUTPUT",     mono_show,       mono_change },
 };
-static const Page k_audioPage = { "AUDIO OPTIONS", k_audioRows, (int32_t)(sizeof k_audioRows / sizeof k_audioRows[0]) };
+static const Page k_audioPage = { "AUDIO OPTIONS", k_audioRows, (int32_t)(sizeof k_audioRows / sizeof k_audioRows[0]),
+                                  1u << 4 };   /* the four volumes, then the rest */
 _Static_assert(sizeof k_audioRows / sizeof k_audioRows[0] <= kRows, "a settings page holds kRows rows at most");
 
 /* ===================================================================== GAMEPLAY */
