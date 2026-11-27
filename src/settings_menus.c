@@ -1008,18 +1008,18 @@ static void mono_change(int32_t dir)
 }
 
 static const Row k_audioRows[] = {
-    /* together what belongs together: the music, the match's sounds, the commentary; the Amiga
+    /* the four volumes together, then the music, the match's sounds, the commentary; the Amiga
      * output last (it is the Amiga music's and the Amiga match sounds' both) */
+    { "MUSIC VOLUME",           volm_show,       volm_change },
+    { "CROWD CHANTS VOLUME",    volc_show,       volc_change },
+    { "COMMENTARY VOLUME",      volt_show,       volt_change },
+    { "BALL AND WHISTLE",       vole_show,       vole_change },
     { "MENU MUSIC",             menumusic_show,  menumusic_change },
     { "MUSIC",                  music_show,      music_change },
     { "PC MENU MUSIC",          pcmusic_show,    pcmusic_change },
     { "PC TITLE MUSIC",         pctitle_show,    pctitle_change },
-    { "MUSIC VOLUME",           volm_show,       volm_change },
     { "MATCH SOUNDS",           sound_show,      sound_change },
-    { "BALL AND WHISTLE",       vole_show,       vole_change },
-    { "CROWD CHANTS VOLUME",    volc_show,       volc_change },
     { "COMMENTARY",             commentary_show, commentary_change },
-    { "COMMENTARY VOLUME",      volt_show,       volt_change },
     { "AMIGA SOUND OUTPUT",     mono_show,       mono_change },
 };
 static const Page k_audioPage = { "AUDIO OPTIONS", k_audioRows, (int32_t)(sizeof k_audioRows / sizeof k_audioRows[0]) };
