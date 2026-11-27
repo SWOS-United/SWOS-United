@@ -48,6 +48,7 @@
 #include <SDL.h>
 #include <stdio.h>
 #include <string.h>
+#include "swos_io.h"          /* swos_data_path: TITLE MUSIC's files */
 
 #define SETTINGS_MENU_NAME   "openswos/settingsMenu"
 #define SETTINGS_PAGE_NAME   "openswos/settingsPage"
@@ -276,13 +277,13 @@ static Uint32 s_holdNext;
 
 static void p1_select(int32_t dir), p2_select(int32_t dir), p1_setup(int32_t dir), p2_setup(int32_t dir),
             keys_change(int32_t dir), winmode_change(int32_t dir), scale_change(int32_t dir),
-            monitor_change(int32_t dir), res_change(int32_t dir), renderer_change(int32_t dir);
+            monitor_change(int32_t dir), shape_change(int32_t dir), renderer_change(int32_t dir);
 
 static int32_t no_repeat(void (*change)(int32_t))
 {
     static void (*const k[])(int32_t) = {
         p1_select, p2_select, p1_setup, p2_setup, keys_change,
-        winmode_change, scale_change, monitor_change, res_change, renderer_change,
+        winmode_change, scale_change, monitor_change, shape_change, renderer_change,
     };
     for (uint32_t i = 0; i < sizeof k / sizeof k[0]; i++)
         if (k[i] == change)
@@ -657,12 +658,6 @@ static void scale_change(int32_t dir)
 static void vsync_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", on_off(O()->vsync)); }
 static void vsync_change(int32_t dir) { (void)dir; O()->vsync = !O()->vsync; later(); save(); }
 
-static void wide_show(char *o, int32_t c)
-{
-    static const char *const k[3] = { "OFF", "ON", "STRETCH" };
-    snprintf(o, (size_t)c, "%s", k[O()->widescreen >= 0 && O()->widescreen <= 2 ? O()->widescreen : 0]);
-}
-static void wide_change(int32_t dir) { O()->widescreen = step(O()->widescreen, dir, 3); later(); save(); }
 
 static void scroll_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", on_off(O()->subpixel_scroll)); }
 static void scroll_change(int32_t dir) { (void)dir; O()->subpixel_scroll = !O()->subpixel_scroll; Platform_SetSubpixelScroll(O()->subpixel_scroll); save(); }
@@ -762,34 +757,87 @@ static void auto_shape(char *o, int32_t c)
     snprintf(o, (size_t)c, "AUTO (%d:%d)", dw / a, dh / a);
 }
 
-static void res_show(char *o, int32_t c)
+/* PICTURE SHAPE, then FILL (Playa, 2026-11-26): what WIDESCREEN and ASPECT RATIO were, the shape
+ * chosen first. ASPECT RATIO said AUTO (16:9) with WIDESCREEN OFF, the picture its own shape all
+ * the same. SWOS.ini keeps its keys: ORIGINAL is [video] widescreen=false; another shape is
+ * [video] resolution (AUTO: the display's), filled with more pitch (widescreen=true) or the
+ * original picture stretched over it (widescreen=stretch). Between ORIGINAL and a shape: from the
+ * next start, as WIDESCREEN was; from one shape to another at once. */
+static int32_t s_runWide = -1;  /* the widescreen this run started with (the page's first show) */
+static int32_t s_fill;          /* FILL while the shape is ORIGINAL: 1 MORE PITCH, 2 STRETCH */
+
+static void shape_start(void)
 {
+    if (s_runWide < 0)
+        s_runWide = O()->widescreen;
+    if (!s_fill)
+        s_fill = O()->widescreen == 2 ? 2 : 1;
+}
+
+static void shape_show(char *o, int32_t c)
+{
+    shape_start();
     const int32_t i = shape_index();
-    if (i == 0)
+    if (O()->widescreen == 0)
+        snprintf(o, (size_t)c, "ORIGINAL");
+    else if (i == 0)
         auto_shape(o, c);
     else if (i > 0)
         snprintf(o, (size_t)c, "%s", k_shapes[i].name);
     else
         snprintf(o, (size_t)c, "%dX%d", O()->res_w, O()->res_h);
 }
-static void res_change(int32_t dir)
+static void shape_change(int32_t dir)
 {
     extern int Video_ResolutionChanged(const PlatformInitOptions *o, int dw, int dh);
-    int32_t i = shape_index();
+    shape_start();
+    const int32_t now = O()->widescreen == 0 ? 0 : 1 + (shape_index() < 0 ? 0 : shape_index());
+    const int32_t pos = step(now, dir, kShapes + 1);   /* (0 ORIGINAL, then k_shapes) */
     int dw = 16, dh = 9;
-    i = i < 0 ? 0 : step(i, dir, kShapes);
-    O()->res_w = k_shapes[i].w;
-    O()->res_h = k_shapes[i].h;
+    if (pos == 0) {
+        s_fill = O()->widescreen;
+        O()->widescreen = 0;
+    } else {
+        if (O()->widescreen == 0)
+            O()->widescreen = s_fill;
+        O()->res_w = k_shapes[pos - 1].w;
+        O()->res_h = k_shapes[pos - 1].h;
+    }
+    if (O()->widescreen != s_runWide) {     /* (ORIGINAL or not: the start sets the picture up) */
+        later();
+        save();
+        return;
+    }
     if (O()->res_w > 0) {
         dw = O()->res_w;
         dh = O()->res_h;
     } else {
         display_size(&dw, &dh);
     }
+    Platform_SetStretchShape(O()->res_w, O()->res_h);  /* (STRETCH: the window takes it) */
     if (Video_ResolutionChanged(O(), dw, dh))
-        note(i ? "THE PICTURE'S SHAPE: MORE PITCH WHEN WIDER" : "THE DISPLAY'S OWN SHAPE");
+        note(pos > 1 ? "MORE PITCH WHEN WIDER" : "THE DISPLAY'S OWN SHAPE");
     else
-        note("THE PICTURE'S SHAPE, WITH WIDESCREEN ON");
+        note(pos > 1 ? "THE WINDOW'S SHAPE, THE PICTURE STRETCHED OVER IT" : "THE DISPLAY'S OWN SHAPE");
+    save();
+}
+
+static void fill_show(char *o, int32_t c)
+{
+    shape_start();
+    snprintf(o, (size_t)c, "%s", O()->widescreen == 0 ? "-" : O()->widescreen == 2 ? "STRETCH" : "MORE PITCH");
+}
+static void fill_change(int32_t dir)
+{
+    (void)dir;
+    shape_start();
+    if (O()->widescreen == 0) {
+        note("A SHAPE FIRST: ORIGINAL FILLS NOTHING");
+        return;
+    }
+    O()->widescreen = O()->widescreen == 2 ? 1 : 2;
+    s_fill = O()->widescreen;
+    later();
     save();
 }
 
@@ -822,16 +870,15 @@ static void filter_change(int32_t dir);
 static const Row k_videoRows[] = {
     { "WINDOW MODE",        winmode_show,  winmode_change },
     { "WINDOW SCALE",       scale_show,    scale_change },
-    { "VSYNC",              vsync_show,    vsync_change },
-    { "WIDESCREEN",         wide_show,     wide_change },
-    { "SMOOTH SCROLLING",   scroll_show,   scroll_change },
+    { "AUTO CENTERING",     centre_show,   centre_change },
+    { "PICTURE SHAPE",      shape_show,    shape_change },   /* ([video] widescreen=false, or resolution) */
+    { "FILL",               fill_show,     fill_change },    /* ([video] widescreen=true / stretch) */
     { "SCALING",            scaling_show,  scaling_change },
     { "PIXEL FILTER",       filter_show,   filter_change },     /* (beside SCALING: APPEARANCE's until 2026-11-24) */
     { "MONITOR",            monitor_show,  monitor_change },
     { "RENDERER",           renderer_show, renderer_change },
-    /* (launcher options, agent A) */
-    { "ASPECT RATIO",       res_show,      res_change },     /* ([video] resolution: the shape, not a size) */
-    { "AUTO CENTERING",     centre_show,   centre_change },
+    { "VSYNC",              vsync_show,    vsync_change },
+    { "SMOOTH SCROLLING",   scroll_show,   scroll_change },
     { "SHOW FPS",           fps_show,      fps_change },
 };
 static const Page k_videoPage = { "VIDEO OPTIONS", k_videoRows, (int32_t)(sizeof k_videoRows / sizeof k_videoRows[0]) };
@@ -866,14 +913,6 @@ static void volc_change(int32_t d) { vol_change(&O()->vol_chants, d); }
 static void volt_change(int32_t d) { vol_change(&O()->vol_commentary, d); }
 static void vole_change(int32_t d) { vol_change(&O()->vol_effects, d); }
 
-static void menumusic_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", on_off(_menuMusic)); }
-static void menumusic_change(int32_t dir)
-{
-    extern void ChangeMenuMusic(MenuEntry *entry);      /* OPTIONS' row: the music, and [options] */
-    (void)dir;
-    ChangeMenuMusic(entry_at(Page_note));
-}
-
 /* The menus' music again, in the style chosen: StopMusic, then the menu's song. */
 static void music_restart(void)
 {
@@ -898,18 +937,35 @@ static void sound_change(int32_t dir)
     save();
 }
 
-static void music_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", DosMusic_Style() ? "PC" : "AMIGA"); }
+/* MENU MUSIC: AMIGA, PC or OFF -- the menus' music and its style in one row (they were two, MENU
+ * MUSIC on/off and MUSIC Amiga/PC: Redhair). OFF keeps the style it had (the intro's title music
+ * without united_title.mp3 goes by it); without the Amiga's sound, PC and OFF only. */
+static void music_show(char *o, int32_t c)
+{
+    snprintf(o, (size_t)c, "%s", !_menuMusic ? "OFF" : DosMusic_Style() ? "PC" : "AMIGA");
+}
 static void music_change(int32_t dir)
 {
-    (void)dir;
-    if (_gNoAmigaSound) {
-        note("NO AMIGA MUSIC: THE SETUP MADE NONE");
+    extern void ChangeMenuMusic(MenuEntry *entry);      /* OPTIONS' row: the music, and [options] */
+    /* the order: AMIGA, PC, OFF (left: back) */
+    const int32_t now = !_menuMusic ? 2 : DosMusic_Style() ? 1 : 0;
+    int32_t next = (now + (dir < 0 ? 2 : 1)) % 3;
+    if (next == 0 && _gNoAmigaSound)
+        next = dir < 0 ? 2 : 1;
+    if (next == 2) {                                    /* off */
+        if (_menuMusic)
+            ChangeMenuMusic(entry_at(Page_note));
         return;
     }
-    DosMusic_SetStyle(!DosMusic_Style());
-    O()->music_style = DosMusic_Style();
-    music_restart();
-    save();
+    if (DosMusic_Style() != (next == 1)) {
+        DosMusic_SetStyle(next == 1);
+        O()->music_style = DosMusic_Style();
+        save();
+    }
+    if (!_menuMusic)
+        ChangeMenuMusic(entry_at(Page_note));          /* on, in the style just set */
+    else
+        music_restart();
 }
 
 static void pcmusic_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", DosMusic_MenuRecording() ? "MP3" : "MIDI"); }
@@ -925,13 +981,42 @@ static void pcmusic_change(int32_t dir)
     save();
 }
 
-static void pctitle_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", DosMusic_TitleMidi() ? "MIDI" : "MP3"); }
-static void pctitle_change(int32_t dir)
+/* TITLE MUSIC: the intro's music, its own row (it hung on MUSIC: PC and PC TITLE MUSIC; the Amiga's
+ * style played SWOS United's MP3 all the same -- Redhair). Only what is there is offered: UNITED
+ * with united_title.mp3, AMIGA with the Amiga's sound, MIDI with title.xmi, CD with title.mp3. */
+static int32_t title_there(int32_t which)
 {
-    (void)dir;
-    DosMusic_SetTitleMidi(!DosMusic_TitleMidi());
-    O()->title_midi = DosMusic_TitleMidi();
-    note(DosMusic_Style() ? "FROM THE NEXT START" : "WITH MUSIC: PC; FROM THE NEXT START");
+    extern int32_t MusicStream_Exists(const char *name);
+    switch (which) {
+    case DOSMUSIC_TITLE_UNITED: return MusicStream_Exists("united_title");
+    case DOSMUSIC_TITLE_AMIGA:  return !_gNoAmigaSound;
+    case DOSMUSIC_TITLE_MIDI: {
+        char path[1024];
+        FILE *f = fopen(swos_data_path("sound_dos/title.xmi", path, (uint32_t)sizeof path), "rb");
+        if (f)
+            fclose(f);
+        return f != NULL;
+    }
+    case DOSMUSIC_TITLE_CD:     return MusicStream_Exists("title");
+    default:                    return 1;
+    }
+}
+static void title_show(char *o, int32_t c)
+{
+    static const char *const k_names[DOSMUSIC_TITLE_COUNT] = { "UNITED", "AMIGA", "PC MIDI", "PC CD", "OFF" };
+    snprintf(o, (size_t)c, "%s", k_names[DosMusic_TitleMusic()]);
+}
+static void title_change(int32_t dir)
+{
+    int32_t at = DosMusic_TitleMusic();
+    for (int32_t i = 0; i < DOSMUSIC_TITLE_COUNT; i++) {
+        at = (at + (dir < 0 ? DOSMUSIC_TITLE_COUNT - 1 : 1)) % DOSMUSIC_TITLE_COUNT;
+        if (title_there(at))
+            break;
+    }
+    DosMusic_SetTitleMusic(at);
+    O()->title_music = at;
+    note("FROM THE NEXT START");
     save();
 }
 
@@ -948,28 +1033,32 @@ static void commentary_change(int32_t dir)
     save();
 }
 
-static void mono_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", O()->audio_mono ? "MONO" : "STEREO"); }
+static void mono_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", O()->audio_mono == 1 ? "MONO" : O()->audio_mono == 2 ? "MIXED" : "STEREO"); }
 static void mono_change(int32_t dir)
 {
     extern void AudioSDL_SetMono(int mono);
-    (void)dir;
-    O()->audio_mono = !O()->audio_mono;
+    /* MONO, MIXED, STEREO (audio_mono 1, 2, 0) */
+    static const int8_t order[] = { 1, 2, 0 };
+    int32_t at = O()->audio_mono == 1 ? 0 : O()->audio_mono == 2 ? 1 : 2;
+    at = (at + (dir < 0 ? 2 : 1)) % 3;
+    O()->audio_mono = order[at];
     AudioSDL_SetMono(O()->audio_mono);
     save();
 }
 
 static const Row k_audioRows[] = {
+    /* the four volumes together, then the music, the match's sounds, the commentary; the Amiga
+     * output last (it is the Amiga music's and the Amiga match sounds' both) */
     { "MUSIC VOLUME",           volm_show,       volm_change },
     { "CROWD CHANTS VOLUME",    volc_show,       volc_change },
     { "COMMENTARY VOLUME",      volt_show,       volt_change },
     { "BALL AND WHISTLE",       vole_show,       vole_change },
-    { "MENU MUSIC",             menumusic_show,  menumusic_change },
-    { "MATCH SOUNDS",           sound_show,      sound_change },
-    { "MUSIC",                  music_show,      music_change },
+    { "MENU MUSIC",             music_show,      music_change },
     { "PC MENU MUSIC",          pcmusic_show,    pcmusic_change },
-    { "PC TITLE MUSIC",         pctitle_show,    pctitle_change },
+    { "TITLE MUSIC",            title_show,      title_change },
+    { "MATCH SOUNDS",           sound_show,      sound_change },
     { "COMMENTARY",             commentary_show, commentary_change },
-    { "OUTPUT",                 mono_show,       mono_change },
+    { "AMIGA SOUND OUTPUT",     mono_show,       mono_change },
 };
 static const Page k_audioPage = { "AUDIO OPTIONS", k_audioRows, (int32_t)(sizeof k_audioRows / sizeof k_audioRows[0]) };
 _Static_assert(sizeof k_audioRows / sizeof k_audioRows[0] <= kRows, "a settings page holds kRows rows at most");
@@ -1356,27 +1445,29 @@ _Static_assert(sizeof k_gameplayRows / sizeof k_gameplayRows[0] <= kRows, "a set
 
 static const Row k_displayRows[] = {
     { "GAME GRAPHICS",      art_show,      art_change },
-    { "MENU BUTTON LOOK",   look_show,     look_change },     /* (the buttons' shading; MENU BACKGROUND below) */
-    { "MENU BACKGROUND",    menubg_show,   menubg_change, 0, menubg_off },
-    { "MENU LOGO",          logo_show,     logo_change },
-    { "MENU CURSOR",        cursor_show,   cursor_change },
-    { "MENU OPACITY",       opacity_show,  opacity_change },
+    { "PITCH PALETTE",      pitchpal_show, pitchpal_change },
     { "KIT COLOURS",        kitcols_show,  kitcols_change },    /* (RULES' too: which kits clash) */
     { "GK/REF CLASH KITS",  clashkits_show, clashkits_change },
-    { "PITCH PALETTE",      pitchpal_show, pitchpal_change },
-    { "KITS ON THE RESULT", reskits_show,  reskits_change },
-    { "RESULT BAND",        resband_show,  resband_change },
     { "SCOREBOARD",         board_show,    board_change },
+    { "RESULT BAND",        resband_show,  resband_change },
+    { "KITS ON THE RESULT", reskits_show,  reskits_change },
+    { "MENU BUTTON LOOK",   look_show,     look_change },     /* (the buttons' shading; MENU BACKGROUND below) */
+    { "MENU BACKGROUND",    menubg_show,   menubg_change, 0, menubg_off },
+    { "MENU OPACITY",       opacity_show,  opacity_change },
+    { "MENU LOGO",          logo_show,     logo_change },
+    { "MENU CURSOR",        cursor_show,   cursor_change },
 };
 static const Page k_displayPage = { "APPEARANCE OPTIONS", k_displayRows, (int32_t)(sizeof k_displayRows / sizeof k_displayRows[0]) };
 _Static_assert(sizeof k_displayRows / sizeof k_displayRows[0] <= kRows, "a settings page holds kRows rows at most");
 
 static const Row k_rulesRows[] = {
-    { "KIT COLOURS",             kitcols_show,  kitcols_change },   /* (which kits clash: online, both players'; DISPLAY's too) */
 #if SWOS_TWEAK_FIXES
     { "LEAGUE RULES",            lrules_show,   lrules_change },
     { "POINTS FOR A WIN",        points_show,   points_change },
     { "SUBSTITUTES",             subs_show,     subs_change },
+#endif
+    { "KIT COLOURS",             kitcols_show,  kitcols_change },   /* (which kits clash: online, both players'; DISPLAY's too) */
+#if SWOS_TWEAK_FIXES
     { "LEAGUE CRASH FIXES",      lfix_show,     lfix_change },
 #endif
     { "CAREER EXACT LOADS",      exact_show,    exact_change },
@@ -1385,12 +1476,12 @@ static const Page k_rulesPage = { "RULES OPTIONS", k_rulesRows, (int32_t)(sizeof
 _Static_assert(sizeof k_rulesRows / sizeof k_rulesRows[0] <= kRows, "a settings page holds kRows rows at most");
 
 static const Row k_generalRows[] = {
-    { "AUTO SAVE REPLAYS",       autosave_show, autosave_change },
-    { "HIGHLIGHT DEFAULT SPEED", hlspeed_show,  hlspeed_change },
-    { "FRAME INFO OVERLAY",      overlay_show,  overlay_change },
     { "SKIP INTRO",              intro_show,    intro_change },
     { "INTRO PICTURES",          reels_show,    reels_change },
     { "PRE-MATCH PAUSE",         loadpause_show, loadpause_change },
+    { "AUTO SAVE REPLAYS",       autosave_show, autosave_change },
+    { "HIGHLIGHT DEFAULT SPEED", hlspeed_show,  hlspeed_change },
+    { "FRAME INFO OVERLAY",      overlay_show,  overlay_change },
     { "MOUSE POINTER",           pointer_show,  pointer_change },   /* (APPEARANCE's till 2026-11-25: MENU LOGO took its row) */
 };
 static const Page k_generalPage = { "GENERAL OPTIONS", k_generalRows, (int32_t)(sizeof k_generalRows / sizeof k_generalRows[0]) };

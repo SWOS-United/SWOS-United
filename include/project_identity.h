@@ -73,6 +73,14 @@
  * Ranked and league results still go to sensiblesoccer.de (the account ids are the same). */
 #define PROJECT_ACCOUNT_API     "https://swos.swosunited.com/api/"
 
+/* SWOS 2020's live matches (src/live_cast_fork.inc, LIVE CAST): its livestream server on swos.eu --
+ * the list of the matches live now over HTTPS, and a match's stream (/watch/<id>, a WebSocket) on
+ * its plain port, the one SWOS 2020's own client talks to (the SWOS-API repo's client,
+ * united_live2020.c). */
+#define PROJECT_LIVE2020_LIST_URL   "https://swos.eu:2020/api/live"
+#define PROJECT_LIVE2020_HOST       "swos.eu"
+#define PROJECT_LIVE2020_WATCH_PORT 2019
+
 /* The challenges' and speedruns' records online (src/mod_online_records.c): where SWOS 2020's
  * galoreapi_v15.php and swosapi_v3.php are -- SWOS-API (third_party/swos-api) once it is
  * deployed; today SWOS 2020's own folder on sensiblesoccer.de. No trailing slash. */
@@ -138,7 +146,7 @@
  * its main menu, its challenge and speedrun screens, SWOS Galore, the news ticker, and the
  * records read from SWOS 2020's servers. And the PC menu shading (dosmenus, 2026-11-25): APPEARANCE
  * OPTIONS' MENU BUTTON LOOK = PC is its, so it is the game's, not a mod to turn off. */
-#define PROJECT_STATIC_MODS     "menus2020, challenges2020, swos2020-challenges, speedrun2020, galore2020, ticker, online-records, discord2020, teamimport2020, dosmenus"
+#define PROJECT_STATIC_MODS     "menus2020, challenges2020, swos2020-challenges, speedrun2020, galore2020, ticker, online-records, discord2020, teamimport2020, dosmenus, pitchdecals"
 
 /* DEFAULT MODS: canonical mods this game turns ON by default whatever their manifest's "default"
  * says -- still listed, and a player may turn them off ([mods] disabled), unlike a static one.

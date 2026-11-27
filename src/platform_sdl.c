@@ -634,6 +634,31 @@ static PlatformFullscreenMode s_fullscreen_mode   = PLATFORM_FULLSCREEN_NONE;
  * is replaced by a per-axis scale from the picture to the window, worked out every frame:
  * SDL re-applies a logical size across window changes by itself, but not a scale. */
 static int s_stretch;
+/* ... and in a window, the window takes the shape it is stretched to -- VIDEO OPTIONS' PICTURE
+ * SHAPE ([video] resolution), AUTO the monitor's -- its height the picture's times the scale as
+ * ever, its width that shape's. It was the picture's own (336x272, nearly 4:3) whatever the
+ * shape: stretched over a window of its own shape, nothing was stretched (Playa, 2026-11-26). */
+static int s_stretch_w, s_stretch_h;    /* the shape, 0 x 0: the monitor's */
+static int s_open_screen;               /* (the monitor before there is a window) */
+
+/* The window's width, its client area, at `scale` times the picture. */
+static int window_w(int scale)
+{
+    int aw = s_stretch_w, ah = s_stretch_h;
+    if (!s_stretch)
+        return _screen_width * scale;
+    if (aw <= 0 || ah <= 0) {
+        SDL_DisplayMode dm;
+        const int d = s_window ? SDL_GetWindowDisplayIndex(s_window) : s_open_screen;
+        if (SDL_GetDesktopDisplayMode(d >= 0 ? d : 0, &dm) == 0 && dm.w > 0 && dm.h > 0) {
+            aw = dm.w;
+            ah = dm.h;
+        }
+    }
+    if (aw <= 0 || ah <= 0)
+        return _screen_width * scale;
+    return (int)(((long long)_screen_height * scale * aw + ah / 2) / ah);
+}
 
 static void apply_picture_scaling(void)
 {
@@ -686,6 +711,10 @@ int Platform_Init(const PlatformInitOptions *opts)
     /* Which monitor to open on ([video] screen=N, 0 = primary). */
     int screen = opts ? opts->screen : 0;
     if (screen < 0) screen = 0;
+    s_open_screen = screen;
+    s_stretch = opts && opts->widescreen == 2;      /* (the window's shape: window_w) */
+    s_stretch_w = opts && opts->res_w > 0 && opts->res_h > 0 ? opts->res_w : 0;
+    s_stretch_h = opts && opts->res_w > 0 && opts->res_h > 0 ? opts->res_h : 0;
 #ifndef SWOS_WASM_BUILD
     /* Clamp the display index to a real one, then shrink win_scale so the
      * windowed size fits that monitor's USABLE bounds (desktop minus the
@@ -704,11 +733,12 @@ int Platform_Init(const PlatformInitOptions *opts)
                     b.w, b.h, b.x, b.y, d == screen ? " (opening here: [video] screen)" : "");
         }
         if (screen >= nd) screen = 0;
+        s_open_screen = screen;
         if (fs_mode == PLATFORM_FULLSCREEN_NONE) {
             SDL_Rect ub;
             if (SDL_GetDisplayUsableBounds(screen, &ub) == 0 && ub.w > 0 && ub.h > 0) {
                 while (win_scale > 1 &&
-                       ((int)_screen_width * win_scale > ub.w ||
+                       (window_w(win_scale) > ub.w ||
                         _screen_height * win_scale > ub.h)) {
                     win_scale--;
                 }
@@ -786,12 +816,12 @@ int Platform_Init(const PlatformInitOptions *opts)
     static char s_title[96];
     snprintf(s_title, sizeof s_title, PROJECT_NAME " %s (%s)", Build_Id(), Build_Platform());
 
-    /* [video] resolution is the picture's SHAPE (VIDEO OPTIONS' ASPECT RATIO: 21:9 is written
+    /* [video] resolution is the picture's SHAPE (VIDEO OPTIONS' PICTURE SHAPE: 21:9 is written
      * 2560x1080), never the window's size: the window is the picture times a whole number, so
      * every pixel is as big as the next. From 2026-09-22 a WxH there was the client area -- 21:9
      * on a 1920 wide monitor became a 1920x810 window, 2.98 times the picture, its rows of
      * pixels unequal (2026-11-25). */
-    int client_w = (int)_screen_width * win_scale;
+    int client_w = window_w(win_scale);
     int client_h = _screen_height * win_scale;
     int pinned = 0;
     s_pinned_w = s_pinned_h = 0;
@@ -856,12 +886,12 @@ int Platform_Init(const PlatformInitOptions *opts)
              * undoing. It still gets moved on-screen below. */
             if (!pinned) {
                 while (win_scale > 1 &&
-                       ((int)_screen_width * win_scale + bl + br > ub.w ||
+                       (window_w(win_scale) + bl + br > ub.w ||
                         _screen_height * win_scale + bt + bb > ub.h)) {
                     win_scale--;
                 }
                 SDL_SetWindowSize(s_window,
-                                  _screen_width * win_scale,
+                                  window_w(win_scale),
                                   _screen_height * win_scale);
             }
             s_win_scale_current = win_scale;
@@ -1084,7 +1114,6 @@ int Platform_Init(const PlatformInitOptions *opts)
 
     /* The picture's own size, both runtime (display.h): what gets letterboxed
      * into whatever client area the window has -- or stretched over it. */
-    s_stretch = opts && opts->widescreen == 2;
     apply_picture_scaling();
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
     SDL_EventState(SDL_MOUSEMOTION, SDL_DISABLE);
@@ -1246,6 +1275,8 @@ static void check_display(void)
         !(SDL_GetWindowFlags(s_window) & SDL_WINDOW_MAXIMIZED) &&
         Platform_WindowScaleMax() != s_win_scale_current)
         Platform_SetWindowScale(0);
+    else if (s_stretch && s_stretch_w <= 0)
+        Platform_ViewChanged();         /* (STRETCH, AUTO's shape: this monitor's) */
 #endif
 }
 
@@ -1292,7 +1323,7 @@ void Platform_ToggleFullscreen(void)
             SDL_SetWindowSize(s_window, s_pinned_w, s_pinned_h);
         else
             SDL_SetWindowSize(s_window,
-                _screen_width * s_win_scale_current,
+                window_w(s_win_scale_current),
                 _screen_height * s_win_scale_current);
         SDL_ShowCursor(SDL_ENABLE);
     } else {
@@ -1488,7 +1519,7 @@ int Platform_WindowScaleMax(void)
     }
     if (s_window)
         SDL_GetWindowBordersSize(s_window, &bt, &bl, &bb, &br);
-    while (s > 1 && ((int)_screen_width * s + bl + br > ub.w || _screen_height * s + bt + bb > ub.h))
+    while (s > 1 && (window_w(s) + bl + br > ub.w || _screen_height * s + bt + bb > ub.h))
         s--;
     return s;
 #else
@@ -1536,8 +1567,17 @@ void Platform_ViewChanged(void)
             s_win_scale_current = most;
     }
     SDL_SetWindowSize(s_window,
-                      _screen_width  * s_win_scale_current,
+                      window_w(s_win_scale_current),
                       _screen_height * s_win_scale_current);
+}
+
+/* VIDEO OPTIONS' PICTURE SHAPE changed (w x h, 0 x 0 AUTO): with STRETCH the window takes it now. */
+void Platform_SetStretchShape(int w, int h)
+{
+    s_stretch_w = w > 0 && h > 0 ? w : 0;
+    s_stretch_h = w > 0 && h > 0 ? h : 0;
+    if (s_stretch)
+        Platform_ViewChanged();
 }
 
 void Platform_SetWindowScale(int scale)
@@ -1561,7 +1601,7 @@ void Platform_SetWindowScale(int scale)
         if (SDL_GetWindowFlags(s_window) & SDL_WINDOW_MAXIMIZED)
             SDL_RestoreWindow(s_window);
         SDL_SetWindowSize(s_window,
-            _screen_width * scale,
+            window_w(scale),
             _screen_height * scale);
         /* Re-centre on the desktop after a size change so a 4× window
          * doesn't end up clipped against the bottom-right of the screen. */
@@ -2301,6 +2341,36 @@ static void chunky_to_rgba(uint32_t *dst, int dst_pitch_pixels)
                 out[x] = fade_over(out[x], bd ? &bd[(size_t)y * _screen_width + x] : NULL, fadeA);
         }
     }
+}
+
+/* For a mod painting the menus' boxes over the picture (dosmenus' PC look): what MENU OPACITY
+ * shows through the frame's pixel at x, y. 1, with the colour under it (the game's backdrop's
+ * entry, or the backdrop picture's pixel) and the opacity 0-255, where chunky_to_rgba (or the
+ * GPU's palette alpha) blends that pixel: under 100 %, in the menus, a coloured part over
+ * something else. 0 where it is solid. The mod mixes its own colour so: painted solid over the
+ * picture, its boxes were solid at any opacity (Playa, 2026-11-26). */
+int Platform_MenuUnder(int x, int y, uint32_t *rgb, int *alpha)
+{
+    const int a = menu_alpha_now();
+    const uint8_t *fb = frame_source();
+    if (a >= 255 || !fb || fb == _frontbufferMaskBuffer || x < 0 || y < 0 ||
+        x >= _screen_width || y >= _screen_height)
+        return 0;
+    const size_t at = (size_t)y * FRONTBUFFER_ROW_STRIDE_BYTES + (size_t)x;
+    const uint8_t c = fb[at], u = _frontbufferMaskBuffer[at];
+    if (u == c || menu_solid(c))
+        return 0;
+    if (backdrop_shown() && u == MENU_BACKDROP_KEY) {
+        const uint32_t *bd = backdrop_small(_screen_width, _screen_height);
+        if (!bd)
+            return 0;
+        *rgb = bd[(size_t)y * _screen_width + x] & 0xFFFFFFu;
+    } else {
+        const SDL_Color uc = s_palette[u];
+        *rgb = ((uint32_t)uc.r << 16) | ((uint32_t)uc.g << 8) | uc.b;
+    }
+    *alpha = a;
+    return 1;
 }
 
 /* Optional debug dump: every N frames write the converted chunky

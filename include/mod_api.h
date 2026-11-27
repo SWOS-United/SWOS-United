@@ -419,6 +419,9 @@ int32_t ModApi_MenuCurrentEntry(void);
 /* An entry's image ("image" in the JSON, docs/MENUS.md §13) changed while the menu is up -- a
  * path, NULL none; its place ("image_x" / "image_y") kept. */
 void    ModApi_SetMenuImage(int32_t entry, const char *path);
+/* ... and its place: x, y from the box's top left, as "image_x" / "image_y" (a text that changes
+ * with what is installed: its icon beside it, the two centred together). */
+void    ModApi_SetMenuImageAt(int32_t entry, int32_t x, int32_t y);
 /* ... and a .png image's HD copy (any size, as a rule a few times its pixels each way): drawn in
  * its place, filtered, at the window's own resolution -- a path, NULL none (the image itself). */
 void    ModApi_SetMenuImageHD(int32_t entry, const char *path);
@@ -596,6 +599,8 @@ typedef struct {
     uint64_t id;                            /* for ModApi_LiveWatch */
     char     players[2][24], teams[2][24];
     uint32_t frames;                        /* recorded so far */
+    int32_t  minute;                        /* on its clock now; -1 not known (the recorder's) */
+    int32_t  goals[2];                      /* its score now (when minute is known) */
 } ModLiveMatch;
 /* The live matches (up to `cap`): how many, -1 when the server cannot be reached. Blocks up to
  * ~2 s: show a "LOOKING..." line first. */

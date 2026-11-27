@@ -10,6 +10,7 @@
 #include "display.h"
 #include "input.h"
 #include "audio.h"
+#include "dos_music.h"       /* DOSMUSIC_TITLE_*: TITLE MUSIC */
 #include <string.h>            /* memcpy/memset — both builds (Amiga loader re-stride) */
 #ifdef SWOS_SDL_BUILD
 #include <stdio.h>             /* (the title track's log line) */
@@ -97,9 +98,10 @@ extern int16_t LoadRNCToBufferNoBlit(uint8_t *name, uint8_t *dest);     /* asset
  * from the hero audio bank data. Then applies preset 0 and marks
  * audio as active.
  * ================================================================ */
-/* The title track is SWOS United's MP3 (united_title.mp3): it plays on through POWERED BY, to the
- * main menu (LoaderIntro_EndPowered). The Amiga's tune stops at fire -- its samples share memory
- * with the sprites the game loads meanwhile (intro_chip_ram.h). */
+/* The title track is TITLE MUSIC's -- SWOS United's MP3 (united_title.mp3), the PC floppy's MIDI one
+ * (title.xmi), title.mp3 or the Amiga's tune: it plays on through POWERED BY, to the main menu
+ * (LoaderIntro_EndPowered). (On the Amiga the tune's samples share memory with the sprites the game
+ * loads meanwhile, intro_chip_ram.h; SDL keeps them apart.) */
 static int32_t s_titleStream;
 
 /* The title music's fade-in run by the next wait's frames (loaderIntroWaitForFireOrTimeout), not
@@ -145,25 +147,49 @@ static void loaderIntroEnsureMenuMusicPlaying(void)
         extern int AudioSDL_StreamStart(const char *name, int loop);
         extern int AudioSDL_PcSongStart(const char *stem, int loop);
         extern int32_t DosMusic_Style(void);
-        extern int32_t DosMusic_TitleMidi(void);
-        /* SWOS United's title track (Playa, 2026-11-20): daXX's remix of Goalscoring Superstar
-         * Hero, sound_dos/united_title.mp3 (from SWOS 2020's music DLC, laid in by the installer,
-         * scripts/build_installer.sh), whatever the music style, repeated until fire. Without it:
-         * [audio] music = pc: [audio] title_music = midi plays sound_dos/title.xmi (SWOS 2020's
-         * floppy title song, from a mod) on the emulated card, else the PC CD release's title
-         * song, sound_dos/title.mp3. */
-        if (AudioSDL_StreamStart("united_title", 1) == 0) {
+        extern int32_t DosMusic_TitleMusic(void);
+        /* AUDIO OPTIONS' TITLE MUSIC ([audio] title_music, dos_music.h), its own row since
+         * 2026-11-27 (it hung on MUSIC: PC and PC TITLE MUSIC before -- Redhair): UNITED, SWOS
+         * United's title track (Playa, 2026-11-20: daXX's remix of Goalscoring Superstar Hero,
+         * sound_dos/united_title.mp3 from SWOS 2020's music DLC, laid in by the installer); AMIGA,
+         * the Amiga's tune; MIDI, sound_dos/title.xmi (the PC floppy's title song) on the emulated
+         * card; CD, sound_dos/title.mp3 (the PC CD's, or a mod's); OFF, none. A file not there:
+         * SWOS United's, else the Amiga's. Every one plays on, repeated, through
+         * POWERED BY and the logo to the main menu (s_titleStream). */
+        const int32_t want = DosMusic_TitleMusic();
+        int32_t started = 0;
+        if (want == DOSMUSIC_TITLE_OFF) {
+            fprintf(stderr, "[music] title track: none (TITLE MUSIC: OFF)\n");
+            started = 1;
+        }
+        if (!started && want == DOSMUSIC_TITLE_MIDI && AudioSDL_PcSongStart("title", 1) == 0) {
+            fprintf(stderr, "[music] title track: sound_dos/title.xmi\n");
+            started = s_titleStream = 1;
+        }
+        if (!started && want == DOSMUSIC_TITLE_CD && AudioSDL_StreamStart("title", 1) == 0) {
+            fprintf(stderr, "[music] title track: sound_dos/title.mp3\n");
+            started = s_titleStream = 1;
+        }
+        if (!started && want != DOSMUSIC_TITLE_AMIGA && AudioSDL_StreamStart("united_title", 1) == 0) {
             fprintf(stderr, "[music] title track: sound_dos/united_title.mp3\n");
-            s_titleStream = 1;
-        } else
-        if (DosMusic_Style() && DosMusic_TitleMidi() && AudioSDL_PcSongStart("title", 0) == 0) {
-        } else
-        if (DosMusic_Style() && AudioSDL_StreamStart("title", 0) == 0) {
+            started = s_titleStream = 1;
+        }
+        if (!started)
+            fprintf(stderr, "[music] title track: the Amiga's tune\n");
+        if (started) {
         } else
         if (AudioSDL_StartSong(heroSongBuffer, HERO_SONG_BUFFER_BYTES,
                                g_introChipRam.titleTuneSamples, (int)sizeof g_introChipRam.titleTuneSamples, 0) != 0) {
             /* Load failed — keep audio silent but mark "loaded" so we
              * don't hammer the player every vblank. */
+        } else {
+            /* On through POWERED BY to the main menu as the others (it was stopped after
+             * POWERED BY, three seconds in -- Redhair): SDL keeps its samples apart from the
+             * sprites (intro_chip_ram.h), the Amiga's sharing of them is not here. HERO has
+             * no loop-back: repeated, as the arcade's attract loop does it. */
+            extern void AudioSDL_SetSongLoop(int loop);
+            AudioSDL_SetSongLoop(1);
+            s_titleStream = 1;
         }
         _audioBankLoaded = 1;
     }

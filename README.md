@@ -149,7 +149,8 @@ Engineering Lead               benbaker76
 SWOS 2020 Lead Developer       starwindz
 Multiplayer (GGPO-X)           thd79
 Webmaster                      ElMichaJ
-Manic SWOS Preacher            Redhair
+Additional Programming         Redhair
+Graphics                       Redhair
 ```
 
 - **Ben Baker** ([github.com/benbaker76](https://github.com/benbaker76)) —

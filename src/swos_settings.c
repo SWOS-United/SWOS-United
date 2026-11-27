@@ -51,6 +51,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include "dos_music.h"     /* DOSMUSIC_TITLE_* ([audio] title_music) */
 
 static int eqi(const char *a, const char *b)
 {
@@ -281,6 +282,7 @@ static int handler(void *user, const char *section,
         if (eqi(name, "mode")) {
             if      (eqi(value, "mono"))   opts->audio_mono = 1;
             else if (eqi(value, "stereo")) opts->audio_mono = 0;
+            else if (eqi(value, "mixed"))  opts->audio_mono = 2;
         }
         else if (eqi(name, "style")) {
             if      (eqi(value, "amiga")) opts->sound_style = 0;
@@ -302,8 +304,12 @@ static int handler(void *user, const char *section,
             else if (eqi(value, "mp3"))  opts->menu_recording = 1;
         }
         else if (eqi(name, "title_music")) {
-            if      (eqi(value, "midi")) opts->title_midi = 1;
-            else if (eqi(value, "mp3"))  opts->title_midi = 0;
+            /* (the old "mp3" played united_title.mp3 whenever it was there: united) */
+            if      (eqi(value, "united") || eqi(value, "mp3")) opts->title_music = DOSMUSIC_TITLE_UNITED;
+            else if (eqi(value, "amiga"))                       opts->title_music = DOSMUSIC_TITLE_AMIGA;
+            else if (eqi(value, "midi"))                        opts->title_music = DOSMUSIC_TITLE_MIDI;
+            else if (eqi(value, "cd"))                          opts->title_music = DOSMUSIC_TITLE_CD;
+            else if (eqi(value, "off"))                         opts->title_music = DOSMUSIC_TITLE_OFF;
         }
         else if (eqi(name, "music")) {
             if      (eqi(value, "amiga")) opts->music_style = 0;
@@ -688,7 +694,9 @@ static int settings_build(const PlatformInitOptions *opts, IniEntry *items, char
     SETTING(n) = (IniEntry){ "video",  "renderer",   "; renderer: accel (the GPU presenter, else SDL's) | sdl (SDL's renderer) | software", renderer_str(opts->renderer) };
     SETTING(n) = (IniEntry){ "video",  "vsync",      "; vsync: true | false  (accel renderer only)", opts->vsync ? "true" : "false" };
     SETTING(n) = (IniEntry){ "video",  "subpixel_scroll", "; subpixel_scroll: true | false. Smooths scrolling by shifting the frame by the camera's sub-pixel remainder. Never blurs. Off = compare", opts->subpixel_scroll ? "true" : "false" };
-    SETTING(n) = (IniEntry){ "video",  "scaling",    "; scaling: sharp | smooth. sharp: the picture only ever a whole number of times its size, every pixel square and as big as the next -- a window or screen it does not fill leaves a border. smooth: it fills the window (1080/272 = 3.97), resampled evenly, a little soft", opts->scaling_smooth ? "smooth" : "sharp" };
+    SETTING(n) = (IniEntry){ "video",  "scaling",    "; scaling: sharp | smooth. sharp: the picture only ever a whole number of times its size, every pixel\n"
+        "; square and as big as the next -- a window or screen it does not fill leaves a border.\n"
+        "; smooth: it fills the window (1080/272 = 3.97), resampled evenly, a little soft", opts->scaling_smooth ? "smooth" : "sharp" };
     SETTING(n) = (IniEntry){ "video",  "crt_mask",   "; crt_mask: off | aperture | slot | scanlines. Synthetic CRT shadow-mask drawn over the finished frame. Costs one full-screen draw however many effects are on", crt_mask_str(opts->crt_mask) };
     SETTING(n) = (IniEntry){ "video",  "crt_mask_strength", "; crt_mask_strength: 0-100. How dark the grille's off-phase gets. 0 = invisible, 100 = black between phosphors", vbuf[4] };
     SETTING(n) = (IniEntry){ "video",  "crt_vignette", "; crt_vignette: 0-100. Darkens towards the corners like a tube's edges. 0 = off", vbuf[5] };
@@ -708,7 +716,8 @@ static int settings_build(const PlatformInitOptions *opts, IniEntry *items, char
     SETTING(n) = (IniEntry){ "video",  "screen",     "; screen: the monitor the game opens on, 0 the first (VIDEO OPTIONS' MONITOR shows it + 1). Set by MONITOR, and when the window is moved to another; one no longer there: the first", vbuf[3] };
     SETTING(n) = (IniEntry){ "video",  "menu_cursor", "; menu_cursor: flashing | steady. The menus' cursor frame (SWOS 2020's flashing menu cursor)",
         opts->menu_cursor ? "steady" : "flashing" };   /* (SWOS 2020 port, agent A) */
-    SETTING(n) = (IniEntry){ "audio",  "mode",       "; mode: mono | stereo", opts->audio_mono ? "mono" : "stereo" };
+    SETTING(n) = (IniEntry){ "audio",  "mode",       "; mode: mono | mixed | stereo (the Amiga sound)",
+                                   opts->audio_mono == 1 ? "mono" : opts->audio_mono == 2 ? "mixed" : "stereo" };
     SETTING(n) = (IniEntry){ "audio",  "style",
         "; style: amiga | pc. A match's sounds: the Amiga's, or the PC game's sampled\n"
         "; effects, crowd and chants (sound_dos/). The menus' music is the Amiga's either\n"
@@ -731,11 +740,12 @@ static int settings_build(const PlatformInitOptions *opts, IniEntry *items, char
         "; sound_dos/menu.mp3 (mp3).\n",
         opts->menu_recording ? "mp3" : "midi" };
     SETTING(n) = (IniEntry){ "audio",  "title_music",
-        "; title_music: mp3 | midi. With music = pc, the intro plays the CD's title song,\n"
-        "; sound_dos/title.mp3 (mp3), or sound_dos/title.xmi live on the emulated card\n"
-        "; (midi: SWOS 2020's floppy title song, which a mod brings). Without its file, the\n"
-        "; Amiga's.\n",
-        opts->title_midi ? "midi" : "mp3" };
+        "; title_music: united | amiga | midi | cd | off. The intro's music: SWOS United's\n"
+        "; (sound_dos/united_title.mp3), the Amiga's tune, sound_dos/title.xmi live on the\n"
+        "; emulated card (midi: the PC floppy's title song), sound_dos/title.mp3 (cd: the PC\n"
+        "; CD's, or a mod's), or none. Without its file, SWOS United's, else the Amiga's.\n",
+        opts->title_music == DOSMUSIC_TITLE_AMIGA ? "amiga" : opts->title_music == DOSMUSIC_TITLE_MIDI ? "midi" :
+        opts->title_music == DOSMUSIC_TITLE_CD ? "cd" : opts->title_music == DOSMUSIC_TITLE_OFF ? "off" : "united" };
     SETTING(n) = (IniEntry){ "audio",  "commentary",
         "; commentary: auto | true | false. The PC game's commentary. auto (the\n"
         "; default): with style = pc only. true: always, over the Amiga's sounds too.\n",
@@ -1385,6 +1395,15 @@ void Settings_Save(const PlatformInitOptions *opts, const char *path)
     IniEntry items[SETTINGS_MAX];
     char vbuf[10][24];
     int n = settings_build(opts, items, vbuf, 1);
+    /* Each value copied out before the baseline's table is built below: some entries' values are
+     * settings_build's static buffers (the volumes, menu_opacity, the replay box, the chat's), and
+     * the second build wrote the baseline's into them -- the change then read as none and was
+     * never saved (AUDIO OPTIONS' volumes, Playa 2026-11-26). */
+    static char curVal[SETTINGS_MAX][300];
+    for (int k = 0; k < n; k++) {
+        snprintf(curVal[k], sizeof curVal[k], "%s", items[k].value ? items[k].value : "");
+        items[k].value = curVal[k];
+    }
 
     /* The settings the player has NOT changed since the file was read: the file's value stands
      * (s_baseline). Built from the same table, so entry k is the same key in both. */
@@ -1659,6 +1678,66 @@ int Settings_GameOptionsSelfTest(void)
     return bad ? 1 : 0;
 }
 
+/* SWOS_SETTINGS_CHANGE_TEST=1: what the game does when a setting is changed in its menus -- the
+ * file read, a value changed, saved to the same file -- for the keys whose value settings_build
+ * formats into a buffer of its own (Settings_Save builds a second table, the baseline's, which
+ * once wrote over them: the change read as none, never saved). Twice: the first save and a later
+ * one. PASS / FAIL on stdout. */
+int Settings_ChangeSelfTest(void)
+{
+    char path[512], line[512];
+    const char *tmp = getenv("TMPDIR");
+    int32_t bad = 0, checked = 0;
+    snprintf(path, sizeof path, "%s/swos-change-test.ini", tmp && *tmp ? tmp : "/tmp");
+    FILE *f = fopen(path, "w");
+    if (!f) { printf("[settings-change-test] FAIL: cannot write %s\n", path); return 1; }
+    fputs("[audio]\nmusic_volume=100\nchants_volume=100\ncommentary_volume=100\neffects_volume=100\n"
+          "[video]\nmenu_opacity=100\n[replays]\nbox_x=-1\nbox_y=-1\n[chat]\nscale=2\nauto_close=3\n", f);
+    fclose(f);
+    static PlatformInitOptions opts;
+    memset(&opts, 0, sizeof opts);
+    Settings_Load(&opts, path);
+    for (int32_t round = 0; round < 2; round++) {
+        const int32_t v = round ? 30 : 0;           /* (0 first: 0% must be kept too) */
+        static const struct { const char *section, *key; } k[] = {
+            { "audio", "music_volume" }, { "audio", "chants_volume" }, { "audio", "commentary_volume" },
+            { "audio", "effects_volume" }, { "video", "menu_opacity" }, { "replays", "box_x" },
+            { "replays", "box_y" }, { "chat", "scale" }, { "chat", "auto_close" },
+        };
+        opts.vol_music = v; opts.vol_chants = v + 1; opts.vol_commentary = v + 2; opts.vol_effects = v + 3;
+        opts.menu_opacity = v + 4; opts.replay_box_x = v + 5; opts.replay_box_y = v + 6;
+        opts.chat_scale = round ? 4 : 1; opts.chat_auto_close = round ? 5 : 0;
+        const int32_t want[] = { v, v + 1, v + 2, v + 3, v + 4, v + 5, v + 6, round ? 4 : 1, round ? 5 : 0 };
+        Settings_Save(&opts, path);
+        for (size_t i = 0; i < sizeof k / sizeof k[0]; i++) {
+            char got[64] = "";
+            int32_t inSection = 0;
+            if (!(f = fopen(path, "r"))) { printf("[settings-change-test] FAIL: cannot read %s\n", path); return 1; }
+            while (fgets(line, sizeof line, f)) {
+                const size_t n = strlen(k[i].key);
+                if (line[0] == '[')
+                    inSection = !strncmp(line + 1, k[i].section, strlen(k[i].section)) &&
+                                line[1 + strlen(k[i].section)] == ']';
+                else if (inSection && !strncmp(line, k[i].key, n) && line[n] == '=') {
+                    sscanf(line + n + 1, "%63[^ \t\r\n;]", got);
+                    break;
+                }
+            }
+            fclose(f);
+            checked++;
+            if (atoi(got) != want[i] || !got[0]) {
+                printf("[settings-change-test] save %d: [%s] %s=%d came back as '%s'\n", (int)round + 1,
+                       k[i].section, k[i].key, (int)want[i], got);
+                bad++;
+            }
+        }
+    }
+    remove(path);
+    printf("[settings-change-test] %s (%d of %d values saved)\n", bad ? "FAIL" : "PASS",
+           (int)(checked - bad), (int)checked);
+    return bad ? 1 : 0;
+}
+
 /* ---- launcher options (agent A) ----
  * SWOS_LAUNCHER_SETTINGS_TEST=1: every value of the launcher options' keys read and written back
  * as it was (and stronger_goalkeeper_ai, when the build has it). PASS / FAIL on stdout. */
@@ -1715,6 +1794,22 @@ int Settings_LauncherSelfTest(void)
                 bad++;
             }
         }
+    {   /* (and no line of the whole file longer than the reader takes, INI_MAX_LINE: a comment
+         * that was -- [video] scaling's, 266 -- was a parse error at every start) */
+        FILE *f = fopen(out, "r");
+        int32_t no = 0;
+        while (f && fgets(line, sizeof line, f)) {
+            const size_t len = strlen(line);
+            no++;
+            if (len >= INI_MAX_LINE - 1 || (len == sizeof line - 1 && line[len - 1] != '\n')) {
+                printf("[launcher-settings-test] line %d is longer than %d: %.40s...\n", (int)no,
+                       INI_MAX_LINE - 2, line);
+                bad++;
+            }
+        }
+        if (f)
+            fclose(f);
+    }
     remove(in);
     if (strcmp(getenv("SWOS_LAUNCHER_SETTINGS_TEST") ? getenv("SWOS_LAUNCHER_SETTINGS_TEST") : "", "keep") != 0)
         remove(out);                    /* (=keep: the last file written, to read) */

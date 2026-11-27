@@ -1,0 +1,13 @@
+{
+ "uuid": "6e6e29a1-ffb3-5d3c-a8fe-43b0601fbe56",
+ "id": "pitchdecals",
+ "name": "Pitch decals",
+ "version": "1.0",
+ "author": "SWOS United",
+ "about": "Draws what a data mod adds to the game's own pitches (its \"pitch_decals\" in mod.json): a pitch replaced, things on the grass, the goals' fronts. Nothing without such a mod.",
+ "targets": [
+  "sdl"
+ ],
+ "changes": "cosmetic",
+ "default": true
+}

@@ -10,7 +10,7 @@
   },
   "onInit": "menus2020.mainInit",
   "onReturn": "menus2020.mainDrawn",
-  "onDraw": null,
+  "onDraw": "menus2020.mainDraw",
   "defaultEntry": 0,
   "exports": {},
   "items": [
@@ -479,7 +479,7 @@
         {
           "op": "text",
           "flags": "0x10",
-          "literal": "CLASSIC CAREER"
+          "literal": "     CLASSIC CAREER"
         },
         {
           "op": "colors",
@@ -490,7 +490,10 @@
           "op": "onselect_fire",
           "func": "menus2020.classicCareer"
         }
-      ]
+      ],
+      "image": "grafs_2020/menus2020/classic_career.png",
+      "image_x": 11,
+      "image_y": 4
     },
     {
       "kind": "set_origin",
@@ -546,18 +549,21 @@
         {
           "op": "text",
           "flags": "0x10",
-          "literal": "WORLD 26/27 CAREER"
+          "literal": "WORLD CAREER     "
         },
         {
           "op": "colors",
           "frame_color": 0,
-          "background_color": 15
+          "background_color": 12
         },
         {
           "op": "onselect_fire",
           "func": "menus2020.worldCareer"
         }
-      ]
+      ],
+      "image": "grafs_2020/menus2020/world_career.png",
+      "image_x": 114,
+      "image_y": 4
     }
   ],
   "ticker_entry": 7

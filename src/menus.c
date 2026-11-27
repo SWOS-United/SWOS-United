@@ -2233,8 +2233,6 @@ void OptionsMenuBeforeDraw(void)
     /* (no worlds in this build: no WORLD row; CONTROLS and MODS step to each other) */
     _menuEntries[21].isInvisible = 1;
     _menuEntries[22].isInvisible = 1;
-    _menuEntries[16].downEntry = 24;
-    _menuEntries[24].upEntry = 16;
 #endif
     {   /* MODS (23/24, src/mods_menu.c): how many are on */
         static char modsOn[16];
@@ -2244,15 +2242,48 @@ void OptionsMenuBeforeDraw(void)
             snprintf(modsOn, sizeof modsOn, "NONE");
         _menuEntries[24].fg = (uintptr_t)modsOn;
     }
-    {   /* SETUP (27/28): only when OpenSWOS Setup is beside the game; else MODS and EXIT meet */
+    {   /* SETUP (27/28): only when OpenSWOS Setup is beside the game */
         extern int32_t AssetsCheck_FindSetup(char *out, uint32_t cap);
         char setup[1024];
         if (!AssetsCheck_FindSetup(setup, (uint32_t)sizeof setup)) {
             _menuEntries[27].isInvisible = 1;
             _menuEntries[28].isInvisible = 1;
-            _menuEntries[24].downEntry = 19;
-            _menuEntries[19].upEntry = 24;
         }
+    }
+    {   /* The rows in three blocks, a gap between them (Redhair, 2026-11-27): the original's six
+         * settings as the Amiga has them; SWOS United's own (LANGUAGE, GAMEPLAY, WORLD); and what
+         * opens more -- SETTINGS' pages, MODS' page, the SETUP program --, their buttons green
+         * (colour 14), the settings here blue as ever. Each row's label and value, top down; the
+         * cursor steps through the ones shown, then EXIT. */
+        enum { kTop = 25, kStep = 12, kGap = 4 };   /* (below the title: the blocks between it and EXIT) */
+        static const int8_t k_rows[][2] = {
+            { 1, 2 }, { 3, 4 }, { 5, 6 }, { 7, 8 }, { 9, 10 }, { 11, 12 }, { -1, -1 },
+            { 25, 26 }, { 13, 14 }, { 21, 22 }, { -1, -1 },
+            { 15, 16 }, { 23, 24 }, { 27, 28 },
+        };
+        /* (the entries' y is the screen's once loaded -- the menu's own origin added --: counted
+         *  from the title's, entry 0, as the menu's file counts them) */
+        int32_t y = _menuEntries[0].y + kTop, prev = -1;
+        for (uint32_t i = 0; i < sizeof k_rows / sizeof k_rows[0]; i++) {
+            const int32_t label = k_rows[i][0], value = k_rows[i][1];
+            if (label < 0) {
+                y += kGap;
+                continue;
+            }
+            if (_menuEntries[value].isInvisible)
+                continue;
+            _menuEntries[label].y = _menuEntries[value].y = (uint16_t)y;
+            y += kStep;
+            _menuEntries[value].upEntry = (int8_t)prev;
+            if (prev >= 0)
+                _menuEntries[prev].downEntry = (int8_t)value;
+            prev = value;
+        }
+        _menuEntries[prev].downEntry = 19;              /* EXIT */
+        _menuEntries[19].upEntry = (int8_t)prev;
+        _menuEntries[16].bgColor = (uint16_t)((_menuEntries[16].bgColor & 0xF0) | 14);
+        _menuEntries[24].bgColor = (uint16_t)((_menuEntries[24].bgColor & 0xF0) | 14);
+        _menuEntries[28].bgColor = (uint16_t)((_menuEntries[28].bgColor & 0xF0) | 14);
     }
 #else
     /* WORLD (21/22), MODS (23/24) and LANGUAGE (25/26) are SDL only: the Amiga's world and mods

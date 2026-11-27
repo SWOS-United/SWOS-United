@@ -768,7 +768,13 @@ static void match_start(uint16_t arg)
     /* LoadIntroChant: a chant for the home side's shirt colour, where there is one. */
     s.introChant = k_dosIntroChantByColour[colour] >= 0
                  ? k_dosIntroChants[k_dosIntroChantByColour[colour]] : -1;
-    s_training = (arg & 0x100) != 0;
+    /* (and on the training ground, whatever the game: no crowd there -- Practice's team training
+     *  and a match on pitch 6 are matches to the game, which plays its crowd in them; Redhair,
+     *  2026-11-26. The sounds only: their dice are this file's own, never the match's.) */
+    {
+        extern uint16_t _pitchNumberAndType;
+        s_training = (arg & 0x100) != 0 || (_pitchNumberAndType >> 8) == 5;
+    }
     s_muteCommentary = 0;
     s_live = 1;
     s_full = s_style;

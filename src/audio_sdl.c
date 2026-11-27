@@ -63,7 +63,7 @@ static void stop_song_locked(void);
  * unbalanced — set this to 1 (the default) to average L+R back into
  * each lane after the mix. --audio=stereo restores the original Amiga
  * panning. */
-static int               s_audio_mono = 1;
+static int               s_audio_mono = 1;      /* the Amiga mix: 0 stereo, 1 mono, 2 mixed */
 
 /* Song looping. Most SWOS songs (the menus) loop internally, but some — notably
  * the HERO title song used in arcade attract — have no loop-back and just end.
@@ -91,7 +91,7 @@ static int               s_ovl_pos = -1;
 #define PC_MUSIC_GAIN (24 * 256)
 typedef struct {
     const uint8_t *data;        /* NULL: idle. Signed 16-bit samples when is16 */
-    int            is16;
+    int            is16;        /* 0 unsigned 8-bit, 1 signed 16-bit, 2 signed 16-bit stereo (L R pairs) */
     uint32_t       len;         /* samples */
     uint64_t       pos;         /* 48.16, in source samples */
     uint32_t       step;        /* 16.16 source samples per device frame */
@@ -152,12 +152,12 @@ static int audio_pump_thread(void *unused);
 /* AUDIO OPTIONS' OUTPUT at once: the mixer reads it at every tick. */
 void AudioSDL_SetMono(int mono)
 {
-    s_audio_mono = mono ? 1 : 0;
+    s_audio_mono = mono == 1 || mono == 2 ? mono : 0;
 }
 
 int AudioSDL_Init(int mono)
 {
-    s_audio_mono = mono ? 1 : 0;
+    s_audio_mono = mono == 1 || mono == 2 ? mono : 0;
 #if SWOS_AUDIO_DISABLED
     /* Audio disabled at compile time — return success so platform init
      * continues; s_audio_dev stays 0 and AudioSDL_Tick early-returns. */
@@ -332,18 +332,25 @@ void AudioSDL_Tick(void)
         }
         RJP1_MixSamples(&s_player, freq, s_mix_buf, samples_per_tick);
 
-        /* Down-mix to mono (default). Amiga channels 1,2 are hard-left
+        /* Down-mix to mono (default), or MIXED: each side a quarter of the other, as an Amiga
+         * emulator's "mixed" stereo -- still wide, not hard left and right. Amiga channels 1,2 are hard-left
          * and 0,3 are hard-right in the cyxx mapping inside rjp1.c —
          * pleasant on stereo headphones, lopsided on a single speaker.
          * Energy-preserving fold-down: (L+R)/sqrt(2) (≈ *181/256) keeps the
          * overall loudness equal to the stereo mix; the old plain (L+R)/2 lost
          * ~3 dB and halved hard-panned content like the HERO vocal. */
-        if (s_audio_mono) {
+        if (s_audio_mono == 1) {
             for (int i = 0; i + 1 < samples_per_tick; i += 2) {
                 int m = ((int)s_mix_buf[i] + (int)s_mix_buf[i + 1]) * 181 / 256;
                 if (m < -128) m = -128; else if (m > 127) m = 127;
                 s_mix_buf[i]     = (int8_t)m;
                 s_mix_buf[i + 1] = (int8_t)m;
+            }
+        } else if (s_audio_mono == 2) {     /* mixed: a quarter of each side on the other */
+            for (int i = 0; i + 1 < samples_per_tick; i += 2) {
+                const int l = s_mix_buf[i], r = s_mix_buf[i + 1];
+                s_mix_buf[i]     = (int8_t)((l * 3 + r) / 4);
+                s_mix_buf[i + 1] = (int8_t)((r * 3 + l) / 4);
             }
         }
     } else {
@@ -357,12 +364,18 @@ void AudioSDL_Tick(void)
         SDL_memset(s_sfx_mix_buf, 0, (size_t)samples_per_tick);
         RJP1_HandleTick(&s_sfx_player);
         RJP1_MixSamples(&s_sfx_player, freq, s_sfx_mix_buf, samples_per_tick);
-        if (s_audio_mono) {
+        if (s_audio_mono == 1) {
             for (int i = 0; i + 1 < samples_per_tick; i += 2) {
                 int m = ((int)s_sfx_mix_buf[i] + (int)s_sfx_mix_buf[i + 1]) * 181 / 256;
                 if (m < -128) m = -128; else if (m > 127) m = 127;
                 s_sfx_mix_buf[i]     = (int8_t)m;
                 s_sfx_mix_buf[i + 1] = (int8_t)m;
+            }
+        } else if (s_audio_mono == 2) {     /* mixed: a quarter of each side on the other */
+            for (int i = 0; i + 1 < samples_per_tick; i += 2) {
+                const int l = s_sfx_mix_buf[i], r = s_sfx_mix_buf[i + 1];
+                s_sfx_mix_buf[i]     = (int8_t)((l * 3 + r) / 4);
+                s_sfx_mix_buf[i + 1] = (int8_t)((r * 3 + l) / 4);
             }
         }
     } else {
@@ -408,6 +421,19 @@ void AudioSDL_Tick(void)
                     const uint32_t at1 = at + 1 < pv->len ? at + 1 : at;
                     const int frac = (int)(pv->pos & 0xFFFF);
                     int smp;                                                /* 16-bit */
+                    if (pv->is16 == 2) {        /* (stereo: each side its own) */
+                        const int16_t *d16 = (const int16_t *)(const void *)pv->data;
+                        const int sl = d16[at * 2] + (int)(((int64_t)(d16[at1 * 2] - d16[at * 2]) * frac) >> 16);
+                        const int sr = d16[at * 2 + 1] + (int)(((int64_t)(d16[at1 * 2 + 1] - d16[at * 2 + 1]) * frac) >> 16);
+                        int l = (int)s_out_buf[i * 2] + (int)((int64_t)sl * gain / (127 * 64 * 64));
+                        int r = (int)s_out_buf[i * 2 + 1] + (int)((int64_t)sr * gain / (127 * 64 * 64));
+                        if (l < -32768) l = -32768; else if (l > 32767) l = 32767;
+                        if (r < -32768) r = -32768; else if (r > 32767) r = 32767;
+                        s_out_buf[i * 2] = (int16_t)l;
+                        s_out_buf[i * 2 + 1] = (int16_t)r;
+                        pv->pos += pv->step;
+                        continue;
+                    }
                     if (pv->is16) {
                         const int16_t *d16 = (const int16_t *)(const void *)pv->data;
                         smp = d16[at] + (int)(((int64_t)(d16[at1] - d16[at]) * frac) >> 16);
@@ -494,6 +520,7 @@ static void apply_player_gains_locked(void)
         s_player.channel_gain[c] = s_player_song ? s_vol_music : c == 2 ? s_vol_chants : s_vol_fx;
         s_sfx_player.channel_gain[c] = c == 2 ? s_vol_chants : s_vol_fx;
     }
+    s_player.channel_gain_set = s_sfx_player.channel_gain_set = 1;     /* (0 now silence) */
 }
 
 /* The player's volumes, each 0..100 (SWOS.ini [audio] *_volume). */
@@ -781,6 +808,13 @@ void AudioSDL_PcmPlay(int voice, const uint8_t *data, uint32_t len, int rate, in
 void AudioSDL_PcmPlay16(int voice, const int16_t *data, uint32_t len, int rate, int volume, int loops)
 {
     pcm_play(voice, (const uint8_t *)(const void *)data, 1, len, rate, volume, loops);
+}
+
+/* And `frames` signed 16-bit stereo frames, left and right by turns (a mod's ambience on the
+ * training ground: src/mod_pitchdecals.c). */
+void AudioSDL_PcmPlay16Stereo(int voice, const int16_t *data, uint32_t frames, int rate, int volume, int loops)
+{
+    pcm_play(voice, (const uint8_t *)(const void *)data, 2, frames, rate, volume, loops);
 }
 
 static void pcm_play(int voice, const uint8_t *data, int is16, uint32_t len, int rate, int volume, int loops)

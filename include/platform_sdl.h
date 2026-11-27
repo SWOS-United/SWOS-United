@@ -122,7 +122,7 @@ typedef struct {
     int                    kit_art;          /* the UNIFORM screen's kit drawings: 0 = the Amiga's, 1 = the Jaguar's (kit_art.h) */
     int                    sound_style;      /* a match's sounds: 0 = the Amiga's, 1 = the PC game's samples (dos_sound.h) */
     char                   commentary_dir[260]; /* the folder of commentary categories; "" = sound_dos/commentary */
-    int                    title_midi;       /* with music_style 1: 1 = the intro plays sound_dos/title.xmi on the emulated chip, 0 = title.mp3 */
+    int                    title_music;      /* the intro's music (dos_music.h DOSMUSIC_TITLE_*): SWOS United's, the Amiga's, title.xmi, title.mp3, none */
     int                    menu_recording;   /* with music_style 1: 1 = play sound_dos/menu.mp3, 0 = menu.xmi on the emulated chip */
     int                    music_style;      /* the menus' music: 0 = the Amiga's, 1 = the PC game's menu.xmi (dos_music.h) */
     int                    commentary;       /* the PC game's commentary: 0 off, 1 on (over the Amiga's sounds too), 2 auto = with sound_style 1 */
@@ -278,6 +278,7 @@ void Platform_VolumeKey(int key);        /* Shift+1..6 in a match: a volume down
 /* Set the windowed-mode integer scale factor (1..4) at runtime. Called
  * from the +/- key handlers. No-op while fullscreen. */
 void Platform_SetWindowScale(int scale);    /* 0: AUTO; a number: that, or the most that fits */
+void Platform_SetStretchShape(int w, int h);  /* PICTURE SHAPE (0 x 0: AUTO): STRETCH's window shape */
 /* WINDOW SCALE is AUTO: the most whole times the picture fits the monitor's usable area,
  * framed, again whenever the monitor or the picture's size changes. */
 int  Platform_WindowScaleAuto(void);
@@ -348,6 +349,9 @@ const uint8_t *Platform_FrameShown(void);
  * within 100 ms. */
 void           Platform_TrueColourBegin(void);
 void           Platform_TrueColourPixel(int x, int y, uint8_t index, uint32_t rgb);
+/* What MENU OPACITY shows through the menu frame's pixel at x, y (dosmenus' PC look mixes its
+ * shading so): 1, the colour under it and the opacity 0-255; 0 where the pixel is solid. */
+int            Platform_MenuUnder(int x, int y, uint32_t *rgb, int *alpha);
 /* The menus' fade as their opacity over the backdrop picture, 0..255; 255: none (platform_sdl.c). */
 int            Platform_MenuFadeAlpha(void);
 /* A palette entry in 8 bits a channel where the copper has 4 (a glow that should pulse, not

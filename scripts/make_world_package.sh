@@ -21,6 +21,14 @@
 # it with its .txt (scripts/upload_dlc.sh), whenever world_import.py's output changes (or
 # worldgen's after it: scripts/worldgen/seal.py) (the fingerprint in WORLD.ini says so). The
 # matchmaking server's team list is refreshed here too (assign_team_uuids.py --worlds).
+#
+# WORLD_VERSION=<version> (e.g. 4.1.2-u1: the Mod release it comes from, and the revision of it): the
+# package's version, for people -- a "version" line in the zip's WORLD.ini, mod.json's version (the
+# MODS screen's "WORLD 2026-27 4.1.2-U1"; without it there the fingerprint) and a "Version:" line in
+# its .txt, written together so they always agree. The fingerprint stays what the game checks;
+# setup and game read no other key of WORLD.ini (sd_sources.c world_ini, main.c), so an older one
+# just leaves it. Without it: the Mod release and the day, e.g. 4.1.2-20261126 (Playa, 2026-11-26:
+# never a package without one).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -32,6 +40,14 @@ for f in WORLD.ini competitions/leagues.json; do
     [ -f "$SRC/$f" ] || { echo "make_world_package: no $SRC/$f -- run scripts/world_import.py first" >&2; exit 1; }
 done
 FP=$(sed -n 's/^fingerprint *= *//p' "$SRC/WORLD.ini")
+# The Mod release it was converted from (world_from_mod.py's SOURCE.txt, or MOD_RELEASE=x.y.z): its
+# credits say it, and the version starts with it.
+REL=${MOD_RELEASE:-$(sed -n 's/.*installed SWOS 96\/97 Mod \([0-9.]*\).*/\1/p' "$SRC/mod/SOURCE.txt" 2>/dev/null | head -1 || true)}
+[ -n "$REL" ] || { echo "make_world_package: which Mod release is this? (MOD_RELEASE=x.y.z)" >&2; exit 1; }
+VER="${WORLD_VERSION:-$REL-$(date +%Y%m%d)}"
+[ -n "${WORLD_VERSION:-}" ] || echo "make_world_package: version $VER (the Mod release and today; WORLD_VERSION=... for another)"
+case "$VER" in *[!A-Za-z0-9._+-]*) echo "make_world_package: WORLD_VERSION=$VER -- letters, digits and . _ + - only" >&2; exit 1 ;; esac
+[ "${#VER}" -le 23 ] || { echo "make_world_package: WORLD_VERSION=$VER -- 23 characters at most (src/mods.c)" >&2; exit 1; }
 NAME=$(sed -n 's/^name *= *//p' "$SRC/WORLD.ini")
 # (each world's baked tables: World 2026-27's src/world_data.c, another's src/world_data_<tag>.c)
 DATA_C="$ROOT/src/world_data.c"
@@ -40,10 +56,11 @@ grep -q "\"$FP\"" "$DATA_C" ||
     { echo "make_world_package: WORLD.ini's data ($FP) is not ${DATA_C#$ROOT/}'s -- rerun world_import.py" >&2; exit 1; }
 
 mkdir -p "$ROOT/dist"
-python3 -I - "$SRC" "$OUT.tmp" "OpenSWOS-World-$TAG" "$TAG" "$FP" "$NAME" <<'PY'
+python3 -I - "$SRC" "$OUT.tmp" "OpenSWOS-World-$TAG" "$TAG" "$FP" "$NAME" "$VER" <<'PY'
 import json, os, sys, zipfile
-src, out, top, tag, fp, name = sys.argv[1:]
-# The mod's uuid is the world's for ever (a DLC's own: docs/MODS.md §14); the version, its data.
+src, out, top, tag, fp, name, ver = sys.argv[1:]
+# The mod's uuid is the world's for ever (a DLC's own: docs/MODS.md §14); the version, WORLD_VERSION
+# (else its data's fingerprint).
 UUIDS = {"2627": "15ea9117-6aa0-4968-a293-6cf33092ff33",
          "8485": "48496e1d-27d7-49d8-acff-c428814a1bc6"}
 AUTHORS = {"8485": "DaniSwos (the 1984-85 database) and the SWOS 96/97 Mod (Davide Lorigliola and its contributors)"}
@@ -51,7 +68,7 @@ if tag not in UUIDS:
     sys.exit("make_world_package: world %s has no mod uuid yet -- give it one (uuid4) in UUIDS" % tag)
 name = name or ("World %s-%s" % ("20" + tag[:2], tag[2:]) if len(tag) == 4 else "World " + tag)
 manifest = {
-    "uuid": UUIDS[tag], "id": "world" + tag, "name": name, "version": fp,
+    "uuid": UUIDS[tag], "id": "world" + tag, "name": name, "version": ver or fp,
     "author": AUTHORS.get(tag, "the SWOS 96/97 Mod (Davide Lorigliola and its contributors)"),
     "about": "The football world of %s: its countries, leagues, cups and squads." % name.replace("World ", ""),
     "targets": ["sdl", "amiga"], "changes": "data", "default": False,
@@ -87,7 +104,12 @@ manifest.setdefault("settings", []).extend(
 n = 0
 with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
     z.writestr(top + "/mod.json", json.dumps(manifest, indent=1) + "\n")
-    z.write(os.path.join(src, "WORLD.ini"), top + "/WORLD.ini")
+    # WORLD.ini as the import wrote it, its version line (WORLD_VERSION) put in or replaced
+    with open(os.path.join(src, "WORLD.ini"), encoding="utf-8") as f:
+        ini = [l for l in f.read().splitlines() if not l.replace(" ", "").startswith("version=")]
+    if ver:
+        ini.append("version = " + ver)
+    z.writestr(top + "/WORLD.ini", "\n".join(ini) + "\n")
     for sub in ("teams", "competitions", "data"):
         for f in sorted(os.listdir(os.path.join(src, sub))):
             path = os.path.join(src, sub, f)
@@ -97,13 +119,13 @@ with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
 print("%d files" % n)
 PY
 mv "$OUT.tmp" "$OUT"
-echo "$OUT: $(du -h "$OUT" | cut -f1), data $FP"
+echo "$OUT: $(du -h "$OUT" | cut -f1), data $FP${VER:+, version $VER}"
+VERLINE=""
+[ -z "$VER" ] || VERLINE="Version: $VER ($(LC_ALL=C date '+%-d %B %Y'))."
 
 # Its credits, hosted beside it (OpenSWOS Setup's "credits" link, kWorldCredits): the data's
 # sources, the Mod release it was converted from (world_from_mod.py's SOURCE.txt, or
 # MOD_RELEASE=x.y.z) and the fingerprint -- written with the zip, so the two always agree.
-REL=${MOD_RELEASE:-$(sed -n 's/.*installed SWOS 96\/97 Mod \([0-9.]*\).*/\1/p' "$SRC/mod/SOURCE.txt" 2>/dev/null | head -1)}
-[ -n "$REL" ] || { echo "make_world_package: which Mod release is this? (MOD_RELEASE=x.y.z)" >&2; exit 1; }
 NCOUNTRY=$(ls "$SRC/teams"/*.json | grep -vc NATIONALITIES || true)
 if [ "$TAG" = 8485 ]; then
 cat > "${OUT%.zip}.txt" <<EOF
@@ -116,7 +138,8 @@ release $REL, converted for OpenSWOS (github.com/benbaker76/OpenSWOS) by its scr
 and national cups, the three European cups as they were, the era's national teams. OpenSWOS Setup downloads
 and installs it as a mod; the game checks its fingerprint (WORLD.ini) against the one baked into the build.
 Contents: $NCOUNTRY team files (JSON, and the Amiga's TEAM.nnn), leagues.json, WORLD.ini, mod.json.
-Fingerprint: $FP.
+${VERLINE:+$VERLINE
+}Fingerprint: $FP.
 
 Data sources and credits
 - DaniSwos (CM01/02 Retro Update Team): the 1984-85 database -- the squads, players and national teams.
@@ -140,7 +163,8 @@ scripts/worldgen/nations.py, rebalance.py, seal.py). OpenSWOS Setup downloads an
 the game checks its fingerprint (WORLD.ini) against the one baked into the build.
 Contents: $NCOUNTRY team files (JSON, and the Amiga's TEAM.nnn), leagues.json, national_teams.json,
 WORLD.ini, mod.json.
-Fingerprint: $FP.
+${VERLINE:+$VERLINE
+}Fingerprint: $FP.
 
 Data sources and credits
 - Transfermarkt (transfermarkt.com): squads, market values (turned into SWOS prices), coaches, league
@@ -155,7 +179,7 @@ World 2026-27 by Davide Lorigliola and the SWOS 96/97 Mod's contributors; nation
 Playaveli (SWOS United); conversion by Ben Baker (OpenSWOS).
 EOF
 fi
-echo "${OUT%.zip}.txt: its credits (Mod $REL)"
+echo "${OUT%.zip}.txt: its credits (Mod $REL${VER:+, version $VER})"
 
 # The matchmaking server's team list carries the world's teams (their ids and checksums: an
 # online match's teams are checked against it): it goes with the same data.

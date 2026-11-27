@@ -320,6 +320,46 @@ SWOS 2020's dead Taiwan / San Marino / Spain cases, and its five substitutes for
 
 ---
 
+### 10.5 Pitch decals: a data mod's pictures on the game's own pitches (SWOS United, 2026-11-26)
+
+A DLC can carry no code, so what it adds to a pitch it says in its mod.json, and the static mod
+**pitchdecals** (`src/mod_pitchdecals.c`; SWOS United's, written so OpenSWOS can take it) draws it:
+
+```json
+"pitch_decals": [
+  { "setting": "training_pitch", "pitches": [6],           "image": "training_pitch.png", "replace": true },
+  { "setting": "orange_nets",    "pitches": [1,2,3,4,5,6], "image": "goal_nets.png" },
+  { "setting": "orange_nets",    "sprite": "goal_top",     "image": "net_top.png" },
+  { "setting": "coaching_zones", "pitches": [1,2,3,4,5],   "image": "coaching_zones.png" } ]
+```
+
+- `setting`: one of the mod's own `settings` (on / off; its `default` when SWOS.ini has none);
+  `pitches`: 1-6 (6 the training ground), none all; `modes`: `match` (each team its own bench) and / or
+  `training` (the career's training game, both halves at one bench), none both; `at`: `[[x, y], ...]`, a
+  picture smaller than the pitch put with its top-left at each place (a bench, once or twice); `image`: a PNG in the mod's folder -- a pitch
+  image is the whole pitch, 672 x 880, alpha 0 left as it was; `replace`: every cell from the image;
+  `sprite`: `goal_top` / `goal_bottom`, the goals' fronts (images 1091 / 1092) in the match and its
+  replays, drawn at the engine's sprite's top-left.
+- Colours: each the nearest of the PC game's palette at the condition "normal" -- the grass onto the
+  condition's own entries, so a frozen or wet pitch turns it as it turns the game's; never the fans'
+  kit entries (10, 11) or maroon's (12).
+- Through the engine's `pitchTiles` (a cell a decal touches is built once over the engine's tile),
+  `spriteDraw` and `replaySpriteDraw`: drawing only, never the match.
+- Only on the game's own pitches: the PC graphics (`grafs_dos`) or the Amiga's made from them
+  (`grafs_aga/SWCPICHn.MAP`); not SWOS 2020's graphics, not PC data made from SWOS 2020, not a pitch
+  file from a mod, not while the pitchmaps mod shows a map.
+- `"pitch_sounds": [{ "setting", "sound", "volume" }]`: a WAV or an MP3, mono or stereo, sample for sample
+  (dr_mp3 takes an MP3's encoder silence off itself) looped through a match on the **training ground only**, on
+  the crowd's voice: the one pitch where the game's crowd is not heard (on the training ground the
+  crowd is left out whatever the game: `src/dos_sound.c` match_start, `src/audio.c`
+  training_ground_crowd -- hearing only, the match unchanged). Whatever the pitch's graphics. With
+  `"event": "goal"` it is played once at each goal there instead (the game's sound event, so in its
+  replays too), on the crowd's cheering voice.
+- `SWOS_PITCHDECALS_TEST=1` says in the log what was read and why a pitch gets nothing;
+  `SWOS_PITCHDECALS_DUMP=<file.png>` writes the whole pitch as drawn.
+- The first user: Redhair's DLC **Component System** 2.0 (his training ground, orange goal nets and
+  coaching zones, each a setting).
+
 ## 11. Order of work
 
 1. This document; reply to petarku (PR #11's split); take his speedup PR.

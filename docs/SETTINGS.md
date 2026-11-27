@@ -195,7 +195,7 @@ keeps MULTIPLAYER off. Every tweak is off online and in the test rigs.
                           --renderer=accel. Turn on if you see screen
                           tearing; the manual 50 Hz game-tick pace
                           runs as a backstop regardless.
---audio=<mono|stereo>     Audio output mode. Default: mono.
+--audio=<mono|mixed|stereo> The Amiga sound: one, half wide, hard left/right. Default: mono.
                           The Amiga's 4 audio channels are hard-panned
                           (1,2 → left, 0,3 → right) by Paula, which
                           sounds lopsided on most modern speakers /
@@ -320,7 +320,7 @@ nothing is asked.
 
 | launcher option | `SWOS.ini` | in the game | |
 |---|---|---|---|
-| Resolution | `[video] resolution = auto \| WxH` | VIDEO: ASPECT RATIO (AUTO, 4:3, 16:10, 16:9, 21:9, 32:9) | the render's SHAPE, not its size; with widescreen on it is taken at once |
+| Resolution | `[video] resolution = auto \| WxH` | VIDEO: PICTURE SHAPE (ORIGINAL = widescreen false; AUTO, 4:3, 16:10, 16:9, 21:9, 32:9) | the render's SHAPE, not its size; from one shape to another taken at once (FILL STRETCH: the window's shape) |
 | Auto centering | `[video] auto_centering` | VIDEO: AUTO CENTERING | a window resized, maximized or moved goes back to the middle of the display it is on (SWOS 2020's controls.cpp); windowed only |
 | Show FPS | `[video] show_fps` | VIDEO: SHOW FPS | the frames presented a second, top right, drawn over the picture (`src/fps_overlay.c`), never into the game's frame |
 | Mouse cursor | `[input] mouse_cursor = system \| workbench2 \| workbench1` | GENERAL: MOUSE POINTER | SWOS 2020's `cursor1.bmp` / `cursor2.bmp` as the launcher numbered them, as pixel maps in `src/mouse_cursors.c` |

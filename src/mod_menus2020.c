@@ -46,7 +46,6 @@
 #include "swos_io.h"            /* swos_data_path: is the run-in's file there */
 #include "math68k.h"            /* CalculateDeltaXAndY */
 #include "gfx.h"
-#include "display.h"            /* _screen_width, _menu_draw_x_offset: the dark-yellow box */
 #include "easing.h"            /* the run-in's ease */
 #include "menu_load_json.h"     /* MenuJson_VerifyDynamic (SWOS_MENUS2020_TEST) */
 #include "menu_system.h"
@@ -107,6 +106,72 @@ static int32_t  s_tickerKnown;
 
 static int32_t s_runState;              /* the run-in (below): 0 off, 1 waiting, 2 running, 3 settling, 4 done */
 
+/* WORLD CAREER's text (Playa, 2026-11-26): the season of the World 2026-27 package installed -- its
+ * WORLD.ini's name ("World 2026-27": WORLD 26/27) -- or WORLD CAREER when there is none, or no
+ * season in its name. Read once: OpenSWOS Setup installs it with the game shut. */
+static char s_worldName[16];
+
+/* "2026-27", "2026/27", "26/27", "2026-2027" in `s`: 1 and the two years' last two digits. */
+static int32_t season_in(const char *s, int32_t *y1, int32_t *y2)
+{
+    for (const char *p = s; *p; p++) {
+        int32_t n1 = 0, n2 = 0, l1 = 0, l2 = 0;
+        const char *q = p;
+        if (p > s && p[-1] >= '0' && p[-1] <= '9')
+            continue;
+        while (*q >= '0' && *q <= '9' && l1 < 5) { n1 = n1 * 10 + (*q++ - '0'); l1++; }
+        if ((l1 != 2 && l1 != 4) || (*q != '-' && *q != '/'))
+            continue;
+        q++;
+        while (*q >= '0' && *q <= '9' && l2 < 5) { n2 = n2 * 10 + (*q++ - '0'); l2++; }
+        if ((l2 != 2 && l2 != 4) || n2 % 100 != (n1 + 1) % 100)
+            continue;
+        *y1 = n1 % 100;
+        *y2 = n2 % 100;
+        return 1;
+    }
+    return 0;
+}
+
+static void world_name(void)
+{
+    char path[1024], line[256];
+    int32_t y1 = 0, y2 = 0, found = 0;
+    FILE *f = fopen(swos_data_path("data_json/worlds/2627/WORLD.ini", path, (uint32_t)sizeof path), "rb");
+    while (f && !found && fgets(line, (int)sizeof line, f)) {
+        const char *p = line + strspn(line, " \t");
+        if (strncasecmp(p, "name", 4) == 0 && strchr(p, '='))
+            found = season_in(strchr(p, '=') + 1, &y1, &y2);
+    }
+    if (f)
+        fclose(f);
+    if (found)
+        snprintf(s_worldName, sizeof s_worldName, "WORLD %02d/%02d", (int)y1, (int)y2);
+    else
+        snprintf(s_worldName, sizeof s_worldName, "WORLD CAREER");
+}
+
+/* ... the globe right of it, as the right column's icons, the two centred together in the box:
+ * spaces after the text as wide as the gap and the icon (the game centres the text with them), the
+ * icon at their end. */
+enum { kCareerIconW = 16, kCareerIconGap = 4, kCareerIconY = 4 };
+static void world_button(void)
+{
+    static char text[40];       /* (the menu keeps the pointer) */
+    if (!s_worldName[0])
+        world_name();
+    const int32_t w = ModApi_TextWidth(s_worldName, 0), sp = ModApi_TextWidth(" ", 0);
+    const int32_t n = sp > 0 ? (kCareerIconGap + kCareerIconW + sp / 2) / sp : 5;
+    const int32_t box = entry(Main_worldCareer)->dwWidth;
+    const int32_t start = (box - w - n * sp) / 2;
+    snprintf(text, sizeof text, "%s%*s", s_worldName, (int)n, "");
+    ModApi_MenuText(Main_worldCareer, text);
+    ModApi_SetMenuImageAt(Main_worldCareer, start + w + n * sp - kCareerIconW, kCareerIconY);
+    if (getenv("SWOS_WORLD_BUTTON_DEBUG"))
+        fprintf(stderr, "[menus2020] world button \"%s\": text %d + %d spaces of %d, icon at %d\n",
+                s_worldName, (int)w, (int)n, (int)sp, (int)(start + w + n * sp - kCareerIconW));
+}
+
 static void main_refresh(void)
 {
     MenuEntry *cont = entry(Main_continue), *load = entry(Main_load);
@@ -114,6 +179,7 @@ static void main_refresh(void)
 
     show(Main_classicCareer, 1);       /* (CommonMenuExit hides 14 and shows 16 for MODES) */
     show(Main_worldCareer, 1);
+    world_button();
     nav(Main_classicCareer, -1, Main_worldCareer, Main_practice, contest ? Main_continue : Main_load);
     nav(Main_worldCareer, Main_classicCareer, -1, Main_replays, contest ? Main_continue : Main_load);
     if (s_runState >= 1 && s_runState <= 3)     /* (unpacked again mid-run: no picture until they settle) */
@@ -695,7 +761,21 @@ static void mainInit(void)
     run_begin();
 }
 
-/* Each frame of the main menu: the TV shows a match when one is live (SWOS 2020's drawTvIcon). */
+/* Each frame of the main menu (onDraw): the TV shows a match when one is live (SWOS 2020's
+ * drawTvIcon) -- ModApi_LiveAny asks in the background at most every 20 s. */
+static void mainDraw(void)
+{
+#ifdef SWOS_NETPLAY
+    const int32_t live = ModApi_LiveAny() == 1;
+    if (live != s_liveShown) {
+        s_liveShown = live;
+        ModApi_SetMenuImage(Main_liveCast, live ? "grafs_2020/menus2020/tv_live.bmp"
+                                                : "grafs_2020/menus2020/tv_idle.bmp");
+    }
+#endif
+}
+
+/* Back on the main menu (onReturn): the logo as chosen, the layout, the TV. */
 static void mainDrawn(void)
 {
     logo_as_chosen();
@@ -706,14 +786,7 @@ static void mainDrawn(void)
         if (cont->isInvisible && load->x != (uint16_t)(cont->x + (cont->dwWidth - load->dwWidth) / 2))
             main_refresh();
     }
-#ifdef SWOS_NETPLAY
-    const int32_t live = ModApi_LiveAny() == 1;
-    if (live != s_liveShown) {
-        s_liveShown = live;
-        ModApi_SetMenuImage(Main_liveCast, live ? "grafs_2020/menus2020/tv_live.bmp"
-                                                : "grafs_2020/menus2020/tv_idle.bmp");
-    }
-#endif
+    mainDraw();
 }
 
 /* What a sub-screen chose, run by the main-menu button that opened it. */
@@ -1275,15 +1348,20 @@ static ModLiveMatch s_live[kLiveRows];
 static int32_t      s_liveCount;
 static int32_t      s_liveAction;       /* what the list chose: 0 leave, 1 watch, 2 refresh */
 static uint64_t     s_watchId;
-static char         s_liveRow[kLiveRows][52];
+static char         s_liveRow[kLiveRows][80];
 
 static void liveInit(void)
 {
     for (int32_t i = 0; i < kLiveRows; i++) {
         if (i < s_liveCount) {
             const ModLiveMatch *m = &s_live[i];
-            snprintf(s_liveRow[i], sizeof s_liveRow[i], "%s V %s (%s V %s)",
-                     m->players[0], m->players[1], m->teams[0], m->teams[1]);
+            if (m->minute >= 0)         /* (the score and the minute, when the server says them) */
+                snprintf(s_liveRow[i], sizeof s_liveRow[i], "%s V %s (%s %d-%d %s) %d'",
+                         m->players[0], m->players[1], m->teams[0], (int)m->goals[0], (int)m->goals[1],
+                         m->teams[1], (int)m->minute);
+            else
+                snprintf(s_liveRow[i], sizeof s_liveRow[i], "%s V %s (%s V %s)",
+                         m->players[0], m->players[1], m->teams[0], m->teams[1]);
             ModApi_MenuText(Live_first + i, s_liveRow[i]);
         }
         ModApi_MenuVisible(Live_first + i, i < s_liveCount);
@@ -1338,7 +1416,7 @@ static void liveCast(void) {}
 static void init(void)
 {
     static const ModHandler handlers[] = {
-        { "mainInit", mainInit }, { "mainDrawn", mainDrawn },
+        { "mainInit", mainInit }, { "mainDrawn", mainDrawn }, { "mainDraw", mainDraw },
         { "liveCast", liveCast }, { "liveInit", liveInit }, { "liveWatch", liveWatch },
         { "liveRefresh", liveRefresh },
         { "compete", compete }, { "practice", practice }, { "replays", replays },
@@ -1371,66 +1449,10 @@ static void init(void)
  * down with any change to their side, so a match starts only on a side both games have. */
 static int32_t keeps_ready(void) { return 1; }
 
-/* WORLD 26/27 CAREER in dark yellow (Playa, 2026-11-19): the menus' 16 colours have none (15 is
- * bright yellow, 5 burnt orange), so its box is drawn in 15 and, each frame shown, every pixel of
- * the box that still has 15 (not the text) is painted over in dark yellow -- as the dosmenus mod
- * paints its shading, and after it (the fork's mods come later in the built-in list). Drawing only. */
-enum { kWorldCareerR = 0xB0, kWorldCareerG = 0x90, kWorldCareerB = 0x00 };
-static GfxTexture *s_wcTex;
-static uint8_t    *s_wcRgba;
-static int32_t     s_wcW, s_wcH;
-
-static void world_career_paint(void)
-{
-    extern const uint8_t *Platform_FrameShown(void);
-    int32_t x, y, w, h;
-    const uint8_t *fb;
-    if (!ModApi_IsMainMenu() || ModApi_InMatch() || ModApi_InReplay() ||
-        entry(Main_worldCareer)->isInvisible || !(fb = Platform_FrameShown()))
-        return;
-    ModApi_MenuEntryRect(Main_worldCareer, &x, &y, &w, &h);
-    x += _menu_draw_x_offset;
-    if (w <= 0 || h <= 0 || x < 0 || y < 0 || x + w > _screen_width || y + h > _screen_height)
-        return;
-    if (!s_wcTex || s_wcW != w || s_wcH != h) {
-        if (s_wcTex)
-            Gfx_DestroyTexture(s_wcTex);
-        free(s_wcRgba);
-        s_wcRgba = (uint8_t *)malloc((size_t)w * h * 4);
-        s_wcTex = s_wcRgba ? Gfx_CreateTexture(w, h, 0) : NULL;
-        s_wcW = w;
-        s_wcH = h;
-        if (!s_wcTex)
-            return;
-    }
-    int32_t any = 0;
-    for (int32_t j = 0; j < h; j++)
-        for (int32_t i = 0; i < w; i++) {
-            uint8_t *o = s_wcRgba + ((size_t)j * w + i) * 4;
-            const int32_t box = fb[(size_t)(y + j) * FRONTBUFFER_ROW_STRIDE_BYTES + x + i] == 15;
-            o[0] = kWorldCareerR;
-            o[1] = kWorldCareerG;
-            o[2] = kWorldCareerB;
-            o[3] = box ? 255 : 0;
-            any |= box;
-        }
-    if (!any)
-        return;
-    const SDL_FRect dst = { (float)x, (float)y, (float)w, (float)h };
-    Gfx_UpdateTexture(s_wcTex, s_wcRgba, w * 4);
-    Gfx_SetSpace(GFX_SPACE_PICTURE);
-    Gfx_SetBlend(GFX_BLEND_ALPHA);
-    {   /* (with the menus' fade, as the button under it) */
-        extern SDL_Color Platform_MenuFadeTint(void);
-        Gfx_DrawTextureTint(s_wcTex, NULL, &dst, Platform_MenuFadeTint());
-    }
-}
-
 const ModDef ModDef_menus2020 = {
     .slug            = SLUG,
     .init            = init,
     .menuDrawn       = run_menu_frame,
-    .frameDrawn      = world_career_paint,
     .lobbyKeepsReady = keeps_ready,
 };
 
