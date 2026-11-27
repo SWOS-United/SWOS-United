@@ -492,7 +492,7 @@ char _aModsNone[] = "NONE";
  * the game's Latin-1 charset (the font extension's glyphs, docs/FONTS.md). */
 char _aLanguageOption[] = "LANGUAGE";
 /* OPTIONS -> SETUP (menus.c LaunchSetupSelected): its label and its button. */
-char _aSetupOption[] = "SETUP";
+char _aSetupOption[] = "SETUP PROGRAM";   /* (a program of its own, the game closes for it: Redhair) */
 char _aLaunchSetup[] = "LAUNCH";
 /* OPTIONS -> CALL BENCH, player 1's and 2's (the Amiga's rows; SDL has them on CONTROLS): how each
  * calls his bench -- menus.c ChangeCallBench1/2, the values _callBench1StrTable/_callBench2StrTable. */
