@@ -367,10 +367,10 @@
       "kind": "entry",
       "name": "continueContest",
       "coords": {
-        "x": 27,
+        "x": 46,
         "y": 140,
-        "w": 250,
-        "h": 20
+        "w": 212,
+        "h": 14
       },
       "commands": [
         {
@@ -380,7 +380,7 @@
         {
           "op": "colors",
           "frame_color": 0,
-          "background_color": 4
+          "background_color": 14
         },
         {
           "op": "nav",
@@ -400,7 +400,7 @@
       "name": "saveContest",
       "coords": {
         "x": 77,
-        "y": 162,
+        "y": 156,
         "w": 72,
         "h": 20
       },
@@ -437,7 +437,7 @@
       "name": "loadOldCompetition",
       "coords": {
         "x": 155,
-        "y": 162,
+        "y": 156,
         "w": 72,
         "h": 20
       },
