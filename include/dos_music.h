@@ -5,6 +5,12 @@
 #ifndef DOS_MUSIC_H
 #define DOS_MUSIC_H
 
+/* The intro's music, AUDIO OPTIONS' TITLE MUSIC ([audio] title_music): */
+enum { DOSMUSIC_TITLE_UNITED /* sound_dos/united_title.mp3 */, DOSMUSIC_TITLE_AMIGA /* the Amiga's tune */,
+       DOSMUSIC_TITLE_MIDI /* sound_dos/title.xmi on the emulated card */,
+       DOSMUSIC_TITLE_CD /* sound_dos/title.mp3: the PC CD's title song, or a mod's */, DOSMUSIC_TITLE_OFF,
+       DOSMUSIC_TITLE_COUNT };
+
 #ifdef SWOS_SDL_BUILD
 
 #include <stdint.h>
@@ -20,8 +26,8 @@ int32_t DosMusic_MenuRecording(void);
 /* [audio] title_music / --title-music, with the PC's music: 0 the CD's title song,
  * sound_dos/title.mp3; 1 sound_dos/title.xmi on the emulated chip (SWOS 2020's floppy title
  * song, which a mod brings). Either falls back to the Amiga's HERO without its file. */
-void    DosMusic_SetTitleMidi(int32_t on);
-int32_t DosMusic_TitleMidi(void);
+void    DosMusic_SetTitleMusic(int32_t which);
+int32_t DosMusic_TitleMusic(void);
 
 /* Read sound_dos/menu.xmi and sound_dos/sample.ad (once). Nonzero when the song can be played. */
 int32_t DosMusic_Load(void);

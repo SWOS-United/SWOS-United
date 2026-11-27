@@ -51,6 +51,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include "dos_music.h"     /* DOSMUSIC_TITLE_* ([audio] title_music) */
 
 static int eqi(const char *a, const char *b)
 {
@@ -303,8 +304,12 @@ static int handler(void *user, const char *section,
             else if (eqi(value, "mp3"))  opts->menu_recording = 1;
         }
         else if (eqi(name, "title_music")) {
-            if      (eqi(value, "midi")) opts->title_midi = 1;
-            else if (eqi(value, "mp3"))  opts->title_midi = 0;
+            /* (the old "mp3" played united_title.mp3 whenever it was there: united) */
+            if      (eqi(value, "united") || eqi(value, "mp3")) opts->title_music = DOSMUSIC_TITLE_UNITED;
+            else if (eqi(value, "amiga"))                       opts->title_music = DOSMUSIC_TITLE_AMIGA;
+            else if (eqi(value, "midi"))                        opts->title_music = DOSMUSIC_TITLE_MIDI;
+            else if (eqi(value, "cd"))                          opts->title_music = DOSMUSIC_TITLE_CD;
+            else if (eqi(value, "off"))                         opts->title_music = DOSMUSIC_TITLE_OFF;
         }
         else if (eqi(name, "music")) {
             if      (eqi(value, "amiga")) opts->music_style = 0;
@@ -735,11 +740,12 @@ static int settings_build(const PlatformInitOptions *opts, IniEntry *items, char
         "; sound_dos/menu.mp3 (mp3).\n",
         opts->menu_recording ? "mp3" : "midi" };
     SETTING(n) = (IniEntry){ "audio",  "title_music",
-        "; title_music: mp3 | midi. With music = pc, the intro plays the CD's title song,\n"
-        "; sound_dos/title.mp3 (mp3), or sound_dos/title.xmi live on the emulated card\n"
-        "; (midi: SWOS 2020's floppy title song, which a mod brings). Without its file, the\n"
-        "; Amiga's.\n",
-        opts->title_midi ? "midi" : "mp3" };
+        "; title_music: united | amiga | midi | cd | off. The intro's music: SWOS United's\n"
+        "; (sound_dos/united_title.mp3), the Amiga's tune, sound_dos/title.xmi live on the\n"
+        "; emulated card (midi: the PC floppy's title song), sound_dos/title.mp3 (cd: the PC\n"
+        "; CD's, or a mod's), or none. Without its file, SWOS United's, else the Amiga's.\n",
+        opts->title_music == DOSMUSIC_TITLE_AMIGA ? "amiga" : opts->title_music == DOSMUSIC_TITLE_MIDI ? "midi" :
+        opts->title_music == DOSMUSIC_TITLE_CD ? "cd" : opts->title_music == DOSMUSIC_TITLE_OFF ? "off" : "united" };
     SETTING(n) = (IniEntry){ "audio",  "commentary",
         "; commentary: auto | true | false. The PC game's commentary. auto (the\n"
         "; default): with style = pc only. true: always, over the Amiga's sounds too.\n",

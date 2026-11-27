@@ -517,16 +517,16 @@ int32_t DosMusic_MenuRecording(void)
     return s_menuRecording;
 }
 
-static int32_t s_titleMidi;
+static int32_t s_titleMusic;      /* DOSMUSIC_TITLE_* */
 
-void DosMusic_SetTitleMidi(int32_t on)
+void DosMusic_SetTitleMusic(int32_t which)
 {
-    s_titleMidi = on != 0;
+    s_titleMusic = which >= 0 && which < DOSMUSIC_TITLE_COUNT ? which : DOSMUSIC_TITLE_UNITED;
 }
 
-int32_t DosMusic_TitleMidi(void)
+int32_t DosMusic_TitleMusic(void)
 {
-    return s_titleMidi;
+    return s_titleMusic;
 }
 
 /* ---- self-test ---- */

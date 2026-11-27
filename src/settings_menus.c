@@ -48,6 +48,7 @@
 #include <SDL.h>
 #include <stdio.h>
 #include <string.h>
+#include "swos_io.h"          /* swos_data_path: TITLE MUSIC's files */
 
 #define SETTINGS_MENU_NAME   "openswos/settingsMenu"
 #define SETTINGS_PAGE_NAME   "openswos/settingsPage"
@@ -980,13 +981,42 @@ static void pcmusic_change(int32_t dir)
     save();
 }
 
-static void pctitle_show(char *o, int32_t c) { snprintf(o, (size_t)c, "%s", DosMusic_TitleMidi() ? "MIDI" : "MP3"); }
-static void pctitle_change(int32_t dir)
+/* TITLE MUSIC: the intro's music, its own row (it hung on MUSIC: PC and PC TITLE MUSIC; the Amiga's
+ * style played SWOS United's MP3 all the same -- Redhair). Only what is there is offered: UNITED
+ * with united_title.mp3, AMIGA with the Amiga's sound, MIDI with title.xmi, CD with title.mp3. */
+static int32_t title_there(int32_t which)
 {
-    (void)dir;
-    DosMusic_SetTitleMidi(!DosMusic_TitleMidi());
-    O()->title_midi = DosMusic_TitleMidi();
-    note(DosMusic_Style() ? "FROM THE NEXT START" : "WITH MUSIC: PC; FROM THE NEXT START");
+    extern int32_t MusicStream_Exists(const char *name);
+    switch (which) {
+    case DOSMUSIC_TITLE_UNITED: return MusicStream_Exists("united_title");
+    case DOSMUSIC_TITLE_AMIGA:  return !_gNoAmigaSound;
+    case DOSMUSIC_TITLE_MIDI: {
+        char path[1024];
+        FILE *f = fopen(swos_data_path("sound_dos/title.xmi", path, (uint32_t)sizeof path), "rb");
+        if (f)
+            fclose(f);
+        return f != NULL;
+    }
+    case DOSMUSIC_TITLE_CD:     return MusicStream_Exists("title");
+    default:                    return 1;
+    }
+}
+static void title_show(char *o, int32_t c)
+{
+    static const char *const k_names[DOSMUSIC_TITLE_COUNT] = { "UNITED", "AMIGA", "PC MIDI", "PC CD", "OFF" };
+    snprintf(o, (size_t)c, "%s", k_names[DosMusic_TitleMusic()]);
+}
+static void title_change(int32_t dir)
+{
+    int32_t at = DosMusic_TitleMusic();
+    for (int32_t i = 0; i < DOSMUSIC_TITLE_COUNT; i++) {
+        at = (at + (dir < 0 ? DOSMUSIC_TITLE_COUNT - 1 : 1)) % DOSMUSIC_TITLE_COUNT;
+        if (title_there(at))
+            break;
+    }
+    DosMusic_SetTitleMusic(at);
+    O()->title_music = at;
+    note("FROM THE NEXT START");
     save();
 }
 
@@ -1025,7 +1055,7 @@ static const Row k_audioRows[] = {
     { "BALL AND WHISTLE",       vole_show,       vole_change },
     { "MENU MUSIC",             music_show,      music_change },
     { "PC MENU MUSIC",          pcmusic_show,    pcmusic_change },
-    { "PC TITLE MUSIC",         pctitle_show,    pctitle_change },
+    { "TITLE MUSIC",            title_show,      title_change },
     { "MATCH SOUNDS",           sound_show,      sound_change },
     { "COMMENTARY",             commentary_show, commentary_change },
     { "AMIGA SOUND OUTPUT",     mono_show,       mono_change },

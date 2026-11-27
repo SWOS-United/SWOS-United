@@ -305,9 +305,9 @@ static void print_usage(const char *argv0)
         "  --menu-music=midi|mp3     With --music=pc: the menus play menu.xmi live on the\n"
         "                            emulated card (default) or a recording of it,\n"
         "                            sound_dos/menu.mp3 ([audio] menu_music).\n"
-        "  --title-music=mp3|midi    With --music=pc: the intro plays title.mp3 (default)\n"
-        "                            or sound_dos/title.xmi on the emulated card, from a\n"
-        "                            mod ([audio] title_music).\n"
+        "  --title-music=united|amiga|midi|cd|off  The intro's music: SWOS United's\n"
+        "                            (default), the Amiga's, title.xmi on the emulated\n"
+        "                            card, title.mp3, none ([audio] title_music).\n"
         "  --no-intro, --no-image-reels, --no-load-pause, --auto-centering=0|1,\n"
         "  --show-fps=0|1, --mouse-cursor=0|1|2, --improved-cpu-tactics=0|1\n"
         "                            SWOS 2020's flags, as its launcher passed them: [general]\n"
@@ -829,7 +829,7 @@ int main(int argc, char **argv)
     opts.audio_mono = 1;
     opts.sound_style = 0;         /* the Amiga's sounds */
     opts.music_style = 0;         /* the Amiga's menu music */
-    opts.title_midi = 0;          /* with the PC's music: the intro plays title.mp3 */
+    opts.title_music = DOSMUSIC_TITLE_UNITED;   /* the intro: united_title.mp3 */
     opts.menu_recording = 0;      /* with the PC's music: menu.xmi on the emulated chip */
     opts.commentary_dir[0] = '\0';
     opts.commentary = 2;          /* auto: with the PC's sounds */
@@ -1210,9 +1210,12 @@ int main(int argc, char **argv)
         } else if ((v = match_kv(a, "commentary-dir")) != NULL) {
             snprintf(opts.commentary_dir, sizeof opts.commentary_dir, "%s", v);
         } else if ((v = match_kv(a, "title-music")) != NULL) {
-            if      (strcmp(v, "midi") == 0) opts.title_midi = 1;
-            else if (strcmp(v, "mp3") == 0)  opts.title_midi = 0;
-            else { fprintf(stderr, "--title-music must be mp3 or midi (got %s)\n", v); return 1; }
+            if      (strcmp(v, "united") == 0 || strcmp(v, "mp3") == 0) opts.title_music = DOSMUSIC_TITLE_UNITED;
+            else if (strcmp(v, "amiga") == 0) opts.title_music = DOSMUSIC_TITLE_AMIGA;
+            else if (strcmp(v, "midi") == 0)  opts.title_music = DOSMUSIC_TITLE_MIDI;
+            else if (strcmp(v, "cd") == 0)    opts.title_music = DOSMUSIC_TITLE_CD;
+            else if (strcmp(v, "off") == 0)   opts.title_music = DOSMUSIC_TITLE_OFF;
+            else { fprintf(stderr, "--title-music must be united, amiga, midi, cd or off (got %s)\n", v); return 1; }
         } else if ((v = match_kv(a, "menu-music")) != NULL) {
             if      (strcmp(v, "midi") == 0) opts.menu_recording = 0;
             else if (strcmp(v, "mp3") == 0)  opts.menu_recording = 1;
@@ -1733,7 +1736,7 @@ int main(int argc, char **argv)
     DosSound_SetStyle(opts.sound_style);
     DosMusic_SetStyle(opts.music_style);
     DosMusic_SetMenuRecording(opts.menu_recording);
-    DosMusic_SetTitleMidi(opts.title_midi);
+    DosMusic_SetTitleMusic(opts.title_music);
     DosSound_SetCommentary(opts.commentary);
     { extern int _gArcadeMode; _gArcadeMode = opts.arcade; }
     Gameplay_SetStyle(opts.dos_gameplay);      /* the style, its flags and the OPTIONS row */
