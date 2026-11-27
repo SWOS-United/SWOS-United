@@ -34,6 +34,7 @@
 extern void SetExitMenuFlag(void);
 extern uint8_t _currentMenu[];
 extern const char *United_UserName(void);
+extern uint16_t _fireResetFlag;
 
 enum { kGray = 7, kLightBrownWithOrangeFrame = 4, kRed = 10, kPurple = 11, kGreen = 14, kYellowText = 15 };
 
@@ -70,7 +71,7 @@ static int32_t is_card(int32_t target) { return target == 5 || target == 7; }
 static int32_t style_fps(int32_t style) { return style == 0 ? 70 : style == 3 || style == 4 ? 60 : 50; }
 static const char *style_name(int32_t style)
 {
-    return style == 0 ? "PC DOS" : style == 3 ? "60 FPS" : style == 4 ? "XBOX" : "AMIGA";
+    return style == 0 ? "PC DOS" : style == 2 ? "MOON SOCCER" : style == 3 ? "60 FPS" : style == 4 ? "XBOX" : "AMIGA";
 }
 
 /* the gameplay style being played: SWOS 2020's number (OpenSWOS's speedrun mod names it) */
@@ -79,7 +80,8 @@ static int32_t current_style(void)
     char out[64] = "";
     if (ModApi_CallService("speedrun", "style", "{}", out, sizeof out) != 0)
         return 1;
-    return !strncmp(out, "DOS", 3) ? 0 : !strncmp(out, "XBOX", 4) ? 4 : 1;
+    return !strncmp(out, "DOS", 3) ? 0 : !strncmp(out, "MOON", 4) ? 2 : !strncmp(out, "AMIGA60", 7) ? 3
+         : !strncmp(out, "XBOX", 4) ? 4 : 1;
 }
 
 static void frame_time(char *out, uint32_t cap, int32_t frames, int32_t style)
@@ -290,7 +292,7 @@ static int32_t s_boardState = -1;       /* 0 here, 1 waiting, -1 none */
 static char  s_lbStyleText[40], s_lbModeText[24], s_lbPageText[24];
 static char  s_lbCells[kBoardRows][5][24];
 static char  s_lbFiles[kBoardRows][96];  /* each row's best run's replay ("....RPL"), "" none */
-static int32_t s_lbFresh;
+static int32_t s_lbFresh, s_lbPages = 1;
 
 /* SWOS 2020's order through the targets: down the left column, then the right */
 static int32_t next_mode(int32_t m, int32_t step)
@@ -316,7 +318,8 @@ static int32_t play_replay(const char *file, int32_t style);
 static void ask_and_play(const char *file, int32_t style);
 static void lb_mode(int32_t step);
 static void lb_diff(int32_t step);
-static void leaderboardMenuOnInit(void) { s_boardState = 1; s_lbFresh = 0; }
+/* Asked again each time a board is opened: a run sent since would be missing from the one kept. */
+static void leaderboardMenuOnInit(void) { s_boardState = 1; s_lbFresh = 1; }
 static void leaderboardMenuOnReturn(void) {}
 
 static void leaderboardMenuOnDraw(void)
@@ -341,6 +344,7 @@ static void leaderboardMenuOnDraw(void)
 
     /* the rows of this difficulty, in place order */
     int32_t n = 0, shown = 0;
+    uint8_t mine[kBoardRows] = { 0 };       /* (the whole name: the cell may show it cut) */
     for (int32_t r = 0; r < kBoardRows; r++)
     {
         for (int32_t c = 0; c < 5; c++)
@@ -364,6 +368,7 @@ static void leaderboardMenuOnDraw(void)
                     snprintf(s_lbCells[shown][0], 24, "%s", rank);
                     snprintf(s_lbCells[shown][1], 24, "%s", date);
                     snprintf(s_lbCells[shown][2], 24, "%.14s", user);
+                    mine[shown] = me[0] && SDL_strcasecmp(user, me) == 0;
                     snprintf(s_lbCells[shown][3], 24, "%s", played);
                     frame_time(s_lbCells[shown][4], 24, frames, s_lbStyle);
                     shown++;
@@ -376,14 +381,14 @@ static void leaderboardMenuOnDraw(void)
         snprintf(s_lbCells[0][2], 24, "%s", s_boardState == 1 ? "LOADING..." : "NOT AVAILABLE");
     }
     for (int32_t r = 0; r < kBoardRows; r++) {
-        const int32_t mine = me[0] && !strcmp(s_lbCells[r][2], me);
         for (int32_t c = 0; c < 5; c++) {
             MenuEntry *e = entry_at(col0[c] + 1 + r);
             set_text(e, s_lbCells[r][c]);
-            set_back(e, c == 0 ? kPurple : mine ? kRed : kGray);
+            set_back(e, c == 0 ? kPurple : mine[r] ? kRed : kGray);
         }
     }
     const int32_t pages = n ? (n + kBoardRows - 1) / kBoardRows : 1;
+    s_lbPages = pages;
     if (s_lbPage >= pages)
         s_lbPage = pages - 1;
     snprintf(s_lbPageText, sizeof s_lbPageText, "(%d / %d)", (int)s_lbPage + 1, (int)pages);
@@ -484,6 +489,7 @@ static void bestRecordInLeaderboard_OnSelect(void)
         return;
     (void)kYesExit;
     if (!s_lbFiles[row][0]) {
+        _fireResetFlag = 1;     /* (the fire that chose the time is not the box's answer) */
         ModApi_ShowDialog("SPEEDRUN REPLAY", "NO REPLAY FOR THIS PLACE", kOk, 1, 0);
         return;
     }
@@ -494,13 +500,16 @@ static void bestRecordInLeaderboard_OnSelect(void)
 static void ask_and_play(const char *file, int32_t style)
 {
     static const char *const kYesExit[2] = { "YES", "EXIT" }, *const kOk[1] = { "OK" };
+    _fireResetFlag = 1;         /* (the fire that chose the time is not the box's answer) */
     if (!file || !file[0]) {
         ModApi_ShowDialog("SPEEDRUN REPLAY", "REPLAY FILE IS NOT AVAILABLE", kOk, 1, 0);
         return;
     }
     if (ModApi_ShowDialog("SPEEDRUN REPLAY", "ARE YOU SURE TO REPLAY|THE RECORDED REPLAY FILE?", kYesExit, 2, 0) != 0)
         return;
-    if (play_replay(file, style) != 0)
+    const int32_t rc = play_replay(file, style);
+    _fireResetFlag = 1;         /* (nor one held through the download or the viewer) */
+    if (rc != 0)
         ModApi_ShowDialog("SPEEDRUN REPLAY", "REPLAY FILE IS NOT AVAILABLE", kOk, 1, 0);
 }
 
@@ -518,10 +527,11 @@ static int32_t play_replay(const char *file, int32_t style)
     char args[200], f[160];
     snprintf(args, sizeof args, "{\"file\":\"%s\"}", ModApi_JsonEscape(file, f, sizeof f));
     int32_t rc = 1;
-    for (int32_t waited = 0; rc == 1 && waited < 30000; waited += 20) {
-        rc = ModApi_CallService("online-records", "speedrun.replay", args, NULL, 0);
-        if (rc == 1)
-            SDL_Delay(20);
+    const uint32_t start = SDL_GetTicks();
+    while (rc == 1 && SDL_GetTicks() - start < 30000) {   /* (frames presented meanwhile: the */
+        rc = ModApi_CallService("online-records", "speedrun.replay", args, NULL, 0);   /* window */
+        if (rc == 1 && Platform_VBlank())                   /* answers; closed: no more waiting) */
+            break;
     }
     const size_t n = strlen(file);
     const int32_t srp = n >= 4 && SDL_strcasecmp(file + n - 4, ".srp") == 0;   /* (SWOS United's run) */
@@ -551,7 +561,7 @@ static int32_t play_replay(const char *file, int32_t style)
     return 0;
 }
 static void leaderboard_ScrollUp_onSelect(void) { if (s_lbPage > 0) s_lbPage--; }
-static void leaderboard_ScrollDown_onSelect(void) { s_lbPage++; }
+static void leaderboard_ScrollDown_onSelect(void) { if (s_lbPage + 1 < s_lbPages) s_lbPage++; }
 static void leaderboardExit_OnSelect(void) { SetExitMenuFlag(); }
 static void makeRecordFrame_OnSelect(void) {}
 
@@ -566,6 +576,7 @@ static void viewMyRecordsMenuOnInit(void)
 {
     s_mrStyle = current_style();
     s_mineState = 1;
+    s_mineFresh = 1;            /* (asked again each time: a run sent since) */
 }
 
 static void viewMyRecordsMenuOnDraw(void)
@@ -595,7 +606,7 @@ static void viewMyRecordsMenuOnDraw(void)
         set_back(entry_at(col0[c]), kLightBrownWithOrangeFrame);
     }
     for (int32_t d = 0; d < 5; d++) {
-        snprintf(s_mrCells[d][0], 24, "%s", is_card(s_mrMode) && d ? "" : is_card(s_mrMode) ? "-" : k_difficulties[d]);
+        snprintf(s_mrCells[d][0], 24, "%s", is_card(s_mrMode) ? "-" : k_difficulties[d]);
         snprintf(s_mrCells[d][1], 24, "0");
         snprintf(s_mrCells[d][2], 24, "-");
         snprintf(s_mrCells[d][3], 24, "-");
@@ -625,6 +636,10 @@ static void viewMyRecordsMenuOnDraw(void)
             line = next;
         }
     }
+    if (is_card(s_mrMode))      /* (the cards' one board: the first row, the rest "-" as SWOS 2020's) */
+        for (int32_t d = 1; d < 5; d++)
+            for (int32_t c = 1; c < 5; c++)
+                snprintf(s_mrCells[d][c], 24, "-");
     for (int32_t d = 0; d < 5; d++)
         for (int32_t c = 0; c < 5; c++) {
             MenuEntry *e = entry_at(col0[c] + 1 + d);
@@ -657,6 +672,41 @@ static void viewMyRecordsMenuOnDraw(void)
         set_color(entry_at(ViewMyRecordsMenu_HelpMsg), kYellowText);
     }
     entry_at(ViewMyRecordsMenu_reset)->isInvisible = 1;    /* (SWOS 2020 deleted the online rows) */
+    /* the keys and the pad: SWOS 2020's links, made as it drew (updateButtonNavigationForViewMyRecordsMenu)
+     * -- without them the times and the ranks were the mouse's alone -- and its LEFT / RIGHT on the
+     * target, with the yellow arrows either side */
+    {
+        extern uint16_t _menuControlsDirection;
+        static const int32_t col[3] = { ViewMyRecordsMenu_best_00, ViewMyRecordsMenu_current_00,
+                                        ViewMyRecordsMenu_rank_00 };
+        static const int32_t below[3] = { ViewMyRecordsMenu_leaderboard, ViewMyRecordsMenu_exit,
+                                          ViewMyRecordsMenu_sync };
+        for (int32_t c = 0; c < 3; c++)
+            for (int32_t d = 0; d < 5; d++) {
+                const int32_t o = col[c] + 1 + d;
+                ModApi_MenuNav4(o, c ? col[c - 1] + 1 + d : -1, c < 2 ? col[c + 1] + 1 + d : -1,
+                                d ? o - 1 : ViewMyRecordsMenu_speedrunMode, d < 4 ? o + 1 : below[c]);
+            }
+        ModApi_MenuNav4(ViewMyRecordsMenu_speedrunMode, -1, -1, -1, ViewMyRecordsMenu_best_00 + 1);
+        ModApi_MenuNav4(ViewMyRecordsMenu_leaderboard, -1, ViewMyRecordsMenu_exit, ViewMyRecordsMenu_best_00 + 5, -1);
+        ModApi_MenuNav4(ViewMyRecordsMenu_exit, ViewMyRecordsMenu_leaderboard, ViewMyRecordsMenu_sync,
+                        ViewMyRecordsMenu_current_00 + 5, -1);
+        ModApi_MenuNav4(ViewMyRecordsMenu_sync, ViewMyRecordsMenu_exit, -1, ViewMyRecordsMenu_rank_00 + 5, -1);
+        if (selected_ordinal() == ViewMyRecordsMenu_speedrunMode) {
+            if (_menuControlsDirection == 2)
+                s_mrMode = next_mode(s_mrMode, 1);
+            else if (_menuControlsDirection == 6)
+                s_mrMode = next_mode(s_mrMode, -1);
+        }
+        int32_t w = 0, h = 0;
+        ModApi_MenuEntryRect(ViewMyRecordsMenu_speedrunMode, NULL, NULL, &w, &h);
+        if (w > 0) {
+            ModApi_DrawMapAtEntry("speedrun", "arrows_12x12_13x1_Map", ViewMyRecordsMenu_speedrunMode, -14,
+                                  (h - 12) / 2, 12 * 6, 0, 12, 12, 0);
+            ModApi_DrawMapAtEntry("speedrun", "arrows_12x12_13x1_Map", ViewMyRecordsMenu_speedrunMode, w + 2,
+                                  (h - 12) / 2, 12 * 2, 0, 12, 12, 0);
+        }
+    }
     /* the trophies left of the five difficulties, as SWOS 2020 drew them (viewMyRecordsMenuOnDraw;
      * none for the cards, which have one board) */
     if (!is_card(s_mrMode)) {
@@ -703,12 +753,12 @@ static void viewMyRecordsLeaderboard_OnSelect(void) { open_leaderboard(s_mrMode)
 
 enum { kNewsRows = 5 };
 static char  s_news[65536];
-static int32_t s_newsState, s_newsPage;
+static int32_t s_newsState, s_newsPage, s_newsFresh, s_newsPages = 1;
 static char  s_newsCells[kNewsRows][7][24], s_newsPageText[24];
 static char  s_newsFiles[kNewsRows][96];        /* each shown run's replay, "" none */
 static int32_t s_newsRun[kNewsRows][3];         /* and its style, target, difficulty; style -1: no row */
 
-static void newsMenu_OnInit(void) { s_newsState = 1; s_newsPage = 0; }
+static void newsMenu_OnInit(void) { s_newsState = 1; s_newsPage = 0; s_newsFresh = 1; }
 static void newsMenu_OnReturn(void) {}
 
 static void newsMenu_OnDraw(void)
@@ -717,8 +767,11 @@ static void newsMenu_OnDraw(void)
     static const int32_t col0[7] = { NewsMenu_date_00, NewsMenu_style_00, NewsMenu_mode_00, NewsMenu_diffi_00,
                                      NewsMenu_user_00, NewsMenu_best_00, NewsMenu_rank_00 };
     int32_t n = 0, shown = 0;
-    if (s_newsState == 1)
-        s_newsState = ModApi_CallService("online-records", "speedrun.news", "{}", s_news, sizeof s_news);
+    if (s_newsState == 1) {
+        s_newsState = ModApi_CallService("online-records", "speedrun.news", s_newsFresh ? "{\"fresh\":true}" : "{}",
+                                         s_news, sizeof s_news);
+        s_newsFresh = 0;
+    }
     set_text(entry_at(NewsMenu_header), "LATEST RUNS");
     for (int32_t c = 0; c < 7; c++) {
         set_text(entry_at(col0[c]), heads[c]);
@@ -770,6 +823,7 @@ static void newsMenu_OnDraw(void)
             set_back(e, kGray);
         }
     const int32_t pages = n ? (n + kNewsRows - 1) / kNewsRows : 1;
+    s_newsPages = pages;
     if (s_newsPage >= pages)
         s_newsPage = pages - 1;
     snprintf(s_newsPageText, sizeof s_newsPageText, "(%d / %d)", (int)s_newsPage + 1, (int)pages);
@@ -777,7 +831,24 @@ static void newsMenu_OnDraw(void)
     set_text(entry_at(NewsMenu_dateInfo), "");
     entry_at(NewsMenu_news_ScrollUp)->afterDrawCb = arrow_AfterDraw;
     entry_at(NewsMenu_news_ScrollDown)->afterDrawCb = arrow_AfterDraw;
-    entry_at(NewsMenu_newsOnDiscord)->isInvisible = 1;
+    /* the keys and the pad (SWOS 2020 linked these as it drew): the runs' RECORD and RANK, the page
+     * arrows to their right, NEWS ON DISCORD and EXIT below */
+    {
+        const int32_t rows = shown;
+        const int32_t best = NewsMenu_best_00 + 1, rank = NewsMenu_rank_00 + 1;
+        for (int32_t r = 0; r < rows; r++) {
+            const int32_t down = r + 1 < rows ? 1 : 0;
+            ModApi_MenuNav4(best + r, -1, rank + r, r ? best + r - 1 : -1, down ? best + r + 1 : NewsMenu_exit);
+            ModApi_MenuNav4(rank + r, best + r, r < 3 ? NewsMenu_news_ScrollUp : NewsMenu_news_ScrollDown,
+                            r ? rank + r - 1 : -1, down ? rank + r + 1 : NewsMenu_exit);
+        }
+        ModApi_MenuNav4(NewsMenu_news_ScrollUp, rows ? rank : -1, -1, -1, NewsMenu_news_ScrollDown);
+        ModApi_MenuNav4(NewsMenu_news_ScrollDown, rows ? rank + rows - 1 : -1, -1, NewsMenu_news_ScrollUp,
+                        NewsMenu_exit);
+        ModApi_MenuNav4(NewsMenu_newsOnDiscord, -1, NewsMenu_exit, rows ? best + rows - 1 : -1, -1);
+        ModApi_MenuNav4(NewsMenu_exit, NewsMenu_newsOnDiscord, rows ? NewsMenu_news_ScrollDown : -1,
+                        rows ? best + rows - 1 : -1, -1);
+    }
 
     /* SWOS_SPEEDRUN_NEWS_TEST=1 (--menu=swos2020/newsMenu): once the runs are here, the first one's
      * replay downloaded and played, then the game quits -- 0 when it played */
@@ -794,7 +865,7 @@ static void newsMenu_OnDraw(void)
 }
 
 static void news_ScrollUp_onSelect(void) { if (s_newsPage > 0) s_newsPage--; }
-static void news_ScrollDown_onSelect(void) { s_newsPage++; }
+static void news_ScrollDown_onSelect(void) { if (s_newsPage + 1 < s_newsPages) s_newsPage++; }
 /* A run's RECORD: that run played (SWOS 2020's bestNewsMenu_OnSelect); its RANK: its board
  * (rankNewsMenu_OnSelect). */
 static void bestNewsMenu_OnSelect(void)
@@ -809,7 +880,10 @@ static void rankNewsMenu_OnSelect(void)
     if (r >= 0 && r < kNewsRows && s_newsRun[r][0] >= 0)
         open_leaderboard_at(s_newsRun[r][0], s_newsRun[r][1], s_newsRun[r][2]);
 }
-static void newsOnDiscordNewsMenu_OnSelect(void) {}
+static void newsOnDiscordNewsMenu_OnSelect(void)
+{
+    Platform_OpenUrl("https://discord.gg/Bf7wxzsuZN");     /* (SWOS 2020's) */
+}
 
 /* ---- the mod ---- */
 
@@ -851,6 +925,12 @@ static int32_t screens(const char *method, const char *args, char *out, uint32_t
     (void)args; (void)out; (void)cap;
     if (strcmp(method, "open") != 0)
         return -1;
+    if (current_style() == 2) {         /* (SWOS 2020's: no speedrun in MOON SOCCER) */
+        static const char *const kOk[1] = { "OK" };
+        _fireResetFlag = 1;
+        ModApi_ShowDialog("SPEEDRUN", "SPEEDRUN IS NOT AVAILABLE|FOR MOON SOCCER", kOk, 1, 0);
+        return 0;
+    }
     const char *u = United_UserName();
     const int32_t r = OnlineMenus_ServerLogIn(LOGIN_FOR_SPEEDRUN, u, NULL);
     if (r < 0)

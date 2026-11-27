@@ -79,13 +79,15 @@ static const char *long_category(const char *c)
          : !strcmp(c, "ISS 64") ? "INTERNATIONAL SUPERSTAR SOCCER 64" : c;
 }
 
-/* An entry centred on SWOS 2020's 320 wide screen, its width the text's + pad: shift is how far the
- * loaded menu stands from the JSON's coordinates (a reference entry's x then and now). */
+/* An entry centred on the screen, its width the text's + pad. The imported menus' coordinates are
+ * SWOS 2020's less 8 (its 320 wide screen's middle is their 152: the grids and EXIT stand on it);
+ * shift is how far the loaded menu stands from the JSON's coordinates (a reference entry's x then
+ * and now). */
 static void centre(MenuEntry *e, const char *text, int32_t pad, int32_t shift)
 {
     const int32_t w = text_width(text, e) + pad;
     e->dwWidth = (uint16_t)w;
-    e->x = (uint16_t)((320 - w) / 2 + shift);
+    e->x = (uint16_t)((2 * 152 - w) / 2 + shift);
 }
 
 /* ---- SWOS 2020's pictures (PixelmapAndStrings.h, game.cpp), its drawMapEx: '1'-'F' a palette
@@ -333,6 +335,49 @@ static void test_state(void)
         fetch_info(s_sel, s_info, sizeof s_info);
 }
 
+/* ---- a button with an icon and a name (SELECT CATEGORY, a category's challenges) ---- */
+
+/* The icon (a check once completed, a lock while closed) and the name, centred together inside the
+ * button. As SWOS 2020 does ("   %s"), the name keeps room for the icon with spaces in front of it;
+ * a name too long for what is left is cut and ended with "...". */
+enum { kNoIcon, kCheckIcon, kLockIcon };
+enum { kIconSlot = 10, kIconGap = 3, kButtonMargin = 3 };
+
+static void icon_label(char *out, uint32_t cap, const char *name, int32_t icon, const MenuEntry *e)
+{
+    char pad[24] = "";
+    uint32_t p = 0;
+    if (icon != kNoIcon)
+        while (p + 1 < sizeof pad && text_width(pad, e) < kIconSlot + kIconGap) {
+            pad[p++] = ' ';
+            pad[p] = 0;
+        }
+    const int32_t limit = (int32_t)e->dwWidth - 2 * kButtonMargin;
+    int32_t n = (int32_t)strlen(name);
+    snprintf(out, cap, "%s%s", pad, name);
+    while (n > 1 && text_width(out, e) > limit) {
+        while (--n > 1 && name[n - 1] == ' ') {}        /* ("WORLD..." not "WORLD ...") */
+        snprintf(out, cap, "%s%.*s...", pad, (int)n, name);
+    }
+}
+
+/* the icon left of an entry's icon_label, from its afterDraw */
+static void draw_icon(const MenuEntry *e, int32_t icon)
+{
+    if (icon == kNoIcon)
+        return;
+    /* where the menu has put the name: the label centred, then its spaces */
+    const char *label = (const char *)e->fg;
+    const char *name = label + strspn(label, " ");
+    const int32_t tw = text_width(label, e);
+    const int32_t nameX = e->x + (int32_t)e->dwWidth / 2 - (tw + 1) / 2 + tw - text_width(name, e);
+    const int32_t x = nameX - kIconGap - kIconSlot, h = e->dwHeight;
+    if (icon == kCheckIcon)             /* (its picture 10 x 12, under one empty row) */
+        draw_map(k_check, x, e->y + (h - 12) / 2 - 1, 0, 0, 12, 13);
+    else                                /* (7 x 8, after one empty column) */
+        draw_map(k_lock[1], x + 1, e->y + (h - 8) / 2, 0, 0, 8, 8);
+}
+
 /* ---- SELECT CATEGORY ---- */
 
 /* SWOS 2020's screen (selectCategory.mnu, selectCategoryMenu_OnDraw): the wide button at the top
@@ -344,7 +389,7 @@ static void test_state(void)
 enum { kPerCatPage = 5 };
 static const int32_t k_catSlots[kPerCatPage] = { SelectCategoryMenu_act4, SelectCategoryMenu_act11, SelectCategoryMenu_act12,
                                                  SelectCategoryMenu_act21, SelectCategoryMenu_act22 };
-static char s_catText[kPerCatPage][40], s_moreText[24];
+static char s_catText[kPerCatPage][64], s_moreText[24];
 
 static int32_t cat_shift(void) { return (int32_t)entry_at(SelectCategoryMenu_exit)->x - 112; }
 static int32_t cat_shift_y(void) { return (int32_t)entry_at(SelectCategoryMenu_exit)->y - 186; }
@@ -352,22 +397,18 @@ static int32_t cat_pages(void) { return s_numCats ? (s_numCats + kPerCatPage - 1
 
 static int32_t category_complete(const Cat *c) { return c->all && c->done == c->all; }
 
+static int32_t category_icon(const Cat *c)
+{
+    return category_complete(c) ? kCheckIcon : c->closed ? kLockIcon : kNoIcon;
+}
+
 static void category_AfterDraw(MenuEntry *e)
 {
     for (int32_t s = 0; s < kPerCatPage; s++)
         if (e == entry_at(k_catSlots[s])) {
             const int32_t k = s_catPage * kPerCatPage + s;
-            if (k >= s_numCats)
-                return;
-            const Cat *c = &s_cats[k];
-            /* left of the name (SWOS 2020 padded the name with spaces for it: this font's
-             * widths leave spaces out, so the icon goes by the name's own) */
-            const int32_t tw = text_width((const char *)e->fg, e);
-            const int32_t x = e->x + ((int32_t)e->dwWidth - tw) / 2 - 12, y = e->y + 4;
-            if (category_complete(c))
-                draw_map(k_check, x + 1, y - 1, 0, 0, 12, 13);
-            else if (c->closed)
-                draw_map(k_lock[1], x, y, 0, 0, 8, 8);
+            if (k < s_numCats)
+                draw_icon(e, category_icon(&s_cats[k]));
         }
 }
 
@@ -428,7 +469,7 @@ static void selectCategoryMenu_OnDraw(void)
             continue;
         const Cat *c = &s_cats[k];
         const int32_t done = category_complete(c);
-        snprintf(s_catText[s], sizeof s_catText[s], "%s", c->name);
+        icon_label(s_catText[s], sizeof s_catText[s], c->name, category_icon(c), e);
         set_text(e, s_catText[s]);
         set_back(e, done ? kLightBlue : c->closed ? kGray : kGreen);
     }
@@ -515,17 +556,22 @@ static const int32_t k_slots[12] = {
     ScenarioModeMainMenu_s11, ScenarioModeMainMenu_s12, ScenarioModeMainMenu_s20, ScenarioModeMainMenu_s21,
     ScenarioModeMainMenu_s22, ScenarioModeMainMenu_s30, ScenarioModeMainMenu_s31, ScenarioModeMainMenu_s32,
 };
-static char s_slotText[12][48], s_header[96], s_pageInfo[24], s_desc[5][72];
+static char s_slotText[12][64], s_header[96], s_pageInfo[24], s_desc[5][72];
 static char s_descFor[40];
 
 static int32_t pages_of(int32_t n, int32_t per) { return n ? (n + per - 1) / per : 1; }
 
-/* SWOS 2020's shortenNameEx: too wide for the button (limit 102), the end cut to fit */
+/* SWOS 2020's shortenNameEx: too wide for `limit`, the end cut to fit */
 static void shorten(char *s, const MenuEntry *e, int32_t limit)
 {
     size_t n = strlen(s);
     while (n > 1 && text_width(s, e) > limit)
         s[--n] = 0;
+}
+
+static int32_t item_icon(const Item *it)
+{
+    return it->state == 1 ? kCheckIcon : it->state == 2 ? kLockIcon : kNoIcon;
 }
 
 static void slot_AfterDraw(MenuEntry *e)
@@ -536,12 +582,7 @@ static void slot_AfterDraw(MenuEntry *e)
             if (idx >= s_numItems)
                 return;
             const Item *it = &s_items[idx];
-            const int32_t tw = text_width((const char *)e->fg, e);
-            const int32_t x = e->x + ((int32_t)e->dwWidth - tw) / 2 - 11, y = e->y + 3;
-            if (it->state == 1)
-                draw_map(k_check, x + 1, y - 1, 0, 0, 12, 13);
-            else if (it->state == 2)
-                draw_map(k_lock[1], x, y, 0, 0, 8, 8);
+            draw_icon(e, item_icon(it));
             draw_stars(it->difficulty, e->x + ((int32_t)e->dwWidth - stars_width(it->difficulty)) / 2,
                        e->y + e->dwHeight + 1);
         }
@@ -606,9 +647,7 @@ static void scenarioModeMainMenu_OnDraw(void)
         e->afterDrawCb = slot_AfterDraw;
         if (idx < s_numItems) {
             const Item *it = &s_items[idx];
-            const int32_t marked = it->state != 0;
-            snprintf(s_slotText[i], sizeof s_slotText[i], "%s", it->label);
-            shorten(s_slotText[i], e, marked ? 86 : 102);     /* (an icon left of it: 12 + room) */
+            icon_label(s_slotText[i], sizeof s_slotText[i], it->label, item_icon(it), e);
             set_back(e, it->state == 2 ? kGray : it->state == 1 ? kLightBlue : kGreen);
         } else {
             s_slotText[i][0] = 0;
