@@ -1156,8 +1156,11 @@ static void keepers_change(int32_t dir)
 }
 #endif
 
-/* GAME GRAPHICS: [graphics] style amiga | dos | 2020 -- what the pitch, HUD and menus are drawn from
- * (main.c reads it before anything is loaded: from the next start). */
+/* MATCH GRAPHICS (GAME GRAPHICS till 2026-11-28): [graphics] style amiga | dos | 2020 -- the pitch
+ * and the match's sprites (players, keepers, goals, flags, the bench: color_sprites.c
+ * dos_build_all_sprites) and its palette, from the PC game (dos) or with SWOS 2020's pitches
+ * (2020); the HUD, the fonts and the menus stay as they are (main.c reads it before anything is
+ * loaded: from the next start). */
 static int32_t art_index(void)
 {
     if (!O()->dos_graphics)
@@ -1480,7 +1483,7 @@ static const Page k_gameplayPage = { "GAMEPLAY OPTIONS", k_gameplayRows, (int32_
 _Static_assert(sizeof k_gameplayRows / sizeof k_gameplayRows[0] <= kRows, "a settings page holds kRows rows at most");
 
 static const Row k_displayRows[] = {
-    { "GAME GRAPHICS",      art_show,      art_change },
+    { "MATCH GRAPHICS",     art_show,      art_change },
     { "PITCH PALETTE",      pitchpal_show, pitchpal_change },
     { "KIT COLOURS",        kitcols_show,  kitcols_change },    /* (RULES' too: which kits clash) */
     { "GK/REF CLASH KITS",  clashkits_show, clashkits_change },
