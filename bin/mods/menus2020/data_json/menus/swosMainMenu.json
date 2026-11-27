@@ -23,7 +23,7 @@
       "kind": "entry",
       "name": "competition",
       "coords": {
-        "x": 1,
+        "x": 0,
         "y": 51,
         "w": 150,
         "h": 20
@@ -60,7 +60,7 @@
       "kind": "entry",
       "name": "practice",
       "coords": {
-        "x": 1,
+        "x": 0,
         "y": 73,
         "w": 150,
         "h": 20
@@ -97,7 +97,7 @@
       "kind": "entry",
       "name": "replays",
       "coords": {
-        "x": 1,
+        "x": 0,
         "y": 95,
         "w": 150,
         "h": 20
@@ -134,7 +134,7 @@
       "kind": "entry",
       "name": "options",
       "coords": {
-        "x": 155,
+        "x": 154,
         "y": 51,
         "w": 150,
         "h": 20
@@ -171,7 +171,7 @@
       "kind": "entry",
       "name": "editing",
       "coords": {
-        "x": 155,
+        "x": 154,
         "y": 73,
         "w": 150,
         "h": 20
@@ -208,7 +208,7 @@
       "kind": "entry",
       "name": "extras",
       "coords": {
-        "x": 155,
+        "x": 154,
         "y": 95,
         "w": 150,
         "h": 20
@@ -295,7 +295,7 @@
     {
       "kind": "entry",
       "coords": {
-        "x": 1,
+        "x": 0,
         "y": 23,
         "w": 40,
         "h": 26
@@ -326,7 +326,7 @@
     {
       "kind": "entry",
       "coords": {
-        "x": 88,
+        "x": 87,
         "y": -29,
         "w": 130,
         "h": 66
@@ -344,7 +344,7 @@
     {
       "kind": "entry",
       "coords": {
-        "x": 88,
+        "x": 87,
         "y": 39,
         "w": 129,
         "h": 6
@@ -367,7 +367,7 @@
       "kind": "entry",
       "name": "continueContest",
       "coords": {
-        "x": 46,
+        "x": 45,
         "y": 140,
         "w": 212,
         "h": 14
@@ -399,7 +399,7 @@
       "kind": "entry",
       "name": "saveContest",
       "coords": {
-        "x": 77,
+        "x": 76,
         "y": 156,
         "w": 72,
         "h": 20
@@ -436,7 +436,7 @@
       "kind": "entry",
       "name": "loadOldCompetition",
       "coords": {
-        "x": 155,
+        "x": 154,
         "y": 156,
         "w": 72,
         "h": 20
@@ -478,7 +478,7 @@
       "kind": "entry",
       "name": "classicCareer",
       "coords": {
-        "x": 1,
+        "x": 0,
         "y": 117,
         "w": 150,
         "h": 20
@@ -549,7 +549,7 @@
       "kind": "entry",
       "name": "worldCareer",
       "coords": {
-        "x": 155,
+        "x": 154,
         "y": 117,
         "w": 150,
         "h": 20
