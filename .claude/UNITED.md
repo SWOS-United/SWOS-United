@@ -74,13 +74,20 @@ rebase), `git cherry-pick <commit>` one fix, or nothing at all. `upstream` is fe
   SWOS 2020's own `challenges/` (github.com/starwindz/swos-2020: `challenges.ini` and its
   `.EDT` / `.DIY` teams, which become `teams/*.EDT`) -- regenerate it with the script, never edit
   it by hand. OpenSWOS's challenges mod plays it (format v2, docs/MODS.md §18); its LOCKED
-  categories stay closed, as in SWOS 2020. Online, the online-records mod READS SWOS 2020's records
-  (by its scenario name and category); nothing is ever sent to sensiblesoccer.de -- "Nothing from
-  OpenSWOS should go to sensiblesoccer.de" (the owner, 2026-11-07): the wins and speedrun runs it
-  used to send are off (`UNITED_WRITE_RECORDS` 0 in src/mod_online_records.c) until SWOS United's
-  own server takes them, and SHARE / SWOS Galore's uploads are never pointed there.
+  categories stay closed, as in SWOS 2020. Online, the online-records mod reads and writes SWOS
+  2020's records (by its scenario name and category): after the CHALLENGES log-in the player's wins
+  there are marked done here too (a union -- nothing done here is cleared), and a challenge beaten
+  by a logged-in player is sent (`UNITED_WRITE_RECORDS` 1 since 2026-11-27, as SPEEDRUN's runs;
+  never an editor's TEST or a test run). This replaces "Nothing from OpenSWOS should go to
+  sensiblesoccer.de" (the owner, 2026-11-07) for challenge wins.
+- **Challenge posts on Discord** (since 2026-11-27): a win sent to the records is posted as SWOS
+  2020 posts it (who beat what, its stars, the category's progress, the players with most wins), and
+  so is a newly shared scenario -- the discord2020 mod's `discord` service, channel
+  `live_stats_scenario`, with `[mod.discord2020] post` and `webhook` as for a match.
 - **SWOS 2020's challenge screens** (`src/united_challenges.c`, mod `challenges2020`, on by
-  default): MODES / COMPETE -> CHALLENGES opens SWOS 2020's SELECT CATEGORY (six a page, MORE,
+  default): MODES / COMPETE -> CHALLENGES asks for SWOS 2020's SERVER LOGIN first
+  (`LOGIN_FOR_CHALLENGES`; a log-in is required, as in SWOS 2020: NOTICE / LOG OUT and ABOUT
+  CHALLENGES, no PLAY OFFLINE), then opens SWOS 2020's SELECT CATEGORY (six a page, MORE,
   CUSTOM CHALLENGES), a category's challenges twelve a page with stars, tick / lock and the
   five description lines, a challenge's page (PLAY SCENARIO, VIEW ONLINE STATS) and SCENARIO
   COMPLETION -- its menus imported (`import_swos2020_menus.py`, the "challenge mode" group),
@@ -94,8 +101,13 @@ rebase), `git cherry-pick <commit>` one fix, or nothing at all. `upstream` is fe
   minute, second leg, ET / pens / a shoot-out alone, subs, attack direction, pitch, the starting
   team and event, win condition, difficulty; TEST plays it once, SAVE keeps it as one of the
   player's own through the challenges service's save, DELETE; no uniforms, cards / injuries or
-  pitch set yet; `SWOS_EDIT_TEST=show|save` checks it), SHARE (not yet: SWOS
-  2020 uploads to its server with no log-in -- the owner's call), PLAY -- the 274-odd challenges
+  pitch set yet; `SWOS_EDIT_TEST=show|save` checks it), SHARE (SWOS 2020's, since 2026-11-27: the player's own scenarios, each ON or OFF the site -- a
+  click on SHARED uploads it as a `.SCN` (`UnitedScn_Export`: challenge.ini and the two teams'
+  records, a stored 7z) to `challenges/custom/upload_scn.php` with its texts
+  (`upload_scenario_info`), or deletes both (`delete_scn_file`, `delete_scenario_info`); a click on
+  the row test-plays it. SAVE offers to share (or update), DELETE to take the shared one off. Only
+  the logged-in player's own ("... BY <USER>.SCN"; the server checks nothing). A newly shared one is
+  posted on Discord), PLAY -- the 274-odd challenges
   SWOS 2020's players shared on sensiblesoccer.de, its SelectSCN list (home, score, away, creator,
   level stars; COMPLETION; five sortings). One picked is downloaded (online-records
   `custom.download`), unpacked (`src/united_scn.c`: a .SCN is a 7z of challenge.ini and two .TEAM;
@@ -106,11 +118,20 @@ rebase), `git cherry-pick <commit>` one fix, or nothing at all. `upstream` is fe
   `=online:<server file name>` (with `--menu=swos2020/selectCategoryMenu`, `SWOS_HARNESS_TURBO=1`)
   imports one and prints its fields.
 - **SWOS GALORE** (`src/united_galore.c`, mod `galore2020`, on by default; MODES -> SWOS GALORE):
-  SWOS 2020's menu and its chart -- ALL TIME and MONTHLY (a year back), seven a page with the
-  average rating in stars; a pick downloaded (online-records `galore.download`: the server's
+  SWOS 2020's menu and its chart -- ALL TIME and MONTHLY (the last twelve months, round), seven
+  a page with the average rating in stars (a highlight with no comment -- the site's "%0" -- by its
+  file's name; NEWS ON DISCORD below); a pick downloaded (online-records `galore.download`: the server's
   folders are case-sensitive, the name as it spells it) and shown in the viewer, its scene alone
   (OpenSWOS's `ModApi_ViewHighlights`, copied to the save folder as GALORE.HIL). RATE and SHARE
-  HIGHLIGHTS say they come with SWOS United's own server (they would write to sensiblesoccer.de).
+  HIGHLIGHTS write there as SWOS 2020 did, after its SERVER LOGIN (only while nobody is logged in
+  this session -- SWOS 2020 showed it each time), sent on EXIT (a new or changed
+  share also posts on Discord, ten highlights a post at most -- the relay refuses more; `SWOS_GALORE_NO_DISCORD=1` keeps a test quiet) -- what could not be sent is
+  said after the screen closes. Unsharing removes the row; the site has no request that removes the
+  uploaded file. A share with no file on this computer is listed after the files (its name in
+  yellow): view it (downloaded) or switch it off -- only SHARE OFF takes a row off the site (SWOS
+  2020 deleted such rows at every EXIT). The imported menus link little for the keys and the pad: each screen links its own
+  as it draws (SWOS 2020 did). A file the site does not have comes back as a web page: refused.
+  `SWOS_GALORE_SCREEN_TEST=rate|share` opens one (it writes for real).
   `SWOS_GALORE_TEST=<rank>` (with `--menu=swos2020/swosGaloreMenu`) fetches, downloads and plays one.
 - **SWOS 2020's speedrun screens** (`src/united_speedrun.c`, mod `speedrun2020`, on by default):
   MODES / COMPETE -> SPEEDRUNS opens SWOS 2020's SPEEDRUN (eight targets), a target's difficulty
@@ -118,9 +139,15 @@ rebase), `git cherry-pick <commit>` one fix, or nothing at all. `upstream` is fe
   SWOS 2020 band: its were the PC game's TEAM.072 clubs; YELLOW / RED CARD teams only), the
   LEADERBOARD (style, target, difficulty, ten places a page), VIEW MY RECORDS (logged in: the
   player's rows at the style; UPDATE fetches again; RESET hidden, SWOS 2020 deleted the rows) and
-  LATEST RUNS (the log-in group's newsMenu, now drawn). Runs through OpenSWOS's `speedrun`
+  LATEST RUNS (the log-in group's newsMenu, now drawn, with its NEWS ON DISCORD). Runs through OpenSWOS's `speedrun`
   service; the boards through online-records (`speedrun.board / mine / news`: SWOS 2020's
-  swosapi_v3, read-only). TACKLE is SWOS 2020's rule since OpenSWOS 35e741dd (a goal with your
+  swosapi_v3; a board is asked again each time it is opened). Boards by SWOS 2020's game style
+  (0 PC DOS, 1 AMIGA, 3 AMIGA 60 FPS, 4 XBOX -- `record_style`; SWOS-API's `UnitedRecords_Style`
+  has no 60 FPS); no speedrun in MOON SOCCER, as there. An opponent's own goal counts toward
+  1 / 3 / 10 GOALS, as the score did in SWOS 2020. A run sent whose record ranks in its board's
+  first fifty is posted on Discord (SWOS 2020's PHPManager post, sent through the relay as type
+  "speedrun": discord_proxy.php must know it; `[mod.discord2020] post = off` keeps it quiet,
+  `webhook` sends it to a test channel). TACKLE is SWOS 2020's rule since OpenSWOS 35e741dd (a goal with your
   tackle the last thing before it), and a preset run sends its difficulty.
 - **Pitch decals** (`src/mod_pitchdecals.c`, static, in `src/fork_mods.inc`; docs/MODS.md §10.5): a
   data mod's `"pitch_decals"` -- a pitch replaced, pictures on the grass, the goals' fronts -- drawn

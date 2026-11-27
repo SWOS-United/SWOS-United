@@ -23,6 +23,7 @@
 #include "dos_mode.h"
 #include "game_types.h"
 #include "mm_client.h"
+#include "mjson.h"
 #ifdef SWOS_HTTPS
 #include "https_client.h"
 #endif
@@ -849,8 +850,35 @@ static void ticker_test_frame(void)
     net_confirmed(f);
 }
 
+/* "discord": another mod's post on SWOS 2020's Discord (SWOS United's challenge wins and shared
+ * scenarios: online-records, challenges2020), by the same settings, thread and relay as the match's.
+ *   post  {"type": a channel of the relay's ("live_stats_scenario"), "content"}
+ * 0 queued; -1 posting is off ([mod.discord2020] post = off) or the call is not one. */
+static int32_t discord_service(const char *method, const char *args, char *out, uint32_t cap)
+{
+    static char type[32], content[2000];
+    (void)out; (void)cap;
+    if (strcmp(method, "post") != 0)
+        return -1;
+    const int len = (int)strlen(args);
+    if (mjson_get_string(args, len, "$.type", type, sizeof type) <= 0 ||
+        mjson_get_string(args, len, "$.content", content, sizeof content) <= 0)
+        return -1;
+    read_settings();
+    if (!s_cfgOn)
+        return -1;
+    post(type, content);
+    return 0;
+}
+
+static void discord_init(void)
+{
+    ModApi_RegisterService(SLUG, "discord", discord_service);
+}
+
 const ModDef ModDef_discord2020 = {
     .slug         = SLUG,
+    .init         = discord_init,
     .matchFrame   = ticker_test_frame,
     .netFrame     = net_frame,
     .netConfirmed = net_confirmed,

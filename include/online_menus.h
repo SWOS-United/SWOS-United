@@ -18,10 +18,12 @@ void    OnlineMenus_Show(const char *name);
  *   LOGIN_FOR_SPEEDRUN  SPEEDRUN (challengeGame0Extras_OnSelect): PLAY OFFLINE and LATEST RUNS
  *   LOGIN_FOR_GALORE    SWOS GALORE's RATE / SHARE (selectLatestUploads, selectShareHighlights):
  *                       NOTICE (LOG OUT when logged in) and MONTHLY CHART
+ *   LOGIN_FOR_CHALLENGES  CHALLENGES (scenarioModeLogIn): NOTICE (a log-in is required; LOG OUT
+ *                       when logged in) and ABOUT CHALLENGES -- no PLAY OFFLINE
  * `as`: who is logged in this session already ("" or NULL nobody), whose name LOGIN takes at once;
- * `news`: what the lower button opens (NULL: SPEEDRUN's LATEST RUNS). 0 logged in, 1 PLAY OFFLINE,
- * -1 left (EXIT, LOG OUT). A project without accounts: 1, no menu. */
-enum { LOGIN_FOR_SPEEDRUN = 1, LOGIN_FOR_GALORE = 2 };
+ * `news`: what the lower button opens (NULL: SPEEDRUN's LATEST RUNS; CHALLENGES ignores it). 0
+ * logged in, 1 PLAY OFFLINE, -1 left (EXIT, LOG OUT). A project without accounts: 1, no menu. */
+enum { LOGIN_FOR_SPEEDRUN = 1, LOGIN_FOR_GALORE = 2, LOGIN_FOR_CHALLENGES = 3 };
 int32_t OnlineMenus_ServerLogIn(int32_t purpose, const char *as, void (*news)(void));
 
 /* --menu=<name>: remember a menu for OnlineMenus_ShowStartMenu to open once, when

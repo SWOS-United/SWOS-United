@@ -9,7 +9,8 @@
  * it through its "challenges" service (categories, list, info, play; OpenSWOS docs/MODS.md §18),
  * and it opens these screens in place of its own through "challenges-screens" (open). The online
  * lines and lists come from the online-records mod's service (challenges.wins / winners /
- * ranking): without it, or offline, the screens say so and the rest works.
+ * ranking): without it, or offline, the screens say so and the rest works. After the log-in the
+ * player's wins there are marked done here (the mod's "sync").
  *
  * Not drawn yet: SWOS 2020's uniforms, red cards and injury icons on a challenge's page.
  */
@@ -19,8 +20,10 @@
 
 #include "display.h"            /* FRONTBUFFER_ROW_STRIDE_BYTES */
 #include "input_text.h"
+#include "endian_helpers.h"
 #include "menu_load_json.h"
 #include "menu_system.h"
+#include "online_menus.h"       /* OnlineMenus_ServerLogIn: SWOS 2020's log-in in front */
 #include "swos2020_menus.h"
 #include "text_render.h"
 #include "united_scn.h"
@@ -34,12 +37,13 @@
 #define SLUG "challenges2020"
 
 extern void SetExitMenuFlag(void);
+extern uint16_t _fireResetFlag;
 extern uint8_t _currentMenu[];
 extern void *_charTables[];
 extern volatile uintptr_t _frontbufferBasePtr;
 extern int _menu_draw_x_offset;
 
-enum { kGray = 7, kLightBrownWithYellowFrame = 6, kRed = 10, kPurple = 11, kLightBlue = 13, kGreen = 14,
+enum { kDarkBlue = 3, kGray = 7, kLightBrownWithYellowFrame = 6, kRed = 10, kPurple = 11, kLightBlue = 13, kGreen = 14,
        kWhiteText2 = 2, kYellowText = 15, kLeftAligned = 1 << 15, kRightAligned = 1 << 14 };
 
 static MenuEntry *entry_at(int32_t ordinal) { return CalcMenuEntryAddress((uint16_t)ordinal); }
@@ -75,13 +79,15 @@ static const char *long_category(const char *c)
          : !strcmp(c, "ISS 64") ? "INTERNATIONAL SUPERSTAR SOCCER 64" : c;
 }
 
-/* An entry centred on SWOS 2020's 320 wide screen, its width the text's + pad: shift is how far the
- * loaded menu stands from the JSON's coordinates (a reference entry's x then and now). */
+/* An entry centred on the screen, its width the text's + pad. The imported menus' coordinates are
+ * SWOS 2020's less 8 (its 320 wide screen's middle is their 152: the grids and EXIT stand on it);
+ * shift is how far the loaded menu stands from the JSON's coordinates (a reference entry's x then
+ * and now). */
 static void centre(MenuEntry *e, const char *text, int32_t pad, int32_t shift)
 {
     const int32_t w = text_width(text, e) + pad;
     e->dwWidth = (uint16_t)w;
-    e->x = (uint16_t)((320 - w) / 2 + shift);
+    e->x = (uint16_t)((2 * 152 - w) / 2 + shift);
 }
 
 /* ---- SWOS 2020's pictures (PixelmapAndStrings.h, game.cpp), its drawMapEx: '1'-'F' a palette
@@ -191,7 +197,8 @@ typedef struct { char id[40], label[40]; int32_t difficulty, state; } Item;    /
 static Cat     s_cats[24];
 static int32_t s_numCats, s_catPage;
 static char    s_cat[32];               /* the category being shown */
-static Item    s_items[200];
+enum { kItems = 1024 };
+static Item    s_items[kItems];
 static int32_t s_numItems, s_page;
 static char    s_sel[40];               /* the challenge on its page */
 static char    s_info[4096];
@@ -243,13 +250,13 @@ static void fetch_categories(void)
 
 static void fetch_list(void)
 {
-    static char buf[16384];
+    static char buf[1 << 17];
     char args[96], esc[64];
     s_numItems = 0;
     snprintf(args, sizeof args, "{\"category\":\"%s\"}", ModApi_JsonEscape(s_cat, esc, sizeof esc));
     if (call("list", args, buf, sizeof buf) != 0)
         return;
-    for (char *line = buf; line && *line && s_numItems < 200;) {
+    for (char *line = buf; line && *line && s_numItems < kItems;) {
         char *next = strchr(line, '\n');
         if (next)
             *next++ = 0;
@@ -268,6 +275,25 @@ static int32_t fetch_info(const char *id, char *out, uint32_t cap)
     char args[96], esc[64];
     snprintf(args, sizeof args, "{\"id\":\"%s\"}", ModApi_JsonEscape(id, esc, sizeof esc));
     return call("info", args, out, cap) == 0;
+}
+
+/* The player's wins on the server marked done here (SWOS 2020's getScenarioCompleted, after the
+ * log-in): the challenges mod's "sync", asked at the log-in and taken when the answer has come --
+ * the screens never wait on it. */
+static int32_t s_sync;                  /* 1 to be asked afresh, 2 awaited, 0 none */
+static void sync_poll(void)
+{
+    char out[8];
+    if (!s_sync)
+        return;
+    if (call("sync", s_sync == 1 ? "{\"fresh\":true}" : "{}", out, sizeof out) == 1) {
+        s_sync = 2;
+        return;
+    }
+    s_sync = 0;
+    fetch_categories();
+    if (s_cat[0])
+        fetch_list();
 }
 
 /* a field of an "info" answer ("<key>\t<value>" lines), into out */
@@ -309,6 +335,49 @@ static void test_state(void)
         fetch_info(s_sel, s_info, sizeof s_info);
 }
 
+/* ---- a button with an icon and a name (SELECT CATEGORY, a category's challenges) ---- */
+
+/* The icon (a check once completed, a lock while closed) and the name, centred together inside the
+ * button. As SWOS 2020 does ("   %s"), the name keeps room for the icon with spaces in front of it;
+ * a name too long for what is left is cut and ended with "...". */
+enum { kNoIcon, kCheckIcon, kLockIcon };
+enum { kIconSlot = 10, kIconGap = 3, kButtonMargin = 3 };
+
+static void icon_label(char *out, uint32_t cap, const char *name, int32_t icon, const MenuEntry *e)
+{
+    char pad[24] = "";
+    uint32_t p = 0;
+    if (icon != kNoIcon)
+        while (p + 1 < sizeof pad && text_width(pad, e) < kIconSlot + kIconGap) {
+            pad[p++] = ' ';
+            pad[p] = 0;
+        }
+    const int32_t limit = (int32_t)e->dwWidth - 2 * kButtonMargin;
+    int32_t n = (int32_t)strlen(name);
+    snprintf(out, cap, "%s%s", pad, name);
+    while (n > 1 && text_width(out, e) > limit) {
+        while (--n > 1 && name[n - 1] == ' ') {}        /* ("WORLD..." not "WORLD ...") */
+        snprintf(out, cap, "%s%.*s...", pad, (int)n, name);
+    }
+}
+
+/* the icon left of an entry's icon_label, from its afterDraw */
+static void draw_icon(const MenuEntry *e, int32_t icon)
+{
+    if (icon == kNoIcon)
+        return;
+    /* where the menu has put the name: the label centred, then its spaces */
+    const char *label = (const char *)e->fg;
+    const char *name = label + strspn(label, " ");
+    const int32_t tw = text_width(label, e);
+    const int32_t nameX = e->x + (int32_t)e->dwWidth / 2 - (tw + 1) / 2 + tw - text_width(name, e);
+    const int32_t x = nameX - kIconGap - kIconSlot, h = e->dwHeight;
+    if (icon == kCheckIcon)             /* (its picture 10 x 12, under one empty row) */
+        draw_map(k_check, x, e->y + (h - 12) / 2 - 1, 0, 0, 12, 13);
+    else                                /* (7 x 8, after one empty column) */
+        draw_map(k_lock[1], x + 1, e->y + (h - 8) / 2, 0, 0, 8, 8);
+}
+
 /* ---- SELECT CATEGORY ---- */
 
 /* SWOS 2020's screen (selectCategory.mnu, selectCategoryMenu_OnDraw): the wide button at the top
@@ -320,7 +389,7 @@ static void test_state(void)
 enum { kPerCatPage = 5 };
 static const int32_t k_catSlots[kPerCatPage] = { SelectCategoryMenu_act4, SelectCategoryMenu_act11, SelectCategoryMenu_act12,
                                                  SelectCategoryMenu_act21, SelectCategoryMenu_act22 };
-static char s_catText[kPerCatPage][40], s_moreText[24];
+static char s_catText[kPerCatPage][64], s_moreText[24];
 
 static int32_t cat_shift(void) { return (int32_t)entry_at(SelectCategoryMenu_exit)->x - 112; }
 static int32_t cat_shift_y(void) { return (int32_t)entry_at(SelectCategoryMenu_exit)->y - 186; }
@@ -328,22 +397,18 @@ static int32_t cat_pages(void) { return s_numCats ? (s_numCats + kPerCatPage - 1
 
 static int32_t category_complete(const Cat *c) { return c->all && c->done == c->all; }
 
+static int32_t category_icon(const Cat *c)
+{
+    return category_complete(c) ? kCheckIcon : c->closed ? kLockIcon : kNoIcon;
+}
+
 static void category_AfterDraw(MenuEntry *e)
 {
     for (int32_t s = 0; s < kPerCatPage; s++)
         if (e == entry_at(k_catSlots[s])) {
             const int32_t k = s_catPage * kPerCatPage + s;
-            if (k >= s_numCats)
-                return;
-            const Cat *c = &s_cats[k];
-            /* left of the name (SWOS 2020 padded the name with spaces for it: this font's
-             * widths leave spaces out, so the icon goes by the name's own) */
-            const int32_t tw = text_width((const char *)e->fg, e);
-            const int32_t x = e->x + ((int32_t)e->dwWidth - tw) / 2 - 12, y = e->y + 4;
-            if (category_complete(c))
-                draw_map(k_check, x + 1, y - 1, 0, 0, 12, 13);
-            else if (c->closed)
-                draw_map(k_lock[1], x, y, 0, 0, 8, 8);
+            if (k < s_numCats)
+                draw_icon(e, category_icon(&s_cats[k]));
         }
 }
 
@@ -394,6 +459,7 @@ static void selectCategoryMenu_OnInit(void)
 
 static void selectCategoryMenu_OnDraw(void)
 {
+    sync_poll();
     selectCategoryMenu_layout();
     for (int32_t s = 0; s < kPerCatPage; s++) {
         MenuEntry *e = entry_at(k_catSlots[s]);
@@ -403,7 +469,7 @@ static void selectCategoryMenu_OnDraw(void)
             continue;
         const Cat *c = &s_cats[k];
         const int32_t done = category_complete(c);
-        snprintf(s_catText[s], sizeof s_catText[s], "%s", c->name);
+        icon_label(s_catText[s], sizeof s_catText[s], c->name, category_icon(c), e);
         set_text(e, s_catText[s]);
         set_back(e, done ? kLightBlue : c->closed ? kGray : kGreen);
     }
@@ -430,6 +496,16 @@ static void show(const char *name)
         fprintf(stderr, "[challenges2020] cannot show %s\n", name);
 }
 
+/* A locked category's notice (SWOS 2020's showCategoryIsNotAvailableMessage): the game's dialog,
+ * which wraps its lines -- the error box holds one, and these ran off it and the screen. The fire
+ * that picked the category is not its answer. */
+static void category_notice(const char *text)
+{
+    static const char *const ok[] = { "OK" };
+    _fireResetFlag = 1;
+    ModApi_ShowDialog("CHALLENGE MODE", text, ok, 1, 0);
+}
+
 static void open_category(int32_t slot)
 {
     const int32_t k = s_catPage * kPerCatPage + slot;
@@ -437,13 +513,13 @@ static void open_category(int32_t slot)
         return;
     if (s_cats[k].closed == 2) {            /* SWOS 2020's SWOS MASTERS (showCategoryIsNotAvailableMessage 1) */
         char text[256];
-        snprintf(text, sizeof text, "FOLLOWING CATEGORIES SHOULD BE COMPLETED TO UNLOCK %s: %s.", s_cats[k].name,
+        snprintf(text, sizeof text, "FOLLOWING CATEGORIES SHOULD BE COMPLETED TO UNLOCK %s.|- %s -", s_cats[k].name,
                  s_cats[k].needs);
-        ModApi_ShowError(text);
+        category_notice(text);
         return;
     }
     if (s_cats[k].closed) {
-        ModApi_ShowError("THIS CATEGORY WILL BE AVAILABLE, AFTER RELEASING LATER.");
+        category_notice("THIS CATEGORY WILL BE AVAILABLE, AFTER RELEASING LATER.");
         return;
     }
     snprintf(s_cat, sizeof s_cat, "%s", s_cats[k].name);
@@ -480,17 +556,22 @@ static const int32_t k_slots[12] = {
     ScenarioModeMainMenu_s11, ScenarioModeMainMenu_s12, ScenarioModeMainMenu_s20, ScenarioModeMainMenu_s21,
     ScenarioModeMainMenu_s22, ScenarioModeMainMenu_s30, ScenarioModeMainMenu_s31, ScenarioModeMainMenu_s32,
 };
-static char s_slotText[12][48], s_header[96], s_pageInfo[24], s_desc[5][72];
+static char s_slotText[12][64], s_header[96], s_pageInfo[24], s_desc[5][72];
 static char s_descFor[40];
 
 static int32_t pages_of(int32_t n, int32_t per) { return n ? (n + per - 1) / per : 1; }
 
-/* SWOS 2020's shortenNameEx: too wide for the button (limit 102), the end cut to fit */
+/* SWOS 2020's shortenNameEx: too wide for `limit`, the end cut to fit */
 static void shorten(char *s, const MenuEntry *e, int32_t limit)
 {
     size_t n = strlen(s);
     while (n > 1 && text_width(s, e) > limit)
         s[--n] = 0;
+}
+
+static int32_t item_icon(const Item *it)
+{
+    return it->state == 1 ? kCheckIcon : it->state == 2 ? kLockIcon : kNoIcon;
 }
 
 static void slot_AfterDraw(MenuEntry *e)
@@ -501,12 +582,7 @@ static void slot_AfterDraw(MenuEntry *e)
             if (idx >= s_numItems)
                 return;
             const Item *it = &s_items[idx];
-            const int32_t tw = text_width((const char *)e->fg, e);
-            const int32_t x = e->x + ((int32_t)e->dwWidth - tw) / 2 - 11, y = e->y + 3;
-            if (it->state == 1)
-                draw_map(k_check, x + 1, y - 1, 0, 0, 12, 13);
-            else if (it->state == 2)
-                draw_map(k_lock[1], x, y, 0, 0, 8, 8);
+            draw_icon(e, item_icon(it));
             draw_stars(it->difficulty, e->x + ((int32_t)e->dwWidth - stars_width(it->difficulty)) / 2,
                        e->y + e->dwHeight + 1);
         }
@@ -554,6 +630,7 @@ static void show_description(int32_t idx)
 
 static void scenarioModeMainMenu_OnDraw(void)
 {
+    sync_poll();
     const int32_t shift = (int32_t)entry_at(ScenarioModeMainMenu_exit)->x - 167;
     const int32_t pages = pages_of(s_numItems, 12);
     if (s_page >= pages)
@@ -570,9 +647,7 @@ static void scenarioModeMainMenu_OnDraw(void)
         e->afterDrawCb = slot_AfterDraw;
         if (idx < s_numItems) {
             const Item *it = &s_items[idx];
-            const int32_t marked = it->state != 0;
-            snprintf(s_slotText[i], sizeof s_slotText[i], "%s", it->label);
-            shorten(s_slotText[i], e, marked ? 86 : 102);     /* (an icon left of it: 12 + room) */
+            icon_label(s_slotText[i], sizeof s_slotText[i], it->label, item_icon(it), e);
             set_back(e, it->state == 2 ? kGray : it->state == 1 ? kLightBlue : kGreen);
         } else {
             s_slotText[i][0] = 0;
@@ -975,9 +1050,9 @@ static void scenarioCompletionMenu_scrollDown_onSelect(void) { s_tablePage++; }
 /* ---- CUSTOM CHALLENGES (SWOS 2020's customChallengesMain, SelectSCN, SortBy) ----
  * PLAY: the custom challenges SWOS 2020's players shared on sensiblesoccer.de (.SCN files), from
  * the online-records mod (custom.list / info / download); one picked is downloaded, made one of
- * the player's fetched challenges (src/united_scn.c) and opened on its page. CREATE: the
- * challenges mod's own editor for now. SHARE: not yet -- SWOS 2020 uploads to its server, with no
- * log-in. */
+ * the player's fetched challenges (src/united_scn.c) and opened on its page. CREATE: SWOS 2020's
+ * NEW / LOAD and design screen. SHARE: the player's own, each ON or OFF the site (online-records'
+ * custom.share / unshare, as SWOS 2020 uploads and deletes them); a new one is posted on Discord. */
 
 static void customChallengesMainMenu_OnInit(void) { SetCurrentEntry(CustomChallengesMainMenu_play); }
 static void customChallengesMainMenu_OnDraw(void)
@@ -990,17 +1065,20 @@ static void customChallengesMainMenu_OnDraw(void)
 }
 static void customChallengesMainMenu_onBackground(void) {}
 static void customChallengesMainMenu_create_onSelect(void) { show("swos2020/customChallengesNewOrLoadMenu"); }
-static void customChallengesMainMenu_share_onSelect(void)
-{
-    ModApi_ShowError("SHARING ONLINE IS NOT IN THIS VERSION YET");
-}
 static void customChallengesMainMenu_exit_onSelect(void) { SetExitMenuFlag(); }
 
 enum { kScnRows = 15, kScnMax = 600 };
-typedef struct { char file[96], team1[40], score[12], team2[40], creator[32], name[96]; int32_t level, done; } ScnRow;
+typedef struct {
+    char    file[96], team1[40], score[12], team2[40], creator[32], name[96];
+    int32_t level, done;
+    char    remote[96];     /* SHARE: its file on the site, or the one it would be */
+    int32_t share;          /* SHARE: 0 OFF, 1 ON, 2 on the site only (not on this PC) */
+} ScnRow;
 static ScnRow *s_scn;
 static int32_t s_numScn, s_scnState, s_infoState, s_scnPage, s_scnSort;   /* sort: 0 date .. 4 level */
 static int32_t s_scnLoad;              /* 1: CREATE -> LOAD, the player's own (OpenSWOS's challenges) */
+static int32_t s_scnShare;             /* 1: SHARE, the player's own and what the site has of theirs */
+static int32_t s_shareState, s_shareAsk;    /* SHARE's site list: 1 awaited, 0 here, -1 none; ask afresh */
 static char  s_scnList[1 << 16], s_scnInfo[1 << 18];
 static char  s_scnHeader[48], s_scnPageText[24], s_scnData[3][80], s_scnStatus[64];
 
@@ -1177,8 +1255,299 @@ static void scn_build_own(void)
     }
 }
 
+/* ---- SHARE (SWOS 2020's) ---- */
+
+static void minute_text(int32_t m, char *out, uint32_t cap);
+
+static char s_online[1 << 18];          /* the site's shared scenarios, a file a line */
+
+/* the logged-in player's name as a shared file carries it: in capitals, what a file name cannot
+ * hold as '-' (as online-records checks it). 0: nobody is logged in */
+static int32_t me_upper(char *out, uint32_t cap)
+{
+    extern const char *United_UserName(void);
+    const char *u = United_UserName();
+    uint32_t i = 0;
+    for (; u && u[i] && i + 1 < cap; i++) {
+        char c = u[i] >= 'a' && u[i] <= 'z' ? (char)(u[i] - 32) : u[i];
+        out[i] = strchr("/\\<>:\"|?*", c) ? '-' : c;
+    }
+    out[i] = 0;
+    return i > 0;
+}
+
+/* "<name>.SCN" as the site keeps it: '/' as '_' (SWOS 2020), the rest a file cannot hold as '-' */
+static void scn_file_of(const char *name, char *out, uint32_t cap)
+{
+    snprintf(out, cap, "%s.SCN", name);
+    for (char *c = out; *c; c++)
+        if (*c == '/')
+            *c = '_';
+        else if (strchr("\\<>:\"|?*", *c))
+            *c = '-';
+}
+
+/* SWOS 2020's customMakeScenarioNameAndEtc: "<TEAM1> 1-2 <TEAM2> BY <USER>" */
+static int32_t share_name(const char *team0, int32_t s0, const char *team1, int32_t s1, char *out, uint32_t cap)
+{
+    char me[40];
+    if (!me_upper(me, sizeof me))
+        return 0;
+    snprintf(out, cap, "%s %d-%d %s BY %s", team0, (int)s0, (int)s1, team1, me);
+    for (char *c = out; *c; c++)
+        if (strchr("\\<>:\"|?*", *c))
+            *c = '-';
+    return 1;
+}
+
+/* an online-records call, waited for (SWOS 2020 waited too, its hourglass): `first`, then `again`
+ * while it answers 1. Its last answer. */
+static int32_t wait_service(const char *method, const char *first, const char *again, char *out, uint32_t cap)
+{
+    int32_t rc = ModApi_CallService("online-records", method, first, out, cap);
+    for (int32_t waited = 0; rc == 1 && waited < 30000; waited += 20) {
+        SDL_Delay(20);
+        rc = ModApi_CallService("online-records", method, again, out, cap);
+    }
+    return rc;
+}
+
+static int32_t listed(const char *list, const char *file)
+{
+    const size_t n = strlen(file);
+    for (const char *p = list; p && *p;) {
+        const char *next = strchr(p, '\n');
+        const size_t len = next ? (size_t)(next - p) : strlen(p);
+        if (len == n && !SDL_strncasecmp(p, file, n))
+            return 1;
+        p = next ? next + 1 : NULL;
+    }
+    return 0;
+}
+
+/* one of the player's own, whole (the challenges mod's "export"); `recordName`: its name online,
+ * kept in it, so a win of it is recorded under the shared one. 1 got. */
+static int32_t load_export(const char *id, const char *recordName, ChallengeDef *def, TeamFileEx teams[2])
+{
+    char args[320], e0[96], e1[160];
+    uint32_t size = 0;
+    int32_t ok;
+    snprintf(args, sizeof args, "{\"id\":\"%s\",\"record_name\":\"%s\"}", ModApi_JsonEscape(id, e0, sizeof e0),
+             ModApi_JsonEscape(recordName ? recordName : "", e1, sizeof e1));
+    if (call("export", args, e0, sizeof e0) != 0)
+        return 0;
+    char *json = (char *)ModApi_LoadFile("challenges", "export.json", &size);
+    ok = json && ChallengePack_FromJson(json, (int)size, def, 1) == 1;
+    free(json);
+    unsigned char *edt = (unsigned char *)ModApi_LoadFile("challenges", "export.EDT", &size);
+    ok = ok && edt && size >= 2 + 2 * sizeof(TeamFileEx);
+    for (int32_t t = 0; t < 2 && ok; t++) {
+        memcpy(&teams[t], edt + 2 + t * sizeof(TeamFileEx), sizeof(TeamFileEx));
+        teams[t].team.globalTeamNumber = (int16_t)BE16_TO_HOST((uint16_t)teams[t].team.globalTeamNumber);
+    }
+    free(edt);
+    return ok;
+}
+
+/* SWOS 2020's postNewScenario */
+static void post_shared(const ChallengeDef *d)
+{
+    char me[40], t0[64], t1[64], nick[80], args[640];
+    if (!me_upper(me, sizeof me))
+        return;
+    snprintf(args, sizeof args,
+             "{\"type\":\"live_stats_scenario\",\"content\":\"```%s SHARED A CHALLENGE: %s %d-%d %s (%s)!\\n"
+             "DIFFICULTY RATING: %.*s\\n```\"}", me, ModApi_JsonEscape(d->teamName[0], t0, sizeof t0), (int)d->score[0],
+             (int)d->score[1], ModApi_JsonEscape(d->teamName[1], t1, sizeof t1),
+             ModApi_JsonEscape(d->title, nick, sizeof nick),
+             (int)(d->difficulty < 1 ? 1 : d->difficulty > 5 ? 5 : d->difficulty), "*****");
+    ModApi_CallService("discord", "post", args, NULL, 0);
+}
+
+static int32_t s_shareSeq;              /* each share or unshare asked, numbered */
+
+/* SWOS 2020's uploadSCNFile and uploadScenarioInfoToServer for one of the player's own; a new one
+ * (`isNew`) posted on Discord. 1 shared. */
+static int32_t share_challenge(const char *id, int32_t isNew)
+{
+    static const char *const starts[7] = { "KICK OFF", "CORNER KICK", "FREE KICK", "PENALTY KICK", "THROW IN",
+                                           "GOAL KICK", "RANDOM" };
+    static ChallengeDef def;
+    static TeamFileEx teams[2];
+    char name[64], file[80], when[32], start[80], rules[128], leg[32] = "", subs[24], args[1200], e[6][200];
+    unsigned char *scn = NULL;
+    uint32_t size = 0;
+    if (!load_export(id, NULL, &def, teams) ||
+        !share_name(def.teamName[0], def.score[0], def.teamName[1], def.score[1], name, sizeof name) ||
+        !load_export(id, name, &def, teams) || !UnitedScn_Export(&def, teams, name, &scn, &size))
+        return 0;
+    const int32_t saved = ModApi_SaveFile("challenges", "share.scn", scn, size) == 0;
+    free(scn);
+    if (!saved)
+        return 0;
+    scn_file_of(name, file, sizeof file);
+    /* the texts under the list (SWOS 2020's getInitialTimeStr, getStartingEventStr, getEtPenStr) */
+    minute_text(def.minute, when, sizeof when);
+    {
+        char *m = strstr(when, " MINUTE");
+        if (m)
+            m[4] = 0;                       /* (" MIN") */
+        const int32_t kind = def.restartKind < 7 ? def.restartKind : 0;
+        const int32_t who = kind != CHALLENGE_RESTART_KICK_OFF && def.restartTeam >= 0 ? def.restartTeam : def.kickOff;
+        snprintf(start, sizeof start, "%s BY %s", def.shootoutOnly ? "PENALTY SHOOTOUT" : starts[kind],
+                 who == 0 || who == 1 ? def.teamName[who] : "RANDOM TEAM");
+    }
+    if (def.secondLeg)
+        snprintf(leg, sizeof leg, "AGG. %d-%d, ", def.score[0] + def.firstLeg[0], def.score[1] + def.firstLeg[1]);
+    {
+        const char *gs = def.extraTimeRule == CHALLENGE_ET_GOLDEN_GOAL ? "E.T. (GOLDEN GOAL)"
+                       : def.extraTimeRule == CHALLENGE_ET_SILVER_GOAL ? "E.T. (SILVER GOAL)"
+                       : def.extraTime ? "EXTRA TIME" : "NO EXTRA TIME";
+        const int32_t mn = def.subsSet ? def.subsMin : 3, mx = def.subsSet ? def.subsMax : 5;
+        if (mn == 0 && (mx == 0 || mx == 5))
+            snprintf(subs, sizeof subs, ", NO SUBS");
+        else
+            snprintf(subs, sizeof subs, ", %d-%d SUBS", (int)mn, (int)mx);
+        if (def.shootoutOnly)
+            snprintf(rules, sizeof rules, "%sPENALTY SHOOTOUT, MANUAL GK CONTROL%s", leg, subs);
+        else
+            snprintf(rules, sizeof rules, "%s%s, %s%s", leg, gs, def.penalties ? "PENALTY SHOOTOUT" : "NO PENALTY SHOOTOUT",
+                     subs);
+    }
+    snprintf(args, sizeof args,
+             "{\"file\":\"%s\",\"name\":\"%s\",\"nickname\":\"%s\",\"time\":\"%s\",\"start\":\"%s\","
+             "\"etpen\":\"%s\",\"win\":\"%s\",\"level\":\"%d\",\"seq\":%d}",
+             ModApi_JsonEscape(file, e[0], sizeof e[0]), ModApi_JsonEscape(name, e[1], sizeof e[1]),
+             ModApi_JsonEscape(def.title, e[2], sizeof e[2]), when, ModApi_JsonEscape(start, e[3], sizeof e[3]),
+             ModApi_JsonEscape(rules, e[4], sizeof e[4]), ModApi_JsonEscape(def.winMessage, e[5], sizeof e[5]),
+             (int)(def.difficulty < 1 ? 1 : def.difficulty), (int)++s_shareSeq);
+    if (wait_service("custom.share", args, args, NULL, 0) != 0)
+        return 0;
+    if (isNew)
+        post_shared(&def);
+    return 1;
+}
+
+/* SWOS 2020's deleteSCNFile and deleteScenarioInfoFromServer. 1 gone. */
+static int32_t unshare_file(const char *file)
+{
+    char name[96], args[320], e0[160], e1[160];
+    snprintf(name, sizeof name, "%s", file);
+    char *dot = strrchr(name, '.');
+    if (dot)
+        *dot = 0;
+    for (char *c = name; *c; c++)
+        if (*c == '_')
+            *c = '/';
+    snprintf(args, sizeof args, "{\"file\":\"%s\",\"name\":\"%s\",\"seq\":%d}",
+             ModApi_JsonEscape(file, e0, sizeof e0), ModApi_JsonEscape(name, e1, sizeof e1), (int)++s_shareSeq);
+    return wait_service("custom.unshare", args, args, NULL, 0) == 0;
+}
+
+/* YES / NO (1 YES). The fire still held from the button that asked -- through the wait for the
+ * server too -- is not its answer */
+static int32_t ask(const char *title, const char *text)
+{
+    static const char *const yesNo[2] = { "YES", "NO" };
+    _fireResetFlag = 1;
+    return ModApi_ShowDialog(title, text, yesNo, 2, 1) == 0;
+}
+
+static void tell_after(const char *text)    /* (the same, for a notice after a wait) */
+{
+    _fireResetFlag = 1;
+    ModApi_ShowError(text);
+}
+
+/* the SHARE list's rows marked ON or OFF by the site's list, then the player's own the site has
+ * and this PC has not */
+static void share_mark(void)
+{
+    char me[40], by[56], stored[96];
+    for (int32_t i = 0; i < s_numScn; i++) {
+        ScnRow *r = &s_scn[i];
+        int s0 = 0, s1 = 0;
+        char name[64];
+        sscanf(r->score, "%d-%d", &s0, &s1);
+        if (!share_name(r->team1, s0, r->team2, s1, name, sizeof name))
+            return;
+        scn_file_of(name, r->remote, sizeof r->remote);
+        r->share = listed(s_online, r->remote);
+        scn_file_of(r->name, stored, sizeof stored);
+        if (!r->share && listed(s_online, stored)) {
+            snprintf(r->remote, sizeof r->remote, "%s", stored);
+            r->share = 1;
+        }
+    }
+    if (!me_upper(me, sizeof me))
+        return;
+    snprintf(by, sizeof by, " BY %s.SCN", me);
+    const int32_t own = s_numScn;
+    for (const char *line = s_online; line && *line && s_numScn < kScnMax;) {
+        const char *next = strchr(line, '\n');
+        char file[96];
+        snprintf(file, sizeof file, "%.*s", (int)(next ? next - line : (long)strlen(line)), line);
+        const size_t n = strlen(file), k = strlen(by);
+        int32_t have = 0;
+        for (int32_t i = 0; i < own; i++)
+            have |= !SDL_strcasecmp(s_scn[i].remote, file);
+        if (!have && n > k && !SDL_strcasecmp(file + n - k, by)) {
+            ScnRow *r = &s_scn[s_numScn++];
+            scn_parse(file, r);
+            snprintf(r->remote, sizeof r->remote, "%s", file);
+            r->share = 2;
+        }
+        line = next ? next + 1 : NULL;
+    }
+}
+
+static void share_refresh(void)
+{
+    scn_build_own();
+    s_shareState = s_shareAsk = 1;
+}
+
+/* the SHARE list's row picked: its SHARED column turns it on or off; the rest of it plays it as a
+ * test (no record), as SWOS 2020 does */
+static void share_select(int32_t idx, int32_t onShared)
+{
+    if (s_shareState != 0)
+        return;
+    ScnRow *r = &s_scn[idx];
+    if (!onShared) {
+        if (r->share == 2) {
+            snprintf(s_scnStatus, sizeof s_scnStatus, "THAT SCENARIO IS NOT ON THIS PC");
+            return;
+        }
+        char args[160], e[96], out[32];
+        snprintf(args, sizeof args, "{\"id\":\"%s\"}", ModApi_JsonEscape(r->file, e, sizeof e));
+        if (call("test", args, out, sizeof out) != 0)
+            ModApi_ShowError("THIS SCENARIO CANNOT BE PLAYED");
+        s_scnStatus[0] = 0;
+        share_refresh();
+        return;
+    }
+    if (r->share == 2 &&
+        !ask("SHARE", "THIS SCENARIO IS NOT ON THIS PC: TAKEN OFF THE SERVER IT IS GONE. TAKE IT OFF?"))
+        return;
+    const int32_t was = r->share;
+    const int32_t ok = was ? unshare_file(r->remote) : share_challenge(r->file, 1);
+    snprintf(s_scnStatus, sizeof s_scnStatus, "%s",
+             was ? ok ? "THE SCENARIO IS NO LONGER SHARED" : "IT COULD NOT BE TAKEN OFF THE SERVER"
+                 : ok ? "THE SCENARIO IS SHARED ONLINE" : "THE SCENARIO COULD NOT BE SHARED");
+    share_refresh();
+}
+
 static void customChallengesSelectSCNMenu_OnInit(void)
 {
+    if (s_scnShare) {
+        share_refresh();
+        s_scnState = 0;
+        s_infoState = 0;
+        s_scnPage = 0;
+        s_scnStatus[0] = 0;
+        return;
+    }
     if (s_scnLoad) {
         scn_build_own();
         s_scnState = 0;
@@ -1197,6 +1566,13 @@ static void customChallengesSelectSCNMenu_OnDraw(void)
 {
     static char cells[kScnRows][4][48];
     const int32_t shift = (int32_t)entry_at(CustomChallengesSelectSCNMenu_exit)->x - 226;
+    if (s_scnShare && s_shareState == 1) {
+        s_shareState = ModApi_CallService("online-records", "custom.list",
+                                          s_shareAsk ? "{\"fresh\":true}" : "{}", s_online, sizeof s_online);
+        s_shareAsk = 0;
+        if (s_shareState == 0)
+            share_mark();
+    }
     if (s_scnState == 1 || s_infoState == 1) {
         if (s_infoState == 1)
             s_infoState = ModApi_CallService("online-records", "custom.info", "{}", s_scnInfo, sizeof s_scnInfo);
@@ -1205,19 +1581,20 @@ static void customChallengesSelectSCNMenu_OnDraw(void)
         if (s_scnState == 0 && s_infoState != 1)
             scn_build();
     }
-    snprintf(s_scnHeader, sizeof s_scnHeader, "%s (%d)", s_scnLoad ? "CREATE YOUR OWN SCENARIOS" : "PLAY ONLINE SCENARIOS",
+    snprintf(s_scnHeader, sizeof s_scnHeader, "%s (%d)", s_scnShare ? "SHARE YOUR SCENARIOS ONLINE"
+             : s_scnLoad ? "CREATE YOUR OWN SCENARIOS" : "PLAY ONLINE SCENARIOS",
              (int)(s_scnState == 0 ? s_numScn : 0));
     set_text(entry_at(CustomChallengesSelectSCNMenu_header), s_scnHeader);
     centre(entry_at(CustomChallengesSelectSCNMenu_header), s_scnLoad ? "CREATE YOUR OWN SCENARIOS (000)"
                                                                      : "PLAY ONLINE SCENARIOS (000)", 40, shift);
-    entry_at(CustomChallengesSelectSCNMenu_completion)->isInvisible = s_scnLoad;
-    entry_at(CustomChallengesSelectSCNMenu_sortedBy)->isInvisible = s_scnLoad;
+    entry_at(CustomChallengesSelectSCNMenu_completion)->isInvisible = s_scnLoad || s_scnShare;
+    entry_at(CustomChallengesSelectSCNMenu_sortedBy)->isInvisible = s_scnLoad || s_scnShare;
 
     static const char *const heads[4] = { "HOME TEAM", "", "AWAY TEAM", "CREATOR" };
     static const int32_t col0[4] = { CustomChallengesSelectSCNMenu_team1_00, CustomChallengesSelectSCNMenu_teamScore_00,
                                      CustomChallengesSelectSCNMenu_team2_00, CustomChallengesSelectSCNMenu_share_00 };
     for (int32_t c = 0; c < 4; c++) {
-        set_text(entry_at(col0[c]), c == 3 && s_scnLoad ? "NICKNAME" : heads[c]);
+        set_text(entry_at(col0[c]), c == 3 && s_scnShare ? "SHARED" : c == 3 && s_scnLoad ? "NICKNAME" : heads[c]);
         set_back(entry_at(col0[c]), kLightBrownWithYellowFrame);
     }
     entry_at(CustomChallengesSelectSCNMenu_level_00)->isInvisible = 1;
@@ -1233,12 +1610,14 @@ static void customChallengesSelectSCNMenu_OnDraw(void)
         snprintf(cells[i][0], 48, "%s", r ? r->team1 : "");
         snprintf(cells[i][1], 48, "%s", r ? r->score : "");
         snprintf(cells[i][2], 48, "%s", r ? r->team2 : "");
-        snprintf(cells[i][3], 48, "%s", r ? r->creator : "");
+        snprintf(cells[i][3], 48, "%s", !r ? "" : !s_scnShare ? r->creator
+                 : s_shareState != 0 ? "..." : r->share ? "ON" : "OFF");
         for (int32_t c = 0; c < 4; c++) {
             MenuEntry *e = entry_at(col0[c] + 1 + i);
             shorten(cells[i][c], e, (int32_t)e->dwWidth - 4);
             set_text(e, cells[i][c]);
-            set_back(e, i == selRow ? kRed : kGray);
+            set_back(e, c == 3 && s_scnShare && r && s_shareState == 0 ? (r->share ? kGreen : kDarkBlue)
+                        : i == selRow ? kRed : kGray);
         }
         entry_at(CustomChallengesSelectSCNMenu_level_01 + i)->afterDrawCb = scn_level_AfterDraw;
         entry_at(CustomChallengesSelectSCNMenu_team1_01 + i)->afterDrawCb = scn_team_AfterDraw;
@@ -1262,10 +1641,33 @@ static void customChallengesSelectSCNMenu_OnDraw(void)
         set_text(pg, s_scnPageText);
         for (int32_t k = 0; k < 3; k++) {
             MenuEntry *e = entry_at(CustomChallengesSelectSCNMenu_dataInfo1 + k);
-            e->y = (uint16_t)(l15->y + l15->dwHeight + 12 + 9 * k);
+            e->y = (uint16_t)(l15->y + l15->dwHeight * (k + 1) + 3 + 2 * k);     /* (SWOS 2020's) */
             e->content = ENTRY_STRING;
             set_text(e, s_scnData[k]);
         }
+    }
+    {   /* the cursor's ways (SWOS 2020 sets them each frame too: the menu has none of its own):
+         * about the rows there are, the page arrows right of them, the bottom buttons under */
+        int32_t rows = s_scnState == 0 ? s_numScn - s_scnPage * kScnRows : 0;
+        rows = rows < 0 ? 0 : rows > kScnRows ? kScnRows : rows;
+        for (int32_t c = 0; c < 4; c++)
+            for (int32_t i = 0; i < rows; i++) {
+                MenuEntry *e = entry_at(col0[c] + 1 + i);
+                e->upEntry = (int8_t)(i ? col0[c] + i : -1);
+                e->downEntry = (int8_t)(i < rows - 1 ? col0[c] + 2 + i : CustomChallengesSelectSCNMenu_exit);
+                e->leftEntry = (int8_t)(c ? col0[c - 1] + 1 + i : -1);
+                e->rightEntry = (int8_t)(c < 3 ? col0[c + 1] + 1 + i
+                                         : i < kScnRows / 2 ? CustomChallengesSelectSCNMenu_scrollUp
+                                         : CustomChallengesSelectSCNMenu_scrollDown);
+            }
+        const int32_t bottom0 = rows ? col0[0] + rows : -1, bottom3 = rows ? col0[3] + rows : -1;
+        entry_at(CustomChallengesSelectSCNMenu_scrollUp)->leftEntry = (int8_t)(rows ? col0[3] + 1 : -1);
+        entry_at(CustomChallengesSelectSCNMenu_scrollDown)->leftEntry = (int8_t)bottom3;
+        entry_at(CustomChallengesSelectSCNMenu_exit)->upEntry = (int8_t)bottom3;
+        entry_at(CustomChallengesSelectSCNMenu_exit)->leftEntry =
+            (int8_t)(s_scnLoad || s_scnShare ? -1 : CustomChallengesSelectSCNMenu_sortedBy);
+        entry_at(CustomChallengesSelectSCNMenu_completion)->upEntry = (int8_t)bottom0;
+        entry_at(CustomChallengesSelectSCNMenu_sortedBy)->upEntry = (int8_t)bottom0;
     }
     {
         char f[7][96];
@@ -1273,6 +1675,12 @@ static void customChallengesSelectSCNMenu_OnDraw(void)
         s_scnData[0][0] = s_scnData[1][0] = s_scnData[2][0] = 0;
         if (s_scnStatus[0])
             snprintf(s_scnData[1], sizeof s_scnData[1], "%s", s_scnStatus);
+        else if (s_scnShare)
+            snprintf(s_scnData[1], sizeof s_scnData[1], "%s",
+                     s_shareState == 1 ? "CHECKING SHARED ONLINE SCENARIOS..."
+                     : s_shareState < 0 ? "SENSIBLESOCCER.DE CANNOT BE REACHED"
+                     : !s_numScn ? "NO SCENARIOS OF YOURS YET: CREATE MAKES ONE"
+                     : "SELECT SCENARIO TO SHARE ONLINE");
         else if (s_scnState == 1)
             snprintf(s_scnData[1], sizeof s_scnData[1], "CHECKING ONLINE SCENARIO INFORMATION...");
         else if (s_scnState < 0)
@@ -1305,6 +1713,10 @@ static void customChallengesSelectSCNMenu_select_onSelect(void)
     const int32_t idx = s_scnPage * kScnRows + row;
     if (row < 0 || s_scnState != 0 || idx >= s_numScn)
         return;
+    if (s_scnShare) {
+        share_select(idx, sel >= col0[3] + 1 && sel <= col0[3] + kScnRows);
+        return;
+    }
     if (s_scnLoad) {                        /* (LOAD: into the design screen) */
         edit_load(s_scn[idx].file);
         scn_build_own();
@@ -1337,6 +1749,7 @@ static void customChallengesSelectSCNMenu_select_onSelect(void)
     snprintf(s_sel, sizeof s_sel, "%s", id);
     snprintf(s_cat, sizeof s_cat, "CUSTOM");
     s_actHeader[0] = 0;
+    _fireResetFlag = 1;     /* (the fire that picked it, held through the download, is not the page's) */
     show("swos2020/selectScenarioActionMenu");
 }
 
@@ -1362,6 +1775,18 @@ static void customChallengesMainMenu_play_onSelect(void)
     show("swos2020/customChallengesSelectSCNMenu");
 }
 
+static void customChallengesMainMenu_share_onSelect(void)
+{
+    char me[40];
+    if (!me_upper(me, sizeof me)) {
+        ModApi_ShowError("LOG IN TO SHARE YOUR SCENARIOS");
+        return;
+    }
+    s_scnShare = 1;
+    show("swos2020/customChallengesSelectSCNMenu");
+    s_scnShare = 0;
+}
+
 static void customChallengesSortByMenu_onDraw(void) {}
 static void sort_by(int32_t k) { s_scnSort = k; SetExitMenuFlag(); }
 static void customChallengesSortByMenu_sortByDate_onSelect(void) { sort_by(0); }
@@ -1378,11 +1803,12 @@ static void customChallengesSortByMenu_exit_onSelect(void) { SetExitMenuFlag(); 
  * play). Not on it: the uniforms, cards and injuries, the pitch set (SWOS 2020's own screens). */
 
 enum { kScoreLimit = 9 };
-enum { EV_KICK_OFF, EV_FREE_KICK, EV_FREE_KICK_HOME, EV_CORNER, EV_THROW_IN, EV_GOAL_KICK, EV_COUNT };
+enum { EV_KICK_OFF, EV_FREE_KICK, EV_FREE_KICK_HOME, EV_CORNER, EV_THROW_IN, EV_GOAL_KICK, EV_RANDOM, EV_COUNT };
 enum { WN_WIN, WN_DRAW, WN_GOLDEN, WN_SILVER };
 
 typedef struct {
     char     id[40], nickname[32], uuid[2][40], name[2][24];
+    char     prevName[96];      /* its name online as loaded or last saved ("" a new one) */
     uint16_t number[2];
     int32_t  yours, score[2], minute, secondLeg, leg[2], et, pen, shootout, subsMin, subsMax;
     int32_t  attack;            /* team 1 attacks: 0 DOWN, 1 UP, 2 RANDOM */
@@ -1392,6 +1818,7 @@ typedef struct {
 } Edit;
 
 static Edit s_ed;
+static ChallengeDef s_loaded;           /* the one LOAD brought, whole ("" id: none) */
 static char s_edText[24][48];
 
 static void customChallengesNewOrLoadMenu_OnInit(void) { SetCurrentEntry(CustomChallengesNewOrLoadMenu_new_); }
@@ -1416,6 +1843,8 @@ static int32_t edit_teams(void)        /* the friendly's team screen: both teams
         }
         s_ed.number[t] = ModApi_ChosenTeamNumber(t);
         snprintf(s_ed.name[t], sizeof s_ed.name[t], "%s", ModApi_ChosenName(t));
+        for (size_t n = strlen(s_ed.name[t]); n && s_ed.name[t][n - 1] == ' ';)
+            s_ed.name[t][--n] = 0;
     }
     s_ed.yours = ModApi_ChosenIsPlayer(1) && !ModApi_ChosenIsPlayer(0) ? 1 : 0;
     return 1;
@@ -1426,6 +1855,7 @@ static void customChallengesNewOrLoadMenu_new_onSelect(void)
     memset(&s_ed, 0, sizeof s_ed);
     if (!edit_teams())
         return;
+    s_loaded.id[0] = 0;
     s_ed.subsMin = 3;                       /* (SWOS 2020's new scenario) */
     s_ed.subsMax = 5;
     s_ed.pitch = -1;
@@ -1444,11 +1874,21 @@ static void edit_load(const char *id)
 {
     char v[64];
     memset(&s_ed, 0, sizeof s_ed);
+    s_loaded.id[0] = 0;
     if (!fetch_info(id, s_info, sizeof s_info))
         return;
+    {
+        static TeamFileEx teams[2];
+        if (!load_export(id, NULL, &s_loaded, teams))
+            s_loaded.id[0] = 0;
+    }
     const char *in = s_info;
     snprintf(s_ed.id, sizeof s_ed.id, "%s", id);
     snprintf(s_ed.nickname, sizeof s_ed.nickname, "%s", info_get(in, "title", v, sizeof v));
+    {
+        char full[96];
+        snprintf(s_ed.prevName, sizeof s_ed.prevName, "%s", info_get(in, "name", full, sizeof full));
+    }
     for (int32_t t = 0; t < 2; t++) {
         char key[16];
         snprintf(key, sizeof key, "uuid%d", (int)t);
@@ -1479,7 +1919,7 @@ static void edit_load(const char *id)
     {
         const int32_t kind = info_num(in, "restart");
         s_ed.event = kind == 1 ? EV_CORNER : kind == 2 ? (info_num(in, "restart_deep") ? EV_FREE_KICK_HOME : EV_FREE_KICK)
-                   : kind == 4 ? EV_THROW_IN : kind == 5 ? EV_GOAL_KICK : EV_KICK_OFF;
+                   : kind == 4 ? EV_THROW_IN : kind == 5 ? EV_GOAL_KICK : kind == 6 ? EV_RANDOM : EV_KICK_OFF;
         if (kind)
             s_ed.starter = info_num(in, "restart_team");
     }
@@ -1503,8 +1943,9 @@ static void edit_rules(int32_t changedTeam)
         s_ed.event = EV_KICK_OFF;
     if (s_ed.minute >= 90 && s_ed.minute != 120)
         s_ed.et = 1;
-    /* a golden or silver goal, a shoot-out alone: the tie must be level at the start */
-    if (s_ed.win == WN_GOLDEN || s_ed.win == WN_SILVER || s_ed.shootout) {
+    /* a golden or silver goal, a shoot-out alone, and any start at minute 90 (extra time): the tie
+     * must be level at the start (SWOS 2020's setTotalScoresToSame) */
+    if (s_ed.win == WN_GOLDEN || s_ed.win == WN_SILVER || s_ed.shootout || s_ed.minute == 90) {
         if (s_ed.secondLeg) {
             const int32_t a = s_ed.score[0] + s_ed.leg[0], b = s_ed.score[1] + s_ed.leg[1];
             if (a > b)
@@ -1581,7 +2022,7 @@ static void edit_stars_AfterDraw(MenuEntry *e)
 static void customChallengesEditMenu_onDraw(void)
 {
     static const char *const events[EV_COUNT] = { "KICK OFF", "FREE KICK (OPPO. SIDE)", "FREE KICK (HOME SIDE)", "CORNER KICK",
-                                                  "THROW IN", "GOAL KICK" };
+                                                  "THROW IN", "GOAL KICK", "RANDOM" };
     static const char *const wins[4] = { "WIN BY ANY SCORE", "AT LEAST DRAW", "GOLDEN GOAL", "SILVER GOAL" };
     static const char *const pitches[8] = { "RANDOM", "FROZEN", "MUDDY", "WET", "SOFT", "NORMAL", "DRY", "HARD" };
     char v[48];
@@ -1808,7 +2249,8 @@ static void edit_json(char *out, uint32_t cap)
     if (s_ed.pitch >= 0)
         n += snprintf(out + n, cap - (size_t)n, ",\"pitch_type\":%d", (int)s_ed.pitch);
     if (!s_ed.shootout && s_ed.event != EV_KICK_OFF) {
-        static const char *const kinds[EV_COUNT] = { "kick_off", "free_kick", "free_kick", "corner", "throw_in", "goal_kick" };
+        static const char *const kinds[EV_COUNT] = { "kick_off", "free_kick", "free_kick", "corner", "throw_in", "goal_kick",
+                                                     "random" };
         n += snprintf(out + n, cap - (size_t)n, ",\"restart\":{\"kind\":\"%s\",\"team\":%d,\"wing\":-1%s%s}", kinds[s_ed.event],
                       (int)s_ed.starter, s_ed.event == EV_FREE_KICK || s_ed.event == EV_FREE_KICK_HOME ? ",\"spot\":-1" : "",
                       s_ed.event == EV_FREE_KICK_HOME ? ",\"deep\":true" : "");
@@ -1816,18 +2258,103 @@ static void edit_json(char *out, uint32_t cap)
     snprintf(out + n, cap - (size_t)n, "}");
 }
 
+/* The challenge to save: the screen's, and -- one LOADed -- what the screen has no row for, as it
+ * was: the sent off and injured, scorers, length, description, pitch number; where the starting
+ * event is unchanged its spot and side (and a penalty, which the screen shows as a kick-off); an
+ * exact-score win while the screen's condition is unchanged. */
+static void edit_object(char *out, uint32_t cap)
+{
+    static ChallengeDef d;
+    static char doc[8192];
+    edit_json(out, cap);
+    if (!s_loaded.id[0] || strcmp(s_loaded.id, s_ed.id) != 0)
+        return;
+    snprintf(doc, sizeof doc, "{\"format\":\"openswos-challenges\",\"version\":2,\"challenges\":[%s]}", out);
+    if (ChallengePack_FromJson(doc, (int)strlen(doc), &d, 1) != 1)
+        return;
+    const ChallengeDef *o = &s_loaded;
+    for (int32_t t = 0; t < 2; t++)         /* (a team from a file, still that team) */
+        if (!d.teamUuid[t][0] && o->teamFile[t][0] && !strcmp(d.teamName[t], o->teamName[t]))
+            memcpy(d.teamFile[t], o->teamFile[t], sizeof d.teamFile[t]);
+    for (int32_t k = 0; k < 8; k++)
+        d.scorers[k].team = -1;
+    for (int32_t t = 0; t < 2; t++) {       /* (shirts are a team's: another team chosen, none) */
+        if (strcmp(d.teamName[t], o->teamName[t]) != 0)
+            continue;
+        d.sentOff[t] = o->sentOff[t];
+        memcpy(d.injured[t], o->injured[t], sizeof d.injured[t]);
+        for (int32_t k = 0; k < 8; k++)
+            if (o->scorers[k].team == t)
+                d.scorers[k] = o->scorers[k];
+    }
+    memcpy(d.lines, o->lines, sizeof d.lines);
+    d.length = o->length;
+    d.pitchNumber = o->pitchNumber;
+    if (d.restartKind == o->restartKind && d.restartDeep == o->restartDeep) {
+        d.restartSpot = o->restartSpot;
+        d.restartWing = o->restartWing;
+        d.restartX = o->restartX;
+        d.restartY = o->restartY;
+    } else if (o->restartKind == CHALLENGE_RESTART_PENALTY && d.restartKind == CHALLENGE_RESTART_KICK_OFF) {
+        d.restartKind = o->restartKind;
+        d.restartTeam = o->restartTeam;
+        d.restartWing = o->restartWing;
+    }
+    if (o->win == CHALLENGE_EXACT && d.win == CHALLENGE_WIN) {
+        d.win = o->win;
+        memcpy(d.winScore, o->winScore, sizeof d.winScore);
+    }
+    if (ChallengePack_ToJson(&d, doc, sizeof doc) > 0 && strlen(doc) < cap)
+        snprintf(out, cap, "%s", doc);
+}
+
 static void customChallengesEditMenu_test_onSelect(void)
 {
-    static char args[4096], obj[3800], out[32];
-    edit_json(obj, sizeof obj);
+    static char args[8300], obj[8192], out[32];
+    edit_object(obj, sizeof obj);
     snprintf(args, sizeof args, "{\"challenge\":%s}", obj);
     if (call("try", args, out, sizeof out) != 0)
         ModApi_ShowError("THIS SCENARIO CANNOT BE PLAYED");
 }
+/* SWOS 2020's after SAVE: NEW SHARE? or ALREADY SHARED, UPDATE? -- and, the score changed, the one
+ * shared under the old score taken off (its deleteSCNFile of prevScen) */
+static void share_after_save(void)
+{
+    char name[64], file[96], old[96] = "", text[320];
+    if (!share_name(s_ed.name[0], s_ed.score[0], s_ed.name[1], s_ed.score[1], name, sizeof name) ||
+        wait_service("custom.list", "{\"fresh\":true}", "{}", s_online, sizeof s_online) != 0) {
+        tell_after("SAVED");
+        return;
+    }
+    scn_file_of(name, file, sizeof file);
+    if (s_ed.prevName[0]) {
+        ScnRow was, now;
+        char prev[96];
+        scn_file_of(s_ed.prevName, prev, sizeof prev);
+        scn_parse(prev, &was);
+        scn_parse(file, &now);
+        if (SDL_strcasecmp(prev, file) != 0 && !strcmp(was.team1, now.team1) && !strcmp(was.team2, now.team2) &&
+            strcmp(was.score, now.score) != 0 && listed(s_online, prev))
+            snprintf(old, sizeof old, "%s", prev);
+    }
+    const int32_t shared = listed(s_online, file);
+    snprintf(text, sizeof text, "SAVED: %s.|%s", name,
+             shared ? "ALREADY SHARED. UPDATE IT NOW?"
+             : old[0] ? "SHARE IT ONLINE? THE ONE SHARED WITH THE OLD SCORE IS REPLACED."
+                      : "DO YOU WANT TO SHARE YOUR SCENARIO ONLINE AND MAKE IT AVAILABLE TO PLAY FOR EVERYONE?");
+    if (ask("SHARE", text)) {
+        const int32_t ok = share_challenge(s_ed.id, !shared);
+        if (ok && old[0])
+            unshare_file(old);
+        tell_after(ok ? "THE SCENARIO IS SHARED ONLINE" : "THE SCENARIO COULD NOT BE SHARED");
+    }
+    snprintf(s_ed.prevName, sizeof s_ed.prevName, "%s", name);
+}
+
 static void customChallengesEditMenu_save_onSelect(void)
 {
-    static char args[4096], obj[3800], out[64];
-    edit_json(obj, sizeof obj);
+    static char args[8300], obj[8192], out[64];
+    edit_object(obj, sizeof obj);
     snprintf(args, sizeof args, "{\"challenge\":%s}", obj);
     if (call("save", args, out, sizeof out) != 0) {
         ModApi_ShowError("THE SCENARIO COULD NOT BE SAVED");
@@ -1838,16 +2365,23 @@ static void customChallengesEditMenu_save_onSelect(void)
         *nl = 0;
     snprintf(s_ed.id, sizeof s_ed.id, "%s", out);
     if (!getenv("SWOS_EDIT_TEST"))
-        ModApi_ShowError("SAVED");
+        share_after_save();
 }
 static void customChallengesEditMenu_delete_onSelect(void)
 {
     char args[96], e[64], out[16];
-    if (!s_ed.id[0])
+    if (!s_ed.id[0] || !ask("DELETE", "DELETE THIS SCENARIO?"))
         return;
     snprintf(args, sizeof args, "{\"id\":\"%s\"}", ModApi_JsonEscape(s_ed.id, e, sizeof e));
     if (call("delete", args, out, sizeof out) == 0) {
-        ModApi_ShowError("DELETED");
+        char me[40], file[96];
+        scn_file_of(s_ed.prevName, file, sizeof file);
+        if (s_ed.prevName[0] && me_upper(me, sizeof me) &&
+            wait_service("custom.list", "{\"fresh\":true}", "{}", s_online, sizeof s_online) == 0 &&
+            listed(s_online, file) &&
+            ask("DELETE", "IT IS SHARED ONLINE TOO. TAKE IT OFF THE SERVER AS WELL?") && !unshare_file(file))
+            tell_after("IT COULD NOT BE TAKEN OFF THE SERVER");
+        tell_after("DELETED");
         SetExitMenuFlag();
     }
 }
@@ -1893,7 +2427,9 @@ static const MenuSymbol k_handlers[] = {
 };
 #undef HANDLER
 
-/* "challenges-screens": the challenges mod opens these in place of its own */
+/* "challenges-screens": the challenges mod opens these in place of its own -- after SWOS 2020's
+ * log-in (ScenarioGame::process, scenarioModeLogIn): LOGIN, on to SELECT CATEGORY; EXIT or LOG
+ * OUT, back. A build that cannot go online has nothing to log in to: straight on. */
 static int32_t screens(const char *method, const char *args, char *out, uint32_t cap)
 {
     (void)args; (void)out; (void)cap;
@@ -1903,6 +2439,15 @@ static int32_t screens(const char *method, const char *args, char *out, uint32_t
     fetch_categories();
     if (!s_numCats)
         return -1;                          /* (nothing to show: the mod's own screen says so) */
+#if defined(SWOS_HTTPS)
+    {
+        extern const char *United_UserName(void);
+        if (OnlineMenus_ServerLogIn(LOGIN_FOR_CHALLENGES, United_UserName(), NULL) < 0)
+            return 0;                       /* (back to the menu it came from) */
+        s_sync = 1;                         /* (their wins on the server: done here too) */
+        sync_poll();
+    }
+#endif
     show("swos2020/selectCategoryMenu");
     return 0;
 }

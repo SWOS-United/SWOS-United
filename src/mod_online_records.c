@@ -4,15 +4,22 @@
  * mods are OpenSWOS's, shared; this mod offers the service they ask, "online-records" (OpenSWOS
  * docs/MODS.md §33). Without it they play offline, as in OpenSWOS.
  *
- *   challenges.completed  the player's beaten challenges: "<category>\t<name>" lines
+ *   challenges.completed  the player's beaten challenges: "<category>\t<name>" lines;
+ *                         {"fresh"}: downloaded again (passed once, then polled without)
  *   challenges.stats      {"name","category"}: "BEATEN BY 12 PLAYERS" -- how many players have
  *   challenges.wins       {"name","category"}: how many times the player has beaten it ("3")
  *   challenges.winners    {"name","category"}: "<player>\t<wins>" lines, most first (SWOS
  *                         2020's VIEW ONLINE STATS)
  *   challenges.ranking    {"category"}: "<player>\t<beaten>" lines, most first (its SCENARIO
  *                         COMPLETION)
- *   challenges.won        the win, sent -- OFF (UNITED_WRITE_RECORDS): -1
- *   speedrun.finished     the run into the player's record, sent -- OFF (UNITED_WRITE_RECORDS): -1
+ *   challenges.won        the win of a logged-in player, sent (UNITED_WRITE_RECORDS)
+ *   speedrun.finished     the run into the player's record, sent (UNITED_WRITE_SPEEDRUNS)
+ *   custom.share          {"file","name", its texts}: the player's challenge uploaded (SWOS 2020's
+ *                         upload_scn.php, upload_scenario_info) from the challenges mod's share.scn
+ *   custom.unshare        {"file","name"}: the player's own removed from the site
+ * A win sent is also posted to Discord (the discord2020 mod's "discord" service, SWOS 2020's
+ * live_stats_scenario), and so is a speedrun whose record stands in its board's first fifty
+ * (the relay's "speedrun": SWOS 2020's PHPManager post).
  *   speedrun.line         "WORLD RANK 3   BEST 2.21 NAME" for the result screen
  *   speedrun.board        {"style","target"}: the target's leaderboard, its five difficulties
  *   speedrun.mine         {"style"}: the player's records at that style
@@ -43,6 +50,8 @@
 #include "united_api.h"
 #include "united_records.h"
 #include "united_scn.h"           /* United7z_FirstFile (a speedrun replay's .7z) */
+#include "https_client.h"         /* sharing a custom challenge */
+#include "project_identity.h"     /* PROJECT_RECORDS_API */
 #include "platform_sdl.h"
 
 #include <SDL.h>
@@ -54,10 +63,10 @@
 
 #define SLUG "online-records"
 
-/* A challenge won is NOT written to sensiblesoccer.de: "Nothing from OpenSWOS should go to
- * sensiblesoccer.de" (OpenSWOS's owner, 2026-11-07). The code that sent it stays, behind this
- * switch, for SWOS United's own server (SWOS-API). */
-#define UNITED_WRITE_RECORDS 0
+/* A challenge won IS written, as SWOS 2020 did (insert_new_scenario_record, 2026-11-27): only a
+ * match played for real (never an editor's TEST or a test run), only for a logged-in player, into
+ * SWOS 2020's records (PROJECT_RECORDS_API). 0 sends none. */
+#define UNITED_WRITE_RECORDS 1
 
 /* A SPEEDRUN run IS written, as SWOS 2020 did (Playa, 2026-11-21: "you need to log in, then your
  * runs get uploaded if they were successful"): only a run that reached its target, only for a
@@ -86,7 +95,12 @@ static void who(char *out, uint32_t cap, int32_t mustBeLoggedIn)
 /* ---- the worker and its queue ---- */
 
 enum { J_TALLY = 1, J_WON, J_SPEEDRUN, J_BOARD, J_MINE, J_NEWS, J_SCNLIST, J_SCNINFO, J_SCNFILE, J_GALORE, J_HIL,
-       J_RPL };
+       J_RPL, J_SHARE, J_UNSHARE };
+/* a shared scenario's texts, as SWOS 2020 sends them (upload_scenario_info's fields, in order) */
+enum { kInfoFields = 6 };
+static const char *const k_infoArgs[kInfoFields] = { "$.nickname", "$.time", "$.start", "$.etpen", "$.win", "$.level" };
+static const char *const k_infoParams[kInfoFields] = { "scenario_nickname_str", "initial_time_str",
+    "starting_event_str", "et_pen_str", "win_msg_str", "level_str" };
 typedef struct {
     int32_t        kind;
     char           user[64];
@@ -96,10 +110,13 @@ typedef struct {
     unsigned char *replay;                  /* speedrun: its .SRP (malloc'd: the worker frees it) */
     uint32_t       replaySize;
     char           replayName[96];
-} Job;
+    int32_t        difficulty, done, total; /* won: its stars, and its category's progress */
+    char           info[kInfoFields][96];   /* share: the scenario's texts (name: its file; replay: */
+    char           key[128];                /* the .SCN's bytes). key: what its slot was asked for -- */
+} Job;                                      /* an answer for something else since is not stored */
 
 /* The boards' answers (under s_lock): each the last one asked for, by what was asked. */
-enum { F_BOARD, F_MINE, F_NEWS, F_SCNLIST, F_SCNINFO, F_SCNFILE, F_GALORE, F_HIL, F_RPL, kFetches };
+enum { F_BOARD, F_MINE, F_NEWS, F_SCNLIST, F_SCNINFO, F_SCNFILE, F_GALORE, F_HIL, F_RPL, F_SHARE, kFetches };
 typedef struct { char key[96]; int32_t state; char *text; uint32_t size; } Fetch;   /* state: 1 asking,
                                                                               * 2 here, 3 failed */
 static Fetch s_fetch[kFetches];
@@ -122,6 +139,25 @@ static int32_t srp_name(const char *file)
 {
     const size_t n = strlen(file);
     return n >= 4 && SDL_strcasecmp(file + n - 4, ".srp") == 0;
+}
+
+/* A file the site does not have: it answers by sending the download on to a web page (303), which
+ * arrives as if it were the file. A highlight and a replay never start with '<'. */
+static int32_t web_page(const unsigned char *data, uint32_t size)
+{
+    uint32_t i = 0;
+    while (data && i < size && i < 64 && (data[i] == ' ' || data[i] == '\t' || data[i] == '\r' || data[i] == '\n' ||
+                                          data[i] >= 0x80))        /* (a byte order mark) */
+        i++;
+    return data && i < size && data[i] == '<';
+}
+
+/* The board of a gameplay style, SWOS 2020's number (SWOS-API's UnitedRecords_Style put AMIGA's
+ * 60 FPS on the 50 FPS board). MOON SOCCER has none (-1): SWOS 2020 had no speedrun in it. */
+static int32_t record_style(const char *name)
+{
+    return !strcmp(name, "DOS") ? 0 : !strcmp(name, "AMIGA60") ? 3 : !strcmp(name, "XBOX") ? 4
+         : !strcmp(name, "MOON") ? -1 : 1;
 }
 
 /* The run's replay, for the upload: the match's recording (LATEST.SRP, written when the match
@@ -178,21 +214,272 @@ static void push(const Job *j)
     SDL_UnlockMutex(s_lock);
 }
 
+/* ---- a win's post, and sharing a custom challenge (SWOS 2020's) ---- */
+
+static char s_post[2000];           /* (under s_lock) a win's or a run's Discord post, for the menus' */
+static const char *s_postType;      /* thread, and the relay's channel for it */
+
+/* SWOS 2020's postNewScenarioRecordOnDiscord: who beat what, its stars, the category's progress,
+ * and the players who have beaten it -- the ten with most wins, and the player below them with
+ * theirs. From the tally downloaded after the win was sent. */
+static void win_post(const Job *j, const UnitedChallengeTally *t)
+{
+    static char rows[16384], list[65536], msg[2000];
+    char key[200], name[96] = "", line[48];
+    int32_t done = j->done, total = j->total, players = 0, wins = 0, mine = -1, myWins = 0;
+    uint32_t n = 0;
+    snprintf(key, sizeof key, "%s\t%s", j->category, j->name);
+    UnitedRecords_TallyWinners(t, key, rows, sizeof rows);
+    {   /* the name without what is in brackets, and without words that are numbers alone */
+        char plain[96], *open, *close;
+        snprintf(plain, sizeof plain, "%s", j->name);
+        open = strchr(plain, '(');
+        close = strrchr(plain, ')');
+        if (open && close && open < close)
+            memmove(open, close + 1, strlen(close + 1) + 1);
+        for (char *w = strtok(plain, " "); w; w = strtok(NULL, " "))
+            if (w[strspn(w, "0123456789")]) {
+                const size_t at = strlen(name);
+                snprintf(name + at, sizeof name - at, "%s%s", at ? " " : "", w);
+            }
+    }
+    if (!strcmp(j->category, "CUSTOM") && UnitedRecords_ScnList(0, list, sizeof list)) {
+        /* (CUSTOM's progress is over the challenges shared online, as SWOS 2020's) */
+        static char beaten[65536];
+        UnitedRecords_TallyMine(t, beaten, sizeof beaten);
+        done = total = 0;
+        for (char *f = list; f && *f;) {
+            char *next = strchr(f, '\n');
+            if (next)
+                *next++ = 0;
+            char *ext = strstr(f, ".SCN");
+            if (ext) {
+                char one[128];
+                *ext = 0;
+                snprintf(one, sizeof one, "CUSTOM\t%s\n", f);
+                total++;
+                done += strstr(beaten, one) != NULL;
+            }
+            f = next;
+        }
+    }
+    if (done > total)
+        done = total;
+    n += (uint32_t)snprintf(msg + n, sizeof msg - n, "```%s BEAT %s (%s)!\r\n", j->user, name, j->category);
+    n += (uint32_t)snprintf(msg + n, sizeof msg - n, "DIFFICULTY RATING: %.*s\r\n",
+                            (int)(j->difficulty < 0 ? 0 : j->difficulty > 5 ? 5 : j->difficulty), "*****");
+    n += (uint32_t)snprintf(msg + n, sizeof msg - n, "CATEGORY PROGRESS: %d%% (%d/%d)\r\n",
+                            total ? (int)((200 * done + total) / (2 * total)) : 0, (int)done, (int)total);
+    snprintf(line, sizeof line, "+------------+-----+\r\n");
+    n += (uint32_t)snprintf(msg + n, sizeof msg - n, "%s| NAME       | WIN |\r\n%s", line, line);
+    for (char *r = rows; r && *r;) {
+        char *next = strchr(r, '\n');
+        if (next)
+            *next++ = 0;
+        char *tab = strchr(r, '\t');
+        if (tab) {
+            *tab = 0;
+            const int32_t w = atoi(tab + 1), me = SDL_strcasecmp(r, j->user) == 0;
+            if (me) {
+                mine = players;
+                myWins = w;
+            }
+            if (players < 10 && n < sizeof msg)
+                n += (uint32_t)snprintf(msg + n, sizeof msg - n, "|%c%-10.10s | %3d |\r\n", me ? '*' : ' ', r, (int)w);
+            players++;
+            wins += w;
+        }
+        r = next;
+    }
+    if (n >= sizeof msg)
+        return;
+    if (mine >= 10) {           /* (below the ten: their own row) */
+        n += (uint32_t)snprintf(msg + n, sizeof msg - n, "%s...\r\n%s|*%-10.10s | %3d |\r\n%s%s", line, line, j->user,
+                                (int)myWins, line, mine != players - 1 ? "...\r\n" : "");
+    } else {
+        n += (uint32_t)snprintf(msg + n, sizeof msg - n, "%s%s", line, players > 10 ? "...\r\n" : "");
+    }
+    if (n < sizeof msg)
+        n += (uint32_t)snprintf(msg + n, sizeof msg - n, "%d PLAYER%s, %d WIN%s\r\n```", (int)players,
+                                players >= 2 ? "S" : "", (int)wins, wins >= 2 ? "S" : "");
+    if (n >= sizeof msg)
+        return;
+    SDL_LockMutex(s_lock);
+    snprintf(s_post, sizeof s_post, "%s", msg);
+    s_postType = "live_stats_scenario";
+    SDL_UnlockMutex(s_lock);
+}
+
+/* SWOS 2020's PHPManager::discordWebhook, after a run has gone into the record: who completed
+ * what in what time, posted when the player's record ranks in the first fifty -- "RANK: X" when
+ * the run was not their best. The record as the site has it now. */
+static void run_post(const Job *j)
+{
+    static const char *const styles[5] = { "PC DOS", "AMIGA", "MOON", "60 FPS", "XBOX" };
+    static const char *const targets[8] = { "1 GOAL", "HEADER", "3 GOALS", "TACKLE", "10 GOALS", "YELLOW CARD",
+                                            "MATCH", "RED CARD" };
+    static const char *const levels[5] = { "BEGINNER", "AMATEUR", "ADVANCED", "PRO", "MASTER" };
+    static char rows[16384], msg[600];
+    long best = 0, last = 0;
+    int rank = 0;
+    if (j->run.style < 0 || j->run.style > 4 || j->run.mode < 0 || j->run.mode > 7 || j->run.difficulty < 0 ||
+        j->run.difficulty > 4 || !UnitedRecords_SpeedrunMine(j->user, j->run.style, rows, sizeof rows))
+        return;
+    for (const char *r = rows; r && *r;) {      /* "target, difficulty, played, best, last, rank, ..." */
+        int target, level, played, rk;
+        long b, l;
+        if (sscanf(r, "%d\t%d\t%d\t%ld\t%ld\t%d", &target, &level, &played, &b, &l, &rk) == 6 &&
+            target == j->run.mode && level == j->run.difficulty) {
+            best = b;
+            last = l;
+            rank = rk;
+        }
+        r = strchr(r, '\n');
+        if (r)
+            r++;
+    }
+    if (rank < 1 || rank > 50 || last <= 0 || last >= 99999)
+        return;
+    /* (getFrameTimerString: the run's frames at its style's rate, m:ss.ss) */
+    const int fps = j->run.style == 0 ? 70 : j->run.style >= 3 ? 60 : 50;
+    const long cs = (last * 100 + fps / 2) / fps;
+    char place[16];
+    if (best == last)
+        snprintf(place, sizeof place, "%d", rank);
+    else
+        snprintf(place, sizeof place, "X");
+    snprintf(msg, sizeof msg,
+             ":man_running:  `%s`  has successfully completed a SPEEDRUN :soccer: ```css\n"
+             "%s | %s | %s | {TIME: %ld:%02ld.%02ld} | [RANK: %s]```",
+             j->user, styles[j->run.style], targets[j->run.mode], levels[j->run.difficulty], cs / 6000,
+             cs / 100 % 60, cs % 100, place);
+    SDL_LockMutex(s_lock);
+    snprintf(s_post, sizeof s_post, "%s", msg);
+    s_postType = "speedrun";
+    SDL_UnlockMutex(s_lock);
+}
+
+/* galoreapi `option` for a shared scenario, its parameters already escaped. 1 answered. */
+static int32_t galore_call(const char *option, const char *params)
+{
+    static char url[2400];
+    HttpsReply r;
+    snprintf(url, sizeof url, "%s/galoreapi_v15.php?conn_mode=1&option=%s&%s", PROJECT_RECORDS_API, option, params);
+    memset(&r, 0, sizeof r);
+    Https_Request(url, NULL, &r);
+    const int32_t ok = r.status == 200;
+    if (!ok)
+        fprintf(stderr, "[online-records] %s: %d\n", option, (int)r.status);
+    Https_Free(&r);
+    return ok;
+}
+
+/* the file in the site's list of shared scenarios: 1 there, 0 not, -1 no list */
+static int32_t scn_listed(const char *file)
+{
+    static char list[1 << 18];
+    char want[128];
+    if (!UnitedRecords_ScnList(0, list, sizeof list))
+        return -1;
+    snprintf(want, sizeof want, "%s\n", file);
+    for (const char *p = list; (p = strstr(p, want)) != NULL; p++)
+        if (p == list || p[-1] == '\n')
+            return 1;
+    const size_t n = strlen(list), w = strlen(file);       /* (the last line, no '\n') */
+    return n >= w && !strcmp(list + n - w, file) && (n == w || list[n - w - 1] == '\n');
+}
+
+/* SWOS 2020's uploadSCNFile and uploadScenarioInfoToServer; the list says whether it arrived */
+static int32_t share_scenario(const Job *j)
+{
+    static char url[640], params[2048];
+    char esc[300];
+    HttpsReply r;
+    snprintf(url, sizeof url, "%s/challenges/custom/upload_scn.php", PROJECT_RECORDS_API);
+    memset(&r, 0, sizeof r);
+    const int32_t sent = Https_Upload(url, "myFile", j->name, j->replay, j->replaySize, &r) == 0 && r.status == 200;
+    Https_Free(&r);
+    if (!sent || scn_listed(j->name) != 1)
+        return 0;
+    Https_Escape(j->category, esc, sizeof esc);             /* (the scenario's name) */
+    size_t n = (size_t)snprintf(params, sizeof params, "scenario_name_str=%s", esc);
+    for (int32_t i = 0; i < kInfoFields && n < sizeof params; i++) {
+        Https_Escape(j->info[i], esc, sizeof esc);
+        n += (size_t)snprintf(params + n, sizeof params - n, "&%s=%s", k_infoParams[i], esc);
+    }
+    if (!galore_call("upload_scenario_info", params))
+        fprintf(stderr, "[online-records] %s: shared, its texts not sent\n", j->name);
+    return 1;
+}
+
+/* SWOS 2020's deleteSCNFile and deleteScenarioInfoFromServer */
+static int32_t unshare_scenario(const Job *j)
+{
+    static char params[400];
+    char esc[300];
+    Https_Escape(j->name, esc, sizeof esc);
+    snprintf(params, sizeof params, "scn_filename=%s", esc);
+    if (!galore_call("delete_scn_file", params) || scn_listed(j->name) != 0)
+        return 0;
+    Https_Escape(j->category, esc, sizeof esc);
+    snprintf(params, sizeof params, "scenario_name_str=%s", esc);
+    galore_call("delete_scenario_info", params);
+    return 1;
+}
+
+/* (under s_lock) whether the slot still waits for this job's answer */
+static int32_t still_wanted(int32_t slot, const Job *j)
+{
+    return strcmp(s_fetch[slot].key, j->key) == 0;
+}
+
 static void run_job(Job *j)
 {
     if (j->kind == J_TALLY) {
         UnitedChallengeTally t;
         const int32_t ok = UnitedRecords_ChallengeTally(j->user, &t);
+        const int32_t rows = t.numRows;
         SDL_LockMutex(s_lock);
-        UnitedRecords_FreeTally(&s_tally);
-        s_tally = t;
-        s_tallyState = ok ? 2 : 3;
+        if (strcmp(j->user, s_tallyUser) == 0) {
+            UnitedRecords_FreeTally(&s_tally);
+            s_tally = t;
+            s_tallyState = ok ? 2 : 3;
+        } else {
+            UnitedRecords_FreeTally(&t);    /* (another player asked since: theirs is queued) */
+        }
         SDL_UnlockMutex(s_lock);
         fprintf(stderr, "[online-records] challenges: %s (%d player-challenge rows)\n", ok ? "here" : "not fetched",
-                (int)t.numRows);
+                (int)rows);
     } else if (j->kind == J_WON) {
-        if (UnitedRecords_ChallengeWon(j->user, j->name, j->category))
-            fprintf(stderr, "[online-records] challenge won, sent: %s (%s)\n", j->name, j->category);
+        const int32_t ok = UnitedRecords_ChallengeWon(j->user, j->name, j->category);
+        fprintf(stderr, "[online-records] challenge won, %s: %s (%s)\n", ok ? "sent" : "NOT sent", j->name,
+                j->category);
+        if (ok) {           /* the records with it in: shown from here on, and posted */
+            UnitedChallengeTally t;
+            if (UnitedRecords_ChallengeTally(j->user, &t)) {
+                win_post(j, &t);
+                SDL_LockMutex(s_lock);
+                if (strcmp(j->user, s_tallyUser) == 0 && s_tallyState != 1) {
+                    UnitedRecords_FreeTally(&s_tally);
+                    s_tally = t;
+                    s_tallyState = 2;
+                } else {
+                    UnitedRecords_FreeTally(&t);
+                }
+                SDL_UnlockMutex(s_lock);
+            }
+        }
+    } else if (j->kind == J_SHARE || j->kind == J_UNSHARE) {
+        const int32_t ok = j->kind == J_SHARE ? share_scenario(j) : unshare_scenario(j);
+        free(j->replay);
+        j->replay = NULL;
+        SDL_LockMutex(s_lock);
+        if (still_wanted(F_SHARE, j))
+            s_fetch[F_SHARE].state = ok ? 2 : 3;
+        s_fetch[F_SCNLIST].state = s_fetch[F_SCNINFO].state = 0;     /* (asked again) */
+        SDL_UnlockMutex(s_lock);
+        fprintf(stderr, "[online-records] scenario %s%s: %s\n", j->kind == J_SHARE ? "shared" : "unshared",
+                ok ? "" : " FAILED", j->name);
     } else if (j->kind == J_BOARD || j->kind == J_MINE || j->kind == J_NEWS) {
         const int32_t slot = j->kind == J_BOARD ? F_BOARD : j->kind == J_MINE ? F_MINE : F_NEWS;
         const uint32_t cap = 65536;
@@ -201,11 +488,14 @@ static void run_job(Job *j)
                                     : j->kind == J_MINE ? UnitedRecords_SpeedrunMine(j->user, j->style, text, cap)
                                     : UnitedRecords_SpeedrunNews(text, cap));
         SDL_LockMutex(s_lock);
-        free(s_fetch[slot].text);
-        s_fetch[slot].text = ok ? text : NULL;
-        s_fetch[slot].state = ok ? 2 : 3;
+        const int32_t wanted = still_wanted(slot, j);
+        if (wanted) {
+            free(s_fetch[slot].text);
+            s_fetch[slot].text = ok ? text : NULL;
+            s_fetch[slot].state = ok ? 2 : 3;
+        }
         SDL_UnlockMutex(s_lock);
-        if (!ok)
+        if (!ok || !wanted)
             free(text);
     } else if (j->kind == J_SCNLIST || j->kind == J_SCNINFO) {
         const int32_t slot = j->kind == J_SCNLIST ? F_SCNLIST : F_SCNINFO;
@@ -214,34 +504,48 @@ static void run_job(Job *j)
         const int32_t ok = text && (j->kind == J_SCNLIST ? UnitedRecords_ScnList(j->target, text, cap)
                                                          : UnitedRecords_ScnInfo(text, cap));
         SDL_LockMutex(s_lock);
-        free(s_fetch[slot].text);
-        s_fetch[slot].text = ok ? text : NULL;
-        s_fetch[slot].state = ok ? 2 : 3;
+        const int32_t wanted = still_wanted(slot, j);
+        if (wanted) {
+            free(s_fetch[slot].text);
+            s_fetch[slot].text = ok ? text : NULL;
+            s_fetch[slot].state = ok ? 2 : 3;
+        }
         SDL_UnlockMutex(s_lock);
-        if (!ok)
+        if (!ok || !wanted)
             free(text);
     } else if (j->kind == J_GALORE) {
         const uint32_t cap = 1 << 18;
         char *text = (char *)malloc(cap);
         const int32_t ok = text && UnitedRecords_GaloreChart(j->category, text, cap);
         SDL_LockMutex(s_lock);
-        free(s_fetch[F_GALORE].text);
-        s_fetch[F_GALORE].text = ok ? text : NULL;
-        s_fetch[F_GALORE].state = ok ? 2 : 3;
+        const int32_t wanted = still_wanted(F_GALORE, j);   /* (not another month's since) */
+        if (wanted) {
+            free(s_fetch[F_GALORE].text);
+            s_fetch[F_GALORE].text = ok ? text : NULL;
+            s_fetch[F_GALORE].state = ok ? 2 : 3;
+        }
         SDL_UnlockMutex(s_lock);
-        if (!ok)
+        if (!ok || !wanted)
             free(text);
     } else if (j->kind == J_HIL) {
         unsigned char *data = NULL;
         uint32_t size = 0;
-        const int32_t ok = UnitedRecords_GaloreDownload(j->user, j->name, &data, &size);
+        int32_t ok = UnitedRecords_GaloreDownload(j->user, j->name, &data, &size);
+        if (ok && web_page(data, size)) {       /* (no such highlight on the site) */
+            free(data);
+            data = NULL;
+            ok = 0;
+        }
         SDL_LockMutex(s_lock);
-        free(s_fetch[F_HIL].text);
-        s_fetch[F_HIL].text = ok ? (char *)data : NULL;
-        s_fetch[F_HIL].size = ok ? size : 0;
-        s_fetch[F_HIL].state = ok ? 2 : 3;
+        const int32_t wanted = still_wanted(F_HIL, j);
+        if (wanted) {
+            free(s_fetch[F_HIL].text);
+            s_fetch[F_HIL].text = ok ? (char *)data : NULL;
+            s_fetch[F_HIL].size = ok ? size : 0;
+            s_fetch[F_HIL].state = ok ? 2 : 3;
+        }
         SDL_UnlockMutex(s_lock);
-        if (!ok)
+        if (!ok || !wanted)
             free(data);
         fprintf(stderr, "[online-records] highlight %s/%s: %s (%u bytes)\n", j->user, j->name,
                 ok ? "downloaded" : "NOT downloaded", (unsigned)size);
@@ -256,13 +560,21 @@ static void run_job(Job *j)
                  United7z_FirstFile(packed, packedSize, ".rpl", &data, &size);
             free(packed);
         }
+        if (ok && web_page(data, size)) {       /* (no such replay on the site) */
+            free(data);
+            data = NULL;
+            ok = 0;
+        }
         SDL_LockMutex(s_lock);
-        free(s_fetch[F_RPL].text);
-        s_fetch[F_RPL].text = ok ? (char *)data : NULL;
-        s_fetch[F_RPL].size = ok ? size : 0;
-        s_fetch[F_RPL].state = ok ? 2 : 3;
+        const int32_t wanted = still_wanted(F_RPL, j);
+        if (wanted) {
+            free(s_fetch[F_RPL].text);
+            s_fetch[F_RPL].text = ok ? (char *)data : NULL;
+            s_fetch[F_RPL].size = ok ? size : 0;
+            s_fetch[F_RPL].state = ok ? 2 : 3;
+        }
         SDL_UnlockMutex(s_lock);
-        if (!ok)
+        if (!ok || !wanted)
             free(data);
         fprintf(stderr, "[online-records] speedrun replay %s: %s (%u bytes)\n", j->name,
                 ok ? "downloaded" : "NOT downloaded", (unsigned)size);
@@ -271,12 +583,15 @@ static void run_job(Job *j)
         uint32_t size = 0;
         const int32_t ok = UnitedRecords_ScnDownload(j->name, &data, &size);
         SDL_LockMutex(s_lock);
-        free(s_fetch[F_SCNFILE].text);
-        s_fetch[F_SCNFILE].text = ok ? (char *)data : NULL;
-        s_fetch[F_SCNFILE].size = ok ? size : 0;
-        s_fetch[F_SCNFILE].state = ok ? 2 : 3;
+        const int32_t wanted = still_wanted(F_SCNFILE, j);
+        if (wanted) {
+            free(s_fetch[F_SCNFILE].text);
+            s_fetch[F_SCNFILE].text = ok ? (char *)data : NULL;
+            s_fetch[F_SCNFILE].size = ok ? size : 0;
+            s_fetch[F_SCNFILE].state = ok ? 2 : 3;
+        }
         SDL_UnlockMutex(s_lock);
-        if (!ok)
+        if (!ok || !wanted)
             free(data);
         fprintf(stderr, "[online-records] %s: %s (%u bytes)\n", j->name, ok ? "downloaded" : "NOT downloaded",
                 (unsigned)size);
@@ -296,6 +611,8 @@ static void run_job(Job *j)
         fprintf(stderr, "[online-records] speedrun %s (style %d, mode %d, difficulty %d, replay %s, %u bytes): %s\n",
                 ok ? "sent" : "NOT sent", (int)j->run.style, (int)j->run.mode, (int)j->run.difficulty,
                 j->replayName[0] ? j->replayName : "none", (unsigned)j->replaySize, line);
+        if (ok)
+            run_post(j);
     }
 }
 
@@ -345,7 +662,8 @@ static int32_t challenges_read(const char *method, const char *args, char *out, 
     if (personal && !me[0])
         return -1;
     SDL_LockMutex(s_lock);
-    if (s_tallyState == 0 || strcmp(s_tallyUser, me) != 0) {
+    const int32_t fresh = json_bool(args, "$.fresh");
+    if (s_tallyState == 0 || strcmp(s_tallyUser, me) != 0 || (fresh && s_tallyState != 1)) {
         Job j;
         memset(&j, 0, sizeof j);
         j.kind = J_TALLY;
@@ -393,6 +711,7 @@ static int32_t fetch(int32_t slot, int32_t kind, const char *key, const Job *job
         Job j = *job;
         j.kind = kind;
         snprintf(f->key, sizeof f->key, "%s", key);
+        snprintf(j.key, sizeof j.key, "%s", f->key);
         f->state = 1;
         SDL_UnlockMutex(s_lock);
         push(&j);
@@ -408,6 +727,62 @@ static int32_t fetch(int32_t slot, int32_t kind, const char *key, const Job *job
 static int32_t service(const char *method, const char *args, char *out, uint32_t cap)
 {
     char me[64];
+    if (!strcmp(method, "custom.share") || !strcmp(method, "custom.unshare")) {
+        /* {"file", "name", and for share its texts}: the logged-in player's own only ("... BY
+         * <USER>.SCN"); share takes the challenges mod's share.scn. 1 while at it, 0 done, -1 not
+         * (poll with the same call until it is not 1) */
+        const int32_t share = !strcmp(method, "custom.share");
+        Job j;
+        char by[80], key[128];
+        memset(&j, 0, sizeof j);
+        json_str(args, "$.file", j.name, (int32_t)sizeof j.name);
+        json_str(args, "$.name", j.category, (int32_t)sizeof j.category);
+        who(me, sizeof me, 1);
+        const size_t n = strlen(j.name);
+        if (!me[0] || n < 5 || strcmp(j.name + n - 4, ".SCN") != 0 || strpbrk(j.name, "/\\\"\r\n") ||
+            strstr(j.name, ".."))
+            return -1;
+        for (char *c = me; *c; c++)             /* (as in a file's name) */
+            if (strchr("/\\<>:\"|?*", *c))
+                *c = '-';
+        snprintf(by, sizeof by, " BY %s.SCN", me);
+        if (n < strlen(by) || SDL_strcasecmp(j.name + n - strlen(by), by) != 0)
+            return -1;
+        /* ("seq": each time the player asks is its own -- an old answer never stands for it) */
+        snprintf(key, sizeof key, "%d/%d/%s", (int)share, (int)json_num(args, "$.seq"), j.name);
+        SDL_LockMutex(s_lock);
+        Fetch *f = &s_fetch[F_SHARE];
+        if (strcmp(f->key, key) != 0 || f->state == 0) {
+            snprintf(f->key, sizeof f->key, "%s", key);
+            snprintf(j.key, sizeof j.key, "%s", f->key);
+            f->state = 1;
+            SDL_UnlockMutex(s_lock);
+            if (share) {
+                uint32_t size = 0;
+                j.replay = (unsigned char *)ModApi_LoadFile("challenges", "share.scn", &size);
+                j.replaySize = size;
+                for (int32_t i = 0; i < kInfoFields; i++)
+                    json_str(args, k_infoArgs[i], j.info[i], (int32_t)sizeof j.info[0]);
+                if (!j.replay || !size) {
+                    free(j.replay);
+                    SDL_LockMutex(s_lock);
+                    f->state = 0;
+                    SDL_UnlockMutex(s_lock);
+                    return -1;
+                }
+            }
+            j.kind = share ? J_SHARE : J_UNSHARE;
+            push(&j);
+            return 1;
+        }
+        const int32_t rc = f->state == 1 ? 1 : f->state == 3 ? -1 : 0;
+        if (rc != 1) {                          /* (answered once: asked again, it is done again) */
+            f->state = 0;
+            f->key[0] = 0;
+        }
+        SDL_UnlockMutex(s_lock);
+        return rc;
+    }
     if (!strcmp(method, "custom.list") || !strcmp(method, "custom.info")) {
         Job j;
         memset(&j, 0, sizeof j);
@@ -435,6 +810,7 @@ static int32_t service(const char *method, const char *args, char *out, uint32_t
         Fetch *f = &s_fetch[F_RPL];
         if (strcmp(f->key, j.name) != 0 || f->state == 0) {
             snprintf(f->key, sizeof f->key, "%s", j.name);
+            snprintf(j.key, sizeof j.key, "%s", f->key);
             f->state = 1;
             SDL_UnlockMutex(s_lock);
             j.kind = J_RPL;
@@ -464,6 +840,7 @@ static int32_t service(const char *method, const char *args, char *out, uint32_t
         Fetch *f = &s_fetch[F_HIL];
         if (strcmp(f->key, key) != 0 || f->state == 0) {
             snprintf(f->key, sizeof f->key, "%s", key);
+            snprintf(j.key, sizeof j.key, "%s", f->key);
             f->state = 1;
             SDL_UnlockMutex(s_lock);
             j.kind = J_HIL;
@@ -494,6 +871,7 @@ static int32_t service(const char *method, const char *args, char *out, uint32_t
         Fetch *f = &s_fetch[F_SCNFILE];
         if (strcmp(f->key, key) != 0 || f->state == 0) {
             snprintf(f->key, sizeof f->key, "%s", key);
+            snprintf(j.key, sizeof j.key, "%s", f->key);
             f->state = 1;
             SDL_UnlockMutex(s_lock);
             j.kind = J_SCNFILE;
@@ -550,6 +928,9 @@ static int32_t service(const char *method, const char *args, char *out, uint32_t
         snprintf(j.user, sizeof j.user, "%s", me);
         json_str(args, "$.name", j.name, (int32_t)sizeof j.name);
         json_str(args, "$.category", j.category, (int32_t)sizeof j.category);
+        j.difficulty = (int32_t)json_num(args, "$.difficulty");
+        j.done = (int32_t)json_num(args, "$.done");
+        j.total = (int32_t)json_num(args, "$.total");
         push(&j);
         SDL_LockMutex(s_lock);  /* (here too at once: the page counts it, the list has it) */
         if (s_tallyState == 2) {
@@ -581,7 +962,9 @@ static int32_t service(const char *method, const char *args, char *out, uint32_t
         j.kind = J_SPEEDRUN;
         snprintf(j.user, sizeof j.user, "%s", me);
         json_str(args, "$.style", style, (int32_t)sizeof style);
-        j.run.style = UnitedRecords_Style(style);
+        j.run.style = record_style(style);
+        if (j.run.style < 0)
+            return -1;
         j.run.mode = (int32_t)json_num(args, "$.target");
         {   /* SWOS 2020's preconfigured teams' difficulty, else the teams' skill points' */
             long preset = -1;
@@ -683,6 +1066,38 @@ static void records_test(void)
     exit(a && sent && b && has && ok ? 0 : 1);
 }
 
+/* Each menu frame: a win's or a run's post, written by the worker, handed to the discord2020 mod
+ * here (the menus' thread: services are called from it); then the test hook. */
+static void records_menu(void)
+{
+    static char post[2000], args[4400];
+    const char *type = NULL;
+    post[0] = 0;
+    if (s_lock) {
+        SDL_LockMutex(s_lock);
+        snprintf(post, sizeof post, "%s", s_post);
+        type = s_postType;
+        s_post[0] = 0;
+        SDL_UnlockMutex(s_lock);
+    }
+    if (post[0]) {      /* (its lines kept: ModApi_JsonEscape would drop them) */
+        size_t n = (size_t)snprintf(args, sizeof args, "{\"type\":\"%s\",\"content\":\"", type);
+        for (const char *c = post; *c && n + 8 < sizeof args; c++) {
+            if (*c == '\n') {
+                args[n++] = '\\';
+                args[n++] = 'n';
+            } else if ((unsigned char)*c >= 32) {
+                if (*c == '"' || *c == '\\')
+                    args[n++] = '\\';
+                args[n++] = *c;
+            }
+        }
+        snprintf(args + n, sizeof args - n, "\"}");
+        ModApi_CallService("discord", "post", args, NULL, 0);
+    }
+    records_test();
+}
+
 static void records_init(void)
 {
     SDL_Thread *thread;
@@ -700,7 +1115,7 @@ static void records_init(void)
 const ModDef ModDef_onlineRecords = {
     .slug = SLUG,
     .init = records_init,
-    .menuDrawn = records_test,
+    .menuDrawn = records_menu,
 };
 
 #elif defined(SWOS_SDL_BUILD)

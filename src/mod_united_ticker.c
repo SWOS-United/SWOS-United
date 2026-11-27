@@ -239,9 +239,11 @@ static void ticker_menu_drawn(void)
     static uint8_t rgba[kTextLen * 16 * 12 * 4];
     const int32_t entry = ModApi_MenuTickerEntry();
     const uint32_t now = ModApi_Ticks();
+    if (s_feed == 1)        /* (the answer taken on whatever menu the player has got to: the one */
+        feed_step();        /*  request slot is everybody's, the log-in's too) */
     if (entry < 0)
         return;
-    if (s_feed != 2)
+    if (s_feed == 0)
         feed_step();
     if (!s_loaded)
         load();
