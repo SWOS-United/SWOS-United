@@ -25,8 +25,8 @@
       "coords": {
         "x": 1,
         "y": 51,
-        "w": 130,
-        "h": 16
+        "w": 150,
+        "h": 20
       },
       "commands": [
         {
@@ -52,17 +52,18 @@
         }
       ],
       "image": "grafs_2020/menus2020/multiplayer.bmp",
-      "image_x": 134,
-      "image_y": 0
+      "image_x": 2,
+      "image_y": 2,
+      "icon_well": true
     },
     {
       "kind": "entry",
       "name": "practice",
       "coords": {
         "x": 1,
-        "y": 69,
-        "w": 130,
-        "h": 16
+        "y": 73,
+        "w": 150,
+        "h": 20
       },
       "commands": [
         {
@@ -88,17 +89,18 @@
         }
       ],
       "image": "grafs_2020/menus2020/compete.bmp",
-      "image_x": 134,
-      "image_y": 0
+      "image_x": 2,
+      "image_y": 2,
+      "icon_well": true
     },
     {
       "kind": "entry",
       "name": "replays",
       "coords": {
         "x": 1,
-        "y": 87,
-        "w": 130,
-        "h": 16
+        "y": 95,
+        "w": 150,
+        "h": 20
       },
       "commands": [
         {
@@ -124,8 +126,9 @@
         }
       ],
       "image": "grafs_2020/menus2020/practice.bmp",
-      "image_x": 134,
-      "image_y": 0
+      "image_x": 2,
+      "image_y": 2,
+      "icon_well": true
     },
     {
       "kind": "entry",
@@ -133,8 +136,8 @@
       "coords": {
         "x": 155,
         "y": 51,
-        "w": 130,
-        "h": 16
+        "w": 150,
+        "h": 20
       },
       "commands": [
         {
@@ -160,17 +163,18 @@
         }
       ],
       "image": "grafs_2020/menus2020/options.bmp",
-      "image_x": 134,
-      "image_y": 0
+      "image_x": 2,
+      "image_y": 2,
+      "icon_well": true
     },
     {
       "kind": "entry",
       "name": "editing",
       "coords": {
         "x": 155,
-        "y": 69,
-        "w": 130,
-        "h": 16
+        "y": 73,
+        "w": 150,
+        "h": 20
       },
       "commands": [
         {
@@ -196,17 +200,18 @@
         }
       ],
       "image": "grafs_2020/menus2020/extras.bmp",
-      "image_x": 134,
-      "image_y": 0
+      "image_x": 2,
+      "image_y": 2,
+      "icon_well": true
     },
     {
       "kind": "entry",
       "name": "extras",
       "coords": {
         "x": 155,
-        "y": 87,
-        "w": 130,
-        "h": 16
+        "y": 95,
+        "w": 150,
+        "h": 20
       },
       "commands": [
         {
@@ -232,8 +237,9 @@
         }
       ],
       "image": "grafs_2020/menus2020/replays.bmp",
-      "image_x": 134,
-      "image_y": 0
+      "image_x": 2,
+      "image_y": 2,
+      "icon_well": true
     },
     {
       "kind": "set_origin",
@@ -362,7 +368,7 @@
       "name": "continueContest",
       "coords": {
         "x": 27,
-        "y": 164,
+        "y": 140,
         "w": 250,
         "h": 20
       },
@@ -394,15 +400,15 @@
       "name": "saveContest",
       "coords": {
         "x": 77,
-        "y": 188,
+        "y": 162,
         "w": 72,
-        "h": 22
+        "h": 20
       },
       "commands": [
         {
           "op": "text",
-          "flags": "0x8010",
-          "literal": "      SAVE"
+          "flags": "0x10",
+          "literal": "SAVE"
         },
         {
           "op": "colors",
@@ -422,23 +428,24 @@
         }
       ],
       "image": "grafs_2020/menus2020/save.bmp",
-      "image_x": 6,
-      "image_y": 4
+      "image_x": 2,
+      "image_y": 3,
+      "icon_well": true
     },
     {
       "kind": "entry",
       "name": "loadOldCompetition",
       "coords": {
         "x": 155,
-        "y": 188,
+        "y": 162,
         "w": 72,
-        "h": 22
+        "h": 20
       },
       "commands": [
         {
           "op": "text",
-          "flags": "0x8010",
-          "literal": "   LOAD"
+          "flags": "0x10",
+          "literal": "LOAD"
         },
         {
           "op": "colors",
@@ -458,8 +465,9 @@
         }
       ],
       "image": "grafs_2020/menus2020/load.bmp",
-      "image_x": 48,
-      "image_y": 4
+      "image_x": 2,
+      "image_y": 3,
+      "icon_well": true
     },
     {
       "kind": "set_origin",
@@ -471,9 +479,9 @@
       "name": "classicCareer",
       "coords": {
         "x": 1,
-        "y": 105,
-        "w": 130,
-        "h": 16
+        "y": 117,
+        "w": 150,
+        "h": 20
       },
       "commands": [
         {
@@ -492,8 +500,9 @@
         }
       ],
       "image": "grafs_2020/menus2020/classic_career.png",
-      "image_x": 134,
-      "image_y": 0
+      "image_x": 2,
+      "image_y": 2,
+      "icon_well": true
     },
     {
       "kind": "set_origin",
@@ -541,9 +550,9 @@
       "name": "worldCareer",
       "coords": {
         "x": 155,
-        "y": 105,
-        "w": 130,
-        "h": 16
+        "y": 117,
+        "w": 150,
+        "h": 20
       },
       "commands": [
         {
@@ -562,8 +571,9 @@
         }
       ],
       "image": "grafs_2020/menus2020/world_career.png",
-      "image_x": 134,
-      "image_y": 0
+      "image_x": 2,
+      "image_y": 2,
+      "icon_well": true
     }
   ],
   "ticker_entry": 7

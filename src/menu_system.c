@@ -1213,6 +1213,12 @@ fg_text_common:
         textX = entry->x;
         if (entry->background != NO_BACKGROUND)
             textX += 2;
+#ifdef SWOS_SDL_BUILD
+        {   /* (a JSON menu's icon well: the text after it, menu_extras.c) */
+            extern int32_t MenuExtras_TextShift(const MenuEntry *ent);
+            textX += (uint16_t)(2 * MenuExtras_TextShift(entry));
+        }
+#endif
         if (textColor == 0)
             textColor = 2;
         DrawMenuText(textX, textY, textColor, textPtr, charTable);
@@ -1227,6 +1233,12 @@ fg_text_common:
     } else {
         /* Default: centered */
         textX = (entry->dwWidth >> 1) + entry->x;
+#ifdef SWOS_SDL_BUILD
+        {   /* (a JSON menu's icon well: centred in the rest of the box, menu_extras.c) */
+            extern int32_t MenuExtras_TextShift(const MenuEntry *ent);
+            textX += (uint16_t)MenuExtras_TextShift(entry);
+        }
+#endif
         if (textColor == 0)
             textColor = 2;
         DrawMenuTextCentered(textX, textY, textColor, textPtr, charTable);

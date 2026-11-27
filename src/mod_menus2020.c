@@ -151,32 +151,34 @@ static void world_name(void)
         snprintf(s_worldName, sizeof s_worldName, "WORLD CAREER");
 }
 
-/* ... the globe right of it, as the right column's icons, the two centred together in the box:
- * spaces after the text as wide as the gap and the icon (the game centres the text with them), the
- * icon at their end. */
-enum { kCareerIconW = 16, kCareerIconGap = 4, kCareerIconY = 4 };
+/* ... its globe on the left in its icon well, as every button's (the JSON's "image" / "icon_well"):
+ * the text alone, centred by the game in the rest of the box. */
 static void world_button(void)
 {
-    static char text[40];       /* (the menu keeps the pointer) */
     if (!s_worldName[0])
         world_name();
-    const int32_t w = ModApi_TextWidth(s_worldName, 0), sp = ModApi_TextWidth(" ", 0);
-    const int32_t n = sp > 0 ? (kCareerIconGap + kCareerIconW + sp / 2) / sp : 5;
-    const int32_t box = entry(Main_worldCareer)->dwWidth;
-    const int32_t start = (box - w - n * sp) / 2;
-    if (box <= 140 || box >= 150) {
-        /* The Amiga-sized rows (16 high): the icons beside the 130-wide buttons, 4 px to the
-         * right, or none on the 150-wide ones -- the text alone, centred. */
-        ModApi_MenuText(Main_worldCareer, s_worldName);
-        ModApi_SetMenuImageAt(Main_worldCareer, box + kCareerIconGap, 0);
-        return;
+    ModApi_MenuText(Main_worldCareer, s_worldName);
+}
+
+/* The buttons' icons as the player chose ([mod.menus2020] icons): each in its well at the button's
+ * left (the JSON's "image" / "icon_well", menu_extras.c), or none -- the text alone, centred in the
+ * whole box. Set as the menu opens and after every action (main_refresh). */
+static const struct { int32_t entry; const char *image; } k_icons[] = {
+    { Main_multi, "grafs_2020/menus2020/multiplayer.bmp" }, { Main_compete, "grafs_2020/menus2020/compete.bmp" },
+    { Main_practice, "grafs_2020/menus2020/practice.bmp" }, { Main_options, "grafs_2020/menus2020/options.bmp" },
+    { Main_extras, "grafs_2020/menus2020/extras.bmp" },     { Main_replays, "grafs_2020/menus2020/replays.bmp" },
+    { Main_save, "grafs_2020/menus2020/save.bmp" },         { Main_load, "grafs_2020/menus2020/load.bmp" },
+    { Main_classicCareer, "grafs_2020/menus2020/classic_career.png" },
+    { Main_worldCareer, "grafs_2020/menus2020/world_career.png" },
+};
+
+static void icons_as_chosen(void)
+{
+    const int32_t on = strcmp(ModApi_Setting(SLUG, "icons", "on"), "off") != 0;
+    for (size_t i = 0; i < sizeof k_icons / sizeof k_icons[0]; i++) {
+        ModApi_SetMenuImage(k_icons[i].entry, on ? k_icons[i].image : NULL);
+        ModApi_SetMenuIconWell(k_icons[i].entry, on);
     }
-    snprintf(text, sizeof text, "%s%*s", s_worldName, (int)n, "");
-    ModApi_MenuText(Main_worldCareer, text);
-    ModApi_SetMenuImageAt(Main_worldCareer, start + w + n * sp - kCareerIconW, kCareerIconY);
-    if (getenv("SWOS_WORLD_BUTTON_DEBUG"))
-        fprintf(stderr, "[menus2020] world button \"%s\": text %d + %d spaces of %d, icon at %d\n",
-                s_worldName, (int)w, (int)n, (int)sp, (int)(start + w + n * sp - kCareerIconW));
 }
 
 static void main_refresh(void)
@@ -187,6 +189,7 @@ static void main_refresh(void)
     show(Main_classicCareer, 1);       /* (CommonMenuExit hides 14 and shows 16 for MODES) */
     show(Main_worldCareer, 1);
     world_button();
+    icons_as_chosen();
     nav(Main_classicCareer, -1, Main_worldCareer, Main_practice, contest ? Main_continue : Main_load);
     nav(Main_worldCareer, Main_classicCareer, -1, Main_replays, contest ? Main_continue : Main_load);
     if (s_runState >= 1 && s_runState <= 3)     /* (unpacked again mid-run: no picture until they settle) */
@@ -782,10 +785,11 @@ static void mainDraw(void)
 #endif
 }
 
-/* Back on the main menu (onReturn): the logo as chosen, the layout, the TV. */
+/* Back on the main menu (onReturn): the logo and the icons as chosen, the layout, the TV. */
 static void mainDrawn(void)
 {
     logo_as_chosen();
+    icons_as_chosen();                  /* (chosen in OPTIONS -> MODS, come back from there) */
     {   /* Back without this menu's layout -- a way to the main menu that unpacked it again and ran only
          * the game's CommonMenuExit (LOAD on CONTINUE's row, but at its own x: Playa, 2026-11-22) --
          * laid out again. */

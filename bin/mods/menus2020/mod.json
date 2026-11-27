@@ -19,6 +19,15 @@
     "hd"
    ],
    "default": "pixel"
+  },
+  {
+   "key": "icons",
+   "label": "Button icons",
+   "choices": [
+    "on",
+    "off"
+   ],
+   "default": "on"
   }
  ]
 }

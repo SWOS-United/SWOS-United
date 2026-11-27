@@ -425,6 +425,9 @@ void    ModApi_SetMenuImageAt(int32_t entry, int32_t x, int32_t y);
 /* ... and a .png image's HD copy (any size, as a rule a few times its pixels each way): drawn in
  * its place, filtered, at the window's own resolution -- a path, NULL none (the image itself). */
 void    ModApi_SetMenuImageHD(int32_t entry, const char *path);
+/* ... and its icon well ("icon_well" in the JSON, docs/MENUS.md §13) on or off: the icon's square at
+ * the box's left, tinted with the frame's light colour, the text centred in the rest. */
+void    ModApi_SetMenuIconWell(int32_t entry, int32_t on);
 void    ModApi_MenuEntryRect(int32_t entry, int32_t *x, int32_t *y, int32_t *w, int32_t *h);
 void    ModApi_SetMenuEntryRect(int32_t entry, int32_t x, int32_t y, int32_t w, int32_t h);
 void    ModApi_MenuNav4(int32_t entry, int32_t left, int32_t right, int32_t up, int32_t down);

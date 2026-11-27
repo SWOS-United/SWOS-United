@@ -5,6 +5,9 @@
  *   "description_entry": N        (the menu) its text entry N shows the selected entry's line
  *   "ticker_entry": N             (the menu) the box a ticker mod scrolls its news in
  *   "description": "..."          (an entry) that line
+ *   "icon_well": true             (an entry) its icon in a square of its own at the box's left,
+ *                                 tinted with the frame's light colour; the text centred in the
+ *                                 rest (MenuExtras_EntryWell)
  *   "image": "<path>"             (an entry) a .bmp under the data folder (a mod's overlay first),
  *                                 drawn in the entry's box -- centred, or at "image_x" / "image_y"
  *                                 from its top left (negative: out over its edge; the box is what
@@ -44,6 +47,7 @@ typedef struct {
     char    *description;
     char    *imagePath;
     int32_t  imageX, imageY;    /* its place in the box (kCentred: centred) */
+    int32_t  well;              /* "icon_well": the icon's square at the box's left (see below) */
     uint32_t *rgb;              /* the image, 0xRRGGBB, 0xFF000000 transparent; NULL until drawn */
     uint8_t *pixels;            /* ... as palette indices (0xFF transparent), for `paletteHash` */
     uint32_t paletteHash;
@@ -141,6 +145,17 @@ void MenuExtras_Entry(int32_t ordinal, const char *description, const char *imag
     }
 }
 
+/* "icon_well": true -- the entry's icon in a square of its own at the box's left: the box's
+ * height less its frame each way (18x18 in a 20-high box), tinted with the frame's light colour
+ * (its top and left edge), none at the top to half at the bottom; the text centred in the rest. */
+void MenuExtras_EntryWell(int32_t ordinal, int32_t on)
+{
+    if (ordinal < 0 || ordinal >= kMaxEntries || !on)
+        return;
+    s_pending.entry[ordinal].well = 1;
+    s_pendingAny = 1;
+}
+
 /* The menu was built into `menu` (its final place): what was pending is its. */
 void MenuExtras_Commit(const uint8_t *menu)
 {
@@ -219,6 +234,24 @@ void ModApi_SetMenuImageAt(int32_t entry, int32_t x, int32_t y)
         return;
     m->entry[entry].imageX = x;
     m->entry[entry].imageY = y;
+}
+
+/* An entry's icon well (MenuExtras_EntryWell), on or off while its menu is up: at its next draw. */
+void ModApi_SetMenuIconWell(int32_t entry, int32_t on)
+{
+    MenuExtras *m = current();
+    if (!m || entry < 0 || entry >= kMaxEntries)
+        return;
+    m->entry[entry].well = on ? 1 : 0;
+}
+
+/* How far right an entry's centred text goes: half its icon well, so it is centred in the rest. */
+int32_t MenuExtras_TextShift(const MenuEntry *ent)
+{
+    const MenuExtras *m = current();
+    if (!m || !ent || ent->ordinal >= kMaxEntries || !m->entry[ent->ordinal].well)
+        return 0;
+    return (int32_t)ent->dwHeight / 2;
 }
 
 /* A .png image's HD copy, changed while its menu is up: loaded at its next draw. */
@@ -337,6 +370,39 @@ static void map_image(Extra *e, uint32_t hash)
     e->paletteHash = hash;
 }
 
+/* An entry's icon well (MenuExtras_EntryWell): inside its frame at the left, a square as high as
+ * the box less the frame, each pixel the box's colour blended with the frame's light colour --
+ * 0 at the top row, half at the bottom -- in its own colour (Platform_TrueColourPixel), the
+ * nearest palette colour in the frame. Only on a box with a frame and a colour. */
+static void draw_well(uint8_t *frame, const MenuEntry *ent, int32_t sw, int32_t sh)
+{
+    extern uint8_t _outerFrameColorsTable[];
+    if (ent->background != ENTRY_FRAME_AND_BACK_COLOR || !(ent->bgColor & 0xF) || ent->dwHeight < 4)
+        return;
+    const int32_t n = (int32_t)ent->dwHeight - 2;
+    const int32_t x0 = ent->x + _menu_draw_x_offset + 1, y0 = ent->y + 1;
+    uint8_t lr, lg, lb;
+    Platform_PaletteColour((uint8_t)_outerFrameColorsTable[(ent->bgColor & 0xF) * 2], &lr, &lg, &lb);
+    for (int32_t y = 0; y < n; y++) {
+        const int32_t fy = y0 + y, a = n > 1 ? 128 * y / (n - 1) : 0;    /* (of 256: half at the bottom) */
+        if (fy < 0 || fy >= sh)
+            continue;
+        for (int32_t x = 0; x < n; x++) {
+            const int32_t fx = x0 + x;
+            if (fx < 0 || fx >= sw)
+                continue;
+            uint8_t *px = &frame[(size_t)fy * FRONTBUFFER_ROW_STRIDE_BYTES + (size_t)fx];
+            uint8_t r, g, b;
+            Platform_PaletteColour(*px, &r, &g, &b);
+            r = (uint8_t)((r * (256 - a) + lr * a) >> 8);
+            g = (uint8_t)((g * (256 - a) + lg * a) >> 8);
+            b = (uint8_t)((b * (256 - a) + lb * a) >> 8);
+            *px = Platform_NearestColour(r, g, b);
+            Platform_TrueColourPixel(fx, fy, *px, (uint32_t)r << 16 | (uint32_t)g << 8 | b);
+        }
+    }
+}
+
 /* DrawMenu, after the entries: each visible entry's image in its box. */
 void MenuExtras_Drawn(void)
 {
@@ -356,10 +422,14 @@ void MenuExtras_Drawn(void)
     s_shownMenu = (uintptr_t)m->menu;
     for (int32_t i = 0; i < kMaxEntries && frame; i++) {
         Extra *e = &m->entry[i];
-        if (!e->imagePath)
+        if (!e->imagePath && !e->well)
             continue;
         const MenuEntry *ent = CalcMenuEntryAddress((uint16_t)i);
         if (!ent || ent->isInvisible)
+            continue;
+        if (e->well)
+            draw_well(frame, ent, sw, sh);
+        if (!e->imagePath)
             continue;
         if (!e->rgb && !e->rgba && !e->failed)
             load_image(e);

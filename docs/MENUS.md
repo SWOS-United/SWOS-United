@@ -1032,6 +1032,13 @@ Two things a JSON menu may say that the packed format has no room for, for SWOS 
 
 - `description_entry` (the menu): its text entry N shows the selected entry's `description` (an
   entry's one line, empty for one without), set before each draw.
+- `icon_well` (an entry, 2026-11-27): `true` -- its icon in a square of its own at the box's
+  left, inside the frame (the box's height less 2 each way: 18x18 in a 20-high box), each pixel
+  the box's colour blended with the frame's light colour (its top / left edge) -- none at the top
+  row, half at the bottom; the text centred in the rest of the box (a left-aligned one after the
+  well). Drawn before the entry's `image`, which goes in it (`image_x` / `image_y` 2: 1 px air). A
+  mod turns it on or off while the menu is up: `ModApi_SetMenuIconWell` (menus2020's icons
+  setting). Only on a box with a frame and a colour.
 - `image` (an entry): a `.bmp` under the data folder -- a mod's overlay first, as every read --
   drawn in the entry's box every menu frame, centred or at `image_x` / `image_y` from the box's
   top left (an icon beside the entry's text; negative reaches out over the box, as the main
