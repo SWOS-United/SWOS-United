@@ -869,15 +869,15 @@ static void filter_change(int32_t dir);
 static const Row k_videoRows[] = {
     { "WINDOW MODE",        winmode_show,  winmode_change },
     { "WINDOW SCALE",       scale_show,    scale_change },
-    { "VSYNC",              vsync_show,    vsync_change },
+    { "AUTO CENTERING",     centre_show,   centre_change },
     { "PICTURE SHAPE",      shape_show,    shape_change },   /* ([video] widescreen=false, or resolution) */
     { "FILL",               fill_show,     fill_change },    /* ([video] widescreen=true / stretch) */
-    { "SMOOTH SCROLLING",   scroll_show,   scroll_change },
     { "SCALING",            scaling_show,  scaling_change },
     { "PIXEL FILTER",       filter_show,   filter_change },     /* (beside SCALING: APPEARANCE's until 2026-11-24) */
     { "MONITOR",            monitor_show,  monitor_change },
     { "RENDERER",           renderer_show, renderer_change },
-    { "AUTO CENTERING",     centre_show,   centre_change },
+    { "VSYNC",              vsync_show,    vsync_change },
+    { "SMOOTH SCROLLING",   scroll_show,   scroll_change },
     { "SHOW FPS",           fps_show,      fps_change },
 };
 static const Page k_videoPage = { "VIDEO OPTIONS", k_videoRows, (int32_t)(sizeof k_videoRows / sizeof k_videoRows[0]) };
@@ -1407,27 +1407,29 @@ _Static_assert(sizeof k_gameplayRows / sizeof k_gameplayRows[0] <= kRows, "a set
 
 static const Row k_displayRows[] = {
     { "GAME GRAPHICS",      art_show,      art_change },
-    { "MENU BUTTON LOOK",   look_show,     look_change },     /* (the buttons' shading; MENU BACKGROUND below) */
-    { "MENU BACKGROUND",    menubg_show,   menubg_change, 0, menubg_off },
-    { "MENU LOGO",          logo_show,     logo_change },
-    { "MENU CURSOR",        cursor_show,   cursor_change },
-    { "MENU OPACITY",       opacity_show,  opacity_change },
+    { "PITCH PALETTE",      pitchpal_show, pitchpal_change },
     { "KIT COLOURS",        kitcols_show,  kitcols_change },    /* (RULES' too: which kits clash) */
     { "GK/REF CLASH KITS",  clashkits_show, clashkits_change },
-    { "PITCH PALETTE",      pitchpal_show, pitchpal_change },
-    { "KITS ON THE RESULT", reskits_show,  reskits_change },
-    { "RESULT BAND",        resband_show,  resband_change },
     { "SCOREBOARD",         board_show,    board_change },
+    { "RESULT BAND",        resband_show,  resband_change },
+    { "KITS ON THE RESULT", reskits_show,  reskits_change },
+    { "MENU BUTTON LOOK",   look_show,     look_change },     /* (the buttons' shading; MENU BACKGROUND below) */
+    { "MENU BACKGROUND",    menubg_show,   menubg_change, 0, menubg_off },
+    { "MENU OPACITY",       opacity_show,  opacity_change },
+    { "MENU LOGO",          logo_show,     logo_change },
+    { "MENU CURSOR",        cursor_show,   cursor_change },
 };
 static const Page k_displayPage = { "APPEARANCE OPTIONS", k_displayRows, (int32_t)(sizeof k_displayRows / sizeof k_displayRows[0]) };
 _Static_assert(sizeof k_displayRows / sizeof k_displayRows[0] <= kRows, "a settings page holds kRows rows at most");
 
 static const Row k_rulesRows[] = {
-    { "KIT COLOURS",             kitcols_show,  kitcols_change },   /* (which kits clash: online, both players'; DISPLAY's too) */
 #if SWOS_TWEAK_FIXES
     { "LEAGUE RULES",            lrules_show,   lrules_change },
     { "POINTS FOR A WIN",        points_show,   points_change },
     { "SUBSTITUTES",             subs_show,     subs_change },
+#endif
+    { "KIT COLOURS",             kitcols_show,  kitcols_change },   /* (which kits clash: online, both players'; DISPLAY's too) */
+#if SWOS_TWEAK_FIXES
     { "LEAGUE CRASH FIXES",      lfix_show,     lfix_change },
 #endif
     { "CAREER EXACT LOADS",      exact_show,    exact_change },
@@ -1436,12 +1438,12 @@ static const Page k_rulesPage = { "RULES OPTIONS", k_rulesRows, (int32_t)(sizeof
 _Static_assert(sizeof k_rulesRows / sizeof k_rulesRows[0] <= kRows, "a settings page holds kRows rows at most");
 
 static const Row k_generalRows[] = {
-    { "AUTO SAVE REPLAYS",       autosave_show, autosave_change },
-    { "HIGHLIGHT DEFAULT SPEED", hlspeed_show,  hlspeed_change },
-    { "FRAME INFO OVERLAY",      overlay_show,  overlay_change },
     { "SKIP INTRO",              intro_show,    intro_change },
     { "INTRO PICTURES",          reels_show,    reels_change },
     { "PRE-MATCH PAUSE",         loadpause_show, loadpause_change },
+    { "AUTO SAVE REPLAYS",       autosave_show, autosave_change },
+    { "HIGHLIGHT DEFAULT SPEED", hlspeed_show,  hlspeed_change },
+    { "FRAME INFO OVERLAY",      overlay_show,  overlay_change },
     { "MOUSE POINTER",           pointer_show,  pointer_change },   /* (APPEARANCE's till 2026-11-25: MENU LOGO took its row) */
 };
 static const Page k_generalPage = { "GENERAL OPTIONS", k_generalRows, (int32_t)(sizeof k_generalRows / sizeof k_generalRows[0]) };
