@@ -2,6 +2,10 @@
 """make_united_logo.py -- SWOS United's logo for the top of menus2020's main menu.
 
     scripts/make_united_logo.py [--svg out.svg] [--preview out.png]
+    scripts/make_united_logo.py --banner
+
+--banner: side by side instead (SWOS, then UNITED, one line), at the HD size only, as the DLC
+Manager's banner: tools/dlc-manager/assets/about/swos-united-banner.png (its header, 44 px high).
 
 "SWOS" in the colours of the Sensible title (each letter's colour from the top, lightening into
 white, then down into the dark, a chrome rim) over "UNITED" white to grey in a red rim -- as the
@@ -25,6 +29,7 @@ import argparse
 import math
 import os
 import re
+import sys
 
 import cv2
 import numpy as np
@@ -33,13 +38,14 @@ from PIL import Image, ImageDraw
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(REPO, "bin", "mods", "menus2020", "grafs_united", "logo.png")
 OUT_HD = OUT.replace("logo.png", "logo_hd.png")     # (HD times as many pixels each way)
+BANNER = os.path.join(REPO, "tools", "dlc-manager", "assets", "about", "swos-united-banner.png")
 HD = 4
 
 CAP = 27                # (pixels) the capitals' height: SWOS as wide as the Amiga title's "Sensible"
 PX = 200 / CAP          # units a pixel (the letters are drawn 200 units tall)
 SS = 32                 # samples a pixel, each way (8 an HD pixel)
 TOP = 3 * PX            # the capitals' top: 3 pixels for the rims above, 3 below
-STACKED = True          # SWOS over UNITED (as the Amiga's title over SOCCER); else side by side
+STACKED = "--banner" not in sys.argv     # SWOS over UNITED (as the Amiga's title over SOCCER); else side by side
 LINE_GAP = 6            # (pixels) stacked: between SWOS's capitals and UNITED's
 H = 3 + CAP + LINE_GAP + CAP + 3 if STACKED else CAP + 6     # the picture's height
 
@@ -439,9 +445,14 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--svg", help="also write the drawing as an SVG here")
     ap.add_argument("--preview", help="also write a 3x preview over a dark and a green ground here")
+    ap.add_argument("--banner", action="store_true", help="side by side, HD only: the DLC Manager's banner")
     args = ap.parse_args()
     px, hd, uni = build()
     h, w = px.shape[:2]
+    if args.banner:
+        Image.fromarray(hd, "RGBA").save(BANNER)
+        print("  -> %s (%dx%d)" % (os.path.relpath(BANNER, REPO), hd.shape[1], hd.shape[0]))
+        return
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     Image.fromarray(px, "RGBA").save(OUT)
     Image.fromarray(hd, "RGBA").save(OUT_HD)     # (the menus2020 mod's logo = hd: drawn smooth in its place)
