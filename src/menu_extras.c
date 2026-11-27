@@ -48,6 +48,10 @@ typedef struct {
     char    *imagePath;
     int32_t  imageX, imageY;    /* its place in the box (kCentred: centred) */
     int32_t  well;              /* "icon_well": the icon's square at the box's left (see below) */
+    uint8_t *wellRgba;          /* ... its picture, RGBA: the tint, a .bmp icon over it */
+    GfxTexture *wellTex;        /* ... its texture (made / updated at the next present) */
+    uint32_t wellKey;           /* ... what it was made for (size, colour, icon): made again on a change */
+    int32_t  wellN, wellDirty;
     uint32_t *rgb;              /* the image, 0xRRGGBB, 0xFF000000 transparent; NULL until drawn */
     uint8_t *pixels;            /* ... as palette indices (0xFF transparent), for `paletteHash` */
     uint32_t paletteHash;
@@ -61,8 +65,8 @@ typedef struct {
 } Extra;
 
 /* The .png pictures the last menu frame drew: shown over the picture by MenuExtras_Present. */
-enum { kMaxShown = 8 };
-static struct { Extra *e; int32_t x, y; } s_shown[kMaxShown];
+enum { kMaxShown = 32 };
+static struct { Extra *e; int32_t x, y, well; } s_shown[kMaxShown];
 static int32_t s_shownCount;
 static uintptr_t s_shownMenu;   /* (the menu they are its: none of them once another is up) */
 
@@ -81,6 +85,12 @@ static void free_picture(Extra *e)
     e->hdRgba = NULL;
     e->hdTex = NULL;
     e->hdFailed = 0;
+    free(e->wellRgba);
+    if (e->wellTex)
+        Gfx_DestroyTexture(e->wellTex);
+    e->wellRgba = NULL;
+    e->wellTex = NULL;
+    e->wellKey = 0;
     for (int32_t i = 0; i < s_shownCount; i++)
         if (s_shown[i].e == e)
             s_shown[i].e = NULL;
@@ -371,36 +381,53 @@ static void map_image(Extra *e, uint32_t hash)
 }
 
 /* An entry's icon well (MenuExtras_EntryWell): inside its frame at the left, a square as high as
- * the box less the frame, each pixel the box's colour blended with the frame's light colour --
- * 0 at the top row, half at the bottom -- in its own colour (Platform_TrueColourPixel), the
- * nearest palette colour in the frame. Only on a box with a frame and a colour. */
-static void draw_well(uint8_t *frame, const MenuEntry *ent, int32_t sw, int32_t sh)
+ * the box less the frame, the frame's light colour over the box -- none at the top row, half at
+ * the bottom -- and a .bmp icon on it. A picture of its own, shown over the finished picture with
+ * its alpha, as a .png (MenuExtras_Present): drawn into the 8bpp frame, the tint's colours would
+ * be the palette's nearest -- bands, not a fade. Made again when its size, colour or icon change.
+ * Only on a box with a frame and a colour; 0 when there is none to show. */
+static int32_t make_well(Extra *e, const MenuEntry *ent)
 {
     extern uint8_t _outerFrameColorsTable[];
     if (ent->background != ENTRY_FRAME_AND_BACK_COLOR || !(ent->bgColor & 0xF) || ent->dwHeight < 4)
-        return;
+        return 0;
     const int32_t n = (int32_t)ent->dwHeight - 2;
-    const int32_t x0 = ent->x + _menu_draw_x_offset + 1, y0 = ent->y + 1;
+    const int32_t icon = e->rgb && e->imagePath ? 1 : 0;
     uint8_t lr, lg, lb;
     Platform_PaletteColour((uint8_t)_outerFrameColorsTable[(ent->bgColor & 0xF) * 2], &lr, &lg, &lb);
+    const uint32_t key = ((uint32_t)lr << 16 | (uint32_t)lg << 8 | lb) ^ ((uint32_t)n << 24) ^
+                         (icon ? (uint32_t)(uintptr_t)e->rgb * 2654435761u : 0) ^
+                         (uint32_t)(e->imageX * 31 + e->imageY) * 40503u;
+    if (e->wellRgba && e->wellKey == key && e->wellN == n)
+        return 1;
+    uint8_t *rgba = (uint8_t *)realloc(e->wellRgba, (size_t)n * (size_t)n * 4);
+    if (!rgba)
+        return 0;
+    e->wellRgba = rgba;
     for (int32_t y = 0; y < n; y++) {
-        const int32_t fy = y0 + y, a = n > 1 ? 128 * y / (n - 1) : 0;    /* (of 256: half at the bottom) */
-        if (fy < 0 || fy >= sh)
-            continue;
+        const uint8_t a = (uint8_t)(n > 1 ? 128 * y / (n - 1) : 0);
         for (int32_t x = 0; x < n; x++) {
-            const int32_t fx = x0 + x;
-            if (fx < 0 || fx >= sw)
-                continue;
-            uint8_t *px = &frame[(size_t)fy * FRONTBUFFER_ROW_STRIDE_BYTES + (size_t)fx];
-            uint8_t r, g, b;
-            Platform_PaletteColour(*px, &r, &g, &b);
-            r = (uint8_t)((r * (256 - a) + lr * a) >> 8);
-            g = (uint8_t)((g * (256 - a) + lg * a) >> 8);
-            b = (uint8_t)((b * (256 - a) + lb * a) >> 8);
-            *px = Platform_NearestColour(r, g, b);
-            Platform_TrueColourPixel(fx, fy, *px, (uint32_t)r << 16 | (uint32_t)g << 8 | b);
+            uint8_t *p = &rgba[((size_t)y * n + x) * 4];
+            p[0] = lr; p[1] = lg; p[2] = lb; p[3] = a;
         }
     }
+    if (icon) {                         /* (the icon's place in the box, less the frame: in the well) */
+        const int32_t ox = (e->imageX != kCentred ? e->imageX : ((int32_t)ent->dwWidth - e->w) / 2) - 1;
+        const int32_t oy = (e->imageY != kCentred ? e->imageY : ((int32_t)ent->dwHeight - e->h) / 2) - 1;
+        for (int32_t y = 0; y < e->h; y++)
+            for (int32_t x = 0; x < e->w; x++) {
+                const uint32_t c = e->rgb[y * e->w + x];
+                const int32_t wx = ox + x, wy = oy + y;
+                if (c == 0xFF000000u || wx < 0 || wy < 0 || wx >= n || wy >= n)
+                    continue;
+                uint8_t *p = &rgba[((size_t)wy * n + wx) * 4];
+                p[0] = (uint8_t)(c >> 16); p[1] = (uint8_t)(c >> 8); p[2] = (uint8_t)c; p[3] = 255;
+            }
+    }
+    e->wellKey = key;
+    e->wellN = n;
+    e->wellDirty = 1;
+    return 1;
 }
 
 /* DrawMenu, after the entries: each visible entry's image in its box. */
@@ -427,12 +454,19 @@ void MenuExtras_Drawn(void)
         const MenuEntry *ent = CalcMenuEntryAddress((uint16_t)i);
         if (!ent || ent->isInvisible)
             continue;
-        if (e->well)
-            draw_well(frame, ent, sw, sh);
+        if (e->imagePath && !e->rgb && !e->rgba && !e->failed)
+            load_image(e);
+        if (e->well && make_well(e, ent) && s_shownCount < kMaxShown) {
+            s_shown[s_shownCount].e = e;
+            s_shown[s_shownCount].x = ent->x + _menu_draw_x_offset + 1;
+            s_shown[s_shownCount].y = ent->y + 1;
+            s_shown[s_shownCount].well = 1;
+            s_shownCount++;
+            if (e->rgb)                 /* (a .bmp icon: in the well's picture) */
+                continue;
+        }
         if (!e->imagePath)
             continue;
-        if (!e->rgb && !e->rgba && !e->failed)
-            load_image(e);
         if (e->rgba) {                  /* (a .png: over the finished picture, MenuExtras_Present) */
             if (e->hdPath && !e->hdRgba && !e->hdFailed) {
                 char path[1280];
@@ -450,6 +484,7 @@ void MenuExtras_Drawn(void)
                 s_shown[s_shownCount].x = ent->x + _menu_draw_x_offset +
                                           (e->imageX != kCentred ? e->imageX : ((int32_t)ent->dwWidth - e->w) / 2);
                 s_shown[s_shownCount].y = ent->y + (e->imageY != kCentred ? e->imageY : ((int32_t)ent->dwHeight - e->h) / 2);
+                s_shown[s_shownCount].well = 0;
                 s_shownCount++;
             }
             continue;
@@ -508,7 +543,41 @@ void MenuExtras_Present(void)
     Gfx_SetBlend(GFX_BLEND_ALPHA);
     for (int32_t i = 0; i < s_shownCount; i++) {
         Extra *e = s_shown[i].e;
-        if (!e || !e->rgba)
+        if (!e)
+            continue;
+        if (s_shown[i].well) {          /* (an icon well: its own picture, pixel for pixel) */
+            if (!e->wellRgba)
+                continue;
+            if (!e->wellTex || e->wellDirty) {
+                if (e->wellTex && e->wellDirty) {
+                    Gfx_DestroyTexture(e->wellTex);
+                    e->wellTex = NULL;
+                }
+                e->wellTex = Gfx_CreateTexture(e->wellN, e->wellN, 0);
+                if (!e->wellTex)
+                    continue;
+                Gfx_UpdateTexture(e->wellTex, e->wellRgba, e->wellN * 4);
+                e->wellDirty = 0;
+            }
+            const float x0 = (float)s_shown[i].x, y0 = (float)s_shown[i].y;
+            const float x1 = x0 + (float)e->wellN, y1 = y0 + (float)e->wellN;
+            const float px[6] = { x0, x1, x0, x1, x1, x0 }, py[6] = { y0, y0, y1, y0, y1, y1 };
+            const float tu[6] = { 0, 1, 0, 1, 1, 0 }, tv[6] = { 0, 0, 1, 0, 1, 1 };
+            GfxVertex v[6];
+            for (int k = 0; k < 6; k++) {
+                memset(&v[k], 0, sizeof v[k]);
+                v[k].position.x = px[k];
+                v[k].position.y = py[k];
+                v[k].color.r = v[k].color.g = v[k].color.b = lit;
+                v[k].color.a = alpha;
+                v[k].tex_coord.x = tu[k];
+                v[k].tex_coord.y = tv[k];
+            }
+            Gfx_SetSpace(GFX_SPACE_PICTURE);
+            Gfx_Geometry(e->wellTex, v, 6, NULL, 0);
+            continue;
+        }
+        if (!e->rgba)
             continue;
         GfxTexture *tex;
         if (e->hdPath && e->hdRgba) {   /* (its HD copy, in its place: filtered) */

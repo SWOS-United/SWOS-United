@@ -1036,7 +1036,9 @@ Two things a JSON menu may say that the packed format has no room for, for SWOS 
   left, inside the frame (the box's height less 2 each way: 18x18 in a 20-high box), each pixel
   the box's colour blended with the frame's light colour (its top / left edge) -- none at the top
   row, half at the bottom; the text centred in the rest of the box (a left-aligned one after the
-  well). Drawn before the entry's `image`, which goes in it (`image_x` / `image_y` 2: 1 px air). A
+  well). A picture of its own -- the tint, a `.bmp` icon on it -- shown over the finished picture
+  with its alpha, as a `.png` is (in the 8bpp frame the tint would be the palette's nearest colours:
+  bands); the entry's `image` goes in it (`image_x` / `image_y` 2: 1 px air). A
   mod turns it on or off while the menu is up: `ModApi_SetMenuIconWell` (menus2020's icons
   setting). Only on a box with a frame and a colour.
 - `image` (an entry): a `.bmp` under the data folder -- a mod's overlay first, as every read --
