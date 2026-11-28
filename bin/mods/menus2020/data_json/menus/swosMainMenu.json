@@ -37,7 +37,7 @@
         {
           "op": "colors",
           "frame_color": 0,
-          "background_color": 3
+          "background_color": 8
         },
         {
           "op": "nav",
@@ -413,7 +413,7 @@
         {
           "op": "colors",
           "frame_color": 0,
-          "background_color": 4
+          "background_color": 5
         },
         {
           "op": "nav",
@@ -450,7 +450,7 @@
         {
           "op": "colors",
           "frame_color": 0,
-          "background_color": 4
+          "background_color": 5
         },
         {
           "op": "nav",
