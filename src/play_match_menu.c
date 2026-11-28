@@ -690,7 +690,13 @@ void SetVariableButtons(void) {
              * so this would name the country of the team it was made from -- BORUSSIA
              * FULDA, made from BRAZIL, "(SOUTH AMERICA)". It says what the team is. */
             static uint8_t custom[] = "CUSTOM";
-            if (CustomTeam_IsCustom(tm))
+            /* A career's own club is not one: its coach is the player (the career's name),
+             * which alone made every career club "(CUSTOM)". Matched by club, not pointer --
+             * the screen shows a copy of it (_currentTeam). */
+            int32_t careerClub = _gameType == GAME_TYPE_CAREER &&
+                tm->team.countryNumber == _careerTeam.team.countryNumber &&
+                tm->team.teamOrdinal == _careerTeam.team.teamOrdinal;
+            if (!careerClub && CustomTeam_IsCustom(tm))
                 cname = custom;
 #endif
             *nameOut++ = '(';
