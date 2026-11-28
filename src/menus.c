@@ -3,6 +3,7 @@
  * SWOS Amiga C/68000 Reversed by Ben Baker (https://github.com/benbaker76)
  * SWOS DOS Reversed by Zlatko Karakaš (https://github.com/zlatkok)
  */
+#include "career_teams.h"   /* RetiredRows_Name */
 #include "team_colors.h"
 #include "squad_extras.h"
 #include "long_bench.h"
@@ -8120,6 +8121,11 @@ pastTeamLoad:
                 namePtr = (uint8_t *)nameTbl[_currentDivisionIndex * 2 + 1];
             }
 
+            if (a6[7] == 0xFF) {                 /* (a retired row: its own contest's name, career_teams.c) */
+                const char *rn = RetiredRows_Name((uint8_t)slotType, a6[1], 1);
+                if (rn)
+                    namePtr = (uint8_t *)rn;
+            }
             a5->fg = (uintptr_t)CalLabel_Fit(namePtr, s_calLabel[d0], (int32_t)sizeof s_calLabel[d0]);
             a5->isInvisible = 0;
             a5++; /* next entry */
@@ -8132,9 +8138,19 @@ pastTeamLoad:
             /* --- Cup-style header (single line comp name + round info) --- */
             /* Slot 1 is the abbreviation (full name + abbreviation pair). */
             char **nameTbl = comp_name_table((Competition *)compInfo);
+            if (slotType == 4 && a6[5] != 0) {     /* (slot 4's other Super Cup of the season: world_supercup.c) */
+                char *const *sc = SuperCup_RowNames(BE_READ_U16(a4 + 0x0C), BE_READ_U16(a4 + 0x0E));
+                if (sc)
+                    nameTbl = (char **)sc;
+            }
             if (nameTbl)
                 namePtr = (uint8_t *)nameTbl[1];
 
+            if (a6[7] == 0xFF) {                 /* (a retired row: its own contest's name, career_teams.c) */
+                const char *rn = RetiredRows_Name((uint8_t)slotType, a6[1], 1);
+                if (rn)
+                    namePtr = (uint8_t *)rn;
+            }
             a5->fg = (uintptr_t)CalLabel_Fit(namePtr, s_calLabel[d0], (int32_t)sizeof s_calLabel[d0]);
 
             /* Height check depends on whether a4 == a6 */
@@ -8206,9 +8222,19 @@ pastTeamLoad:
             /* --- Default (slotVal >= 2) header: same as cup but different path --- */
             /* Slot 1 is the abbreviation (full name + abbreviation pair). */
             char **nameTbl = comp_name_table((Competition *)compInfo);
+            if (slotType == 4 && a6[5] != 0) {     /* (slot 4's other Super Cup of the season: world_supercup.c) */
+                char *const *sc = SuperCup_RowNames(BE_READ_U16(a4 + 0x0C), BE_READ_U16(a4 + 0x0E));
+                if (sc)
+                    nameTbl = (char **)sc;
+            }
             if (nameTbl)
                 namePtr = (uint8_t *)nameTbl[1];
 
+            if (a6[7] == 0xFF) {                 /* (a retired row: its own contest's name, career_teams.c) */
+                const char *rn = RetiredRows_Name((uint8_t)slotType, a6[1], 1);
+                if (rn)
+                    namePtr = (uint8_t *)rn;
+            }
             a5->fg = (uintptr_t)CalLabel_Fit(namePtr, s_calLabel[d0], (int32_t)sizeof s_calLabel[d0]);
 
             /* Height check */
