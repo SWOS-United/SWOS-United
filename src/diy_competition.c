@@ -8,6 +8,7 @@
  * Chunk 60: 16 functions ported from SWOS2.s.
  */
 
+#include "ic2026.h"            /* the 2026 Intercontinental Cup (World 2026-27) */
 #include "long_bench.h"
 #include "world.h"
 #include "world_europe.h"
@@ -9238,6 +9239,8 @@ static int32_t continental_record(const uint8_t *record)
         return 1;
     case COMPID_worldSuperCup:
         return SuperCup_UefaTie();
+    case COMPID_ic2026:                 /* (the 2026 Intercontinental Cup: ic2026.c) */
+        return 1;
     default:
         return 0;
     }
@@ -10934,6 +10937,9 @@ setDecisive:
         SuperCup_TieDecided(PACK_BE_U16(team1->team.countryNumber, team1->team.teamOrdinal),
                             PACK_BE_U16(team2->team.countryNumber, team2->team.teamOrdinal),
                             d7 & 1);
+        Ic2026_TieDecided(PACK_BE_U16(team1->team.countryNumber, team1->team.teamOrdinal),
+                          PACK_BE_U16(team2->team.countryNumber, team2->team.teamOrdinal),
+                          d7 & 1);
         UefaQual_TieDecided(PACK_BE_U16(team1->team.countryNumber, team1->team.teamOrdinal),
                             PACK_BE_U16(team2->team.countryNumber, team2->team.teamOrdinal),
                             d7 & 1);

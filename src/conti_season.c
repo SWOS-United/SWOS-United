@@ -22,12 +22,17 @@
  * record's first two bytes read little-endian are the Mod's word already).
  */
 #include "world_conti.h"
+#ifdef SWOS_SDL_BUILD
+#include <stdlib.h>          /* getenv: a test switch */
+#endif
 #include "league_playoffs.h"
 #include "world.h"
 #include "game_types.h"
 #include "endian_helpers.h"
 #include "diy_competition.h"
 #include "comp_identity.h"
+#include "season_extra.h"
+#include "ic2026.h"
 
 #if SWOS_WORLDS
 
@@ -120,9 +125,26 @@ void Conti_SeasonEnd(void)
     lists();
     const uint8_t *g = _primaryQualifiedTeamGrids;  /* (a seed: the Mod's dword [STAND]) */
     const u32 seed = g[0] | g[1] << 8 | (u32)g[2] << 16 | (u32)g[3] << 24;
-    const u16 hold = _euroCupTitleHolderTeamId && _euroCupTitleHolderTeamId != 0xFFFF
-                   ? modWord(_euroCupTitleHolderTeamId) : 0xFFFF;
+    u16 hold = _euroCupTitleHolderTeamId && _euroCupTitleHolderTeamId != 0xFFFF
+             ? modWord(_euroCupTitleHolderTeamId) : 0xFFFF;
+#ifdef SWOS_SDL_BUILD
+    if (getenv("SWOS_TEST_CONTI_UEFA_HOLDER") && !_isNationalSelector)   /* (a test: the career club as the UEFA
+                                                                         holder, the Intercontinental's European) */
+        hold = modWord(_selTeamNumber);
+#endif
     ct_go(_isNationalSelector ? 0 : modWord(_selTeamNumber), seed, hold);
+    {   /* World 2026-27's first season played the real 2026 Intercontinental Cup (ic2026.c): its winner is
+         * the cup's holder, not the build's placeholder */
+        const uint16_t icw = Ic2026_Winner();
+        int32_t ncups = 0;
+        const WorldContiCup *cups = World_ContiCups(&ncups);
+        for (int32_t c = 0; icw && cups && c < ncups && c < CT_NCUP; c++)
+            if (cups[c].conf == WORLD_CONF_FIFA) {
+                CT_ST.hold[c].id = modWord(icw);
+                SWOS_DBG("[conti] the Intercontinental Cup's holder: %04X (the 2026 edition's winner)\n",
+                         (unsigned)icw);
+            }
+    }
     SWOS_DBG("[conti] the next editions: %d clubs; winners of the one ended:", (int)CT_IN.nclub);
     for (int32_t c = 0; c < CT_NCUP; c++)
         if (CT_ST.hold[c].id)
@@ -393,10 +415,39 @@ uint8_t *Conti_RestoreTie(uint16_t index)
     return now == index ? rec : 0;
 }
 
+/* The career club's result in the contest leaving slot 3 (set as its game is decided, Conti_Daily):
+ * 1 won its final, -100 lost its final, -(110 + n) out in round n, 0 none known. When the next
+ * contest is ANOTHER cup (the Libertadores, then the Intercontinental Cup, then the Recopa), the
+ * season's record keeps the one leaving as a line of its own with this result -- line 4 is the slot's
+ * contest, and each took it over: Boca's Intercontinental Cup was in no line and no trophy (the
+ * owner, 2026-11-27). Ties of one cup are one line. */
+static int8_t s_outCode;
+extern uint8_t *GetCurrentSeasonPointer(void);
+
+static int32_t same_name(const char *a, const char *b)
+{
+    while (*a && *a == *b) { a++; b++; }
+    return *a == *b;
+}
+
+static void keep_leaving_line(const uint8_t *rec)
+{
+    SeasonInformations *si = (SeasonInformations *)GetCurrentSeasonPointer();
+    char **in = comp_name_table((Competition *)rec);
+    const char *out = si ? (const char *)si->strPtr3 : 0;
+    const int8_t code = s_outCode;
+    s_outCode = 0;
+    if (!out || !out[0] || !in || !in[0] || same_name(out, in[0]) || !code)
+        return;
+    if (SeasonExtra_Freeze(SeasonExtra_Index(si), out, code))
+        SWOS_DBG("[conti] season record: %s kept (%d), %s takes slot 3\n", out, (int)code, in[0]);
+}
+
 /* Slot 3 takes rec mid-season: its calendar's entries so far retired first (the new entries all
  * come later: the position stays). */
 static void into_slot3(uint8_t *rec, uint16_t index)
 {
+    keep_leaving_line(rec);
     SWOS_DBG("[conti] slot 3: %s (contest %d)\n", index == CONTI_TIE_INDEX ? "a tie" : "its main round",
              (int)(uint8_t)((Competition *)rec)->compId);
     Career_RetireSlotCalendarEntries(3);
@@ -495,6 +546,7 @@ void Conti_Daily(void)
         s_gplace = 0;
         if (!spec() || !ours() || CT_SEG.kind == 0xFF)
             return;
+        s_outCode = place > 2 ? (int8_t)-(110 + CT_SEG.round + 1) : 0;   /* (out in its group stage) */
         ct_result(place);
         SWOS_DBG("[conti] the career club's group: place %d; next: kind %02X (cup %d round %d)\n", (int)place,
                  (unsigned)CT_SEG.kind, (int)CT_SEG.cup, (int)CT_SEG.round);
@@ -521,6 +573,7 @@ void Conti_Daily(void)
         const u32 nx = tie == 1 && !last && mr >= 0 ? (u32)(CT_SEG.round + 1 - mr) : 0xFFFF;
         const int32_t won = tie == 1 && (last || s3->winnerTeam == _selTeamNumber);
         const u8 cup = CT_SEG.cup, round = CT_SEG.round;
+        s_outCode = won && last ? 1 : tie == 1 ? 0 : last ? -100 : (int8_t)-(110 + round + 1);
         if (!ct_gamein(id, nx, (u32)won))
             return;
         SWOS_DBG("[conti] the career club's cup %d round %d in its game contest: next round byte %u%s; next: kind %02X "
@@ -534,7 +587,9 @@ void Conti_Daily(void)
     if (!spec() || !ours() || CT_SEG.kind == 0xFF)
         return;
     if (CT_SEG.kind == K_KO) {          /* (a load since: CT_SEG again first) */
-        ct_result(winner == _selTeamNumber);
+        const int32_t won = winner == _selTeamNumber;
+        s_outCode = won ? (s_final ? 1 : 0) : s_final ? -100 : (int8_t)-(110 + CT_SEG.round + 1);
+        ct_result(won);
         SWOS_DBG("[conti] the career club's tie (%s) %s; next: kind %02X (%04X v %04X)\n", s_tie.name[0],
                  winner == _selTeamNumber ? "won" : "lost", (unsigned)CT_SEG.kind,
                  (unsigned)ourId(CT_SEG.club[0]), (unsigned)ourId(CT_SEG.club[1]));
@@ -549,6 +604,10 @@ int32_t Conti_RoundStringIndex(uint8_t compId)
     const WorldContiCup *cups = World_ContiCups(&ncups);
     if (compId != CONTI_TIE_ID || !cups || CT_SEG.cup >= ncups || CT_SEG.round >= 8)
         return -1;
+    if (cups[CT_SEG.cup].conf == WORLD_CONF_FIFA && CT_SEG.round < 4)
+        return 23 + CT_SEG.round;   /* (the FIFA Intercontinental Cup: African-Asian-Pacific Cup play-off and
+                                       Cup, Derby of the Americas, Challenger Cup -- _cupRoundStringTable 23..26;
+                                       its fifth, the final, as before) */
     return cups[CT_SEG.cup].round[CT_SEG.round];
 }
 

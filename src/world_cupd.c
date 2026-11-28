@@ -2,6 +2,7 @@
  * world_cupd.c -- the Coppa Italia Serie D (include/world_cupd.h; docs/WORLD_2026_27.md,
  * phase 4). A port of the SWOS 96/97 Mod's tools/gplay.c cd_* (MIT, Davide Lorigliola).
  */
+#include "ic2026.h"
 #include "game_types.h"
 #include "swos_types.h"
 #include "world_cupd.h"
@@ -307,7 +308,8 @@ static void build_tie(const WorldCupD *c, int32_t t, uint16_t a, uint16_t b, uin
 static int32_t slot4_free(void)
 {
     return !g_worldPlayoff.kind && (!_diyCompetitionPtr || _diyCompetitionPtr == (uint8_t *)&s_rec ||
-                                    SuperCup_InSlot4() == 1);   /* (a decided Super Cup tie gives way) */
+                                    SuperCup_InSlot4() == 1 ||  /* (a decided Super Cup tie gives way, */
+                                    Ic2026_InSlot4() == 1);     /* the 2026 Intercontinental's too) */
 }
 
 /* The season end's tables and the pool's new arrivals (the season start's entry order: in

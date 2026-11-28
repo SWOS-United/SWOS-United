@@ -4,6 +4,7 @@
  * Lorigliola): his GP_SCT is World_SuperCups, his SC_ST g_worldSuperCup, his slot-4 ko_one the
  * one-tie contest below (as world_cupd.c's).
  */
+#include "ic2026.h"
 #include "game_types.h"
 #include "swos_types.h"
 #include "world_supercup.h"
@@ -273,7 +274,8 @@ static void build(const WorldSuperCup *sc, int32_t kind, uint16_t home, uint16_t
 static int32_t slot4_free(void)
 {
     return !g_worldPlayoff.kind &&
-           (!_diyCompetitionPtr || _diyCompetitionPtr == (uint8_t *)&s_rec || CupD_InSlot4() == 1) &&
+           (!_diyCompetitionPtr || _diyCompetitionPtr == (uint8_t *)&s_rec || CupD_InSlot4() == 1 ||
+            Ic2026_InSlot4() == 1) &&
            !g_worldSuperCup.built;
 }
 

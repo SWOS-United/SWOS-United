@@ -123,6 +123,7 @@ extern char _aRoundOf64[];                    extern char _aPrelimRound[];      
 extern char _aLast64[];                       extern char _aPrelim[];                       extern char _aWildCard[];
 extern char _aRoundOneGame1[];                extern char _aRoundOneGame2[];                extern char _aRoundOneGame3[];
 extern char _aConfSemiFinals[];               extern char _aConfFinal[];                    extern char _aMlsCup[];
+extern char _aIcAapPlayoff[], _aIcAapCup[], _aIcDerby[], _aIcChallenger[];
 extern char _aR1Game1[];                      extern char _aR1Game2[];                      extern char _aR1Game3[];
 extern char _aConfSemis[];                    extern char _aConfFinal_0[];                  extern char _aRnd1[];
 extern char _aRnd2[];                         extern char _aRnd3[];                         extern char _aRnd4[];
@@ -742,6 +743,10 @@ const StringSymbol _stringSymbols[] = {
     { "_aConfSemiFinals", (void *)_aConfSemiFinals },
     { "_aConfFinal", (void *)_aConfFinal },
     { "_aMlsCup", (void *)_aMlsCup },
+    { "_aIcAapPlayoff", (void *)_aIcAapPlayoff },
+    { "_aIcAapCup", (void *)_aIcAapCup },
+    { "_aIcDerby", (void *)_aIcDerby },
+    { "_aIcChallenger", (void *)_aIcChallenger },
     { "_aR1Game1", (void *)_aR1Game1 },
     { "_aR1Game2", (void *)_aR1Game2 },
     { "_aR1Game3", (void *)_aR1Game3 },

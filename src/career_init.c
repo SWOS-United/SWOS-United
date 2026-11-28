@@ -8,6 +8,7 @@
  * Chunk 61: 3 functions ported from SWOS2.s.
  */
 
+#include "ic2026.h"
 #include "season_extra.h"
 #include "career_teams.h"   /* RetiredRows_Reset */
 #include "swos_fixed_team_name.h"   /* SWOS_TeamNameCopy: a 17-byte name may have no NUL */
@@ -327,6 +328,7 @@ void ChooseTeamAndStartCareer(void)
     WorldCups_Reset();
     CupD_Reset();
     SuperCup_Reset();
+    Ic2026_Reset();             /* (the 2026 Intercontinental Cup: ic2026.c) */
     CupRecord_Reset();
     UefaCoef_Reset();
     SeasonExtra_Reset();        /* (a season's competition rows past the record's four) */
@@ -735,6 +737,7 @@ void InitCareer(uint16_t teamNo)
     WorldCups_Reset();
     CupD_Reset();
     SuperCup_Reset();
+    Ic2026_Reset();             /* (the 2026 Intercontinental Cup: ic2026.c) */
     CupRecord_Reset();
     UefaCoef_Reset();
     SeasonExtra_Reset();        /* (a season's competition rows past the record's four) */
@@ -1855,6 +1858,7 @@ static void Rebuild_CompetitionSlotPointers(void)
     WorldPlayoff_RestoreSlot();     /* a world's play-off under way (world_playoff.c) */
     CupD_RestoreSlot();             /* a Coppa Italia Serie D tie under way (world_cupd.c) */
     SuperCup_RestoreSlot();         /* a Super Cup tie under way (world_supercup.c) */
+    Ic2026_RestoreSlot();           /* the 2026 Intercontinental Cup's tie under way (ic2026.c) */
 
     /* Slot 3 (quaternary, euro cups) — re-derive from the SAVED euro-cup
      * slot CONTEXT, not from quaternaryCompetitionPtr.

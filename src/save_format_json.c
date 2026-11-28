@@ -35,6 +35,7 @@
 #include "world_winners.h"     /* "season_winners" */
 #include "uefa_coef.h"         /* "uefa_coef", "uefa_qualifying" in career saves */
 #include "season_extra.h"      /* "season_extra_lines" in career saves */
+#include "ic2026.h"            /* "ic2026" in career saves */
 #include "league_playoffs.h"   /* "league_stages" in career saves */
 #include "world_conti.h"       /* "conti_holders", "conti_edition" in career saves */
 #include "states.h"            /* "state_pools" in career saves */
@@ -7748,6 +7749,16 @@ int16_t SaveJson_WriteCareer(uint8_t *filename)
         json_out_emit("}", 1, &out);
     }
 
+    /* World 2026-27's first season: the real 2026 Intercontinental Cup (ic2026.c). */
+    if (g_ic2026.season) {
+        const Ic2026State *ic = &g_ic2026;
+        mjson_printf(json_out_emit, &out,
+                     ",\n  %Q:{%Q:%d,%Q:%d,%Q:%d,%Q:%d,%Q:%d,%Q:%d,%Q:%d,%Q:[%d,%d,%d]}", "ic2026", "week", (int)ic->week,
+                     "stage", (int)ic->stage, "built", (int)ic->built, "lines_done", (int)ic->linesDone,
+                     "season", (int)ic->season, "team_a", (int)ic->teamA, "team_b", (int)ic->teamB,
+                     "winners", (int)ic->winner[0], (int)ic->winner[1], (int)ic->winner[2]);
+    }
+
     /* Retired calendar rows' contest names (career_teams.c): [slot, season, row key, long, short]. */
     if (RetiredRows_Count() > 0) {
         mjson_printf(json_out_emit, &out, ",\n  %Q:[", "retired_rows");
@@ -7770,7 +7781,8 @@ int16_t SaveJson_WriteCareer(uint8_t *filename)
                     continue;
                 if (!any)
                     mjson_printf(json_out_emit, &out, ",\n  %Q:[", "season_extra_lines");
-                mjson_printf(json_out_emit, &out, "%s[%d,%Q,%d]", any ? "," : "", se, e->name, (int)e->code);
+                mjson_printf(json_out_emit, &out, "%s[%d,%Q,%d,%d]", any ? "," : "", se, e->name, (int)e->code,
+                             (int)e->frozen);
                 any = 1;
             }
         if (any)
@@ -8991,6 +9003,26 @@ static void apply_semantic_load(const char *src, int src_size)
         }
     }
 
+    /* World 2026-27's first season: the 2026 Intercontinental Cup (ic2026.c); a save without it: from
+     * its start. */
+    Ic2026_Reset();
+    {
+        const char *ic = NULL;
+        int iclen = 0;
+        long v = 0;
+        if (mjson_find(src, src_size, "$.ic2026", &ic, &iclen) == MJSON_TOK_OBJECT) {
+            Ic2026State *st = &g_ic2026;
+            if (mjson_get_long(ic, iclen, "$.stage", &v) > 0) st->stage = (uint8_t)v;
+            if (mjson_get_long(ic, iclen, "$.built", &v) > 0) st->built = (uint8_t)v;
+            if (mjson_get_long(ic, iclen, "$.lines_done", &v) > 0) st->linesDone = (uint8_t)v;
+            if (mjson_get_long(ic, iclen, "$.season", &v) > 0) st->season = (uint8_t)v;
+            if (mjson_get_long(ic, iclen, "$.team_a", &v) > 0) st->teamA = (uint16_t)v;
+            if (mjson_get_long(ic, iclen, "$.team_b", &v) > 0) st->teamB = (uint16_t)v;
+            if (mjson_get_long(ic, iclen, "$.week", &v) > 0) st->week = (uint8_t)v;
+            wp_load_u16(ic, iclen, "$.winners", st->winner, 3);
+        }
+    }
+
     /* Retired calendar rows' contest names (career_teams.c); a save without them: none. */
     RetiredRows_Reset();
     {
@@ -9029,8 +9061,13 @@ static void apply_semantic_load(const char *src, int src_size)
                 if (mjson_get_number(xl + vo, vl, "$[0]", &se) == 0 ||
                     mjson_get_string(xl + vo, vl, "$[1]", nm, (int)sizeof nm) <= 0)
                     continue;
+                double fz = 0;
                 mjson_get_number(xl + vo, vl, "$[2]", &cd);
-                SeasonExtra_Add((int32_t)se, nm, (int8_t)cd);
+                mjson_get_number(xl + vo, vl, "$[3]", &fz);       /* (frozen; an older save: none) */
+                if (fz != 0)
+                    SeasonExtra_Freeze((int32_t)se, nm, (int8_t)cd);
+                else
+                    SeasonExtra_Add((int32_t)se, nm, (int8_t)cd);
             }
         }
     }

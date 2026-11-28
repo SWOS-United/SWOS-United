@@ -30,10 +30,11 @@ void SeasonExtra_Clear(int32_t season)
 {
     if (season < 0 || season >= CAREER_MAX_SEASONS)
         return;
-    for (int32_t i = 0; i < SEASON_EXTRA_LINES; i++) {
-        s_extra[season][i].name[0] = 0;
-        s_extra[season][i].code = 0;
-    }
+    for (int32_t i = 0; i < SEASON_EXTRA_LINES; i++)
+        if (!s_extra[season][i].frozen) {
+            s_extra[season][i].name[0] = 0;
+            s_extra[season][i].code = 0;
+        }
 }
 
 static int32_t same(const char *a, const char *b)
@@ -60,6 +61,8 @@ int32_t SeasonExtra_Add(int32_t season, const char *name, int8_t code)
         SeasonExtraLine *e = &s_extra[season][i];
         if (e->name[0] && !same(e->name, name))
             continue;
+        if (!e->name[0])
+            e->frozen = 0;
         int32_t k = 0;
         for (; name[k] && k < SEASON_EXTRA_NAME - 1; k++)
             e->name[k] = name[k];
@@ -68,6 +71,18 @@ int32_t SeasonExtra_Add(int32_t season, const char *name, int8_t code)
         return 1;
     }
     return 0;
+}
+
+/* A contest's line kept when another contest took its slot mid-season (conti_season.c: the
+ * Intercontinental Cup, then the Recopa, in slot 3): its name and its result then, frozen. */
+int32_t SeasonExtra_Freeze(int32_t season, const char *name, int8_t code)
+{
+    if (!SeasonExtra_Add(season, name, code))
+        return 0;
+    for (int32_t i = 0; i < SEASON_EXTRA_LINES; i++)
+        if (s_extra[season][i].name[0] && same(s_extra[season][i].name, name))
+            s_extra[season][i].frozen = 1;
+    return 1;
 }
 
 int32_t SeasonExtra_Count(int32_t season)

@@ -6,6 +6,7 @@
  * slot 4 -- a Playoffs record, its clubs from the final table (DIY_Rebuild...'s steps) --
  * but when the league ends, since which one the club plays (if any) is known only then.
  */
+#include "ic2026.h"
 #include "season_extra.h"      /* a season's competition rows past the record's four */
 #include "world_playoff.h"
 #include "world_cups.h"
@@ -1371,7 +1372,8 @@ void WorldPlayoff_Advance(uint16_t week)
     const uint8_t *s = LeaguePlayoffs_SpecAt(s_pendStage.country, s_pendStage.pidx);
     if (!s || (g_worldPlayoff.kind && !g_worldPlayoff.winner))
         return;                                 /* (a contest under way in slot 4: none) */
-    if (_diyCompetitionPtr && !g_worldPlayoff.kind && CupD_InSlot4() != 1 && SuperCup_InSlot4() != 1)
+    if (_diyCompetitionPtr && !g_worldPlayoff.kind && CupD_InSlot4() != 1 && SuperCup_InSlot4() != 1 &&
+        Ic2026_InSlot4() != 1)
         return;
     if (!k_make(s_pendStage.country, s_pendStage.division, s_pendStage.table, s_pendStage.n, s_pendStage.pidx,
                 s[3] & 3))
@@ -1618,7 +1620,7 @@ static int32_t league_ended(void)
     if (g_worldPlayoff.kind && !(g_worldPlayoff.kind == WORLD_PLAYOFF_SPEC && g_worldPlayoff.winner))
         return 1;                               /* (built already: slot 4 is ours; a decided stage
                                                    title's contest gives way) */
-    if (_diyCompetitionPtr && CupD_InSlot4() != 1 && SuperCup_InSlot4() != 1)
+    if (_diyCompetitionPtr && CupD_InSlot4() != 1 && SuperCup_InSlot4() != 1 && Ic2026_InSlot4() != 1)
         return 0;                               /* (slot 4 is 96/97's; a decided Coppa D or Super Cup
                                                    tie gives way) */
     for (int32_t i = 0; i < count; i++)

@@ -205,6 +205,7 @@ extern char _aRoundOneGame3[];
 extern char _aConfSemiFinals[];
 extern char _aConfFinal[];
 extern char _aMlsCup[];
+extern char _aIcAapPlayoff[], _aIcAapCup[], _aIcDerby[], _aIcChallenger[];
 extern char _aR1Game1[];
 extern char _aR1Game2[];
 extern char _aR1Game3[];
@@ -1472,7 +1473,7 @@ void *_divStringTable[4] = {
     _aDiv2,
     _aDiv3,
 };
-void *_cupRoundStringTable[23] = {
+void *_cupRoundStringTable[27] = {
     _aFirstRound,
     _aSecondRound,
     _aThirdRound,
@@ -1496,8 +1497,12 @@ void *_cupRoundStringTable[23] = {
     _aConfSemiFinals,        /* 20 */
     _aConfFinal,             /* 21 */
     _aMlsCup,                /* 22 */
+    _aIcAapPlayoff,          /* 23: the FIFA Intercontinental Cup's rounds (conti_season.c) */
+    _aIcAapCup,              /* 24 */
+    _aIcDerby,               /* 25 */
+    _aIcChallenger,          /* 26 */
 };
-void *_roundStringTable[23] = {
+void *_roundStringTable[27] = {
     _aRound1,
     _aRound2,
     _aRound3,
@@ -1521,6 +1526,10 @@ void *_roundStringTable[23] = {
     _aConfSemis,             /* 20 */
     _aConfFinal_0,           /* 21 */
     _aMlsCup,                /* 22 */
+    _aIcAapPlayoff,          /* 23: the FIFA Intercontinental Cup's rounds (conti_season.c) */
+    _aIcAapCup,              /* 24 */
+    _aIcDerby,               /* 25 */
+    _aIcChallenger,          /* 26 */
 };
 void *_rndStringTable[15] = {
     _aRnd1,

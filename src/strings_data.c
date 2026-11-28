@@ -398,6 +398,11 @@ const char _aRoundOneGame3[] = "ROUND ONE GAME 3";
 const char _aConfSemiFinals[] = "CONFERENCE SEMIFINALS";
 const char _aConfFinal[] = "CONFERENCE FINAL";
 const char _aMlsCup[] = "MLS CUP";
+/* The FIFA Intercontinental Cup's rounds (a world's, conti_season.c Conti_RoundStringIndex) */
+const char _aIcAapPlayoff[] = "AFR.-ASIA-PAC. PLAY-OFF";
+const char _aIcAapCup[] = "AFR.-ASIA-PAC. CUP";
+const char _aIcDerby[] = "DERBY OF THE AMERICAS";
+const char _aIcChallenger[] = "CHALLENGER CUP";
 const char _aR1Game1[] = "R1 GAME 1";
 const char _aR1Game2[] = "R1 GAME 2";
 const char _aR1Game3[] = "R1 GAME 3";

@@ -15,13 +15,16 @@
 #define SEASON_EXTRA_NAME  32
 
 typedef struct SeasonExtraLine {
-    char   name[SEASON_EXTRA_NAME];   /* "" = unused */
-    int8_t code;                      /* the result code, as comp1Result..comp4Result */
+    char    name[SEASON_EXTRA_NAME];  /* "" = unused */
+    int8_t  code;                     /* the result code, as comp1Result..comp4Result */
+    uint8_t frozen;                   /* a contest's line kept when another took its slot (SeasonExtra_Freeze):
+                                         not cleared with the titles' rows */
 } SeasonExtraLine;
 
 void SeasonExtra_Reset(void);                                   /* a new career / a save without them */
 int32_t SeasonExtra_Index(const SeasonInformations *si);        /* the season's index, -1 */
-void SeasonExtra_Clear(int32_t season);
+void SeasonExtra_Clear(int32_t season);                         /* the titles' rows (not the frozen) */
+int32_t SeasonExtra_Freeze(int32_t season, const char *name, int8_t code);   /* a contest's line kept */
 int32_t SeasonExtra_Add(int32_t season, const char *name, int8_t code);   /* 0: no room */
 int32_t SeasonExtra_Count(int32_t season);
 const SeasonExtraLine *SeasonExtra_Get(int32_t season, int32_t i);

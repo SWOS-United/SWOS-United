@@ -2,6 +2,7 @@
  * world_cups.c -- a world's national cups as the SWOS 96/97 Mod's packs have them
  * (include/world_cups.h; docs/WORLD_2026_27.md, phase 4).
  */
+#include "ic2026.h"
 #include "game_types.h"
 #include "uefa_coef.h"
 #include "conti_season.h"
@@ -546,6 +547,9 @@ int32_t WorldCups_RoundStringIndex(uint8_t compId, uint16_t round, uint16_t roun
     const int32_t sc = SuperCup_RoundStringIndex(compId);       /* (a Super Cup tie: world_supercup.c) */
     if (sc >= 0)
         return sc;
+    const int32_t ic = Ic2026_RoundStringIndex(compId);         /* (the 2026 Intercontinental: ic2026.c) */
+    if (ic >= 0)
+        return ic;
     const int32_t uq = UefaQual_RoundStringIndex(compId);       /* (a UEFA qualifying tie: uefa_coef.c) */
     if (uq >= 0)
         return uq;

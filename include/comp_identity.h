@@ -110,6 +110,9 @@ enum CompId {
                                                          * in slot 3: world_playoff.c) */
     COMPID_worldSuperCup                     = 249,     /* (a world's Super Cup tie of the career club, slot 4:
                                                          * world_supercup.c) */
+    COMPID_ic2026                            = 250,     /* (World 2026-27's first season: the real 2026 FIFA
+                                                         * Intercontinental Cup's tie of the career club, slot 4:
+                                                         * ic2026.c) */
 };
 
 /* Read a competition's id (compId = byte 0 of the record). Endian-neutral
